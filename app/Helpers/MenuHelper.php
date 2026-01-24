@@ -2,6 +2,8 @@
 
 namespace App\Helpers;
 
+use Illuminate\Support\Facades\URL;
+
 class MenuHelper
 {
     public static function getMainNavItems()
@@ -14,6 +16,7 @@ class MenuHelper
                     ['name' => 'Usuarios', 'path' => '/admin/herramientas/usuarios'],
                     ['name' => 'Roles y permisos', 'path' => '/admin/herramientas/roles'],
                     ['name' => 'Sucursales', 'path' => '/admin/herramientas/sucursales'],
+                    ['name' => 'Modulos', 'path' => URL::route('admin.modules.index')],
                 ],
             ],
             [

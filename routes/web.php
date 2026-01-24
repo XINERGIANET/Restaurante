@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\ModulesController;
 
 Route::prefix('restaurante')->name('restaurant.')->group(function () {
     Route::view('/', 'restaurant.home', ['title' => 'Xinergia Restaurante'])->name('home');
@@ -105,7 +106,8 @@ Route::middleware('auth')->group(function () {
     Route::view('/admin/herramientas/usuarios', 'pages.blank', ['title' => 'Usuarios']);
     Route::view('/admin/herramientas/roles', 'pages.blank', ['title' => 'Roles y permisos']);
     Route::view('/admin/herramientas/sucursales', 'pages.blank', ['title' => 'Sucursales']);
-
+    Route::get('/admin/herramientas/modulos', [ModulesController::class, 'index'])->name('admin.modules.index');
+    Route::post('/admin/herramientas/modulos', [ModulesController::class, 'store'])->name('admin.modules.store');
     Route::view('/admin/pedidos/ordenes', 'pages.blank', ['title' => 'Ordenes activas']);
     Route::view('/admin/pedidos/cocina', 'pages.blank', ['title' => 'Cocina']);
     Route::view('/admin/pedidos/delivery', 'pages.blank', ['title' => 'Delivery']);
