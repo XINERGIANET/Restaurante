@@ -102,7 +102,11 @@ const checkMobile = () => {
         $store.sidebar.isExpanded = true;
     }
 };
-window.addEventListener('resize', checkMobile);">
+if (window.__sidebarResizeHandler) {
+        window.removeEventListener('resize', window.__sidebarResizeHandler);
+    }
+    window.__sidebarResizeHandler = checkMobile;
+    window.addEventListener('resize', window.__sidebarResizeHandler);">
 
     {{-- preloader --}}
     <x-common.preloader/>

@@ -1,3 +1,4 @@
+import '@hotwired/turbo';
 import './bootstrap';
 import Alpine from 'alpinejs';
 import ApexCharts from 'apexcharts';
@@ -15,10 +16,13 @@ window.ApexCharts = ApexCharts;
 window.flatpickr = flatpickr;
 window.FullCalendar = Calendar;
 
+if (window.Turbo) {
+    window.Turbo.session.drive = true;
+}
+
 Alpine.start();
 
-// Initialize components on DOM ready
-document.addEventListener('DOMContentLoaded', () => {
+const initPage = () => {
     // Map imports
     if (document.querySelector('#mapOne')) {
         import('./components/map').then(module => module.initMap());
@@ -48,4 +52,23 @@ document.addEventListener('DOMContentLoaded', () => {
     if (document.querySelector('#calendar')) {
         import('./components/calendar-init').then(module => module.calendarInit());
     }
+};
+
+document.addEventListener('turbo:before-cache', () => {
+    if (window.Alpine) {
+        Alpine.destroyTree(document.body);
+    }
+});
+
+document.addEventListener('turbo:load', () => {
+    if (window.Alpine) {
+        Alpine.initTree(document.body);
+    }
+    initPage();
+});
+document.addEventListener('DOMContentLoaded', () => {
+    if (window.Turbo) {
+        return;
+    }
+    initPage();
 });

@@ -21,6 +21,7 @@
         "@fullcalendar/interaction": "^6.1.19",
         "@fullcalendar/list": "^6.1.19",
         "@fullcalendar/timegrid": "^6.1.19",
+        "@hotwired/turbo": "^8.0.21",
         "@popperjs/core": "^2.11.8",
         "alpinejs": "^3.14.9",
         "apexcharts": "^5.3.5",
