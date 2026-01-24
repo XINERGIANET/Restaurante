@@ -19,7 +19,11 @@ class UbigeoTransferSeeder extends Seeder
             // Mapa ubigeo.id → locations.id
             $idMap = [];
 
-            // 1️⃣ Departamentos
+            /*
+            |--------------------------------------------------------------------------
+            | 1️⃣ DEPARTAMENTOS
+            |--------------------------------------------------------------------------
+            */
             $departamentos = $source->table('ubigeo')->where('tipo', 2)->get();
 
             foreach ($departamentos as $dep) {
@@ -33,7 +37,7 @@ class UbigeoTransferSeeder extends Seeder
                         'name' => $dep->descripcion,
                         'code' => $dep->codigo,
                         'type' => 'department',
-                        'parent_location_id' => null,
+                        'parent_location_id' => null, // se ajusta luego
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]);
@@ -44,7 +48,11 @@ class UbigeoTransferSeeder extends Seeder
                 $idMap[$dep->id] = $id;
             }
 
-            // 2️⃣ Provincias
+            /*
+            |--------------------------------------------------------------------------
+            | 2️⃣ PROVINCIAS
+            |--------------------------------------------------------------------------
+            */
             $provincias = $source->table('ubigeo')->where('tipo', 3)->get();
 
             foreach ($provincias as $prov) {
@@ -69,7 +77,11 @@ class UbigeoTransferSeeder extends Seeder
                 $idMap[$prov->id] = $id;
             }
 
-            // 3️⃣ Distritos
+            /*
+            |--------------------------------------------------------------------------
+            | 3️⃣ DISTRITOS
+            |--------------------------------------------------------------------------
+            */
             $distritos = $source->table('ubigeo')->where('tipo', 4)->get();
 
             foreach ($distritos as $dist) {
@@ -89,8 +101,30 @@ class UbigeoTransferSeeder extends Seeder
                     ]);
                 }
             }
+
+            /*
+            |--------------------------------------------------------------------------
+            | 4️⃣ AJUSTES FINALES (PAÍS Y JERARQUÍA)
+            |--------------------------------------------------------------------------
+            */
+
+            // Asegurar que el ID 1 sea PERÚ
+            $target->table('locations')->where('id', 1)->update([
+                'name' => 'PERU',
+                'code' => 510000,
+                'type' => 'country',
+                'updated_at' => now(),
+            ]);
+
+            // Todos los departamentos dependen de PERÚ (id = 1)
+            $target->table('locations')
+                ->where('type', 'department')
+                ->update([
+                    'parent_location_id' => 1,
+                    'updated_at' => now(),
+                ]);
         });
 
-        $this->command->info('✅ Sincronización completada sin romper claves foráneas.');
+        $this->command->info('✅ Sincronización completada y jerarquía país aplicada.');
     }
 }
