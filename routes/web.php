@@ -3,6 +3,18 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 
+Route::prefix('restaurante')->name('restaurant.')->group(function () {
+    Route::view('/', 'restaurant.home', ['title' => 'Xinergia Restaurante'])->name('home');
+    Route::view('/menu', 'restaurant.menu', ['title' => 'Menu'])->name('menu');
+    Route::view('/reservas', 'restaurant.reservations', ['title' => 'Reservas'])->name('reservations');
+    Route::view('/historia', 'restaurant.about', ['title' => 'Historia'])->name('about');
+    Route::view('/eventos', 'restaurant.events', ['title' => 'Eventos'])->name('events');
+    Route::view('/galeria', 'restaurant.gallery', ['title' => 'Galeria'])->name('gallery');
+    Route::view('/contacto', 'restaurant.contact', ['title' => 'Contacto'])->name('contact');
+    Route::view('/sucursales', 'restaurant.locations', ['title' => 'Sucursales'])->name('locations');
+});
+
+
 Route::get('/signin', [AuthenticatedSessionController::class, 'create'])
     ->middleware('guest')
     ->name('login');
@@ -88,4 +100,33 @@ Route::middleware('auth')->group(function () {
     Route::get('/videos', function () {
         return view('pages.ui-elements.videos', ['title' => 'Videos']);
     })->name('videos');
+
+    // Modulos administrativos
+    Route::view('/admin/herramientas/usuarios', 'pages.blank', ['title' => 'Usuarios']);
+    Route::view('/admin/herramientas/roles', 'pages.blank', ['title' => 'Roles y permisos']);
+    Route::view('/admin/herramientas/sucursales', 'pages.blank', ['title' => 'Sucursales']);
+
+    Route::view('/admin/pedidos/ordenes', 'pages.blank', ['title' => 'Ordenes activas']);
+    Route::view('/admin/pedidos/cocina', 'pages.blank', ['title' => 'Cocina']);
+    Route::view('/admin/pedidos/delivery', 'pages.blank', ['title' => 'Delivery']);
+
+    Route::view('/admin/ventas/pos', 'pages.blank', ['title' => 'POS']);
+    Route::view('/admin/ventas/facturacion', 'pages.blank', ['title' => 'Facturacion']);
+    Route::view('/admin/ventas/reportes', 'pages.blank', ['title' => 'Reportes']);
+
+    Route::view('/admin/compras/proveedores', 'pages.blank', ['title' => 'Proveedores']);
+    Route::view('/admin/compras/ordenes', 'pages.blank', ['title' => 'Ordenes de compra']);
+    Route::view('/admin/compras/recepciones', 'pages.blank', ['title' => 'Recepciones']);
+
+    Route::view('/admin/almacen/inventario', 'pages.blank', ['title' => 'Inventario']);
+    Route::view('/admin/almacen/insumos', 'pages.blank', ['title' => 'Insumos']);
+    Route::view('/admin/almacen/movimientos', 'pages.blank', ['title' => 'Movimientos']);
+
+    Route::view('/admin/caja/aperturas', 'pages.blank', ['title' => 'Apertura y cierre']);
+    Route::view('/admin/caja/arqueos', 'pages.blank', ['title' => 'Arqueos']);
+    Route::view('/admin/caja/gastos', 'pages.blank', ['title' => 'Gastos']);
+
+    Route::view('/admin/configuracion/parametros', 'pages.blank', ['title' => 'Parametros']);
+    Route::view('/admin/configuracion/menu', 'pages.blank', ['title' => 'Menu y recetas']);
+    Route::view('/admin/configuracion/impuestos', 'pages.blank', ['title' => 'Impuestos']);
 });

@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap') layer(base);
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Manrope:wght@300..800&display=swap') layer(base);
 @import 'prismjs/themes/prism.min.css';
 @import 'tailwindcss';
 
@@ -14,6 +15,8 @@
 @theme {
   --font-*: initial;
   --font-outfit: Outfit, sans-serif;
+  --font-playfair: "Playfair Display", serif;
+  --font-manrope: Manrope, sans-serif;
 
   --breakpoint-*: initial;
   --breakpoint-2xsm: 375px;
@@ -878,5 +881,64 @@ pre[class*='language-'] {
 @media screen and (max-width: 525px) {
   .flatpickr-calendar.static {
     margin-right: -60px !important;
+  }
+}
+/* Restaurant theme utilities */
+@layer base {
+  [x-cloak] {
+    display: none !important;
+  }
+}
+
+@layer utilities {
+  .grain {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.12'/%3E%3C/svg%3E");
+    mix-blend-mode: soft-light;
+    opacity: 0.25;
+  }
+
+  .soft-shadow {
+    box-shadow: 0 22px 60px -35px rgba(36, 18, 12, 0.55), 0 12px 24px -16px rgba(36, 18, 12, 0.35);
+  }
+
+  .card-glow {
+    box-shadow: 0 25px 50px -30px rgba(135, 75, 38, 0.65);
+  }
+
+  .animate-reveal {
+    animation: reveal 0.8s ease both;
+  }
+
+  .animate-reveal-delay {
+    animation-delay: 0.12s;
+  }
+
+  .animate-reveal-delay-2 {
+    animation-delay: 0.24s;
+  }
+
+  .animate-float {
+    animation: float 12s ease-in-out infinite;
+  }
+}
+
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
   }
 }

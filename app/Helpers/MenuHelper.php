@@ -8,42 +8,66 @@ class MenuHelper
     {
         return [
             [
-                'icon' => 'dashboard',
-                'name' => 'Dashboard',
+                'icon' => 'ai-assistant',
+                'name' => 'Administración',
                 'subItems' => [
-                    ['name' => 'Ecommerce', 'path' => '/'],
+                    ['name' => 'Usuarios', 'path' => '/admin/herramientas/usuarios'],
+                    ['name' => 'Roles y permisos', 'path' => '/admin/herramientas/roles'],
+                    ['name' => 'Sucursales', 'path' => '/admin/herramientas/sucursales'],
                 ],
             ],
             [
-                'icon' => 'calendar',
-                'name' => 'Calendar',
-                'path' => '/calendar',
+                'icon' => 'task',
+                'name' => 'Pedidos',
+                'subItems' => [
+                    ['name' => 'Ordenes activas', 'path' => '/admin/pedidos/ordenes'],
+                    ['name' => 'Cocina', 'path' => '/admin/pedidos/cocina'],
+                    ['name' => 'Delivery', 'path' => '/admin/pedidos/delivery'],
+                ],
+            ],
+            [
+                'icon' => 'ecommerce',
+                'name' => 'Ventas',
+                'subItems' => [
+                    ['name' => 'POS', 'path' => '/admin/ventas/pos'],
+                    ['name' => 'Facturacion', 'path' => '/admin/ventas/facturacion'],
+                    ['name' => 'Reportes', 'path' => '/admin/ventas/reportes'],
+                ],
+            ],
+            [
+                'icon' => 'forms',
+                'name' => 'Compras',
+                'subItems' => [
+                    ['name' => 'Proveedores', 'path' => '/admin/compras/proveedores'],
+                    ['name' => 'Ordenes de compra', 'path' => '/admin/compras/ordenes'],
+                    ['name' => 'Recepciones', 'path' => '/admin/compras/recepciones'],
+                ],
+            ],
+            [
+                'icon' => 'pages',
+                'name' => 'Almacen',
+                'subItems' => [
+                    ['name' => 'Inventario', 'path' => '/admin/almacen/inventario'],
+                    ['name' => 'Insumos', 'path' => '/admin/almacen/insumos'],
+                    ['name' => 'Movimientos', 'path' => '/admin/almacen/movimientos'],
+                ],
+            ],
+            [
+                'icon' => 'support-ticket',
+                'name' => 'Caja',
+                'subItems' => [
+                    ['name' => 'Apertura y cierre', 'path' => '/admin/caja/aperturas'],
+                    ['name' => 'Arqueos', 'path' => '/admin/caja/arqueos'],
+                    ['name' => 'Gastos', 'path' => '/admin/caja/gastos'],
+                ],
             ],
             [
                 'icon' => 'user-profile',
-                'name' => 'User Profile',
-                'path' => '/profile',
-            ],
-            [
-                'name' => 'Forms',
-                'icon' => 'forms',
+                'name' => 'Configuracion',
                 'subItems' => [
-                    ['name' => 'Form Elements', 'path' => '/form-elements', 'pro' => false],
-                ],
-            ],
-            [
-                'name' => 'Tables',
-                'icon' => 'tables',
-                'subItems' => [
-                    ['name' => 'Basic Tables', 'path' => '/basic-tables', 'pro' => false]
-                ],
-            ],
-            [
-                'name' => 'Pages',
-                'icon' => 'pages',
-                'subItems' => [
-                    ['name' => 'Blank Page', 'path' => '/blank', 'pro' => false],
-                    ['name' => '404 Error', 'path' => '/error-404', 'pro' => false]
+                    ['name' => 'Parametros', 'path' => '/admin/configuracion/parametros'],
+                    ['name' => 'Menu y recetas', 'path' => '/admin/configuracion/menu'],
+                    ['name' => 'Impuestos', 'path' => '/admin/configuracion/impuestos'],
                 ],
             ],
         ];
@@ -51,41 +75,12 @@ class MenuHelper
 
     public static function getOthersItems()
     {
-        return [
-            [
-                'icon' => 'charts',
-                'name' => 'Charts',
-                'subItems' => [
-                    ['name' => 'Line Chart', 'path' => '/line-chart', 'pro' => false],
-                    ['name' => 'Bar Chart', 'path' => '/bar-chart', 'pro' => false]
-                ],
-            ],
-            [
-                'icon' => 'ui-elements',
-                'name' => 'UI Elements',
-                'subItems' => [
-                    ['name' => 'Alerts', 'path' => '/alerts', 'pro' => false],
-                    ['name' => 'Avatar', 'path' => '/avatars', 'pro' => false],
-                    ['name' => 'Badge', 'path' => '/badge', 'pro' => false],
-                    ['name' => 'Buttons', 'path' => '/buttons', 'pro' => false],
-                    ['name' => 'Images', 'path' => '/image', 'pro' => false],
-                    ['name' => 'Videos', 'path' => '/videos', 'pro' => false],
-                ],
-            ],
-            [
-                'icon' => 'authentication',
-                'name' => 'Authentication',
-                'subItems' => [
-                    ['name' => 'Sign In', 'path' => '/signin', 'pro' => false],
-                    ['name' => 'Sign Up', 'path' => '/signup', 'pro' => false],
-                ],
-            ],
-        ];
+        return [];
     }
 
     public static function getMenuGroups()
     {
-        return [
+        $groups = [
             [
                 'title' => 'Menu',
                 'items' => self::getMainNavItems()
@@ -95,8 +90,9 @@ class MenuHelper
                 'items' => self::getOthersItems()
             ]
         ];
-    }
 
+        return array_values(array_filter($groups, fn ($group) => !empty($group['items'])));
+    }
     public static function isActive($path)
     {
         return request()->is(ltrim($path, '/'));

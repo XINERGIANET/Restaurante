@@ -96,6 +96,19 @@ return [
             'search_path' => 'public',
             'sslmode' => 'prefer',
         ],
+                'pgsql_local' => [
+            'driver' => 'pgsql',
+            'host' => env('PGSQL_LOCAL_HOST', '127.0.0.1'),
+            'port' => env('PGSQL_LOCAL_PORT', '5432'),
+            'database' => env('PGSQL_LOCAL_DATABASE', 'forge'),
+            'username' => env('PGSQL_LOCAL_USERNAME', 'forge'),
+            'password' => env('PGSQL_LOCAL_PASSWORD', ''),
+            'charset' => 'utf8',
+            'prefix' => '',
+            'schema' => 'public',
+            'sslmode' => 'prefer',
+        ],
+
 
         'sqlsrv' => [
             'driver' => 'sqlsrv',
