@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\CompanyController;
 
 Route::prefix('restaurante')->name('restaurant.')->group(function () {
     Route::view('/', 'restaurant.home', ['title' => 'Xinergia Restaurante'])->name('home');
@@ -32,6 +33,8 @@ Route::view('/signup', 'pages.auth.signup', ['title' => 'Sign Up'])
     ->name('signup');
 
 Route::middleware('auth')->group(function () {
+    Route::resource('/admin/empresas', CompanyController::class)->names('admin.companies');
+
     // dashboard pages
     Route::get('/', function () {
         return view('pages.dashboard.ecommerce', ['title' => 'E-commerce Dashboard']);
