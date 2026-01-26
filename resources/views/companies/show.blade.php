@@ -31,7 +31,7 @@
     <x-common.component-card title="{{ $company->legal_name }}" desc="Informacion general de la empresa.">
         <div class="grid gap-6 md:grid-cols-2">
             <div class="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 dark:border-gray-800 dark:bg-gray-900/30 dark:text-gray-200">
-                <p class="text-xs uppercase tracking-wide text-gray-400">Tax ID</p>
+                <p class="text-xs uppercase tracking-wide text-gray-400">RUC</p>
                 <p class="mt-1 font-semibold">{{ $company->tax_id }}</p>
             </div>
             <div class="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 dark:border-gray-800 dark:bg-gray-900/30 dark:text-gray-200">

@@ -11,32 +11,24 @@ class MenuHelper
 {
     public static function getMainNavItems()
     {
-        // Usamos cache para optimizar (clave única: 'sidebar_menu')
         return Cache::rememberForever('sidebar_menu', function () {
             
-            // 1. Consulta Eloquent con Relaciones y Filtros
             $modules = Module::with(['menuOptions' => function ($query) {
-                // Filtro para los HIJOS (Opciones de menú)
                 $query->where('status', 1); 
-                // $query->orderBy('order_num'); // Descomenta si agregas orden a menu_option
             }])
             ->orderBy('order_num', 'asc') 
             ->get();
 
             $menuStructure = [];
 
-            foreach ($modules as $module) {
-                
-                // 2. Procesar los Sub-items (Hijos)
+            foreach ($modules as $module) {  
                 $subItems = [];
 
                 foreach ($module->menuOptions as $option) {
                     
-                    // Detectar si es URL directa o Route Name
                     if (str_starts_with($option->action, '/')) {
                          $finalPath = $option->action;
                     } else {
-                        // Si la ruta no existe en web.php, ponemos '#' para que no explote
                         $finalPath = Route::has($option->action) ? route($option->action) : '#';
                     }
 
@@ -46,12 +38,11 @@ class MenuHelper
                     ];
                 }
 
-                // 3. Armar la estructura final del Módulo
                 $menuStructure[] = [
                     'icon'     => self::getIconSvg($module->icon),
                     'name'     => $module->name,
-                    'subItems' => $subItems, // Aquí ya van los datos reales de la BD
-                    'path'     => '#', // Los módulos padre suelen ser solo desplegables
+                    'subItems' => $subItems, 
+                    'path'     => '#', 
                 ];
             }
 
