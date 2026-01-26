@@ -25,7 +25,7 @@ class MenuOptionSeeder extends Seeder
 
         $structure = [
             'Herramientas de administración' => [
-                ['name' => 'Empresa',           'action' => '/admin/empresas',                 'icon' => 'mdi-domain'],
+                ['name' => 'Empresa',            'action' => 'admin.companies.index',                 'icon' => 'mdi-domain'],
                 ['name' => 'Usuarios',           'action' => '/admin/herramientas/usuarios',    'icon' => 'mdi-account-group'],
                 ['name' => 'Roles y permisos',   'action' => '/admin/herramientas/roles',       'icon' => 'mdi-shield-account'],
                 ['name' => 'Sucursales',         'action' => '/admin/herramientas/sucursales',  'icon' => 'mdi-office-building'],
