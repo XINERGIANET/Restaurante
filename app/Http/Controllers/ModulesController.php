@@ -19,21 +19,16 @@ class ModulesController extends Controller
         try {
             $validated = $request->validate([
                 'name' => 'required|string|max:255',
-                'icon' => 'required|image|mimes:jpeg,png,jpg,gif,svg,webp|max:2048',
+                'icon' => 'string|max:255',
                 'order_num' => 'required|integer',
-                'menu_id' => 'required|integer',
             ],
             [
                 'name.required' => 'El nombre es requerido',
                 'name.string' => 'El nombre debe ser una cadena de texto',
                 'name.max' => 'El nombre debe tener menos de 255 caracteres',
-                'icon.required' => 'La imagen es requerida',
-                'icon.image' => 'La imagen debe ser un archivo de imagen',
-                'icon.mimes' => 'La imagen debe ser un archivo de imagen',
+                'icon.string' => 'El icono debe ser una cadena de texto',
                 'order_num.required' => 'El orden es requerido',
                 'order_num.integer' => 'El orden debe ser un número entero',
-                'menu_id.required' => 'El menu es requerido',
-                'menu_id.integer' => 'El menu debe ser un número entero',
             ]
         );
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -57,7 +52,6 @@ class ModulesController extends Controller
                     'name' => $request->name,
                     'icon' => $iconPath, // Guardar la ruta del archivo
                     'order_num' => $request->order_num,
-                    'menu_id' => $request->menu_id,
                 ]);
                 
                 return response()->json(['success' => 'Modulo creado correctamente'], 200);

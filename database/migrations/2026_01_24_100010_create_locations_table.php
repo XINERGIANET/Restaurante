@@ -8,6 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
+        //Ubigeos
         Schema::create('locations', function (Blueprint $table) {
             $table->id();
             $table->string('name');

@@ -13,7 +13,7 @@ return new class extends Migration
             $table->string('name');
             $table->string('icon');
             $table->integer('order_num');
-            $table->foreignId('menu_id')->constrained('menu_option');
+            
             $table->timestamps();
             $table->softDeletes();
         });

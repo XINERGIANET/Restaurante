@@ -10,6 +10,7 @@ return new class extends Migration
     {
         Schema::create('companies', function (Blueprint $table) {
             $table->id();
+            
             $table->string('tax_id');
             $table->string('legal_name');
             $table->string('address');

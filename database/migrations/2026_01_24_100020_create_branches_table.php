@@ -11,10 +11,11 @@ return new class extends Migration
         Schema::create('branches', function (Blueprint $table) {
             $table->id();
             $table->string('tax_id');
+            $table->string('ruc')->nullable();
             $table->foreignId('company_id')->constrained('companies');
             $table->string('legal_name');
-            $table->string('logo');
-            $table->string('address');
+            $table->string('logo')->nullable();
+            $table->string('address')->nullable();
             $table->foreignId('location_id')->constrained('locations');
             $table->timestamps();
             $table->softDeletes();

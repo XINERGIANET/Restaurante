@@ -13,8 +13,8 @@ return new class extends Migration
             $table->string('name');
             $table->string('icon');
             $table->string('action');
-            $table->bigInteger('module_id');
             $table->foreignId('view_id')->constrained('views');
+            $table->foreignId('module_id')->constrained('modules');
             $table->smallInteger('status');
             $table->boolean('quick_access');
             $table->timestamps();
