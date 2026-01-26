@@ -3,78 +3,60 @@
 namespace App\Helpers;
 
 use Illuminate\Support\Facades\URL;
+use App\Models\Module;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Route; 
 
 class MenuHelper
 {
     public static function getMainNavItems()
     {
-        return [
-            [
-                'icon' => 'ai-assistant',
-                'name' => 'Herramientas de administracion',
-                'subItems' => [
-                    ['name' => 'Empresas', 'path' => '/admin/empresas'],
-                    ['name' => 'Usuarios', 'path' => '/admin/herramientas/usuarios'],
-                    ['name' => 'Roles y permisos', 'path' => '/admin/herramientas/roles'],
-                    ['name' => 'Sucursales', 'path' => '/admin/herramientas/sucursales'],
-                    ['name' => 'Modulos', 'path' => URL::route('admin.modules.index')],
-                ],
-            ],
-            [
-                'icon' => 'task',
-                'name' => 'Pedidos',
-                'subItems' => [
-                    ['name' => 'Ordenes activas', 'path' => '/admin/pedidos/ordenes'],
-                    ['name' => 'Cocina', 'path' => '/admin/pedidos/cocina'],
-                    ['name' => 'Delivery', 'path' => '/admin/pedidos/delivery'],
-                ],
-            ],
-            [
-                'icon' => 'ecommerce',
-                'name' => 'Ventas',
-                'subItems' => [
-                    ['name' => 'POS', 'path' => '/admin/ventas/pos'],
-                    ['name' => 'Facturacion', 'path' => '/admin/ventas/facturacion'],
-                    ['name' => 'Reportes', 'path' => '/admin/ventas/reportes'],
-                ],
-            ],
-            [
-                'icon' => 'forms',
-                'name' => 'Compras',
-                'subItems' => [
-                    ['name' => 'Proveedores', 'path' => '/admin/compras/proveedores'],
-                    ['name' => 'Ordenes de compra', 'path' => '/admin/compras/ordenes'],
-                    ['name' => 'Recepciones', 'path' => '/admin/compras/recepciones'],
-                ],
-            ],
-            [
-                'icon' => 'pages',
-                'name' => 'Almacen',
-                'subItems' => [
-                    ['name' => 'Inventario', 'path' => '/admin/almacen/inventario'],
-                    ['name' => 'Insumos', 'path' => '/admin/almacen/insumos'],
-                    ['name' => 'Movimientos', 'path' => '/admin/almacen/movimientos'],
-                ],
-            ],
-            [
-                'icon' => 'support-ticket',
-                'name' => 'Caja',
-                'subItems' => [
-                    ['name' => 'Apertura y cierre', 'path' => '/admin/caja/aperturas'],
-                    ['name' => 'Arqueos', 'path' => '/admin/caja/arqueos'],
-                    ['name' => 'Gastos', 'path' => '/admin/caja/gastos'],
-                ],
-            ],
-            [
-                'icon' => 'user-profile',
-                'name' => 'Configuracion',
-                'subItems' => [
-                    ['name' => 'Parametros', 'path' => '/admin/configuracion/parametros'],
-                    ['name' => 'Menu y recetas', 'path' => '/admin/configuracion/menu'],
-                    ['name' => 'Impuestos', 'path' => '/admin/configuracion/impuestos'],
-                ],
-            ],
-        ];
+        // Usamos cache para optimizar (clave única: 'sidebar_menu')
+        return Cache::rememberForever('sidebar_menu', function () {
+            
+            // 1. Consulta Eloquent con Relaciones y Filtros
+            $modules = Module::with(['menuOptions' => function ($query) {
+                // Filtro para los HIJOS (Opciones de menú)
+                $query->where('status', 1); 
+                // $query->orderBy('order_num'); // Descomenta si agregas orden a menu_option
+            }])
+            ->orderBy('order_num', 'asc') 
+            ->get();
+
+            $menuStructure = [];
+
+            foreach ($modules as $module) {
+                
+                // 2. Procesar los Sub-items (Hijos)
+                $subItems = [];
+
+                foreach ($module->menuOptions as $option) {
+                    
+                    // Detectar si es URL directa o Route Name
+                    if (str_starts_with($option->action, '/')) {
+                         $finalPath = $option->action;
+                    } else {
+                        // Si la ruta no existe en web.php, ponemos '#' para que no explote
+                        $finalPath = Route::has($option->action) ? route($option->action) : '#';
+                    }
+
+                    $subItems[] = [
+                        'name' => $option->name,
+                        'path' => $finalPath,
+                    ];
+                }
+
+                // 3. Armar la estructura final del Módulo
+                $menuStructure[] = [
+                    'icon'     => self::getIconSvg($module->icon),
+                    'name'     => $module->name,
+                    'subItems' => $subItems, // Aquí ya van los datos reales de la BD
+                    'path'     => '#', // Los módulos padre suelen ser solo desplegables
+                ];
+            }
+
+            return $menuStructure;
+        });
     }
 
     public static function getOthersItems()
