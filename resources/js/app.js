@@ -9,8 +9,6 @@ import 'flatpickr/dist/flatpickr.min.css';
 // FullCalendar
 import { Calendar } from '@fullcalendar/core';
 
-
-
 window.Alpine = Alpine;
 window.ApexCharts = ApexCharts;
 window.flatpickr = flatpickr;
@@ -19,8 +17,6 @@ window.FullCalendar = Calendar;
 if (window.Turbo) {
     window.Turbo.session.drive = true;
 }
-
-Alpine.start();
 
 const initPage = () => {
     // Map imports
@@ -54,21 +50,38 @@ const initPage = () => {
     }
 };
 
+let alpineBooted = false;
+
+const bootAlpine = () => {
+    if (alpineBooted) {
+        return;
+    }
+    Alpine.start();
+    alpineBooted = true;
+};
+
 document.addEventListener('turbo:before-cache', () => {
-    if (window.Alpine) {
+    if (window.Alpine && alpineBooted) {
         Alpine.destroyTree(document.body);
     }
 });
 
 document.addEventListener('turbo:load', () => {
     if (window.Alpine) {
-        Alpine.initTree(document.body);
+        if (!alpineBooted) {
+            bootAlpine();
+        } else {
+            Alpine.initTree(document.body);
+        }
     }
     initPage();
 });
+
 document.addEventListener('DOMContentLoaded', () => {
     if (window.Turbo) {
         return;
     }
+    bootAlpine();
     initPage();
 });
+

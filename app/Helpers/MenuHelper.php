@@ -11,7 +11,7 @@ class MenuHelper
         return [
             [
                 'icon' => 'ai-assistant',
-                'name' => 'Herramientas de administracion',
+                'name' => 'Desarrollador',
                 'subItems' => [
                     ['name' => 'Empresas', 'path' => '/admin/empresas'],
                     ['name' => 'Usuarios', 'path' => '/admin/herramientas/usuarios'],
