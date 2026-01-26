@@ -4,31 +4,71 @@ namespace App\Http\Controllers;
 
 use App\Models\Modules;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class ModulesController extends Controller
 {
     public function index(){
         $modules = Modules::all();
-        return view('modules.index', ['title' => 'Modulos']);
+        return view('modules.index', ['title' => 'Modulos', 'modules' => $modules]);
     }
     
     public function store(Request $request){
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'icon' => 'required|string|max:255',
-            'order_num' => 'required|integer',
-            'menu_id' => 'required|integer',
-        ]);
         try {
-            Modules::create([
-                'name' => $request->name,
-                'icon' => $request->icon,
-                'order_num' => $request->order_num,
-                'menu_id' => $request->menu_id,
-            ]);
-            return redirect()->route('modules.index')->with('success', 'Modulo creado correctamente');
-        } catch (\Throwable $th) {
-            return redirect()->route('modules.index')->with('error', 'Error al crear el modulo');
+            $validated = $request->validate([
+                'name' => 'required|string|max:255',
+                'icon' => 'required|image|mimes:jpeg,png,jpg,gif,svg,webp|max:2048',
+                'order_num' => 'required|integer',
+                'menu_id' => 'required|integer',
+            ],
+            [
+                'name.required' => 'El nombre es requerido',
+                'name.string' => 'El nombre debe ser una cadena de texto',
+                'name.max' => 'El nombre debe tener menos de 255 caracteres',
+                'icon.required' => 'La imagen es requerida',
+                'icon.image' => 'La imagen debe ser un archivo de imagen',
+                'icon.mimes' => 'La imagen debe ser un archivo de imagen',
+                'order_num.required' => 'El orden es requerido',
+                'order_num.integer' => 'El orden debe ser un número entero',
+                'menu_id.required' => 'El menu es requerido',
+                'menu_id.integer' => 'El menu debe ser un número entero',
+            ]
+        );
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'error' => 'Error de validación',
+                    'errors' => $e->errors()
+                ], 422);
+            }
+            throw $e;
         }
+        
+        try {
+            // Subir la imagen
+            if ($request->hasFile('icon')) {
+                $file = $request->file('icon');
+                $fileName = Str::slug($request->name) . '-' . time() . '.' . $file->getClientOriginalExtension();
+                $iconPath = $file->storeAs('modules/icons', $fileName, 'public');
+                
+                Modules::create([
+                    'name' => $request->name,
+                    'icon' => $iconPath, // Guardar la ruta del archivo
+                    'order_num' => $request->order_num,
+                    'menu_id' => $request->menu_id,
+                ]);
+                
+                return response()->json(['success' => 'Modulo creado correctamente'], 200);
+            }
+
+            return response()->json(['error' => 'No se pudo subir la imagen'], 400);
+        } catch (\Exception $e) {
+            Log::error('Error al crear el modulo', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            return response()->json(['error' => 'Error al crear el modulo: ' . $e->getMessage()], 500);
+        }
+        
     }
+
 }
