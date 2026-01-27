@@ -4,6 +4,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="turbo-cache-control" content="no-preview">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <title>{{ $title ?? 'Dashboard' }} | Xinergia FOOD</title>
@@ -81,12 +82,29 @@
             const savedTheme = localStorage.getItem('theme');
             const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
             const theme = savedTheme || systemTheme;
+            const root = document.documentElement;
+            const applyBody = () => {
+                const body = document.body;
+                if (!body) {
+                    return;
+                }
+                if (theme === 'dark') {
+                    body.classList.add('dark', 'bg-gray-900');
+                } else {
+                    body.classList.remove('dark', 'bg-gray-900');
+                }
+            };
+
             if (theme === 'dark') {
-                document.documentElement.classList.add('dark');
-                document.body.classList.add('dark', 'bg-gray-900');
+                root.classList.add('dark');
             } else {
-                document.documentElement.classList.remove('dark');
-                document.body.classList.remove('dark', 'bg-gray-900');
+                root.classList.remove('dark');
+            }
+
+            if (document.body) {
+                applyBody();
+            } else {
+                document.addEventListener('DOMContentLoaded', applyBody, { once: true });
             }
         })();
     </script>
@@ -119,3 +137,5 @@ if (window.__sidebarResizeHandler) {
 @stack('scripts')
 
 </html>
+
+

@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\BranchController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\ModulesController;
 use App\Http\Controllers\ParameterCategoriesController;
@@ -36,7 +37,12 @@ Route::view('/signup', 'pages.auth.signup', ['title' => 'Sign Up'])
     ->name('signup');
 
 Route::middleware('auth')->group(function () {
-    Route::resource('/admin/empresas', CompanyController::class)->names('admin.companies');
+    Route::resource('/admin/empresas', CompanyController::class)
+        ->names('admin.companies')
+        ->parameters(['empresas' => 'company']);
+    Route::resource('/admin/empresas.sucursales', BranchController::class)
+        ->names('admin.companies.branches')
+        ->parameters(['empresas' => 'company', 'sucursales' => 'branch']);
 
     // dashboard pages
     Route::get('/', function () {
@@ -141,3 +147,4 @@ Route::middleware('auth')->group(function () {
     Route::view('/admin/configuracion/menu', 'pages.blank', ['title' => 'Menu y recetas']);
     Route::view('/admin/configuracion/impuestos', 'pages.blank', ['title' => 'Impuestos']);
 });
+

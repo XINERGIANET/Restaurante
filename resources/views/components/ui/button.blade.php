@@ -15,6 +15,7 @@
     $sizeMap = [
         'sm' => 'px-4 py-3 text-sm',
         'md' => 'px-5 py-3.5 text-sm',
+        'icon' => 'h-10 w-10 p-0 text-sm rounded-full',
     ];
     $sizeClass = $sizeMap[$size] ?? $sizeMap['md'];
 
@@ -59,3 +60,4 @@
         <span class="flex items-center">{!! $endIcon !!}</span>
     @endif
 </button>
+

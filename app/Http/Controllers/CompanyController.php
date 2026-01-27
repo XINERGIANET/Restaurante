@@ -10,6 +10,11 @@ class CompanyController extends Controller
     public function index(Request $request)
     {
         $search = $request->input('search');
+        $perPage = (int) $request->input('per_page', 10);
+        $allowedPerPage = [10, 20, 50, 100];
+        if (!in_array($perPage, $allowedPerPage, true)) {
+            $perPage = 10;
+        }
 
         $companies = Company::query()
             ->when($search, function ($query) use ($search) {
@@ -20,12 +25,13 @@ class CompanyController extends Controller
                 });
             })
             ->orderByDesc('id')
-            ->paginate(10)
+            ->paginate($perPage)
             ->withQueryString();
 
         return view('companies.index', [
             'companies' => $companies,
             'search' => $search,
+            'perPage' => $perPage,
         ]);
     }
 
@@ -46,11 +52,6 @@ class CompanyController extends Controller
 
         return redirect()->route('admin.companies.index')
             ->with('status', 'Empresa creada correctamente.');
-    }
-
-    public function show(Company $company)
-    {
-        return view('companies.show', compact('company'));
     }
 
     public function edit(Company $company)

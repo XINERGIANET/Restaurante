@@ -12,30 +12,25 @@
     x-data="{
         openSubmenus: {},
         init() {
-            // Auto-open Dashboard menu on page load
             this.initializeActiveMenus();
         },
         initializeActiveMenus() {
-            const currentPath = '{{ $currentPath }}';
-
             @foreach ($menuGroups as $groupIndex => $menuGroup)
                 @foreach ($menuGroup['items'] as $itemIndex => $item)
                     @if (isset($item['subItems']))
-                        // Check if any submenu item matches current path
                         @foreach ($item['subItems'] as $subItem)
-                            if (currentPath === '{{ ltrim($subItem['path'], '/') }}' ||
-                                window.location.pathname === '{{ $subItem['path'] }}') {
+                            if (this.isActive('{{ $subItem['path'] }}')) {
                                 this.openSubmenus['{{ $groupIndex }}-{{ $itemIndex }}'] = true;
-                            } @endforeach
-            @endif
-            @endforeach
+                            }
+                        @endforeach
+                    @endif
+                @endforeach
             @endforeach
         },
         toggleSubmenu(groupIndex, itemIndex) {
             const key = groupIndex + '-' + itemIndex;
             const newState = !this.openSubmenus[key];
 
-            // Close all other submenus when opening a new one
             if (newState) {
                 this.openSubmenus = {};
             }
@@ -46,8 +41,25 @@
             const key = groupIndex + '-' + itemIndex;
             return this.openSubmenus[key] || false;
         },
+        normalizePath(path) {
+            if (!path) {
+                return '';
+            }
+            try {
+                if (path.startsWith('http')) {
+                    path = new URL(path).pathname;
+                }
+            } catch (e) {}
+            const normalized = path.replace(/\/+$/, '');
+            return normalized === '' ? '/' : normalized;
+        },
         isActive(path) {
-            return window.location.pathname === path || '{{ $currentPath }}' === path.replace(/^\//, '');
+            const current = this.normalizePath(window.location.pathname);
+            const target = this.normalizePath(path);
+            if (target === '/') {
+                return current === '/';
+            }
+            return current === target || current.startsWith(target + '/');
         }
     }"
     :class="{
@@ -114,7 +126,7 @@
                                             <!-- Icon -->
                                             <span :class="isSubmenuOpen({{ $groupIndex }}, {{ $itemIndex }}) ?
                                                     'menu-item-icon-active' : 'menu-item-icon-inactive'">
-                                                {!! MenuHelper::getIconSvg($item['icon']) !!}
+                                                {!! $item['icon'] !!}
                                             </span>
 
                                             <!-- Text -->
@@ -192,7 +204,7 @@
                                             <span
                                                 :class="isActive('{{ $item['path'] }}') ? 'menu-item-icon-active' :
                                                     'menu-item-icon-inactive'">
-                                                {!! MenuHelper::getIconSvg($item['icon']) !!}
+                                                {!! $item['icon'] !!}
                                             </span>
 
                                             <!-- Text -->
@@ -216,11 +228,11 @@
                 @endforeach
             </div>
         </nav>
-
+{{-- 
         <!-- Sidebar Widget -->
         <div x-data x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen" x-transition class="mt-auto">
             @include('layouts.sidebar-widget')
-        </div>
+        </div> --}}
 
     </div>
 </aside>
@@ -228,3 +240,6 @@
 <!-- Mobile Overlay -->
 <div x-show="$store.sidebar.isMobileOpen" @click="$store.sidebar.setMobileOpen(false)"
     class="fixed z-50 h-screen w-full bg-gray-900/50"></div>
+
+
+
