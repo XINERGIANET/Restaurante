@@ -3,20 +3,19 @@
     'showCloseButton' => true,
 ])
 
-<div x-data="{
-    open: @js($isOpen),
-    init() {
-        this.$watch('open', value => {
-            if (value) {
-                document.body.style.overflow = 'hidden';
-            } else {
-                document.body.style.overflow = 'unset';
-            }
-        });
-    }
-}" x-show="open" x-cloak @keydown.escape.window="open = false"
+@php
+    $customData = $attributes->get('x-data');
+    $defaultData = "{ open: ".\Illuminate\Support\Js::from($isOpen)." }";
+    $xData = $customData ?: $defaultData;
+@endphp
+
+<div
+    x-data="{{ $xData }}"
+    x-show="open"
+    x-cloak
+    x-effect="document.body.style.overflow = open ? 'hidden' : 'unset'"
     class="modal fixed inset-0 z-99999 flex items-center justify-center overflow-y-auto p-5"
-    {{ $attributes->except('class') }}>
+    {{ $attributes->except(['class', 'x-data']) }}>
 
     <!-- Backdrop -->
     <div @click="open = false" class="fixed inset-0 h-full w-full bg-gray-400/50 backdrop-blur-[32px]"

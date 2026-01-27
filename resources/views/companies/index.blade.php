@@ -94,15 +94,15 @@
                     <x-ui.link-button size="sm" variant="outline" href="{{ route('admin.companies.index') }}" :startIcon="$ClearIcon">Limpiar</x-ui.link-button>
                 </div>
             </form>
-            <x-ui.link-button
+            <x-ui.button
                 size="md"
                 variant="primary"
-                href="{{ route('admin.companies.create') }}"
+                type="button"
                 :startIcon="$PlusIcon"
-                @click.prevent="$dispatch('open-company-modal')"
+                @click="$dispatch('open-company-modal')"
             >
                 Nueva empresa
-            </x-ui.link-button>
+            </x-ui.button>
         </div>
 
         <div class="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -165,7 +165,7 @@
                                             variant="outline"
                                             href="{{ route('admin.companies.edit', $company) }}"
                                             :startIcon="$EditIcon"
-                                            @click.prevent="$dispatch('edit-company-modal', @js(['id' => $company->id, 'tax_id' => $company->tax_id, 'legal_name' => $company->legal_name, 'address' => $company->address]))"
+                                            x-on:click.prevent="$dispatch('edit-company-modal', {{ Illuminate\Support\Js::from(['id' => $company->id, 'tax_id' => $company->tax_id, 'legal_name' => $company->legal_name, 'address' => $company->address]) }})"
                                         >
                                             Editar
                                         </x-ui.link-button>
@@ -188,15 +188,15 @@
                                         </div>
                                         <p class="text-base font-semibold text-gray-700 dark:text-gray-200">No hay empresas registradas.</p>
                                         <p class="text-gray-500">Crea tu primera empresa para comenzar.</p>
-                                        <x-ui.link-button
+                                        <x-ui.button
                                             size="sm"
                                             variant="primary"
-                                            href="{{ route('admin.companies.create') }}"
+                                            type="button"
                                             :startIcon="$PlusIcon"
-                                            @click.prevent="$dispatch('open-company-modal')"
+                                            @click="$dispatch('open-company-modal')"
                                         >
                                             Registrar empresa
-                                        </x-ui.link-button>
+                                        </x-ui.button>
                                     </div>
                                 </td>
                             </tr>
@@ -218,16 +218,16 @@
 
     <x-ui.modal
         x-data="{
-            open: @js($errors->any()),
-            mode: @js(old('form_mode', 'create')),
+            open: {{ Illuminate\Support\Js::from($errors->any()) }},
+            mode: {{ Illuminate\Support\Js::from(old('form_mode', 'create')) }},
             form: {
-                id: @js(old('company_id')),
-                tax_id: @js(old('tax_id', '')),
-                legal_name: @js(old('legal_name', '')),
-                address: @js(old('address', '')),
+                id: {{ Illuminate\Support\Js::from(old('company_id')) }},
+                tax_id: {{ Illuminate\Support\Js::from(old('tax_id', '')) }},
+                legal_name: {{ Illuminate\Support\Js::from(old('legal_name', '')) }},
+                address: {{ Illuminate\Support\Js::from(old('address', '')) }},
             },
-            createUrl: @js(route('admin.companies.store')),
-            updateBaseUrl: @js(url('/admin/empresas')),
+            createUrl: {{ Illuminate\Support\Js::from(route('admin.companies.store')) }},
+            updateBaseUrl: {{ Illuminate\Support\Js::from(url('/admin/empresas')) }},
             init() {
                 this.$watch('open', value => {
                     document.body.style.overflow = value ? 'hidden' : 'unset';
@@ -296,3 +296,7 @@
     </x-ui.modal>
     </div>
 @endsection
+
+
+
+
