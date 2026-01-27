@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id();
             $table->text('description');
             $table->text('value');
-            $table->smallInteger('status');
+            $table->smallInteger('status')->default(1);
             $table->foreignId('parameter_category_id')->constrained('parameter_categories');
             $table->timestamps();
             $table->softDeletes();

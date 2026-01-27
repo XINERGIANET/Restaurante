@@ -22,6 +22,8 @@
     $variantMap = [
         'primary' => 'bg-brand-500 text-white shadow-theme-xs hover:bg-brand-600 disabled:bg-brand-300',
         'outline' => 'bg-white text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-400 dark:ring-gray-700 dark:hover:bg-white/[0.03] dark:hover:text-gray-300',
+        'eliminate' => 'bg-error-500 text-white shadow-theme-xs hover:bg-error-700 disabled:bg-error-300 dark:bg-error-600 dark:hover:bg-error-700',
+
     ];
     $variantClass = $variantMap[$variant] ?? $variantMap['primary'];
 
@@ -29,11 +31,17 @@
     $disabledClass = $disabled ? 'cursor-not-allowed opacity-50' : '';
 
     // final classes (merge user className too)
+    // Ensure hover classes are at the end for proper specificity
     $classes = trim("{$base} {$sizeClass} {$variantClass} {$className} {$disabledClass}");
 @endphp
 
 <button
     {{ $attributes->merge(['class' => $classes, 'type' => $attributes->get('type', 'button')]) }}
+    @if($variant === 'eliminate')
+        style="background-color: rgb(240, 68, 56);"
+        onmouseover="this.style.backgroundColor='rgb(180, 35, 24)'"
+        onmouseout="this.style.backgroundColor='rgb(240, 68, 56)'"
+    @endif
     @if($disabled) disabled @endif
 >
     {{-- start icon: priority — named slot 'startIcon' first, then startIcon prop if it's a HtmlString --}}
