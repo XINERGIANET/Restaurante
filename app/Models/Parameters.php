@@ -12,7 +12,7 @@ class Parameters extends Model
 
     protected $table = 'parameters';
     protected $fillable = ['description', 'value', 'status', 'parameter_category_id'];
-
+    
     public function parameterCategory()
     {
         return $this->belongsTo(ParameterCategories::class, 'parameter_category_id', 'id');

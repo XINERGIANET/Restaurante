@@ -1,0 +1,260 @@
+@extends('layouts.app')
+@php
+    use Illuminate\Support\HtmlString;
+    $SearchIcon = new HtmlString('
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8" />
+            <path d="M20 20L16.5 16.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+        </svg>
+    ');
+@endphp
+@section('content')
+    <x-common.page-breadcrumb pageTitle="{{ 'Parametros' }}" />
+    <x-common.component-card title="Listado de parametros" desc="Gestiona los parametros registrados en el sistema.">
+        <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            <form method="GET" class="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
+                <div class="relative flex-1">
+                    <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"> {!! $SearchIcon !!}
+                    </span>
+                    <input type="text" name="search" value="{{ $search }}" placeholder="Buscar por descripcion"
+                        class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 pl-12 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30" />
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <x-ui.button size="sm" variant="primary" type="submit">Buscar</x-ui.button>
+                    <x-ui.link-button size="sm" variant="outline"
+                        href="{{ route('admin.parameters.categories.index') }}">Limpiar</x-ui.link-button>
+                </div>
+            </form>
+        </div>
+        <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            <x-ui.button size="sm" variant="primary" @click="$dispatch('open-create-parameter-modal')">Crear
+                Parametro</x-ui.button>
+        </div>
+        @if ($parameters->count() > 0)
+            <div
+                class="mt-4 overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+                <div class="max-w-full overflow-x-auto custom-scrollbar">
+                    <table class="w-full min-w-[880px]">
+                        <thead class="text-left text-theme-xs dark:text-gray-400">
+                            <tr class="border-b border-gray-100 dark:border-gray-800">
+                                <th class="px-5 py-3 text-center sm:px-6">
+                                    ID
+                                </th>
+                                <th class="px-5 py-3 text-center sm:px-6">
+                                    Descripcion
+                                </th>
+                                <th class="px-5 py-3 text-center sm:px-6">
+                                    Valor
+                                </th>
+                                <th class="px-5 py-3 text-center sm:px-6">
+                                    Categoria
+                                </th>
+                                <th class="px-5 py-3 text-center sm:px-6">
+                                    Estado
+                                </th>
+                                <th class="px-5 py-3 text-center sm:px-6">
+                                    Fecha de creacion
+                                </th>
+                                <th class="px-5 py-3 text-center sm:px-6">
+                                    Acciones
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                            @foreach ($parameters as $parameter)
+                                <tr
+                                    class="border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-white/5">
+                                    <td class="px-5 py-4 sm:px-6 text-center">
+                                        <p class="font-medium text-gray-900 text-theme-sm dark:text-white/90">
+                                            {{ $parameter->id }}</p>
+                                    </td>
+                                    <td class="px-5 py-4 sm:px-6 text-center">
+                                        <p class="font-medium text-gray-900 text-theme-sm dark:text-white/90">
+                                            {{ $parameter->description }}</p>
+                                    </td>
+                                    <td class="px-5 py-4 sm:px-6 text-center">
+                                        <p class="font-medium text-gray-900 text-theme-sm dark:text-white/90">
+                                            {{ $parameter->value }}</p>
+                                    </td>
+                                    <td class="px-5 py-4 sm:px-6 text-center">
+                                        <p class="font-medium text-gray-900 text-theme-sm dark:text-white/90">
+                                            {{ $parameter->parameterCategory->description }}</p>
+                                    </td>
+                                    <td class="px-5 py-4 sm:px-6 text-center">
+                                        <p class="font-medium text-gray-900 text-theme-sm dark:text-white/90">
+                                            {{ $parameter->status == 1 ? 'Activo' : 'Inactivo' }}</p>
+                                    </td>
+                                    <td class="px-5 py-4 sm:px-6 text-center">
+                                        <p class="font-medium text-gray-600 text-theme-sm dark:text-gray-200">
+                                            {{ $parameter->created_at->format('d/m/Y H:i:s') }}</p>
+                                    </td>
+                                    
+                                    <td class="px-5 py-4 sm:px-6 text-center">
+                                        <div class="flex items-center justify-center gap-2">
+                                            <x-ui.button size="sm" variant="outline"
+                                                x-on:click.prevent="$dispatch('open-edit-parameter-modal', {{ Illuminate\Support\Js::from(['id' => $parameter->id, 'description' => $parameter->description, 'value' => $parameter->value, 'parameter_category_id' => $parameter->parameterCategory->id, 'status' => $parameter->status]) }})"
+                                                className="text-brand-500 ring-brand-500/30 bg-brand-500/10 hover:bg-brand-600">
+                                                Editar
+                                            </x-ui.button>
+                                            <x-ui.button size="sm" variant="eliminate"
+                                                x-on:click.prevent="$dispatch('open-delete-parameter-modal', {{ Illuminate\Support\Js::from(['id' => $parameter->id]) }})">Eliminar</x-ui.button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        @else
+            <div class="rounded-lg border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+                <div class="p-6 text-center">
+                    <p class="text-sm text-gray-500 dark:text-gray-400 sm:text-base">
+                        No hay parametros disponibles.
+                    </p>
+                </div>
+            </div>
+        @endif
+    </x-common.component-card>
+
+    <!--Modal de creacion de parametro-->
+    <x-ui.modal x-data="{ open: {{ $errors->any() ? 'true' : 'false' }}, parameter: null }"
+        @open-create-parameter-modal.window="open = true; parameter = $event.detail.parameter"
+        @close-create-parameter-modal.window="open = false" :isOpen="false" class="max-w-md" x-init="@if ($errors->any()) open = true; @endif">
+        <div class="p-6 space-y-4">
+            <h3 class="mb-6 text-lg font-semibold text-gray-800 dark:text-white/90">Crear Parametro</h3>
+            @if ($errors->any())
+                <div
+                    class="mb-4 rounded-lg border border-error-200 bg-error-50 p-4 dark:border-error-800 dark:bg-error-500/10">
+                    <p class="text-sm font-medium text-error-600 dark:text-error-400">Por favor, corrige los siguientes
+                        errores:</p>
+                    <ul class="mt-2 list-disc list-inside text-sm text-error-600 dark:text-error-400">
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+            <form id="create-parameter-form" class="space-y-4" action="{{ route('admin.parameters.store') }}"
+                method="POST" enctype="multipart/form-data">
+                @csrf
+                <div>
+                    <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Descripcion</label>
+                    <input type="text" name="description" id="description" value="{{ old('description') }}"
+                        placeholder="Ingrese la descripcion" required
+                        class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border {{ $errors->has('description') ? 'border-error-500' : 'border-gray-300' }} bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30">
+                    @error('description')
+                        <p class="mt-1 text-sm text-error-500">{{ $message }}</p>
+                    @enderror
+                </div>
+                <div>
+                    <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Valor</label>
+                    <input type="text" name="value" id="value" value="{{ old('value') }}"
+                        placeholder="Ingrese el valor" required
+                        class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border {{ $errors->has('value') ? 'border-error-500' : 'border-gray-300' }} bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30">
+                    @error('value')
+                        <p class="mt-1 text-sm text-error-500">{{ $message }}</p>
+                    @enderror
+                </div>
+                <div>
+                    <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Categoria</label>
+                    <select name="parameter_category_id" id="parameter_category_id"
+                        value="{{ old('parameter_category_id') }}" required
+                        class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border {{ $errors->has('parameter_category_id') ? 'border-error-500' : 'border-gray-300' }} bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30">
+                        <option value="">Seleccione una categoria</option>
+                        @foreach ($parameterCategories as $parameterCategory)
+                            <option value="{{ $parameterCategory->id }}"
+                                {{ old('parameter_category_id') == $parameterCategory->id ? 'selected' : '' }}>
+                                {{ $parameterCategory->description }}</option>
+                        @endforeach
+                    </select>
+                    @error('parameter_category_id')
+                        <p class="mt-1 text-sm text-error-500">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <div class="flex flex-wrap gap-3">
+                    <x-ui.button type="submit" size="md" variant="primary">Guardar</x-ui.button>
+                    <x-ui.button type="button" size="md" variant="secondary"
+                        @click="open = false; $dispatch('close-create-parameter-modal')">Cancelar</x-ui.button>
+                </div>
+            </form>
+        </div>
+    </x-ui.modal>
+
+    <!--Modal de edicion de parametro-->
+    <x-ui.modal x-data="{ open: false, parameterId: null, description: '', value: '', parameterCategoryId: null, status: '1' }" 
+        @open-edit-parameter-modal.window="open = true; parameterId = $event.detail.id; description = $event.detail.description; value = $event.detail.value; parameterCategoryId = $event.detail.parameter_category_id; status = $event.detail.status.toString()" 
+        @close-edit-parameter-modal.window="open = false"
+        :isOpen="false" class="max-w-md">
+        <div class="p-6 space-y-4">
+            <h3 class="mb-6 text-lg font-semibold text-gray-800 dark:text-white/90">Editar Parametro</h3>
+            <form id="edit-parameter-form" class="space-y-4"
+                x-bind:action="parameterId ? '{{ url('/admin/herramientas/parametros') }}/' + parameterId : '#'" 
+                method="POST"
+                enctype="multipart/form-data">
+                @csrf
+                @method('PUT')
+                <div>
+                    <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Descripcion</label>
+                    <input type="text" name="description" id="edit-description" x-model="description"
+                        placeholder="Ingrese la descripcion" required
+                        class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30">
+                </div>
+                <div>
+                    <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Valor</label>
+                    <input type="text" name="value" id="edit-value" x-model="value"
+                        placeholder="Ingrese el valor" required
+                        class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30">
+                </div>
+                <div>
+                    <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Categoria</label>
+                    <select name="parameter_category_id" id="edit-parameter_category_id" x-model="parameterCategoryId"
+                        required
+                        class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30">
+                        <option value="">Seleccione una categoria</option>
+                        @foreach ($parameterCategories as $parameterCategory)
+                            <option value="{{ $parameterCategory->id }}">{{ $parameterCategory->description }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Estado</label>
+                    <select name="status" id="edit-status" x-model="status"
+                        required
+                        class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30">
+                        <option value="1">Activo</option>
+                        <option value="0">Inactivo</option>
+                    </select>
+                </div>
+                <div class="flex flex-wrap gap-3">
+                    <x-ui.button type="submit" size="md" variant="primary">Guardar</x-ui.button>
+                    <x-ui.button type="button" size="md" variant="outline"
+                        @click="open = false">Cancelar</x-ui.button>
+                </div>
+            </form>
+        </div>
+    </x-ui.modal>
+
+    <!--Modal de confirmacion de eliminar parametro-->
+    <x-ui.modal x-data="{ open: false, parameterId: null }" 
+        @open-delete-parameter-modal.window="open = true; parameterId = $event.detail.id" 
+        @close-delete-parameter-modal.window="open = false"
+        :isOpen="false" class="max-w-md">
+        <div class="p-6 space-y-4">
+            <h3 class="mb-6 text-lg font-semibold text-gray-800 dark:text-white/90">Eliminar Parametro</h3>
+            <p class="text-gray-600 dark:text-gray-200">¿Estás seguro de querer eliminar este parametro?</p>
+        </div>
+        <form id="delete-parameter-form" class="space-y-4 flex flex-col gap-4 justify-end items-end"
+            x-bind:action="parameterId ? '{{ url('/admin/herramientas/parametros') }}/' + parameterId : '#'" 
+            method="POST">
+            @csrf
+            @method('DELETE')
+            <div class="flex flex-wrap gap-3 justify-end  p-5 items-end">
+                <x-ui.button type="submit" size="md" variant="eliminate">Eliminar</x-ui.button>
+                <x-ui.button type="button" size="md" variant="outline"
+                    @click="open = false">Cancelar</x-ui.button>
+                </div>
+        </form>
+    </x-ui.modal>
+@endsection

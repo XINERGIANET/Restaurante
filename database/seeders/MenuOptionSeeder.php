@@ -30,6 +30,8 @@ class MenuOptionSeeder extends Seeder
                 ['name' => 'Roles y permisos',   'action' => '/admin/herramientas/roles',       'icon' => 'mdi-shield-account'],
                 ['name' => 'Sucursales',         'action' => '/admin/herramientas/sucursales',  'icon' => 'mdi-office-building'],
                 ['name' => 'Modulos',            'action' => 'admin.modules.index',             'icon' => 'mdi-view-module'],
+                ['name' => 'Categorias de Parametros',         'action' => 'admin.parameters.categories.index',           'icon' => 'mdi-settings'],
+                ['name' => 'Parametros',         'action' => 'admin.parameters.index',           'icon' => 'mdi-settings'],
             ],
             'Pedidos' => [
                 ['name' => 'Ordenes activas',    'action' => '/admin/pedidos/ordenes',          'icon' => 'mdi-food'],

@@ -27,6 +27,13 @@
                 @endforeach
             @endforeach
         },
+        keepSubmenuOpen(groupIndex, itemIndex) {
+            // Mantener el submenú abierto cuando se hace clic en un enlace
+            const key = groupIndex + '-' + itemIndex;
+            this.openSubmenus[key] = true;
+            // Guardar estado en localStorage
+            localStorage.setItem('sidebarOpenSubmenus', JSON.stringify(this.openSubmenus));
+        },
         toggleSubmenu(groupIndex, itemIndex) {
             const key = groupIndex + '-' + itemIndex;
             const newState = !this.openSubmenus[key];
@@ -36,6 +43,8 @@
             }
 
             this.openSubmenus[key] = newState;
+            // Guardar estado en localStorage
+            localStorage.setItem('sidebarOpenSubmenus', JSON.stringify(this.openSubmenus));
         },
         isSubmenuOpen(groupIndex, itemIndex) {
             const key = groupIndex + '-' + itemIndex;
@@ -161,7 +170,9 @@
                                             <ul class="mt-2 space-y-1 ml-9">
                                                 @foreach ($item['subItems'] as $subItem)
                                                     <li>
-                                                        <a href="{{ $subItem['path'] }}" class="menu-dropdown-item"
+                                                        <a href="{{ $subItem['path'] }}" 
+                                                            @click="keepSubmenuOpen({{ $groupIndex }}, {{ $itemIndex }})"
+                                                            class="menu-dropdown-item"
                                                             :class="isActive('{{ $subItem['path'] }}') ?
                                                                 'menu-dropdown-item-active' :
                                                                 'menu-dropdown-item-inactive'">
