@@ -113,13 +113,17 @@ Route::middleware('auth')->group(function () {
     Route::view('/admin/herramientas/sucursales', 'pages.blank', ['title' => 'Sucursales']);
 
     // Modulos
-    Route::get('/admin/herramientas/modulos', [ModulesController::class, 'index'])->name('admin.modules.index');
-    Route::post('/admin/herramientas/modulos', [ModulesController::class, 'store'])->name('admin.modules.store');
+    Route::resource('admin/herramientas/modulos', ModulesController::class)
+        ->names('admin.modules')
+        ->parameters(['modulos' => 'module']);
+    Route::delete('/admin/herramientas/modulos/{module}', [ModulesController::class, 'destroy'])->name('admin.modules.destroy');
+    
         
     Route::view('/admin/pedidos/ordenes', 'pages.blank', ['title' => 'Ordenes activas']);
     Route::view('/admin/pedidos/cocina', 'pages.blank', ['title' => 'Cocina']);
     Route::view('/admin/pedidos/delivery', 'pages.blank', ['title' => 'Delivery']);
-    //parametros
+
+    //Parametros
     Route::get('/admin/herramientas/parametros/categorias', [ParameterCategoriesController::class, 'index'])->name('admin.parameters.categories');
     Route::view('/admin/ventas/pos', 'pages.blank', ['title' => 'POS']);
     Route::view('/admin/ventas/facturacion', 'pages.blank', ['title' => 'Facturacion']);
