@@ -74,10 +74,10 @@ const bindSwalDelete = () => {
                 form.submit();
                 return;
             }
-            const title = form.dataset.swalTitle || '¿Eliminar registro?';
-            const text = form.dataset.swalText || 'Esta acción no se puede deshacer.';
+            const title = form.dataset.swalTitle || 'Â¿Eliminar registro?';
+            const text = form.dataset.swalText || 'Esta acciÃ³n no se puede deshacer.';
             const icon = form.dataset.swalIcon || 'warning';
-            const confirmText = form.dataset.swalConfirm || 'Sí, eliminar';
+            const confirmText = form.dataset.swalConfirm || 'SÃ­, eliminar';
             const cancelText = form.dataset.swalCancel || 'Cancelar';
             const confirmColor = form.dataset.swalConfirmColor || '#ef4444';
             const cancelColor = form.dataset.swalCancelColor || '#6b7280';

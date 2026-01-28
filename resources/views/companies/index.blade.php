@@ -21,6 +21,19 @@
                             <i class="ri-search-line"></i>
                             <span>Buscar</span>
                         </x-ui.button>
+                        <div class="w-29">
+                            <form method="GET" action="{{ route('admin.companies.index') }}">
+                                <input type="hidden" name="search" value="{{ $search }}">
+                                <select name="per_page"
+                                    class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-3 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+                                    onchange="this.form.submit()">
+                                    @foreach ([10, 20, 50, 100] as $size)
+                                        <option value="{{ $size }}" @selected($perPage == $size)>{{ $size }} /
+                                            pagina</option>
+                                    @endforeach
+                                </select>
+                            </form>
+                        </div>
                         <x-ui.link-button size="sm" variant="outline" href="{{ route('admin.companies.index') }}">
                             <i class="ri-close-line"></i>
                             <span>Limpiar</span>
@@ -82,10 +95,20 @@
                                             href="{{ route('admin.companies.edit', $company) }}">
                                             <i class="ri-pencil-line"></i>
                                         </x-ui.link-button>
-                                        <x-ui.button size="icon" variant="eliminate" type="button"
-                                            x-on:click.prevent="$dispatch('open-delete-company-modal', {{ Illuminate\Support\Js::from(['id' => $company->id]) }})">
-                                            <i class="ri-delete-bin-line"></i>
-                                        </x-ui.button>
+                                        <form method="POST" action="{{ route('admin.companies.destroy', $company) }}"
+                                            class="relative group js-swal-delete"
+                                            data-swal-title="¿Eliminar empresa?"
+                                            data-swal-text="Se eliminará {{ $company->legal_name }}. Esta acción no se puede deshacer."
+                                            data-swal-confirm="Sí, eliminar"
+                                            data-swal-cancel="Cancelar"
+                                            data-swal-confirm-color="#ef4444"
+                                            data-swal-cancel-color="#6b7280">
+                                            @csrf
+                                            @method('DELETE')
+                                            <x-ui.button size="icon" variant="eliminate" type="submit">
+                                                <i class="ri-delete-bin-line"></i>
+                                            </x-ui.button>
+                                        </form>
                                     </div>
                                 </td>
                             </tr>
@@ -125,19 +148,7 @@
                 <div>
                     {{ $companies->links() }}
                 </div>
-                <div class="w-28">
-                    <form method="GET" action="{{ route('admin.companies.index') }}">
-                        <input type="hidden" name="search" value="{{ $search }}">
-                        <select name="per_page"
-                            class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-3 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
-                            onchange="this.form.submit()">
-                            @foreach ([10, 20, 50, 100] as $size)
-                                <option value="{{ $size }}" @selected($perPage == $size)>{{ $size }} /
-                                    pagina</option>
-                            @endforeach
-                        </select>
-                    </form>
-                </div>
+                
             </div>
         </x-common.component-card>
 
@@ -189,23 +200,4 @@
         </x-ui.modal>
     </div>
 
-    <!--modal de confirmacion de eliminar empresa-->
-    <x-ui.modal x-data="{ open: false, companyId: null }" @open-delete-company-modal.window="open = true; companyId = $event.detail.id"
-    @close-delete-company-modal.window="open = false" :isOpen="false" class="max-w-md">
-    <div class="p-6 space-y-4">
-        <h3 class="mb-6 text-lg font-semibold text-gray-800 dark:text-white/90">Eliminar Empresa</h3>
-        <p class="text-gray-600 dark:text-gray-200">¿Estás seguro de querer eliminar esta empresa?</p>
-    </div>
-    <form id="delete-company-form" class="space-y-4 flex flex-col gap-4 justify-end items-end"
-        x-bind:action="companyId ? '{{ route('admin.companies.destroy', 0) }}'.replace(/\/0$/, '/' + companyId) : '#'"
-        method="POST">
-        @csrf
-        @method('DELETE')
-        <div class="flex flex-wrap gap-3 justify-end  p-5 items-end">
-            <x-ui.button type="submit" size="md" variant="eliminate">Eliminar</x-ui.button>
-            <x-ui.button type="button" size="md" variant="outline"
-                @click="open = false">Cancelar</x-ui.button>
-        </div>
-    </form>
-</x-ui.modal>
 @endsection

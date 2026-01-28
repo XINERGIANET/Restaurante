@@ -294,14 +294,66 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
     document.addEventListener('turbo:load', showErrorToast);
 </script>
 @endif
+<script>
+    if (!window.__globalSwalDeleteHandler) {
+        document.addEventListener('submit', (event) => {
+            const form = event.target.closest('.js-swal-delete');
+            if (!form) return;
+            if (form.dataset.swalBound === 'true') return;
+            event.preventDefault();
+            if (!window.Swal) {
+                form.submit();
+                return;
+            }
+            const title = form.dataset.swalTitle || '¿Eliminar registro?';
+            const text = form.dataset.swalText || 'Esta acción no se puede deshacer.';
+            const icon = form.dataset.swalIcon || 'warning';
+            const confirmText = form.dataset.swalConfirm || 'Sí, eliminar';
+            const cancelText = form.dataset.swalCancel || 'Cancelar';
+            const confirmColor = form.dataset.swalConfirmColor || '#ef4444';
+            const cancelColor = form.dataset.swalCancelColor || '#6b7280';
+
+            const isDark = document.documentElement.classList.contains('dark');
+            Swal.fire({
+                title,
+                text,
+                icon,
+                showCancelButton: true,
+                confirmButtonText: confirmText,
+                cancelButtonText: cancelText,
+                confirmButtonColor: confirmColor,
+                cancelButtonColor: cancelColor,
+                reverseButtons: true,
+                allowOutsideClick: false,
+                background: isDark ? '#111827' : '#ffffff',
+                color: isDark ? '#e5e7eb' : '#111827',
+                customClass: {
+                    backdrop: 'swal-backdrop-blur',
+                },
+                didOpen: (popup) => {
+                    popup.classList.toggle('swal-dark', isDark);
+                },
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    form.dataset.swalBound = 'true';
+                    form.submit();
+                }
+            });
+        });
+        window.__globalSwalDeleteHandler = true;
+    }
+</script>
+<style>
+    .swal2-container.swal2-backdrop-show .swal-backdrop-blur {
+        background-color: rgba(156, 163, 175, 0.5) !important;
+        opacity: 1 !important;
+        backdrop-filter: blur(32px) !important;
+        -webkit-backdrop-filter: blur(32px) !important;
+    }
+</style>
     @stack('scripts')
 
 </html>
-
-
-
-
-
 
 
 
