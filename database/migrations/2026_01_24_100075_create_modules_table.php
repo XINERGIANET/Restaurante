@@ -13,6 +13,7 @@ return new class extends Migration
             $table->string('name');
             $table->string('icon');
             $table->integer('order_num');
+            $table->integer('status')->default(1);
             $table->timestamps();
             $table->softDeletes();
         });

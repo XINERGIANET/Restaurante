@@ -10,9 +10,21 @@ use Illuminate\Support\Str;
 
 class ModulesController extends Controller
 {
-    public function index(){
-        $modules = Modules::all();
-        return view('modules.index', ['title' => 'Modulos', 'modules' => $modules]);
+    public function index(Request $request)
+    {
+        $search = $request->input('search');
+
+        $modules = Modules::query()
+            ->when($search, function ($query, $search) {
+                $query->where('name', 'like', "%{$search}%");
+            })
+            ->orderBy('order_num', 'asc')
+            ->paginate(10); 
+
+        return view('modules.index', [
+            'title' => 'Módulos',
+            'modules' => $modules
+        ]);
     }
     
     public function store(Request $request){
@@ -42,7 +54,6 @@ class ModulesController extends Controller
         }
         
         try {
-            // Subir la imagen
             if ($request->hasFile('icon')) {
                 $file = $request->file('icon');
                 $fileName = Str::slug($request->name) . '-' . time() . '.' . $file->getClientOriginalExtension();
@@ -65,4 +76,21 @@ class ModulesController extends Controller
         
     }
 
+    public function destroy($id)
+    {
+        $module = Modules::findOrFail($id);
+
+        try {
+            if ($module->icon && Storage::disk('public')->exists($module->icon)) {
+                Storage::disk('public')->delete($module->icon);
+            }
+
+            $module->delete();
+
+            return response()->json(['success' => 'Módulo eliminado correctamente'], 200);
+        } catch (\Exception $e) {
+            Log::error('Error al eliminar el módulo', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            return response()->json(['error' => 'Error al eliminar el módulo: ' . $e->getMessage()], 500);
+        }
+    }
 }
