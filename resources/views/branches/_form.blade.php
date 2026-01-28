@@ -55,9 +55,9 @@
     data-departments='@json($departments ?? [], JSON_HEX_APOS | JSON_HEX_QUOT)'
     data-provinces='@json($provinces ?? [], JSON_HEX_APOS | JSON_HEX_QUOT)'
     data-districts='@json($districts ?? [], JSON_HEX_APOS | JSON_HEX_QUOT)'
-    data-department-id='@json($selectedDepartmentId, JSON_HEX_APOS | JSON_HEX_QUOT)'
-    data-province-id='@json($selectedProvinceId, JSON_HEX_APOS | JSON_HEX_QUOT)'
-    data-district-id='@json($selectedDistrictId, JSON_HEX_APOS | JSON_HEX_QUOT)'
+    data-department-id='@json(old('department_id', $selectedDepartmentId ?? null), JSON_HEX_APOS | JSON_HEX_QUOT)'
+    data-province-id='@json(old('province_id', $selectedProvinceId ?? null), JSON_HEX_APOS | JSON_HEX_QUOT)'
+    data-district-id='@json(old('location_id', $selectedDistrictId ?? ($branch->location_id ?? null)), JSON_HEX_APOS | JSON_HEX_QUOT)'
     x-data="{
         departments: JSON.parse($el.dataset.departments || '[]'),
         provinces: JSON.parse($el.dataset.provinces || '[]'),
@@ -65,6 +65,20 @@
         departmentId: JSON.parse($el.dataset.departmentId || 'null') || '',
         provinceId: JSON.parse($el.dataset.provinceId || 'null') || '',
         districtId: JSON.parse($el.dataset.districtId || 'null') || '',
+        init() {
+            if (!this.provinceId && this.districtId) {
+                const district = this.districts.find(d => d.id == this.districtId);
+                if (district) {
+                    this.provinceId = district.parent_location_id ?? '';
+                }
+            }
+            if (!this.departmentId && this.provinceId) {
+                const province = this.provinces.find(p => p.id == this.provinceId);
+                if (province) {
+                    this.departmentId = province.parent_location_id ?? '';
+                }
+            }
+        },
         get filteredProvinces() {
             return this.provinces.filter(p => p.parent_location_id == this.departmentId);
         },
@@ -79,6 +93,7 @@
             this.districtId = '';
         }
     }"
+    x-init="init()"
 >
     <div class="sm:col-span-1">
         <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">RUC</label>
@@ -100,8 +115,8 @@
         @enderror
     </div>
 
-    <div class="sm:col-span-1 lg:col-span-2">
-        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Nombre de sucursal</label>
+    <div class="sm:col-span-2 lg:col-span-3">
+        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Razon social</label>
         <div class="relative">
             <span class="absolute top-1/2 left-0 -translate-y-1/2 border-r border-gray-200 px-3.5 py-3 text-gray-500 dark:border-gray-800 dark:text-gray-400">
                 {!! $BranchIcon !!}
@@ -138,6 +153,23 @@
             <p class="mt-1 text-xs text-error-500">{{ $message }}</p>
         @enderror
     </div>
+    <div class="sm:col-span-1 lg:col-span-2">
+        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Logo (opcional)</label>
+        <div class="relative">
+            <span class="absolute top-1/2 left-0 -translate-y-1/2 border-r border-gray-200 px-3.5 py-3 text-gray-500 dark:border-gray-800 dark:text-gray-400">
+                {!! $LogoIcon !!}
+            </span>
+            <input
+                type="file"
+                name="logo"
+                accept="image/*"
+                class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 pl-[62px] text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
+            />
+        </div>
+        @error('logo')
+            <p class="mt-1 text-xs text-error-500">{{ $message }}</p>
+        @enderror
+    </div>
 
     <div class="sm:col-span-1">
         <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Departamento</label>
@@ -153,7 +185,7 @@
             >
                 <option value="">Seleccione departamento</option>
                 <template x-for="department in departments" :key="department.id">
-                    <option :value="department.id" x-text="department.name"></option>
+                    <option :value="department.id" :selected="department.id == departmentId" x-text="department.name"></option>
                 </template>
             </select>
         </div>
@@ -173,7 +205,7 @@
             >
                 <option value="">Seleccione provincia</option>
                 <template x-for="province in filteredProvinces" :key="province.id">
-                    <option :value="province.id" x-text="province.name"></option>
+                    <option :value="province.id" :selected="province.id == provinceId" x-text="province.name"></option>
                 </template>
             </select>
         </div>
@@ -193,7 +225,7 @@
             >
                 <option value="">Seleccione distrito</option>
                 <template x-for="district in filteredDistricts" :key="district.id">
-                    <option :value="district.id" x-text="district.name"></option>
+                    <option :value="district.id" :selected="district.id == districtId" x-text="district.name"></option>
                 </template>
             </select>
         </div>
@@ -202,22 +234,5 @@
         @enderror
     </div>
 
-    <div class="sm:col-span-1 lg:col-span-2">
-        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Logo (opcional)</label>
-        <div class="relative">
-            <span class="absolute top-1/2 left-0 -translate-y-1/2 border-r border-gray-200 px-3.5 py-3 text-gray-500 dark:border-gray-800 dark:text-gray-400">
-                {!! $LogoIcon !!}
-            </span>
-            <input
-                type="text"
-                name="logo"
-                value="{{ old('logo', $branch->logo ?? '') }}"
-                placeholder="Ruta o URL del logo"
-                class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 pl-[62px] text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
-            />
-        </div>
-        @error('logo')
-            <p class="mt-1 text-xs text-error-500">{{ $message }}</p>
-        @enderror
-    </div>
+   
 </div>

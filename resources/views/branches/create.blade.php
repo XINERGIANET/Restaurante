@@ -27,7 +27,7 @@
     />
 
     <x-common.component-card title="Registrar sucursal" desc="Ingresa la informacion de la sucursal para {{ $company->legal_name }}.">
-        <form method="POST" action="{{ route('admin.companies.branches.store', $company) }}" class="space-y-6">
+        <form method="POST" action="{{ route('admin.companies.branches.store', $company) }}" class="space-y-6" enctype="multipart/form-data">
             @csrf
             @include('branches._form', ['branch' => null])
 

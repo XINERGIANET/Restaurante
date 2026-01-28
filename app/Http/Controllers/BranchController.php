@@ -6,6 +6,7 @@ use App\Models\Branch;
 use App\Models\Company;
 use App\Models\Location;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class BranchController extends Controller
 {
@@ -14,6 +15,7 @@ class BranchController extends Controller
         $search = $request->input('search');
 
         $branches = $company->branches()
+            ->with('location')
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
                     $inner->where('legal_name', 'ilike', "%{$search}%")
@@ -43,6 +45,10 @@ class BranchController extends Controller
     {
         $data = $this->validateBranch($request);
         $data['company_id'] = $company->id;
+        if ($request->hasFile('logo')) {
+            $path = $request->file('logo')->store('branches/logos', 'public');
+            $data['logo'] = Storage::url($path);
+        }
 
         $company->branches()->create($data);
 
@@ -75,6 +81,12 @@ class BranchController extends Controller
     {
         $branch = $this->resolveBranch($company, $branch);
         $data = $this->validateBranch($request);
+        if ($request->hasFile('logo')) {
+            $path = $request->file('logo')->store('branches/logos', 'public');
+            $data['logo'] = Storage::url($path);
+        } else {
+            unset($data['logo']);
+        }
 
         $branch->update($data);
 
@@ -99,7 +111,7 @@ class BranchController extends Controller
             'tax_id' => ['required', 'string', 'max:255'],
             'ruc' => ['nullable', 'string', 'max:255'],
             'legal_name' => ['required', 'string', 'max:255'],
-            'logo' => ['nullable', 'string', 'max:255'],
+            'logo' => ['nullable', 'image', 'max:2048'],
             'address' => ['nullable', 'string', 'max:255'],
             'location_id' => ['required', 'integer', 'exists:locations,id'],
         ]);
@@ -116,8 +128,9 @@ class BranchController extends Controller
 
     private function getLocationData(?Branch $branch = null): array
     {
+        
         $departments = Location::query()
-            ->where('type', 'departament')
+            ->where('type', 'department')
             ->orderBy('name')
             ->get(['id', 'name']);
 
@@ -137,6 +150,7 @@ class BranchController extends Controller
 
         if ($selectedDistrictId) {
             $district = Location::find($selectedDistrictId);
+            
             if ($district) {
                 $province = $district->parent;
                 $selectedProvinceId = $province?->id;

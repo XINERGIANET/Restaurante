@@ -4,7 +4,16 @@
     <x-common.page-breadcrumb pageTitle="Sucursales" />
 
     <x-ui.modal
-        x-data="{ open: true }"
+        x-data="{
+            open: true,
+            close() {
+                if (window.Turbo && typeof window.Turbo.visit === 'function') {
+                    window.Turbo.visit('{{ route('admin.companies.branches.index', $company) }}', { action: 'replace' });
+                } else {
+                    window.location.href = '{{ route('admin.companies.branches.index', $company) }}';
+                }
+            }
+        }"
         :isOpen="true"
         :showCloseButton="false"
         class="max-w-3xl"
@@ -36,7 +45,7 @@
                 </div>
             @endif
 
-            <form method="POST" action="{{ route('admin.companies.branches.update', [$company, $branch]) }}" class="space-y-6">
+            <form method="POST" action="{{ route('admin.companies.branches.update', [$company, $branch]) }}" class="space-y-6" enctype="multipart/form-data">
                 @csrf
                 @method('PUT')
 

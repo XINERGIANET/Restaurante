@@ -87,7 +87,7 @@
                                     <p class="text-gray-500 text-theme-sm dark:text-gray-400">{{ $branch->address ?? '-' }}</p>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
-                                    <p class="text-gray-500 text-theme-sm dark:text-gray-400">{{ $branch->location_id }}</p>
+                                    <p class="text-gray-500 text-theme-sm dark:text-gray-400">{{ $branch->location?->name ?? '-' }}</p>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
                                     <div class="flex items-center justify-end gap-2">
@@ -185,7 +185,7 @@
                     </div>
                 @endif
 
-                <form method="POST" action="{{ route('admin.companies.branches.store', $company) }}" class="space-y-6">
+                <form method="POST" action="{{ route('admin.companies.branches.store', $company) }}" class="space-y-6" enctype="multipart/form-data">
                     @csrf
 
                     @include('branches._form', ['branch' => null])

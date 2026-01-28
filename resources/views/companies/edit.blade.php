@@ -4,7 +4,16 @@
     <x-common.page-breadcrumb pageTitle="Empresas" />
 
     <x-ui.modal
-        x-data="{ open: true }"
+        x-data="{
+            open: true,
+            close() {
+                if (window.Turbo && typeof window.Turbo.visit === 'function') {
+                    window.Turbo.visit('{{ route('admin.companies.index') }}', { action: 'replace' });
+                } else {
+                    window.location.href = '{{ route('admin.companies.index') }}';
+                }
+            }
+        }"
         :isOpen="true"
         :showCloseButton="false"
         class="max-w-3xl"
