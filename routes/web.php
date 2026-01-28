@@ -38,9 +38,11 @@ Route::view('/signup', 'pages.auth.signup', ['title' => 'Sign Up'])
     ->name('signup');
 
 Route::middleware('auth')->group(function () {
+
     Route::resource('/admin/empresas', CompanyController::class)
         ->names('admin.companies')
         ->parameters(['empresas' => 'company']);
+        
     Route::resource('/admin/empresas.sucursales', BranchController::class)
         ->names('admin.companies.branches')
         ->parameters(['empresas' => 'company', 'sucursales' => 'branch']);
@@ -120,8 +122,10 @@ Route::middleware('auth')->group(function () {
     Route::view('/admin/herramientas/sucursales', 'pages.blank', ['title' => 'Sucursales']);
 
     // Modulos
-    Route::get('/admin/herramientas/modulos', [ModulesController::class, 'index'])->name('admin.modules.index');
-    Route::post('/admin/herramientas/modulos', [ModulesController::class, 'store'])->name('admin.modules.store');
+    Route::resource('admin/herramientas/modulos', ModulesController::class)
+        ->names('admin.modules')
+        ->parameters(['modulos' => 'module']);
+    Route::delete('/admin/herramientas/modulos/{module}', [ModulesController::class, 'destroy'])->name('admin.modules.destroy');
     
     //<-----Parametros----->
     //Categorias de parametros
