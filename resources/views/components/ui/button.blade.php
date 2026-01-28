@@ -40,19 +40,13 @@
 <button
     {{ $attributes->merge(['class' => $classes, 'type' => $attributes->get('type', 'button')]) }}
     @if($variant === 'eliminate')
-        style="background-color: rgb(240, 68, 56);"
-        onmouseover="this.style.backgroundColor='rgb(180, 35, 24)'"
-        onmouseout="this.style.backgroundColor='rgb(240, 68, 56)'"
+        style="background-color: rgb(240, 68, 56);" onmouseover="this.style.backgroundColor='rgb(180, 35, 24)'" onmouseout="this.style.backgroundColor='rgb(240, 68, 56)'"
     @endif
     @if($variant === 'create')
-        style="background-color: #12f00e; color: #111827;"
-        onmouseover="this.style.backgroundColor='#0f990b'"
-        onmouseout="this.style.backgroundColor='#12f00e'"
+        style="background-color: #12f00e; color: #111827;" onmouseover="this.style.backgroundColor='#0f990b'" onmouseout="this.style.backgroundColor='#12f00e'"
     @endif
     @if($variant === 'edit')
-        style="background-color: #f59e0b; color: #111827;"
-        onmouseover="this.style.backgroundColor='#d97706'"
-        onmouseout="this.style.backgroundColor='#f59e0b'"
+        style="background-color: #f59e0b; color: #111827;" onmouseover="this.style.backgroundColor='#d97706'" onmouseout="this.style.backgroundColor='#f59e0b'"
     @endif
     @if($disabled) disabled @endif
 >

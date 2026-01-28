@@ -1,14 +1,5 @@
 @extends('layouts.app')
-@php
-    use Illuminate\Support\HtmlString;
 
-    $SearchIcon = new HtmlString('
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8" />
-            <path d="M20 20L16.5 16.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
-        </svg>
-    ');
-@endphp
 @section('content')
     <x-common.page-breadcrumb pageTitle="{{ 'Categorias de parametros' }}" />
     <x-common.component-card title="Listado de categorias de parametros"
@@ -16,7 +7,8 @@
         <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
             <form method="GET" class="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
                 <div class="relative flex-1">
-                    <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"> {!! $SearchIcon !!}
+                    <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"><i class="ri-search-line"></i>
+
                     </span>
                     <input type="text" name="search" value="{{ $search }}" placeholder="Buscar por descripcion"
                         class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 pl-12 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30" />
