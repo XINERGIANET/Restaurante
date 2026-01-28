@@ -3,16 +3,18 @@
 @php
     use Illuminate\Support\HtmlString;
     use App\Helpers\MenuHelper; 
-
-    // --- ICONOS ---
-    $SearchIcon = new HtmlString('<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8" /><path d="M20 20L16.5 16.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /></svg>');
-    $ClearIcon = new HtmlString('<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /><path d="M6 6L18 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /></svg>');
 @endphp
 
 @section('content')
     <div x-data="{}">
     
     <x-common.page-breadcrumb pageTitle="Módulos" />
+
+    @if (session('status'))
+        <div class="mb-5">
+            <x-ui.alert variant="success" title="Listo" :message="session('status')" />
+        </div>
+    @endif
 
     <x-common.component-card title="Gestión de Módulos" desc="Administra los elementos principales del menú lateral.">
         

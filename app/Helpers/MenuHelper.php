@@ -11,10 +11,12 @@ class MenuHelper
 {
     public static function getMainNavItems()
     {
-        $modules = Module::with(['menuOptions' => function ($query) {
-            $query->where('status', 1);
+        $modules = Module::where('status', 1) 
+        ->with(['menuOptions' => function ($query) {
+            $query->where('status', 1)   
+                  ->orderBy('id', 'asc'); 
         }])
-        ->orderBy('order_num', 'asc')
+        ->orderBy('order_num', 'asc')     
         ->get();
 
         $menuStructure = [];
