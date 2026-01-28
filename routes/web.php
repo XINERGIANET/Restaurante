@@ -38,10 +38,10 @@ Route::view('/signup', 'pages.auth.signup', ['title' => 'Sign Up'])
     ->name('signup');
 
 Route::middleware('auth')->group(function () {
-    Route::resource('/admin/empresas', CompanyController::class)
+    Route::resource('/admin/herramientas/empresas', CompanyController::class)
         ->names('admin.companies')
         ->parameters(['empresas' => 'company']);
-    Route::resource('/admin/empresas.sucursales', BranchController::class)
+    Route::resource('/admin/herramientas/empresas.sucursales', BranchController::class)
         ->names('admin.companies.branches')
         ->parameters(['empresas' => 'company', 'sucursales' => 'branch']);
 

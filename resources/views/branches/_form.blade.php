@@ -44,8 +44,43 @@
     ');
 @endphp
 
-<div class="grid gap-5">
-    <div>
+@php
+    $selectedDepartmentId = old('department_id', $selectedDepartmentId ?? null);
+    $selectedProvinceId = old('province_id', $selectedProvinceId ?? null);
+    $selectedDistrictId = old('location_id', $selectedDistrictId ?? ($branch->location_id ?? null));
+@endphp
+
+<div
+    class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3"
+    data-departments='@json($departments ?? [], JSON_HEX_APOS | JSON_HEX_QUOT)'
+    data-provinces='@json($provinces ?? [], JSON_HEX_APOS | JSON_HEX_QUOT)'
+    data-districts='@json($districts ?? [], JSON_HEX_APOS | JSON_HEX_QUOT)'
+    data-department-id='@json($selectedDepartmentId, JSON_HEX_APOS | JSON_HEX_QUOT)'
+    data-province-id='@json($selectedProvinceId, JSON_HEX_APOS | JSON_HEX_QUOT)'
+    data-district-id='@json($selectedDistrictId, JSON_HEX_APOS | JSON_HEX_QUOT)'
+    x-data="{
+        departments: JSON.parse($el.dataset.departments || '[]'),
+        provinces: JSON.parse($el.dataset.provinces || '[]'),
+        districts: JSON.parse($el.dataset.districts || '[]'),
+        departmentId: JSON.parse($el.dataset.departmentId || 'null') || '',
+        provinceId: JSON.parse($el.dataset.provinceId || 'null') || '',
+        districtId: JSON.parse($el.dataset.districtId || 'null') || '',
+        get filteredProvinces() {
+            return this.provinces.filter(p => p.parent_location_id == this.departmentId);
+        },
+        get filteredDistricts() {
+            return this.districts.filter(d => d.parent_location_id == this.provinceId);
+        },
+        onDepartmentChange() {
+            this.provinceId = '';
+            this.districtId = '';
+        },
+        onProvinceChange() {
+            this.districtId = '';
+        }
+    }"
+>
+    <div class="sm:col-span-1">
         <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">RUC</label>
         <div class="relative">
             <span class="absolute top-1/2 left-0 -translate-y-1/2 border-r border-gray-200 px-3.5 py-3 text-gray-500 dark:border-gray-800 dark:text-gray-400">
@@ -65,7 +100,7 @@
         @enderror
     </div>
 
-    <div>
+    <div class="sm:col-span-1 lg:col-span-2">
         <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Nombre de sucursal</label>
         <div class="relative">
             <span class="absolute top-1/2 left-0 -translate-y-1/2 border-r border-gray-200 px-3.5 py-3 text-gray-500 dark:border-gray-800 dark:text-gray-400">
@@ -85,7 +120,7 @@
         @enderror
     </div>
 
-    <div>
+    <div class="sm:col-span-2 lg:col-span-3">
         <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Direccion</label>
         <div class="relative">
             <span class="absolute top-1/2 left-0 -translate-y-1/2 border-r border-gray-200 px-3.5 py-3 text-gray-500 dark:border-gray-800 dark:text-gray-400">
@@ -104,27 +139,70 @@
         @enderror
     </div>
 
-    <div>
-        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Ubicacion (ID)</label>
+    <div class="sm:col-span-1">
+        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Departamento</label>
         <div class="relative">
             <span class="absolute top-1/2 left-0 -translate-y-1/2 border-r border-gray-200 px-3.5 py-3 text-gray-500 dark:border-gray-800 dark:text-gray-400">
                 {!! $LocationIcon !!}
             </span>
-            <input
-                type="number"
-                name="location_id"
-                value="{{ old('location_id', $branch->location_id ?? '') }}"
-                required
-                placeholder="Ingrese el ID de ubicacion"
+            <select
+                name="department_id"
+                x-model="departmentId"
+                @change="onDepartmentChange()"
                 class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 pl-[62px] text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
-            />
+            >
+                <option value="">Seleccione departamento</option>
+                <template x-for="department in departments" :key="department.id">
+                    <option :value="department.id" x-text="department.name"></option>
+                </template>
+            </select>
+        </div>
+    </div>
+
+    <div class="sm:col-span-1">
+        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Provincia</label>
+        <div class="relative">
+            <span class="absolute top-1/2 left-0 -translate-y-1/2 border-r border-gray-200 px-3.5 py-3 text-gray-500 dark:border-gray-800 dark:text-gray-400">
+                {!! $LocationIcon !!}
+            </span>
+            <select
+                name="province_id"
+                x-model="provinceId"
+                @change="onProvinceChange()"
+                class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 pl-[62px] text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
+            >
+                <option value="">Seleccione provincia</option>
+                <template x-for="province in filteredProvinces" :key="province.id">
+                    <option :value="province.id" x-text="province.name"></option>
+                </template>
+            </select>
+        </div>
+    </div>
+
+    <div class="sm:col-span-1">
+        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Distrito</label>
+        <div class="relative">
+            <span class="absolute top-1/2 left-0 -translate-y-1/2 border-r border-gray-200 px-3.5 py-3 text-gray-500 dark:border-gray-800 dark:text-gray-400">
+                {!! $LocationIcon !!}
+            </span>
+            <select
+                name="location_id"
+                x-model="districtId"
+                required
+                class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 pl-[62px] text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
+            >
+                <option value="">Seleccione distrito</option>
+                <template x-for="district in filteredDistricts" :key="district.id">
+                    <option :value="district.id" x-text="district.name"></option>
+                </template>
+            </select>
         </div>
         @error('location_id')
             <p class="mt-1 text-xs text-error-500">{{ $message }}</p>
         @enderror
     </div>
 
-    <div>
+    <div class="sm:col-span-1 lg:col-span-2">
         <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Logo (opcional)</label>
         <div class="relative">
             <span class="absolute top-1/2 left-0 -translate-y-1/2 border-r border-gray-200 px-3.5 py-3 text-gray-500 dark:border-gray-800 dark:text-gray-400">
@@ -143,4 +221,3 @@
         @enderror
     </div>
 </div>
-

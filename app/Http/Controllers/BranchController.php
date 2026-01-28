@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Branch;
 use App\Models\Company;
+use App\Models\Location;
 use Illuminate\Http\Request;
 
 class BranchController extends Controller
@@ -28,14 +29,14 @@ class BranchController extends Controller
             'company' => $company,
             'branches' => $branches,
             'search' => $search,
-        ]);
+        ] + $this->getLocationData());
     }
 
     public function create(Company $company)
     {
         return view('branches.create', [
             'company' => $company,
-        ]);
+        ] + $this->getLocationData());
     }
 
     public function store(Request $request, Company $company)
@@ -67,7 +68,7 @@ class BranchController extends Controller
         return view('branches.edit', [
             'company' => $company,
             'branch' => $branch,
-        ]);
+        ] + $this->getLocationData($branch));
     }
 
     public function update(Request $request, Company $company, Branch $branch)
@@ -111,5 +112,45 @@ class BranchController extends Controller
         }
 
         return $branch;
+    }
+
+    private function getLocationData(?Branch $branch = null): array
+    {
+        $departments = Location::query()
+            ->where('type', 'departament')
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        $provinces = Location::query()
+            ->where('type', 'province')
+            ->orderBy('name')
+            ->get(['id', 'name', 'parent_location_id']);
+
+        $districts = Location::query()
+            ->where('type', 'district')
+            ->orderBy('name')
+            ->get(['id', 'name', 'parent_location_id']);
+
+        $selectedDistrictId = $branch?->location_id;
+        $selectedProvinceId = null;
+        $selectedDepartmentId = null;
+
+        if ($selectedDistrictId) {
+            $district = Location::find($selectedDistrictId);
+            if ($district) {
+                $province = $district->parent;
+                $selectedProvinceId = $province?->id;
+                $selectedDepartmentId = $province?->parent_location_id;
+            }
+        }
+
+        return [
+            'departments' => $departments,
+            'provinces' => $provinces,
+            'districts' => $districts,
+            'selectedDepartmentId' => $selectedDepartmentId,
+            'selectedProvinceId' => $selectedProvinceId,
+            'selectedDistrictId' => $selectedDistrictId,
+        ];
     }
 }

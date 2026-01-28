@@ -11,12 +11,12 @@
     >
         <div class="p-6 sm:p-8">
             <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div class="flex items-start gap-4">
+                <div class="flex items-center gap-4">
                     <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-500 dark:bg-brand-500/10">
                         <i class="ri-building-line text-2xl"></i>
                     </div>
                     <div>
-                        <h3 class="mt-2 text-lg font-semibold text-gray-800 dark:text-white/90">Editar empresa</h3>
+                        <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Editar empresa</h3>
                         <p class="mt-1 text-sm text-gray-500">Actualiza la informacion principal de la empresa.</p>
                     </div>
                 </div>

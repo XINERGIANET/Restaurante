@@ -142,7 +142,7 @@
                         setTimeout(() => {
                             window.dispatchEvent(new CustomEvent('close-modal'));
                             setTimeout(() => {
-                                if (window.Turbo && typeof window.Turbo.visit === 'function') {\n                                window.Turbo.visit(window.location.href, { action: 'replace' });\n                            } else {\n                                window.location.href = window.location.href;\n                            }
+                                if (window.Turbo && typeof window.Turbo.visit === 'function') {                                window.Turbo.visit(window.location.href, { action: 'replace' });                            } else {                                window.location.href = window.location.href;                            }
                             }, 300);
                         }, 500);
                     } else if (data.error) {
