@@ -88,11 +88,15 @@
                                 <td class="px-5 py-4 sm:px-6 text-center">
                                     <div class="flex items-center justify-center gap-2">
                                         <x-ui.link-button size="icon" variant="primary"
-                                            href="{{ route('admin.companies.branches.index', $company) }}">
+                                            href="{{ route('admin.companies.branches.index', $company) }}"
+                                            className="bg-brand-500 text-white hover:bg-brand-600 ring-0 rounded-full"
+                                            style="border-radius: 100%; background-color: #3B82F6; color: #FFFFFF;">
                                             <i class="ri-store-2-line"></i>
                                         </x-ui.link-button>
                                         <x-ui.link-button size="icon" variant="edit"
-                                            href="{{ route('admin.companies.edit', $company) }}">
+                                            href="{{ route('admin.companies.edit', $company) }}"
+                                            className="bg-warning-500 text-white hover:bg-warning-600 ring-0 rounded-full"
+                                            style="border-radius: 100%; background-color: #FBBF24; color: #111827;">
                                             <i class="ri-pencil-line"></i>
                                         </x-ui.link-button>
                                         <form method="POST" action="{{ route('admin.companies.destroy', $company) }}"
@@ -105,7 +109,9 @@
                                             data-swal-cancel-color="#6b7280">
                                             @csrf
                                             @method('DELETE')
-                                            <x-ui.button size="icon" variant="eliminate" type="submit">
+                                            <x-ui.button size="icon" variant="eliminate" type="submit"
+                                                className="bg-error-500 text-white hover:bg-error-600 ring-0 rounded-full"
+                                                style="border-radius: 100%; background-color: #EF4444; color: #FFFFFF;">
                                                 <i class="ri-delete-bin-line"></i>
                                             </x-ui.button>
                                         </form>
