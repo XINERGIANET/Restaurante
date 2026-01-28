@@ -26,36 +26,47 @@
 @endphp
 
 @section('content')
-    <x-common.page-breadcrumb pageTitle="Detalle de empresa" />
+    <x-common.page-breadcrumb
+        pageTitle="Detalle de sucursal"
+        :crumbs="[
+            ['label' => 'Empresas', 'url' => route('admin.companies.index')],
+            ['label' => 'Sucursales de la empresa ' . $company->legal_name, 'url' => route('admin.companies.branches.index', $company)],
+            ['label' => 'Detalle de sucursal']
+        ]"
+    />
 
-    <x-common.component-card title="{{ $company->legal_name }}" desc="Informacion general de la empresa.">
+    <x-common.component-card title="{{ $branch->legal_name }}" desc="Informacion general de la sucursal.">
         <div class="grid gap-6 md:grid-cols-2">
             <div class="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 dark:border-gray-800 dark:bg-gray-900/30 dark:text-gray-200">
                 <p class="text-xs uppercase tracking-wide text-gray-400">RUC</p>
-                <p class="mt-1 font-semibold">{{ $company->tax_id }}</p>
+                <p class="mt-1 font-semibold">{{ $branch->tax_id }}</p>
             </div>
             <div class="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 dark:border-gray-800 dark:bg-gray-900/30 dark:text-gray-200">
                 <p class="text-xs uppercase tracking-wide text-gray-400">Direccion</p>
-                <p class="mt-1 font-semibold">{{ $company->address }}</p>
+                <p class="mt-1 font-semibold">{{ $branch->address ?? '-' }}</p>
+            </div>
+            <div class="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 dark:border-gray-800 dark:bg-gray-900/30 dark:text-gray-200">
+                <p class="text-xs uppercase tracking-wide text-gray-400">Ubicacion</p>
+                <p class="mt-1 font-semibold">{{ $branch->location_id }}</p>
             </div>
             <div class="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 dark:border-gray-800 dark:bg-gray-900/30 dark:text-gray-200">
                 <p class="text-xs uppercase tracking-wide text-gray-400">Creado</p>
-                <p class="mt-1 font-semibold">{{ $company->created_at?->format('Y-m-d H:i') }}</p>
+                <p class="mt-1 font-semibold">{{ $branch->created_at?->format('Y-m-d H:i') }}</p>
             </div>
             <div class="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 dark:border-gray-800 dark:bg-gray-900/30 dark:text-gray-200">
                 <p class="text-xs uppercase tracking-wide text-gray-400">Actualizado</p>
-                <p class="mt-1 font-semibold">{{ $company->updated_at?->format('Y-m-d H:i') }}</p>
+                <p class="mt-1 font-semibold">{{ $branch->updated_at?->format('Y-m-d H:i') }}</p>
             </div>
         </div>
 
         <div class="flex flex-wrap gap-3 pt-2">
-            <x-ui.link-button href="{{ route('admin.companies.edit', $company) }}" size="md" variant="primary" :startIcon="$EditIcon">
+            <x-ui.link-button href="{{ route('admin.companies.branches.edit', [$company, $branch]) }}" size="md" variant="primary" :startIcon="$EditIcon">
                 Editar
             </x-ui.link-button>
-            <x-ui.link-button href="{{ route('admin.companies.index') }}" size="md" variant="outline" :startIcon="$BackIcon">
+            <x-ui.link-button href="{{ route('admin.companies.branches.index', $company) }}" size="md" variant="outline" :startIcon="$BackIcon">
                 Volver
             </x-ui.link-button>
-            <form method="POST" action="{{ route('admin.companies.destroy', $company) }}" onsubmit="return confirm('Eliminar esta empresa?')">
+            <form method="POST" action="{{ route('admin.companies.branches.destroy', [$company, $branch]) }}" onsubmit="return confirm('Eliminar esta sucursal?')">
                 @csrf
                 @method('DELETE')
                 <x-ui.button size="md" variant="outline" className="text-error-500 ring-error-500/30 hover:bg-error-500/10" :startIcon="$TrashIcon">

@@ -1,38 +1,99 @@
-@props(['pageTitle' => 'Page'])
+@props(['pageTitle' => 'Page', 'crumbs' => null])
 
 <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
     <h2 class="text-xl font-semibold text-gray-800 dark:text-white/90">
         {{ $pageTitle }}
     </h2>
     <nav>
-        <ol class="flex items-center gap-1.5">
-            <li>
-                <a
-                    class="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400"
-                    href="{{ url('/') }}"
-                >
-                    Home
-                    <svg
-                        class="stroke-current"
-                        width="17"
-                        height="16"
-                        viewBox="0 0 17 16"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
+        @if (!empty($crumbs))
+            <ol class="flex items-center gap-1.5">
+                <li>
+                    <a
+                        class="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400"
+                        href="{{ url('/') }}"
                     >
-                        <path
-                            d="M6.0765 12.667L10.2432 8.50033L6.0765 4.33366"
-                            stroke=""
-                            stroke-width="1.2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                        />
-                    </svg>
-                </a>
-            </li>
-            <li class="text-sm text-gray-800 dark:text-white/90">
-                {{ $pageTitle }}
-            </li>
-        </ol>
+                        Home
+                        <svg
+                            class="stroke-current"
+                            width="17"
+                            height="16"
+                            viewBox="0 0 17 16"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                        >
+                            <path
+                                d="M6.0765 12.667L10.2432 8.50033L6.0765 4.33366"
+                                stroke=""
+                                stroke-width="1.2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            />
+                        </svg>
+                    </a>
+                </li>
+                @foreach ($crumbs as $index => $crumb)
+                    @php
+                        $isLast = $index === array_key_last($crumbs);
+                        $label = $crumb['label'] ?? '';
+                        $url = $crumb['url'] ?? null;
+                    @endphp
+                    <li class="text-sm {{ $isLast ? 'text-gray-800 dark:text-white/90' : 'text-gray-500 dark:text-gray-400' }}">
+                        @if (!$isLast && $url)
+                            <a class="inline-flex items-center gap-1.5" href="{{ $url }}">
+                                {{ $label }}
+                                <svg
+                                    class="stroke-current"
+                                    width="17"
+                                    height="16"
+                                    viewBox="0 0 17 16"
+                                    fill="none"
+                                    xmlns="http://www.w3.org/2000/svg"
+                                >
+                                    <path
+                                        d="M6.0765 12.667L10.2432 8.50033L6.0765 4.33366"
+                                        stroke=""
+                                        stroke-width="1.2"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                    />
+                                </svg>
+                            </a>
+                        @else
+                            {{ $label }}
+                        @endif
+                    </li>
+                @endforeach
+            </ol>
+        @else
+            <ol class="flex items-center gap-1.5">
+                <li>
+                    <a
+                        class="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400"
+                        href="{{ url('/') }}"
+                    >
+                        Home
+                        <svg
+                            class="stroke-current"
+                            width="17"
+                            height="16"
+                            viewBox="0 0 17 16"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                        >
+                            <path
+                                d="M6.0765 12.667L10.2432 8.50033L6.0765 4.33366"
+                                stroke=""
+                                stroke-width="1.2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            />
+                        </svg>
+                    </a>
+                </li>
+                <li class="text-sm text-gray-800 dark:text-white/90">
+                    {{ $pageTitle }}
+                </li>
+            </ol>
+        @endif
     </nav>
 </div>

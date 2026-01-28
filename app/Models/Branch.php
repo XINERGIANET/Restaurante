@@ -6,18 +6,22 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class Company extends Model
+class Branch extends Model
 {
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'tax_id',
+        'ruc',
+        'company_id',
         'legal_name',
+        'logo',
         'address',
+        'location_id',
     ];
 
-    public function branches()
+    public function company()
     {
-        return $this->hasMany(Branch::class);
+        return $this->belongsTo(Company::class);
     }
 }

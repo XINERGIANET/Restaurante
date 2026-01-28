@@ -2,9 +2,11 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\BranchController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\ModulesController;
 use App\Http\Controllers\ParameterCategoriesController;
+use App\Http\Controllers\ParameterController;
 use App\Models\ParameterCategories;
 
 Route::prefix('restaurante')->name('restaurant.')->group(function () {
@@ -36,7 +38,12 @@ Route::view('/signup', 'pages.auth.signup', ['title' => 'Sign Up'])
     ->name('signup');
 
 Route::middleware('auth')->group(function () {
-    Route::resource('/admin/empresas', CompanyController::class)->names('admin.companies');
+    Route::resource('/admin/empresas', CompanyController::class)
+        ->names('admin.companies')
+        ->parameters(['empresas' => 'company']);
+    Route::resource('/admin/empresas.sucursales', BranchController::class)
+        ->names('admin.companies.branches')
+        ->parameters(['empresas' => 'company', 'sucursales' => 'branch']);
 
     // dashboard pages
     Route::get('/', function () {
@@ -113,18 +120,25 @@ Route::middleware('auth')->group(function () {
     Route::view('/admin/herramientas/sucursales', 'pages.blank', ['title' => 'Sucursales']);
 
     // Modulos
-    Route::resource('admin/herramientas/modulos', ModulesController::class)
-        ->names('admin.modules')
-        ->parameters(['modulos' => 'module']);
-    Route::delete('/admin/herramientas/modulos/{module}', [ModulesController::class, 'destroy'])->name('admin.modules.destroy');
+    Route::get('/admin/herramientas/modulos', [ModulesController::class, 'index'])->name('admin.modules.index');
+    Route::post('/admin/herramientas/modulos', [ModulesController::class, 'store'])->name('admin.modules.store');
     
-        
+    //<-----Parametros----->
+    //Categorias de parametros
+    Route::get('/admin/herramientas/parametros/categorias', [ParameterCategoriesController::class, 'index'])->name('admin.parameters.categories.index');
+    Route::post('/admin/herramientas/parametros/categorias', [ParameterCategoriesController::class, 'store'])->name('admin.parameters.categories.store');
+    Route::delete('/admin/herramientas/parametros/categorias/{parameterCategory}', [ParameterCategoriesController::class, 'destroy'])->name('admin.parameters.categories.destroy');
+    Route::put('/admin/herramientas/parametros/categorias/{parameterCategory}', [ParameterCategoriesController::class, 'update'])->name('admin.parameters.categories.update');
+
+    //Parametros
+    Route::get('/admin/herramientas/parametros', [ParameterController::class, 'index'])->name('admin.parameters.index');
+    Route::post('/admin/herramientas/parametros', [ParameterController::class, 'store'])->name('admin.parameters.store');
+    Route::put('/admin/herramientas/parametros/{parameter}', [ParameterController::class, 'update'])->name('admin.parameters.update');
+    Route::delete('/admin/herramientas/parametros/{parameter}', [ParameterController::class, 'destroy'])->name('admin.parameters.destroy');
+
     Route::view('/admin/pedidos/ordenes', 'pages.blank', ['title' => 'Ordenes activas']);
     Route::view('/admin/pedidos/cocina', 'pages.blank', ['title' => 'Cocina']);
     Route::view('/admin/pedidos/delivery', 'pages.blank', ['title' => 'Delivery']);
-
-    //Parametros
-    Route::get('/admin/herramientas/parametros/categorias', [ParameterCategoriesController::class, 'index'])->name('admin.parameters.categories');
     Route::view('/admin/ventas/pos', 'pages.blank', ['title' => 'POS']);
     Route::view('/admin/ventas/facturacion', 'pages.blank', ['title' => 'Facturacion']);
     Route::view('/admin/ventas/reportes', 'pages.blank', ['title' => 'Reportes']);
@@ -145,3 +159,4 @@ Route::middleware('auth')->group(function () {
     Route::view('/admin/configuracion/menu', 'pages.blank', ['title' => 'Menu y recetas']);
     Route::view('/admin/configuracion/impuestos', 'pages.blank', ['title' => 'Impuestos']);
 });
+

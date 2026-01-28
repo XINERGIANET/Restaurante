@@ -14,9 +14,93 @@ window.ApexCharts = ApexCharts;
 window.flatpickr = flatpickr;
 window.FullCalendar = Calendar;
 
+Alpine.data('crudModal', (el) => {
+    const parseJson = (value, fallback) => {
+        if (value === undefined || value === null || value === '') {
+            return fallback;
+        }
+        try {
+            return JSON.parse(value);
+        } catch (error) {
+            return fallback;
+        }
+    };
+
+    const initialForm = parseJson(el?.dataset?.form, {
+        id: null,
+        tax_id: '',
+        legal_name: '',
+        address: '',
+    });
+
+    return {
+        open: parseJson(el?.dataset?.open, false),
+        mode: parseJson(el?.dataset?.mode, 'create'),
+        form: initialForm,
+        createUrl: parseJson(el?.dataset?.createUrl, ''),
+        updateBaseUrl: parseJson(el?.dataset?.updateBaseUrl, ''),
+        get formAction() {
+            return this.mode === 'create' ? this.createUrl : `${this.updateBaseUrl}/${this.form.id}`;
+        },
+        openCreate() {
+            this.mode = 'create';
+            this.form = { id: null, tax_id: '', legal_name: '', address: '' };
+            this.open = true;
+        },
+        openEdit(company) {
+            this.mode = 'edit';
+            this.form = {
+                id: company.id,
+                tax_id: company.tax_id || '',
+                legal_name: company.legal_name || '',
+                address: company.address || '',
+            };
+            this.open = true;
+        },
+    };
+});
+
 if (window.Turbo) {
     window.Turbo.session.drive = true;
 }
+
+const bindSwalDelete = () => {
+    document.querySelectorAll('.js-swal-delete').forEach((form) => {
+        if (form.dataset.swalBound === 'true') return;
+        form.dataset.swalBound = 'true';
+        form.addEventListener('submit', (event) => {
+            event.preventDefault();
+            if (!window.Swal) {
+                form.submit();
+                return;
+            }
+            const title = form.dataset.swalTitle || '¿Eliminar registro?';
+            const text = form.dataset.swalText || 'Esta acción no se puede deshacer.';
+            const icon = form.dataset.swalIcon || 'warning';
+            const confirmText = form.dataset.swalConfirm || 'Sí, eliminar';
+            const cancelText = form.dataset.swalCancel || 'Cancelar';
+            const confirmColor = form.dataset.swalConfirmColor || '#ef4444';
+            const cancelColor = form.dataset.swalCancelColor || '#6b7280';
+
+            Swal.fire({
+                title,
+                text,
+                icon,
+                showCancelButton: true,
+                confirmButtonText: confirmText,
+                cancelButtonText: cancelText,
+                confirmButtonColor: confirmColor,
+                cancelButtonColor: cancelColor,
+                reverseButtons: true,
+                allowOutsideClick: false,
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    form.submit();
+                }
+            });
+        });
+    });
+};
 
 const initPage = () => {
     // Map imports
@@ -75,6 +159,7 @@ document.addEventListener('turbo:load', () => {
         }
     }
     initPage();
+    bindSwalDelete();
 });
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -83,5 +168,5 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     bootAlpine();
     initPage();
+    bindSwalDelete();
 });
-
