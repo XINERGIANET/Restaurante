@@ -33,6 +33,15 @@
                             <i class="ri-search-line"></i>
                             <span>Buscar</span>
                         </x-ui.button>
+                        <div class="w-29">
+    <select name="per_page"
+        class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-3 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+        onchange="this.form.submit()">
+        @foreach ([10, 20, 50, 100] as $size)
+            <option value="{{ $size }}" @selected($perPage == $size)>{{ $size }} / pagina</option>
+        @endforeach
+    </select>
+</div>
                         <x-ui.link-button size="sm" variant="outline" href="{{ route('admin.companies.branches.index', $company) }}">
                             <i class="ri-close-line"></i>
                             <span>Limpiar</span>

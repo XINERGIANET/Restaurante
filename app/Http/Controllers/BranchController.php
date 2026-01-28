@@ -14,6 +14,12 @@ class BranchController extends Controller
     {
         $search = $request->input('search');
 
+        $perPage = (int) $request->input('per_page', 10);
+        $allowedPerPage = [10, 20, 50, 100];
+        if (!in_array($perPage, $allowedPerPage, true)) {
+            $perPage = 10;
+        }
+
         $branches = $company->branches()
             ->with('location')
             ->when($search, function ($query) use ($search) {
@@ -24,13 +30,14 @@ class BranchController extends Controller
                 });
             })
             ->orderByDesc('id')
-            ->paginate(10)
+            ->paginate($perPage)
             ->withQueryString();
 
         return view('branches.index', [
             'company' => $company,
             'branches' => $branches,
             'search' => $search,
+            'perPage' => $perPage,
         ] + $this->getLocationData());
     }
 
