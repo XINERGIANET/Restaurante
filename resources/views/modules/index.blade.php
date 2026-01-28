@@ -91,9 +91,8 @@
                                     <div class="flex items-center justify-end gap-2">
                                         <div class="relative group">
                                             <x-ui.link-button
-                                                size="icon" variant="outline" href="{{ route('admin.modules.edit', $module) }}"
-                                                className="bg-warning-500 text-white hover:bg-warning-600 ring-0 rounded-full"
-                                                style="border-radius: 100%; background-color: #FBBF24; color: #111827;" aria-label="Editar"
+                                                size="icon" variant="edit" href="{{ route('admin.modules.edit', $module) }}"
+                                                aria-label="Editar"
                                             >
                                                 <i class="ri-pencil-line"></i>
                                             </x-ui.link-button>
@@ -103,8 +102,8 @@
                                             @csrf
                                             @method('DELETE')
                                             <x-ui.button
-                                                size="icon" variant="outline" className="bg-error-500 text-white hover:bg-error-600 ring-0 rounded-full"
-                                                style="border-radius: 100%; background-color: #EF4444; color: #FFFFFF;" aria-label="Eliminar"
+                                                size="icon" variant="eliminate" className="bg-error-500 text-white hover:bg-error-600 ring-0 rounded-full"
+                                                aria-label="Eliminar"
                                                 type="submit"
                                             >
                                                 <i class="ri-delete-bin-line"></i>

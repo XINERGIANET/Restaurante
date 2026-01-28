@@ -24,7 +24,7 @@ class MenuOptionSeeder extends Seeder
         }
 
         $structure = [
-            'Herramientas de administración' => [
+            'Desarrollador' => [
                 ['name' => 'Empresa',            'action' => 'admin.companies.index',                 'icon' => 'mdi-domain'],
                 ['name' => 'Usuarios',           'action' => '/admin/herramientas/usuarios',    'icon' => 'mdi-account-group'],
                 ['name' => 'Roles y permisos',   'action' => '/admin/herramientas/roles',       'icon' => 'mdi-shield-account'],
@@ -58,7 +58,7 @@ class MenuOptionSeeder extends Seeder
                 ['name' => 'Arqueos',            'action' => '/admin/caja/arqueos',             'icon' => 'mdi-cash-multiple'],
                 ['name' => 'Gastos',             'action' => '/admin/caja/gastos',              'icon' => 'mdi-cash-minus'],
             ],
-            'Configuración' => [
+            'Configuraci�n' => [
                 ['name' => 'Parametros',         'action' => '/admin/configuracion/parametros', 'icon' => 'mdi-cog'],
                 ['name' => 'Menu y recetas',     'action' => '/admin/configuracion/menu',       'icon' => 'mdi-food-fork-drink'],
                 ['name' => 'Impuestos',          'action' => '/admin/configuracion/impuestos',  'icon' => 'mdi-percent'],
