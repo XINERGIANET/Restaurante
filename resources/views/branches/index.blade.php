@@ -56,6 +56,9 @@
                     <thead>
                         <tr class="border-b border-gray-100 dark:border-gray-800">
                             <th class="px-5 py-3 text-left sm:px-6">
+                                <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Logo</p>
+                            </th>
+                            <th class="px-5 py-3 text-left sm:px-6">
                                 <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Sucursal</p>
                             </th>
                             <th class="px-5 py-3 text-left sm:px-6">
@@ -75,6 +78,20 @@
                     <tbody>
                         @forelse ($branches as $branch)
                             <tr class="border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-white/5">
+                                <td class="px-5 py-4 sm:px-6">
+                                    @if (!empty($branch->logo))
+                                        <img
+                                            src="{{ $branch->logo }}"
+                                            alt="Logo {{ $branch->legal_name }}"
+                                            class="h-10 w-10 rounded-lg object-cover"
+                                            loading="lazy"
+                                        />
+                                    @else
+                                        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500">
+                                            <i class="ri-image-line"></i>
+                                        </div>
+                                    @endif
+                                </td>
                                 <td class="px-5 py-4 sm:px-6">
                                     <div class="space-y-1">
                                         <p class="font-medium text-gray-800 text-theme-sm dark:text-white/90">{{ $branch->legal_name }}</p>
@@ -101,7 +118,14 @@
                                             </x-ui.link-button>
                                             <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">Editar</span>
                                         </div>
-                                        <form method="POST" action="{{ route('admin.companies.branches.destroy', [$company, $branch]) }}" class="relative group js-delete-branch" data-branch-name="{{ $branch->legal_name }}">
+                                        <form method="POST" action="{{ route('admin.companies.branches.destroy', [$company, $branch]) }}"
+                                            class="relative group js-swal-delete"
+                                            data-swal-title="¿Eliminar sucursal?"
+                                            data-swal-text="Se eliminara {{ $branch->legal_name }}. Esta acción no se puede deshacer."
+                                            data-swal-confirm="Sí, eliminar"
+                                            data-swal-cancel="Cancelar"
+                                            data-swal-confirm-color="#ef4444"
+                                            data-swal-cancel-color="#6b7280">
                                             @csrf
                                             @method('DELETE')
                                             <x-ui.button
@@ -118,7 +142,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="px-6 py-12">
+                                <td colspan="6" class="px-6 py-12">
                                     <div class="flex flex-col items-center gap-3 text-center text-sm text-gray-500">
                                         <div class="rounded-full bg-gray-100 p-3 text-gray-400 dark:bg-gray-800 dark:text-gray-300">
                                             <i class="ri-store-2-line"></i>
@@ -205,47 +229,4 @@
         </x-ui.modal>
     </div>
 
-@push('scripts')
-<script>
-    (function () {
-        if (!window.bindDeleteBranchSweetAlert) {
-            window.bindDeleteBranchSweetAlert = () => {
-                document.querySelectorAll('.js-delete-branch').forEach((form) => {
-                    if (form.dataset.swalBound === 'true') return;
-                    form.dataset.swalBound = 'true';
-                    form.addEventListener('submit', (event) => {
-                        event.preventDefault();
-                        const name = form.dataset.branchName || 'esta sucursal';
-                        if (!window.Swal) {
-                            form.submit();
-                            return;
-                        }
-                        Swal.fire({
-                            title: 'Eliminar sucursal?',
-                            text: 'Se eliminara ' + name + '. Esta accion no se puede deshacer.',
-                            icon: 'warning',
-                            showCancelButton: true,
-                            confirmButtonText: 'Si, eliminar',
-                            cancelButtonText: 'Cancelar',
-                            confirmButtonColor: '#ef4444',
-                            cancelButtonColor: '#6b7280',
-                            reverseButtons: true
-                        }).then((result) => {
-                            if (result.isConfirmed) {
-                                form.submit();
-                            }
-                        });
-                    });
-                });
-            };
-        }
-
-        if (!window.__deleteBranchSweetAlertListeners) {
-            document.addEventListener('DOMContentLoaded', window.bindDeleteBranchSweetAlert);
-            document.addEventListener('turbo:load', window.bindDeleteBranchSweetAlert);
-            window.__deleteBranchSweetAlertListeners = true;
-        }
-    })();
-</script>
-@endpush
 @endsection
