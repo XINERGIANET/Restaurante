@@ -1,43 +1,63 @@
 @extends('layouts.app')
 
-@php
-    use Illuminate\Support\HtmlString;
-
-    $SaveIcon = new HtmlString('
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M5 13L9 17L19 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
-        </svg>
-    ');
-
-    $BackIcon = new HtmlString('
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
-        </svg>
-    ');
-@endphp
-
 @section('content')
-    <x-common.page-breadcrumb
-        pageTitle="Editar sucursal"
-        :crumbs="[
-            ['label' => 'Empresas', 'url' => route('admin.companies.index')],
-            ['label' => 'Sucursales de la empresa ' . $company->legal_name, 'url' => route('admin.companies.branches.index', $company)],
-            ['label' => 'Editar sucursal']
-        ]"
-    />
+    <x-common.page-breadcrumb pageTitle="Sucursales" />
 
-    <x-common.component-card title="Actualizar sucursal" desc="Modifica la informacion de la sucursal para {{ $company->legal_name }}.">
-        <form method="POST" action="{{ route('admin.companies.branches.update', [$company, $branch]) }}" class="space-y-6">
-            @csrf
-            @method('PUT')
-            @include('branches._form', ['branch' => $branch])
-
-            <div class="flex flex-wrap gap-3">
-                <x-ui.button type="submit" size="md" variant="primary" :startIcon="$SaveIcon">Actualizar</x-ui.button>
-                <x-ui.link-button href="{{ route('admin.companies.branches.index', $company) }}" size="md" variant="outline" :startIcon="$BackIcon">
-                    Cancelar
-                </x-ui.link-button>
+    <x-ui.modal
+        x-data="{ open: true }"
+        :isOpen="true"
+        :showCloseButton="false"
+        class="max-w-3xl"
+    >
+        <div class="p-6 sm:p-8">
+            <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div class="flex items-center gap-4">
+                    <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-500 dark:bg-brand-500/10">
+                        <i class="ri-store-2-line text-2xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Editar sucursal</h3>
+                        <p class="mt-1 text-sm text-gray-500">Actualiza la informacion principal de la sucursal.</p>
+                    </div>
+                </div>
+                <a
+                    href="{{ route('admin.companies.branches.index', $company) }}"
+                    onclick="if (window.Turbo && typeof window.Turbo.visit === 'function') { window.Turbo.visit('{{ route('admin.companies.branches.index', $company) }}', { action: 'replace' }); return false; }"
+                    class="flex h-11 w-11 items-center justify-center rounded-full bg-gray-100 text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
+                    aria-label="Cerrar"
+                >
+                    <i class="ri-close-line text-xl"></i>
+                </a>
             </div>
-        </form>
-    </x-common.component-card>
+
+            @if ($errors->any())
+                <div class="mb-5">
+                    <x-ui.alert variant="error" title="Revisa los campos" message="Hay errores en el formulario, corrige los datos e intenta nuevamente." />
+                </div>
+            @endif
+
+            <form method="POST" action="{{ route('admin.companies.branches.update', [$company, $branch]) }}" class="space-y-6">
+                @csrf
+                @method('PUT')
+
+                @include('branches._form', ['branch' => $branch])
+
+                <div class="flex flex-wrap gap-3">
+                    <x-ui.button type="submit" size="md" variant="primary">
+                        <i class="ri-save-line"></i>
+                        <span>Actualizar</span>
+                    </x-ui.button>
+                    <x-ui.link-button
+                        size="md"
+                        variant="outline"
+                        href="{{ route('admin.companies.branches.index', $company) }}"
+                        onclick="if (window.Turbo && typeof window.Turbo.visit === 'function') { window.Turbo.visit('{{ route('admin.companies.branches.index', $company) }}', { action: 'replace' }); return false; }"
+                    >
+                        <i class="ri-close-line"></i>
+                        <span>Cancelar</span>
+                    </x-ui.link-button>
+                </div>
+            </form>
+        </div>
+    </x-ui.modal>
 @endsection

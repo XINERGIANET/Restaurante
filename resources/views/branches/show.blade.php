@@ -30,7 +30,7 @@
         pageTitle="Detalle de sucursal"
         :crumbs="[
             ['label' => 'Empresas', 'url' => route('admin.companies.index')],
-            ['label' => 'Sucursales de la empresa ' . $company->legal_name, 'url' => route('admin.companies.branches.index', $company)],
+            ['label' =>  $company->legal_name . ' | Sucursales' , 'url' => route('admin.companies.branches.index', $company)],
             ['label' => 'Detalle de sucursal']
         ]"
     />

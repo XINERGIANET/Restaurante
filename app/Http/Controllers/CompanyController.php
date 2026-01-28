@@ -32,6 +32,7 @@ class CompanyController extends Controller
             'companies' => $companies,
             'search' => $search,
             'perPage' => $perPage,
+            'title' => 'Empresas',
         ]);
     }
 

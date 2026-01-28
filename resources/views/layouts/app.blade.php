@@ -164,13 +164,35 @@
     </script>
     
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<style>\n.swal-on-top { z-index: 2147483647 !important; }\n.swal2-container { z-index: 2147483647 !important; position: fixed !important; inset: 0 !important; pointer-events: none; }\n.swal2-popup { pointer-events: all; }\n</style>\n<style>\n.swal2-container.swal2-bottom-start { padding-left: 18rem !important; }\n@media (max-width: 1280px) {\n  .swal2-container.swal2-bottom-start { padding-left: 1rem !important; }\n}\n</style>\n<style>\n\n.swal2-container { position: fixed !important; inset: 0 !important; }\n</style>\n<style>\nbody.swal2-shown > .swal2-container { z-index: 999999 !important; }\nbody.swal2-shown .swal2-container { z-index: 999999 !important; }\n</style>\n<style>\nbody.swal2-shown .sidebar,\nbody.swal2-shown [class*='sidebar'] { z-index: 10 !important; }\n</style>\n<style>
+<style>
+.swal-on-top { z-index: 2147483647 !important; }
+.swal2-container { z-index: 2147483647 !important; position: fixed !important; inset: 0 !important; pointer-events: none; }
+.swal2-popup { pointer-events: all; }
+</style>
+<style>
+.swal2-container.swal2-bottom-start { padding-left: 18rem !important; }
+@media (max-width: 1280px) {
+  .swal2-container.swal2-bottom-start { padding-left: 1rem !important; }
+}
+</style>
+<style>
+
+.swal2-container { position: fixed !important; inset: 0 !important; }
+</style>
+<style>
+body.swal2-shown > .swal2-container { z-index: 999999 !important; }
+body.swal2-shown .swal2-container { z-index: 999999 !important; }
+</style>
+<style>
+body.swal2-shown .sidebar,
+body.swal2-shown [class*='sidebar'] { z-index: 10 !important; }
+</style><style>
 body.swal2-shown .swal2-container { z-index: 1000000 !important; position: fixed !important; inset: 0 !important; }
 body.swal2-shown 
 body.swal2-shown #sidebar { z-index: 1 !important; }
 </style></head>
 
-<body
+<body class="min-h-screen flex flex-col"
     x-data="{ 'loaded': true}"
     x-init="$store.sidebar.isExpanded = window.innerWidth >= 1280;
     const checkMobile = () => {
@@ -192,7 +214,7 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
     <x-common.preloader/>
     {{-- preloader end --}}
 
-    <div class="min-h-screen xl:flex">
+    <div class="flex-1 xl:flex">
         @include('layouts.backdrop')
         @include('layouts.sidebar')
 
@@ -210,23 +232,34 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
             </div>
         </div>
 
-    </div>\n    <footer class="border-t border-gray-200 bg-white px-6 py-4 text-center text-sm text-gray-500 dark:border-gray-800 dark:bg-gray-900/40 dark:text-gray-400">
-        � 2026 Foot by Xinergia.
-    </footer>\n</body>
+    </div>
+
+    <footer class="mt-auto border-t border-gray-200 bg-white px-6 py-4 text-center text-sm text-gray-500 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
+        © 2026 Foot by Xinergia.
+    </footer>
+</body>
 
 @if (session('status'))
 <script>
     const showStatusToast = () => {
+        const message = @json(session('status'));
+        const key = 'toast:status';
+        if (window.sessionStorage && sessionStorage.getItem(key) === message) {
+            return;
+        }
         if (window.Swal) {
             Swal.fire({
                 toast: true,
                 position: 'bottom-end',
                 icon: 'success',
-                title: @json(session('status')),
+                title: message,
                 showConfirmButton: false,
                 timer: 3500,
                 timerProgressBar: true
             });
+        }
+        if (window.sessionStorage) {
+            sessionStorage.setItem(key, message);
         }
     };
     document.addEventListener('DOMContentLoaded', showStatusToast, { once: true });
@@ -237,16 +270,24 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
 @if (session('error'))
 <script>
     const showErrorToast = () => {
+        const message = @json(session('error'));
+        const key = 'toast:error';
+        if (window.sessionStorage && sessionStorage.getItem(key) === message) {
+            return;
+        }
         if (window.Swal) {
             Swal.fire({
                 toast: true,
                 position: 'bottom-end',
                 icon: 'error',
-                title: @json(session('error')),
+                title: message,
                 showConfirmButton: false,
                 timer: 4000,
                 timerProgressBar: true
             });
+        }
+        if (window.sessionStorage) {
+            sessionStorage.setItem(key, message);
         }
     };
     document.addEventListener('DOMContentLoaded', showErrorToast, { once: true });
@@ -256,9 +297,6 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
     @stack('scripts')
 
 </html>
-
-
-
 
 
 

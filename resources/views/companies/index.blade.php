@@ -89,6 +89,16 @@
                                     <div class="flex items-center justify-end gap-2">
                                         <div class="relative group">
                                             <x-ui.link-button
+                                                size="icon" variant="outline" href="{{ route('admin.companies.branches.index', $company) }}"
+                                                className="bg-brand-500 text-white hover:bg-brand-600 ring-0 rounded-full"
+                                                style="border-radius: 100%; background-color: #3B82F6; color: #FFFFFF;" aria-label="Ver sucursales"
+                                            >
+                                                <i class="ri-store-2-line"></i>
+                                            </x-ui.link-button>
+                                            <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">Sucursales</span>
+                                        </div>
+                                        <div class="relative group">
+                                            <x-ui.link-button
                                                 size="icon" variant="outline" href="{{ route('admin.companies.edit', $company) }}"
                                                 className="bg-warning-500 text-white hover:bg-warning-600 ring-0 rounded-full"
                                                 style="border-radius: 100%; background-color: #FBBF24; color: #111827;" aria-label="Editar"
@@ -153,17 +163,26 @@
         </div>
     </x-common.component-card>
 
-        <x-ui.modal x-data="{ open: false }" @open-company-modal.window="open = true" @close-company-modal.window="open = false" :isOpen="false" class="max-w-3xl">
+        <x-ui.modal x-data="{ open: false }" @open-company-modal.window="open = true" @close-company-modal.window="open = false" :isOpen="false" :showCloseButton="false" class="max-w-3xl">
         <div class="p-6 sm:p-8">
             <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                    <p class="text-xs uppercase tracking-[0.3em] text-gray-400">Administracion</p>
-                    <h3 class="mt-2 text-lg font-semibold text-gray-800 dark:text-white/90">Registrar empresa</h3>
-                    <p class="mt-1 text-sm text-gray-500">Ingresa la informacion principal de la empresa.</p>
+                <div class="flex items-center gap-4">
+                    <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-500 dark:bg-brand-500/10">
+                        <i class="ri-building-line text-2xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Registrar empresa</h3>
+                        <p class="mt-1 text-sm text-gray-500">Ingresa la informacion principal de la empresa.</p>
+                    </div>
                 </div>
-                <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-500 dark:bg-brand-500/10">
-                    <i class="ri-building-line"></i>
-                </div>
+                <button
+                    type="button"
+                    @click="open = false"
+                    class="flex h-11 w-11 items-center justify-center rounded-full bg-gray-100 text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
+                    aria-label="Cerrar"
+                >
+                    <i class="ri-close-line text-xl"></i>
+                </button>
             </div>
 
             @if ($errors->any())
@@ -194,37 +213,45 @@
 
 @push('scripts')
 <script>
-    const bindDeleteSweetAlert = () => {
-        document.querySelectorAll('.js-delete-company').forEach((form) => {
-            if (form.dataset.swalBound === 'true') return;
-            form.dataset.swalBound = 'true';
-            form.addEventListener('submit', (event) => {
-                event.preventDefault();
-                const name = form.dataset.companyName || 'esta empresa';
-                if (!window.Swal) {
-                    form.submit();
-                    return;
-                }
-                Swal.fire({
-                    title: '¿Eliminar empresa?',
-                    text: `Se eliminará ${name}. Esta acción no se puede deshacer.`,
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonText: 'Sí, eliminar',
-                    cancelButtonText: 'Cancelar',
-                    confirmButtonColor: '#ef4444',
-                    cancelButtonColor: '#6b7280',
-                    reverseButtons: true
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        form.submit();
-                    }
+    (function () {
+        if (!window.bindDeleteSweetAlert) {
+            window.bindDeleteSweetAlert = () => {
+                document.querySelectorAll('.js-delete-company').forEach((form) => {
+                    if (form.dataset.swalBound === 'true') return;
+                    form.dataset.swalBound = 'true';
+                    form.addEventListener('submit', (event) => {
+                        event.preventDefault();
+                        const name = form.dataset.companyName || 'esta empresa';
+                        if (!window.Swal) {
+                            form.submit();
+                            return;
+                        }
+                        Swal.fire({
+                            title: '\u00BFEliminar empresa?',
+                            text: 'Se eliminara ' + name + '. Esta accion no se puede deshacer.',
+                            icon: 'warning',
+                            showCancelButton: true,
+                            confirmButtonText: 'Si, eliminar',
+                            cancelButtonText: 'Cancelar',
+                            confirmButtonColor: '#ef4444',
+                            cancelButtonColor: '#6b7280',
+                            reverseButtons: true
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                form.submit();
+                            }
+                        });
+                    });
                 });
-            });
-        });
-    };
-    document.addEventListener('DOMContentLoaded', bindDeleteSweetAlert);
-    document.addEventListener('turbo:load', bindDeleteSweetAlert);
+            };
+        }
+
+        if (!window.__deleteSweetAlertListeners) {
+            document.addEventListener('DOMContentLoaded', window.bindDeleteSweetAlert);
+            document.addEventListener('turbo:load', window.bindDeleteSweetAlert);
+            window.__deleteSweetAlertListeners = true;
+        }
+    })();
 </script>
 @endpush
 @endsection
