@@ -9,12 +9,12 @@
 ])
 
 @php
-    $base = 'inline-flex items-center justify-center font-medium gap-2 rounded-lg transition';
+    $base = 'inline-flex items-center justify-center font-medium gap-2 rounded-full transition';
 
     $sizeMap = [
         'sm' => 'px-4 py-3 text-sm',
         'md' => 'px-5 py-3.5 text-sm',
-        'icon' => 'h-10 w-10 p-0 text-sm rounded-full',
+        'icon' => 'h-10 w-10 p-0 text-sm',
     ];
     $sizeClass = $sizeMap[$size] ?? $sizeMap['md'];
 
