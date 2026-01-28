@@ -15,6 +15,7 @@ class Parameters extends Model
     
     public function parameterCategory()
     {
+        // Incluye categorías eliminadas (SoftDeletes) para evitar null en vistas
         return $this->belongsTo(ParameterCategories::class, 'parameter_category_id', 'id');
     }
 }

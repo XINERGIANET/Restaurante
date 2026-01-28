@@ -211,7 +211,7 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
         </div>
 
     </div>\n    <footer class="border-t border-gray-200 bg-white px-6 py-4 text-center text-sm text-gray-500 dark:border-gray-800 dark:bg-gray-900/40 dark:text-gray-400">
-        © 2026 Foot by Xinergia.
+        ï¿½ 2026 Foot by Xinergia.
     </footer>\n</body>
 
 @if (session('status'))
@@ -231,6 +231,26 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
     };
     document.addEventListener('DOMContentLoaded', showStatusToast, { once: true });
     document.addEventListener('turbo:load', showStatusToast);
+</script>
+@endif
+
+@if (session('error'))
+<script>
+    const showErrorToast = () => {
+        if (window.Swal) {
+            Swal.fire({
+                toast: true,
+                position: 'bottom-end',
+                icon: 'error',
+                title: @json(session('error')),
+                showConfirmButton: false,
+                timer: 4000,
+                timerProgressBar: true
+            });
+        }
+    };
+    document.addEventListener('DOMContentLoaded', showErrorToast, { once: true });
+    document.addEventListener('turbo:load', showErrorToast);
 </script>
 @endif
     @stack('scripts')

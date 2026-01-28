@@ -25,10 +25,8 @@
                         href="{{ route('admin.parameters.categories.index') }}">Limpiar</x-ui.link-button>
                 </div>
             </form>
-        </div>
-        <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-            <x-ui.button size="sm" variant="primary" @click="$dispatch('open-create-parameter-modal')">Crear
-                Parametro</x-ui.button>
+            <x-ui.button size="md" variant="create" @click="$dispatch('open-create-parameter-modal')"><i
+                class="ri-add-line"></i> Crear Parametro</x-ui.button>
         </div>
         @if ($parameters->count() > 0)
             <div
@@ -78,7 +76,7 @@
                                     </td>
                                     <td class="px-5 py-4 sm:px-6 text-center">
                                         <p class="font-medium text-gray-900 text-theme-sm dark:text-white/90">
-                                            {{ $parameter->parameterCategory->description }}</p>
+                                            {{ $parameter->parameterCategory?->description ?? 'Sin categoría' }}</p>
                                     </td>
                                     <td class="px-5 py-4 sm:px-6 text-center">
                                         <p class="font-medium text-gray-900 text-theme-sm dark:text-white/90">
@@ -92,12 +90,10 @@
                                     <td class="px-5 py-4 sm:px-6 text-center">
                                         <div class="flex items-center justify-center gap-2">
                                             <x-ui.button size="sm" variant="outline"
-                                                x-on:click.prevent="$dispatch('open-edit-parameter-modal', {{ Illuminate\Support\Js::from(['id' => $parameter->id, 'description' => $parameter->description, 'value' => $parameter->value, 'parameter_category_id' => $parameter->parameterCategory->id, 'status' => $parameter->status]) }})"
-                                                className="text-brand-500 ring-brand-500/30 bg-brand-500/10 hover:bg-brand-600">
-                                                Editar
-                                            </x-ui.button>
+                                                x-on:click.prevent="$dispatch('open-edit-parameter-modal', {{ Illuminate\Support\Js::from(['id' => $parameter->id, 'description' => $parameter->description, 'value' => $parameter->value, 'parameter_category_id' => $parameter->parameterCategory?->id, 'status' => $parameter->status]) }})"
+                                                variant="edit"><i class="ri-pencil-line"></i></x-ui.button>
                                             <x-ui.button size="sm" variant="eliminate"
-                                                x-on:click.prevent="$dispatch('open-delete-parameter-modal', {{ Illuminate\Support\Js::from(['id' => $parameter->id]) }})">Eliminar</x-ui.button>
+                                                x-on:click.prevent="$dispatch('open-delete-parameter-modal', {{ Illuminate\Support\Js::from(['id' => $parameter->id]) }})"><i class="ri-delete-bin-line"></i></x-ui.button>
                                         </div>
                                     </td>
                                 </tr>
@@ -115,6 +111,33 @@
                 </div>
             </div>
         @endif
+        <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div class="text-sm text-gray-500">
+                Mostrando
+                <span class="font-semibold text-gray-700 dark:text-gray-200">{{ $parameters->firstItem() ?? 0 }}</span>
+                -
+                <span class="font-semibold text-gray-700 dark:text-gray-200">{{ $parameters->lastItem() ?? 0 }}</span>
+                de
+                <span class="font-semibold text-gray-700 dark:text-gray-200">{{ $parameters->total() }}</span>
+            </div>
+            <div>
+                {{ $parameters->links() }}
+            </div>
+            <div>
+                <form method="GET" action="{{ route('admin.parameters.index') }}">
+                    <input type="hidden" name="search" value="{{ $search }}">
+                    <select
+                        name="per_page"
+                        onchange="this.form.submit()"
+                        class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-3 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
+                    >
+                        @foreach ($allowedPerPage as $size)
+                            <option value="{{ $size }}" @selected($perPage == $size)>{{ $size }} / pagina</option>
+                        @endforeach
+                    </select>
+                </form>
+            </div>
+        </div>
     </x-common.component-card>
 
     <!--Modal de creacion de parametro-->
@@ -175,7 +198,7 @@
 
                 <div class="flex flex-wrap gap-3">
                     <x-ui.button type="submit" size="md" variant="primary">Guardar</x-ui.button>
-                    <x-ui.button type="button" size="md" variant="secondary"
+                    <x-ui.button type="button" size="md" variant="outline"
                         @click="open = false; $dispatch('close-create-parameter-modal')">Cancelar</x-ui.button>
                 </div>
             </form>

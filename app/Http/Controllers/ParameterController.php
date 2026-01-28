@@ -10,6 +10,12 @@ class ParameterController extends Controller
 {
     public function index(Request $request){
         $search = $request->input('search');
+        $allowedPerPage = [10, 20, 50, 100];
+        $perPage = (int) $request->input('per_page', 10);
+        if (!in_array($perPage, $allowedPerPage, true)) {
+            $perPage = 10;
+        }
+
         $parameters = Parameters::with('parameterCategory')
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
@@ -21,11 +27,18 @@ class ParameterController extends Controller
                 });
             })
             ->orderByDesc('id')
-            ->paginate(10)  
+            ->paginate($perPage)
             ->withQueryString();
+
         $parameterCategories = ParameterCategories::all();
         
-        return view('parameters.index', compact('parameters', 'search', 'parameterCategories'));
+        return view('parameters.index', [
+            'parameters' => $parameters,
+            'search' => $search,
+            'parameterCategories' => $parameterCategories,
+            'allowedPerPage' => $allowedPerPage,
+            'perPage' => $perPage,
+        ]);
     }
 
     public function store(Request $request){

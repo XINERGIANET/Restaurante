@@ -62,6 +62,11 @@
             const normalized = path.replace(/\/+$/, '');
             return normalized === '' ? '/' : normalized;
         },
+        isActiveExact(path) {
+            const current = this.normalizePath(window.location.pathname);
+            const target = this.normalizePath(path);
+            return current === target;
+        },
         isActive(path) {
             const current = this.normalizePath(window.location.pathname);
             const target = this.normalizePath(path);
@@ -173,7 +178,7 @@
                                                         <a href="{{ $subItem['path'] }}" 
                                                             @click="keepSubmenuOpen({{ $groupIndex }}, {{ $itemIndex }})"
                                                             class="menu-dropdown-item"
-                                                            :class="isActive('{{ $subItem['path'] }}') ?
+                                                            :class="isActiveExact('{{ $subItem['path'] }}') ?
                                                                 'menu-dropdown-item-active' :
                                                                 'menu-dropdown-item-inactive'">
                                                             {{ $subItem['name'] }}
