@@ -184,32 +184,26 @@
     </div> 
 
 @push('scripts')
-{{-- Asegúrate de incluir SweetAlert2 si no lo tienes en tu layout --}}
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
     const bindDeleteSweetAlert = () => {
-        // 1. Cambiamos el selector a '.js-delete-module' para que coincida con tu HTML
         document.querySelectorAll('.js-delete-module').forEach((form) => {
             
-            // Evitamos vincular el evento múltiples veces
             if (form.dataset.swalBound === 'true') return;
             form.dataset.swalBound = 'true';
 
             form.addEventListener('submit', (event) => {
-                event.preventDefault(); // Detenemos el envío inmediato
+                event.preventDefault(); 
                 
-                // 2. Obtenemos el nombre del módulo desde el atributo data-module-name
                 const name = form.dataset.moduleName || 'este módulo';
 
-                // Verificamos si SweetAlert está cargado
                 if (!window.Swal) {
                     console.warn('SweetAlert2 no está cargado. Enviando formulario sin confirmación.');
                     form.submit();
                     return;
                 }
 
-                // 3. Mostramos la alerta configurada para Módulos
                 Swal.fire({
                     title: '¿Eliminar módulo?',
                     text: `Se eliminará "${name}". Esta acción no se puede deshacer.`,
