@@ -27,53 +27,54 @@ class ModulesController extends Controller
         ]);
     }
     
-    public function store(Request $request){
+    public function store(Request $request)
+    {
         try {
-            $validated = $request->validate([
-                'name' => 'required|string|max:255',
-                'icon' => 'string|max:255',
-                'order_num' => 'required|integer',
-            ],
-            [
-                'name.required' => 'El nombre es requerido',
-                'name.string' => 'El nombre debe ser una cadena de texto',
-                'name.max' => 'El nombre debe tener menos de 255 caracteres',
-                'icon.string' => 'El icono debe ser una cadena de texto',
-                'order_num.required' => 'El orden es requerido',
-                'order_num.integer' => 'El orden debe ser un número entero',
-            ]
-        );
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            if ($request->expectsJson() || $request->ajax()) {
-                return response()->json([
-                    'error' => 'Error de validación',
-                    'errors' => $e->errors()
-                ], 422);
-            }
-            throw $e;
-        }
-        
-        try {
-            if ($request->hasFile('icon')) {
-                $file = $request->file('icon');
-                $fileName = Str::slug($request->name) . '-' . time() . '.' . $file->getClientOriginalExtension();
-                $iconPath = $file->storeAs('modules/icons', $fileName, 'public');
-                
-                Modules::create([
-                    'name' => $request->name,
-                    'icon' => $iconPath, // Guardar la ruta del archivo
-                    'order_num' => $request->order_num,
-                ]);
-                
-                return response()->json(['success' => 'Modulo creado correctamente'], 200);
-            }
+            Modules::create([
+                'name'      => $request->name,
+                'icon'      => $request->icon,     
+                'order_num' => $request->order_num,
+                'status'    => $request->status,  
+            ]);
 
-            return response()->json(['error' => 'No se pudo subir la imagen'], 400);
+            return redirect()->route('admin.modules.index')
+                ->with('status', 'Módulo creado correctamente');
+
         } catch (\Exception $e) {
-            Log::error('Error al crear el modulo', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-            return response()->json(['error' => 'Error al crear el modulo: ' . $e->getMessage()], 500);
+            Log::error('Error al crear el modulo: ' . $e->getMessage());
+
+            return back()->withInput()->withErrors(['error' => 'Error al guardar: ' . $e->getMessage()]);
         }
-        
+    }
+
+    public function edit($id)
+    {
+        $module = Modules::findOrFail($id);
+
+        return view('modules.edit', [
+            'module' => $module
+        ]);
+    }
+
+    public function update(Request $request, $id)
+    {
+        $module = Modules::findOrFail($id);
+
+        try {
+            $module->update([
+                'name'      => $request->input('name'),
+                'icon'      => $request->input('icon'), 
+                'order_num' => $request->input('order_num'),
+                'status'    => $request->input('status'),
+            ]);
+
+            return redirect()->route('admin.modules.index')
+                ->with('status', 'Módulo actualizado correctamente');
+
+        } catch (\Exception $e) {
+            Log::error('Error al actualizar el modulo: ' . $e->getMessage());
+            return back()->withInput()->withErrors(['error' => 'Error al actualizar: ' . $e->getMessage()]);
+        }
     }
 
     public function destroy($id)
@@ -81,16 +82,19 @@ class ModulesController extends Controller
         $module = Modules::findOrFail($id);
 
         try {
-            if ($module->icon && Storage::disk('public')->exists($module->icon)) {
-                Storage::disk('public')->delete($module->icon);
-            }
+            $module->update([
+                'status' => 0
+            ]);
 
             $module->delete();
 
-            return response()->json(['success' => 'Módulo eliminado correctamente'], 200);
+            return redirect()->route('admin.modules.index')
+                ->with('status', 'Módulo eliminado correctamente');
+
         } catch (\Exception $e) {
-            Log::error('Error al eliminar el módulo', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-            return response()->json(['error' => 'Error al eliminar el módulo: ' . $e->getMessage()], 500);
+            Log::error('Error al eliminar el módulo', ['error' => $e->getMessage()]);
+
+            return back()->withErrors(['error' => 'Error al eliminar el módulo: ' . $e->getMessage()]);
         }
     }
 }

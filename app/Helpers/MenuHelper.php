@@ -11,41 +11,39 @@ class MenuHelper
 {
     public static function getMainNavItems()
     {
-        return Cache::rememberForever('sidebar_menu', function () {
-            $modules = Module::with(['menuOptions' => function ($query) {
-                $query->where('status', 1);
-            }])
-            ->orderBy('order_num', 'asc')
-            ->get();
+        $modules = Module::with(['menuOptions' => function ($query) {
+            $query->where('status', 1);
+        }])
+        ->orderBy('order_num', 'asc')
+        ->get();
 
-            $menuStructure = [];
+        $menuStructure = [];
 
-            foreach ($modules as $module) {
-                $subItems = [];
+        foreach ($modules as $module) {
+            $subItems = [];
 
-                foreach ($module->menuOptions as $option) {
-                    if (str_starts_with($option->action, '/')) {
-                        $finalPath = $option->action;
-                    } else {
-                        $finalPath = Route::has($option->action) ? route($option->action) : '#';
-                    }
-
-                    $subItems[] = [
-                        'name' => $option->name,
-                        'path' => $finalPath,
-                    ];
+            foreach ($module->menuOptions as $option) {
+                if (str_starts_with($option->action, '/')) {
+                    $finalPath = $option->action;
+                } else {
+                    $finalPath = Route::has($option->action) ? route($option->action) : '#';
                 }
 
-                $menuStructure[] = [
-                    'icon' => self::getIconSvg($module->icon),
-                    'name' => $module->name,
-                    'subItems' => $subItems,
-                    'path' => '#',
+                $subItems[] = [
+                    'name' => $option->name,
+                    'path' => $finalPath,
                 ];
             }
 
-            return $menuStructure;
-        });
+            $menuStructure[] = [
+                'icon' => self::getIconSvg($module->icon),
+                'name' => $module->name,
+                'subItems' => $subItems,
+                'path' => '#',
+            ];
+        }
+
+        return $menuStructure;
     }
 
     public static function getOthersItems()

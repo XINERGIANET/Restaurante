@@ -120,8 +120,10 @@ Route::middleware('auth')->group(function () {
     Route::view('/admin/herramientas/sucursales', 'pages.blank', ['title' => 'Sucursales']);
 
     // Modulos
-    Route::get('/admin/herramientas/modulos', [ModulesController::class, 'index'])->name('admin.modules.index');
-    Route::post('/admin/herramientas/modulos', [ModulesController::class, 'store'])->name('admin.modules.store');
+    Route::resource('admin/herramientas/modulos', ModulesController::class)
+        ->names('admin.modules')
+        ->parameters(['modulos' => 'module']);
+    Route::delete('/admin/herramientas/modulos/{module}', [ModulesController::class, 'destroy'])->name('admin.modules.destroy');
     
     //<-----Parametros----->
     //Categorias de parametros
