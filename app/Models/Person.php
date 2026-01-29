@@ -33,4 +33,9 @@ class Person extends Model
     {
         return $this->belongsTo(Location::class);
     }
+
+    public function user()
+    {
+        return $this->hasOne(User::class, 'person_id');
+    }
 }

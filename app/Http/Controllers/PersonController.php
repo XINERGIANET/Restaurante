@@ -7,6 +7,7 @@ use App\Models\Company;
 use App\Models\Location;
 use App\Models\Person;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 
 class PersonController extends Controller
 {
@@ -22,7 +23,7 @@ class PersonController extends Controller
         }
 
         $people = $branch->people()
-            ->with('location')
+            ->with(['location', 'user.profile'])
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
                     $inner->where('first_name', 'like', "%{$search}%")
@@ -91,6 +92,31 @@ class PersonController extends Controller
         return redirect()
             ->route('admin.companies.branches.people.index', [$company, $branch])
             ->with('status', 'Personal eliminado correctamente.');
+    }
+
+    public function updatePassword(Request $request, Company $company, Branch $branch, Person $person)
+    {
+        $branch = $this->resolveBranch($company, $branch);
+        $person = $this->resolvePerson($branch, $person);
+
+        $data = $request->validate([
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        $user = $person->user;
+        if (!$user) {
+            return redirect()
+                ->route('admin.companies.branches.people.index', [$company, $branch])
+                ->with('status', 'La persona no tiene usuario asociado.');
+        }
+
+        $user->update([
+            'password' => Hash::make($data['password']),
+        ]);
+
+        return redirect()
+            ->route('admin.companies.branches.people.index', [$company, $branch])
+            ->with('status', 'Contraseña actualizada correctamente.');
     }
 
     private function validatePerson(Request $request): array

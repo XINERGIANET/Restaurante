@@ -51,6 +51,8 @@ Route::middleware('auth')->group(function () {
         ->names('admin.companies.branches.people')
         ->parameters(['empresas' => 'company', 'sucursales' => 'branch', 'personal' => 'person'])
         ->only(['index', 'store', 'edit', 'update', 'destroy']);
+    Route::patch('/admin/herramientas/empresas/{company}/sucursales/{branch}/personal/{person}/usuario/password', [PersonController::class, 'updatePassword'])
+        ->name('admin.companies.branches.people.user.password');
     Route::get('/admin/herramientas/empresas/{company}/sucursales/{branch}/perfiles', [BranchController::class, 'profiles'])
         ->name('admin.companies.branches.profiles.index');
     Route::get('/admin/herramientas/empresas/{company}/sucursales/{branch}/perfiles/{profile}/permisos', [BranchController::class, 'profilePermissions'])
