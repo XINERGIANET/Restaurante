@@ -10,12 +10,6 @@
     
     <x-common.page-breadcrumb pageTitle="Módulos" />
 
-    @if (session('status'))
-        <div class="mb-5">
-            <x-ui.alert variant="success" title="Listo" :message="session('status')" />
-        </div>
-    @endif
-
     <x-common.component-card title="Gestión de Módulos" desc="Administra los elementos principales del menú lateral.">
         
         <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
