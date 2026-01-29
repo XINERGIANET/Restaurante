@@ -98,6 +98,8 @@
                                             </x-ui.link-button>
                                             <x-ui.link-button
                                                 size="icon" variant="edit" href="{{ route('admin.modules.edit', $module) }}"
+                                                style="border-radius: 100%; background-color: #FBBF24; color: #111827;"
+
                                                 aria-label="Editar"
                                             >
                                                 <i class="ri-pencil-line"></i>

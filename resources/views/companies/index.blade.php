@@ -8,6 +8,15 @@
         <x-common.component-card title="Listado de empresas" desc="Gestiona las empresas registradas en el sistema.">
             <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                 <form method="GET" class="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
+                    <div class="w-29">
+                            <select name="per_page"
+                                class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-3 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+                                onchange="this.form.submit()">
+                                @foreach ([10, 20, 50, 100] as $size)
+                                    <option value="{{ $size }}" @selected($perPage == $size)>{{ $size }} / pagina</option>
+                                @endforeach
+                            </select>
+                        </div>  
                     <div class="relative flex-1">
                         <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
                             <i class="ri-search-line"></i>
@@ -21,21 +30,14 @@
                             <i class="ri-search-line"></i>
                             <span>Buscar</span>
                         </x-ui.button>
-                        <div class="w-29">
-    <select name="per_page"
-        class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-3 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
-        onchange="this.form.submit()">
-        @foreach ([10, 20, 50, 100] as $size)
-            <option value="{{ $size }}" @selected($perPage == $size)>{{ $size }} / pagina</option>
-        @endforeach
-    </select>
-</div>
+                        
                         <x-ui.link-button size="sm" variant="outline" href="{{ route('admin.companies.index') }}">
                             <i class="ri-close-line"></i>
                             <span>Limpiar</span>
                         </x-ui.link-button>
                     </div>
                 </form>
+
                 <x-ui.button size="md" variant="primary" type="button"
                     style=" background-color: #12f00e; color: #111827;" @click="$dispatch('open-company-modal')">
                     <i class="ri-add-line"></i>
@@ -85,7 +87,7 @@
                                     <div class="flex items-center justify-center gap-2">
     <div class="relative group">
         <x-ui.link-button size="icon" variant="primary"
-            href="{{ route('admin.companies.branches.index', $company, ['icon' => 'ri-store-2-line']) }}"
+            href="{{ route('admin.companies.branches.index', [$company, 'icon' => 'ri-store-2-line']) }}"
             className="bg-brand-500 text-white hover:bg-brand-600 ring-0 rounded-full"
             style="border-radius: 100%; background-color: #3B82F6; color: #FFFFFF;"
             aria-label="Ver sucursales">
@@ -119,8 +121,8 @@
             aria-label="Eliminar">
             <i class="ri-delete-bin-line"></i>
         </x-ui.button>
-        <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">Eliminar</span>
-    </form>
+        <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">Eliminar</span>    </form>
+    
 </div>
                                 </td>
                             </tr>

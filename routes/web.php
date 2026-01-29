@@ -5,6 +5,8 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\BranchController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\ModulesController;
+use App\Http\Controllers\PersonController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ParameterCategoriesController;
 use App\Http\Controllers\ParameterController;
 use App\Http\Controllers\MenuOptionController;
@@ -45,6 +47,20 @@ Route::middleware('auth')->group(function () {
     Route::resource('/admin/herramientas/empresas.sucursales', BranchController::class)
         ->names('admin.companies.branches')
         ->parameters(['empresas' => 'company', 'sucursales' => 'branch']);
+    Route::resource('/admin/herramientas/empresas.sucursales.personal', PersonController::class)
+        ->names('admin.companies.branches.people')
+        ->parameters(['empresas' => 'company', 'sucursales' => 'branch', 'personal' => 'person'])
+        ->only(['index', 'store', 'edit', 'update', 'destroy']);
+    Route::get('/admin/herramientas/empresas/{company}/sucursales/{branch}/perfiles', [BranchController::class, 'profiles'])
+        ->name('admin.companies.branches.profiles.index');
+    Route::get('/admin/herramientas/empresas/{company}/sucursales/{branch}/perfiles/{profile}/permisos', [BranchController::class, 'profilePermissions'])
+        ->name('admin.companies.branches.profiles.permissions.index');
+    Route::patch('/admin/herramientas/empresas/{company}/sucursales/{branch}/perfiles/{profile}/permisos/{permission}', [BranchController::class, 'toggleProfilePermission'])
+        ->name('admin.companies.branches.profiles.permissions.toggle');
+    Route::resource('/admin/herramientas/perfiles', ProfileController::class)
+        ->names('admin.profiles')
+        ->parameters(['perfiles' => 'profile'])
+        ->only(['index', 'store', 'edit', 'update', 'destroy']);
 
     // dashboard pages
     Route::get('/', function () {
@@ -165,4 +181,3 @@ Route::middleware('auth')->group(function () {
     Route::view('/admin/configuracion/menu', 'pages.blank', ['title' => 'Menu y recetas']);
     Route::view('/admin/configuracion/impuestos', 'pages.blank', ['title' => 'Impuestos']);
 });
-
