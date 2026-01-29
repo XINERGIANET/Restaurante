@@ -7,6 +7,7 @@ use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\ModulesController;
 use App\Http\Controllers\ParameterCategoriesController;
 use App\Http\Controllers\ParameterController;
+use App\Http\Controllers\MenuOptionController;
 use App\Models\ParameterCategories;
 
 Route::prefix('restaurante')->name('restaurant.')->group(function () {
@@ -124,7 +125,10 @@ Route::middleware('auth')->group(function () {
         ->names('admin.modules')
         ->parameters(['modulos' => 'module']);
     Route::delete('/admin/herramientas/modulos/{module}', [ModulesController::class, 'destroy'])->name('admin.modules.destroy');
-    
+    Route::resource('/admin/herramientas/modulos.menu', MenuOptionController::class)
+        ->names('admin.modules.menu_options')
+        ->parameters(['modulos' => 'module', 'menu' => 'menuOption']);
+
     //<-----Parametros----->
     //Categorias de parametros
     Route::get('/admin/herramientas/parametros/categorias', [ParameterCategoriesController::class, 'index'])->name('admin.parameters.categories.index');

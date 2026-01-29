@@ -90,6 +90,12 @@
                                 <td class="px-5 py-4 sm:px-6">
                                     <div class="flex items-center justify-end gap-2">
                                         <div class="relative group">
+                                            <x-ui.link-button size="icon" variant="primary"
+                                                href="{{ route('admin.modules.menu_options.index', $module) }}"
+                                                className="bg-brand-500 text-white hover:bg-brand-600 ring-0 rounded-full"
+                                                style="border-radius: 100%; background-color: #3B82F6; color: #FFFFFF;">
+                                                <i class="ri-store-2-line"></i>
+                                            </x-ui.link-button>
                                             <x-ui.link-button
                                                 size="icon" variant="edit" href="{{ route('admin.modules.edit', $module) }}"
                                                 aria-label="Editar"
