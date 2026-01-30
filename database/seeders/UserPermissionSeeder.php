@@ -11,7 +11,7 @@ class UserPermissionSeeder extends Seeder
     public function run(): void
     {
         $profileId = 1;
-        $branchId = 2;
+        $branchId = 1;
 
         $menuOptions = DB::table('menu_option')
             ->select('id', 'name')

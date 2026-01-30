@@ -14,12 +14,11 @@
                         class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 pl-12 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30" />
                 </div>
                 <div class="flex flex-wrap gap-2">
-                    <x-ui.button size="sm" variant="primary" type="submit">Buscar</x-ui.button>
-                    <x-ui.link-button size="sm" variant="outline"
-                        href="{{ route('admin.parameters.categories.index') }}">Limpiar</x-ui.link-button>
-                    <x-ui.button size="md" variant="create" @click="$dispatch('open-create-category-modal')"><i
-                            class="ri-add-line"></i> Crear Categoria</x-ui.button>
-
+                    <x-ui.link-button size="sm" variant="primary" type="submit" href="{{ route('admin.parameters.categories.index') }}">Buscar</x-ui.link-button>
+                    <x-ui.link-button size="sm" variant="outline" class="rounded-full" href="{{ route('admin.parameters.categories.index') }}">Limpiar</x-ui.link-button>
+                    <x-ui.link-button size="md" variant="create" 
+                        @click="$dispatch('open-create-category-modal')">
+                        <i class="ri-add-line"></i> Crear Categoria</x-ui.link-button>
                 </div>
             </form>
         </div>
@@ -62,15 +61,24 @@
                                     </td>
                                     <td class="px-5 py-4 sm:px-6 text-center">
                                         <div class="flex items-center justify-center gap-2">
-                                            <x-ui.button size="sm" variant="outline"
+                                            <x-ui.link-button size="sm" variant="outline"
                                                 x-on:click.prevent="$dispatch('open-edit-category-modal', {{ Illuminate\Support\Js::from(['id' => $parameterCategory->id, 'description' => $parameterCategory->description]) }})"
                                                 variant="edit">
                                                 <i class="ri-pencil-line"></i>
-                                            </x-ui.button>
-                                            <x-ui.button size="sm" variant="eliminate"
-                                                x-on:click.prevent="$dispatch('open-delete-category-modal', {{ Illuminate\Support\Js::from(['id' => $parameterCategory->id]) }})">
-                                                <i class="ri-delete-bin-line"></i>
-                                            </x-ui.button>
+                                            </x-ui.link-button>
+                                            <form action="{{ route('admin.parameters.categories.destroy', $parameterCategory) }}" method="POST" data-swal-title="Eliminar categoria?"
+                                                class="relative group js-swal-delete"
+                                                data-swal-title="Eliminar categoria?"
+                                                data-swal-text="Se eliminara {{ $parameterCategory->description }}. Esta accion no se puede deshacer."
+                                                data-swal-confirm="Si, eliminar"
+                                                data-swal-cancel="Cancelar"
+                                                data-swal-confirm-color="#ef4444"
+                                                data-swal-cancel-color="#6b7280">
+                                                @csrf
+                                                @method('DELETE')
+                                                <x-ui.button size="sm" variant="eliminate" type="submit" style="border-radius: 100%; background-color: #EF4444; color: #FFFFFF;">
+                                                    <i class="ri-delete-bin-line"></i>
+                                                </x-ui.button>
                                         </div>
                                     </td>
                                 </tr>
@@ -184,25 +192,5 @@
                 </div>
             </form>
         </div>
-    </x-ui.modal>
-
-    <!--Modal de confirmacion de eliminar categoria-->
-    <x-ui.modal x-data="{ open: false, categoryId: null }" @open-delete-category-modal.window="open = true; categoryId = $event.detail.id"
-        @close-delete-category-modal.window="open = false" :isOpen="false" class="max-w-md">
-        <div class="p-6 space-y-4">
-            <h3 class="mb-6 text-lg font-semibold text-gray-800 dark:text-white/90">Eliminar Categoria</h3>
-            <p class="text-gray-600 dark:text-gray-200">¿Estás seguro de querer eliminar esta categoria?</p>
-        </div>
-        <form id="delete-category-form" class="space-y-4 flex flex-col gap-4 justify-end items-end"
-            x-bind:action="categoryId ? '{{ url('/admin/herramientas/parametros/categorias') }}/' + categoryId : '#'"
-            method="POST">
-            @csrf
-            @method('DELETE')
-            <div class="flex flex-wrap gap-3 justify-end  p-5 items-end">
-                <x-ui.button type="submit" size="md" variant="eliminate">Eliminar</x-ui.button>
-                <x-ui.button type="button" size="md" variant="outline"
-                    @click="open = false">Cancelar</x-ui.button>
-            </div>
-        </form>
     </x-ui.modal>
 @endsection

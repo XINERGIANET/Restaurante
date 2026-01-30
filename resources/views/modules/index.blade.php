@@ -31,15 +31,15 @@
                     />
                 </div>
                 <div class="flex flex-wrap gap-2">
-                    <x-ui.button size="sm" variant="primary" type="submit" :startIcon="$SearchIcon">Buscar</x-ui.button>
-                    <x-ui.link-button size="sm" variant="outline" href="{{ route('admin.modules.index') }}" :startIcon="$ClearIcon">Limpiar</x-ui.link-button>
+                    <x-ui.link-button size="sm" variant="primary" type="submit" href="{{ route('admin.modules.index') }}" :startIcon="$SearchIcon">Buscar</x-ui.link-button>
+                    <x-ui.link-button  size="sm" variant="outline" href="{{ route('admin.modules.index') }}" :startIcon="$ClearIcon">Limpiar</x-ui.link-button>
                 </div>
             </form>
             
-            <x-ui.button
+            <x-ui.link-button
                 size="md"
                 variant="primary"
-                type="button"  style=" background-color: #12f00e; color: #111827;"  
+                style=" background-color: #12f00e; color: #111827;"  
                 @click="$dispatch('open-module-modal')"
             >
                 <i class="ri-add-line"></i>
@@ -110,7 +110,7 @@
                                             @csrf
                                             @method('DELETE')
                                             <x-ui.button
-                                                size="icon" variant="eliminate" className="bg-error-500 text-white hover:bg-error-600 ring-0 rounded-full"
+                                                size="icon" variant="eliminate" style="border-radius: 100%; background-color: #EF4444; color: #FFFFFF;"
                                                 aria-label="Eliminar"
                                                 type="submit"
                                             >

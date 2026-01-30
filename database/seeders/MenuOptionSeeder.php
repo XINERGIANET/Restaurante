@@ -33,10 +33,11 @@ class MenuOptionSeeder extends Seeder
                 ['name' => 'Categorias de Parametros',         'action' => 'admin.parameters.categories.index',           'icon' => 'mdi-settings'],
                 ['name' => 'Parametros',         'action' => 'admin.parameters.index',           'icon' => 'mdi-settings'],
                 ['name' => 'Operaciones',        'action' => 'admin.operations.index',           'icon' => 'mdi-settings'],
+                ['name' => 'Vistas',        'action' => 'admin.views.index',           'icon' => 'mdi-settings'],
             ],
             'Pedidos' => [
-                ['name' => 'Ordenes activas',    'action' => '/admin/pedidos/ordenes',          'icon' => 'mdi-food'],
-                ['name' => 'Cocina',             'action' => '/admin/pedidos/cocina',           'icon' => 'mdi-chef-hat'],
+                ['name' => 'Areas',    'action' => 'admin.areas.index',          'icon' => 'mdi-food'],
+                ['name' => 'Mesas',             'action' => '/admin/pedidos/mesas',           'icon' => 'mdi-chef-hat'],
                 ['name' => 'Delivery',           'action' => '/admin/pedidos/delivery',         'icon' => 'mdi-bike'],
             ],
             'Ventas' => [
