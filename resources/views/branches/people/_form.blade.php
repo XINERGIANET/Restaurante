@@ -8,7 +8,8 @@
 @endphp
 
 <div
-    class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3"
+    class="grid gap-5"
+    style="grid-template-columns: repeat(4, minmax(0, 1fr));"
     data-departments='@json($departments ?? [], JSON_HEX_APOS | JSON_HEX_QUOT)'
     data-provinces='@json($provinces ?? [], JSON_HEX_APOS | JSON_HEX_QUOT)'
     data-districts='@json($districts ?? [], JSON_HEX_APOS | JSON_HEX_QUOT)'
@@ -80,6 +81,20 @@
     }"
     x-init="init()"
 >
+    <div>
+        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Documento</label>
+        <input
+            type="text"
+            name="document_number"
+            value="{{ old('document_number', $person->document_number ?? '') }}"
+            required
+            placeholder="Ingrese el documento"
+            class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
+        />
+        @error('document_number')
+            <p class="mt-1 text-xs text-error-500">{{ $message }}</p>
+        @enderror
+    </div>
     <div>
         <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Nombres</label>
         <input
@@ -160,20 +175,7 @@
         @enderror
     </div>
 
-    <div>
-        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Documento</label>
-        <input
-            type="text"
-            name="document_number"
-            value="{{ old('document_number', $person->document_number ?? '') }}"
-            required
-            placeholder="Ingrese el documento"
-            class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
-        />
-        @error('document_number')
-            <p class="mt-1 text-xs text-error-500">{{ $message }}</p>
-        @enderror
-    </div>
+
 
     <div>
         <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Telefono</label>
@@ -268,11 +270,11 @@
         @enderror
     </div>
 
-    <div class="sm:col-span-2 lg:col-span-3">
+    <div class="sm:col-span-2 lg:col-span-3 xl:col-span-4">
         <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Roles</label>
         <div class="flex items-center gap-4 flex-nowrap">
             <template x-for="role in roles" :key="role.id">
-                <label class="inline-flex items-center gap-2 whitespace-nowrap rounded-full border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700 shadow-theme-xs dark:border-gray-800 dark:bg-white/[0.03] dark:text-gray-200">
+                <label class="inline-flex items-center gap-2 whitespace-nowrap  bg-white px-4 py-2 text-sm text-gray-700 dark:border-gray-800 dark:bg-white/[0.03] dark:text-gray-200">
                     <input
                         type="checkbox"
                         name="roles[]"
@@ -288,17 +290,9 @@
     </div>
 
     <template x-if="hasUserRole()">
-        <div class="sm:col-span-2 lg:col-span-3">
+        <div class="sm:col-span-2 lg:col-span-3 xl:col-span-4">
             <div class="rounded-2xl border border-brand-100 bg-brand-50/40 p-4 dark:border-brand-500/20 dark:bg-brand-500/5">
-                <div class="mb-4 flex items-center gap-3">
-                    <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-500 text-white">
-                        <i class="ri-user-3-line"></i>
-                    </div>
-                    <div>
-                        <h4 class="text-sm font-semibold text-gray-800 dark:text-white/90">Datos de usuario</h4>
-                        <p class="text-xs text-gray-500">Completa la cuenta para acceso al sistema.</p>
-                    </div>
-                </div>
+               
                 <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     <div>
                         <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Usuario</label>
@@ -337,7 +331,7 @@
                         >
                             <option value="">Seleccione perfil</option>
                             <template x-for="profile in profiles" :key="profile.id">
-                                <option :value="profile.id" x-text="profile.name"></option>
+                                <option :value="profile.id" :selected="profile.id == selectedProfileId" x-text="profile.name"></option>
                             </template>
                         </select>
                     </div>

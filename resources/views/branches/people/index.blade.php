@@ -245,7 +245,7 @@
             @open-user-modal.window="open = true; data = $event.detail"
             :isOpen="false"
             :showCloseButton="false"
-            class="max-w-xl"
+            class="max-w-md"
         >
             <div class="p-6 sm:p-8">
                 <div class="mb-6 flex items-center justify-between">
@@ -302,7 +302,7 @@
             @open-reset-password.window="open = true; data = $event.detail"
             :isOpen="false"
             :showCloseButton="false"
-            class="max-w-xl"
+            class="max-w-md"
         >
             <div class="p-6 sm:p-8">
                 <div class="mb-6 flex items-center justify-between">
@@ -360,7 +360,7 @@
             </div>
         </x-ui.modal>
 
-        <x-ui.modal x-data="{ open: false }" @open-person-modal.window="open = true" @close-person-modal.window="open = false" :isOpen="false" :showCloseButton="false" class="max-w-3xl">
+        <x-ui.modal x-data="{ open: false }" @open-person-modal.window="open = true" @close-person-modal.window="open = false" :isOpen="false" :showCloseButton="false" class="max-w-6xl">
             <div class="p-6 sm:p-8">
                 <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div class="flex items-center gap-4">
