@@ -15,8 +15,8 @@ return new class extends Migration
             $table->string('action');
             $table->foreignId('view_id')->constrained('views');
             $table->foreignId('module_id')->constrained('modules');
-            $table->smallInteger('status');
-            $table->boolean('quick_access');
+            $table->smallInteger(column: 'status');
+            $table->boolean(column: 'quick_access')->default(false);
             $table->timestamps();
             $table->softDeletes();
         });

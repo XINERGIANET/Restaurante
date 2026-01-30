@@ -18,26 +18,20 @@ class MenuHelper
             if (str_starts_with($action, '/') || str_starts_with($action, 'http')) {
                 return $action;
             }
-            return Route::has($action) ? route($action) : '#';
+            
+            if (Route::has($action)) {
+                try {
+                    return route($action);
+                } catch (\Exception $e) {
+                    // Si la ruta requiere parámetros, devolver #
+                    return '#';
+                }
+            }
+            
+            return '#';
         };
 
-        $quickOptions = MenuOption::where('status', 1)
-            ->where('quick_access', 1)
-            ->orderBy('id', 'asc')
-            ->get();
-
-        foreach ($quickOptions as $option) {
-            $path = $resolvePath($option->action);
-
-            $menuStructure[] = [
-                'icon' => self::getIconSvg($option->icon),
-                'name' => $option->name,
-                'subItems' => [], 
-                'path' => $path,
-                'active' => self::isActive($path)
-            ];
-        }
-
+        // Módulos con opciones - solo las que NO son acceso rápido
         $modules = Module::where('status', 1)
             ->with(['menuOptions' => function ($query) {
                 $query->where('status', 1)

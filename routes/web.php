@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AreaController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\BranchController;
@@ -153,7 +154,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('admin/herramientas/vistas', ViewsController::class)
         ->names('admin.views')
         ->parameters(['vistas' => 'view']);
-    Route::delete('/admin/herramientas/vistas/{view}', [ViewsController::class, 'destroy'])->name('admin.views.destroy');
+    Route::delete('/admin/herramientas/vistas/{view}', action: [ViewsController::class, 'destroy'])->name('admin.views.destroy');
 
     Route::resource('admin/herramientas/vistas.operations', OperationsController::class)
         ->names('admin.views.operations')
@@ -195,6 +196,11 @@ Route::middleware('auth')->group(function () {
     Route::view('/admin/caja/arqueos', 'pages.blank', ['title' => 'Arqueos']);
     Route::view('/admin/caja/gastos', 'pages.blank', ['title' => 'Gastos']);
 
+    // Areas
+    Route::resource('/admin/pedidos/areas', AreaController::class)
+        ->names('admin.areas')
+        ->parameters(['areas' => 'area']);
+    
     Route::view('/admin/configuracion/parametros', 'pages.blank', ['title' => 'Parametros']);
     Route::view('/admin/configuracion/menu', 'pages.blank', ['title' => 'Menu y recetas']);
     Route::view('/admin/configuracion/impuestos', 'pages.blank', ['title' => 'Impuestos']);
