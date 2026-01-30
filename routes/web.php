@@ -12,7 +12,6 @@ use App\Http\Controllers\ParameterCategoriesController;
 use App\Http\Controllers\ParameterController;
 use App\Http\Controllers\MenuOptionController;
 use App\Http\Controllers\ViewsController;
-use App\Http\Controllers\OperationsController;
 use App\Models\ParameterCategories;
 
 Route::prefix('restaurante')->name('restaurant.')->group(function () {
