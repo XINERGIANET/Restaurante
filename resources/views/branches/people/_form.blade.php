@@ -2,6 +2,9 @@
     $selectedDepartmentId = old('department_id', $selectedDepartmentId ?? null);
     $selectedProvinceId = old('province_id', $selectedProvinceId ?? null);
     $selectedDistrictId = old('location_id', $selectedDistrictId ?? ($person->location_id ?? null));
+    $selectedRoleIds = old('roles', $selectedRoleIds ?? []);
+    $selectedProfileId = old('profile_id', $selectedProfileId ?? null);
+    $userName = old('user_name', $userName ?? null);
 @endphp
 
 <div
@@ -12,6 +15,10 @@
     data-department-id='@json(old('department_id', $selectedDepartmentId ?? null), JSON_HEX_APOS | JSON_HEX_QUOT)'
     data-province-id='@json(old('province_id', $selectedProvinceId ?? null), JSON_HEX_APOS | JSON_HEX_QUOT)'
     data-district-id='@json(old('location_id', $selectedDistrictId ?? ($person->location_id ?? null)), JSON_HEX_APOS | JSON_HEX_QUOT)'
+    data-roles='@json($roles ?? [], JSON_HEX_APOS | JSON_HEX_QUOT)'
+    data-selected-roles='@json($selectedRoleIds ?? [], JSON_HEX_APOS | JSON_HEX_QUOT)'
+    data-profiles='@json($profiles ?? [], JSON_HEX_APOS | JSON_HEX_QUOT)'
+    data-selected-profile='@json($selectedProfileId ?? null, JSON_HEX_APOS | JSON_HEX_QUOT)'
     x-data="{
         departments: JSON.parse($el.dataset.departments || '[]'),
         provinces: JSON.parse($el.dataset.provinces || '[]'),
@@ -19,6 +26,12 @@
         departmentId: JSON.parse($el.dataset.departmentId || 'null') || '',
         provinceId: JSON.parse($el.dataset.provinceId || 'null') || '',
         districtId: JSON.parse($el.dataset.districtId || 'null') || '',
+        roles: JSON.parse($el.dataset.roles || '[]'),
+        profiles: JSON.parse($el.dataset.profiles || '[]'),
+        selectedRoleIds: JSON.parse($el.dataset.selectedRoles || '[]'),
+        selectedProfileId: JSON.parse($el.dataset.selectedProfile || 'null') || '',
+        roleToAdd: '',
+        userRoleId: 1,
         init() {
             if (!this.provinceId && this.districtId) {
                 const district = this.districts.find(d => d.id == this.districtId);
@@ -32,6 +45,24 @@
                     this.departmentId = province.parent_location_id ?? '';
                 }
             }
+        },
+        addRole() {
+            const roleId = parseInt(this.roleToAdd || 0, 10);
+            if (!roleId) return;
+            if (!this.selectedRoleIds.includes(roleId)) {
+                this.selectedRoleIds.push(roleId);
+            }
+            this.roleToAdd = '';
+        },
+        toggleRole(roleId) {
+            if (this.selectedRoleIds.includes(roleId)) {
+                this.selectedRoleIds = this.selectedRoleIds.filter(id => id !== roleId);
+            } else {
+                this.selectedRoleIds.push(roleId);
+            }
+        },
+        hasUserRole() {
+            return this.selectedRoleIds.includes(this.userRoleId);
         },
         get filteredProvinces() {
             return this.provinces.filter(p => p.parent_location_id == this.departmentId);
@@ -63,6 +94,7 @@
             <p class="mt-1 text-xs text-error-500">{{ $message }}</p>
         @enderror
     </div>
+
 
     <div>
         <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Apellidos</label>
@@ -235,4 +267,82 @@
             <p class="mt-1 text-xs text-error-500">{{ $message }}</p>
         @enderror
     </div>
+
+    <div class="sm:col-span-2 lg:col-span-3">
+        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Roles</label>
+        <div class="flex items-center gap-4 flex-nowrap">
+            <template x-for="role in roles" :key="role.id">
+                <label class="inline-flex items-center gap-2 whitespace-nowrap rounded-full border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700 shadow-theme-xs dark:border-gray-800 dark:bg-white/[0.03] dark:text-gray-200">
+                    <input
+                        type="checkbox"
+                        name="roles[]"
+                        :value="role.id"
+                        :checked="selectedRoleIds.includes(role.id)"
+                        @change="toggleRole(role.id)"
+                        class="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/10"
+                    />
+                    <span x-text="role.name"></span>
+                </label>
+            </template>
+        </div>
+    </div>
+
+    <template x-if="hasUserRole()">
+        <div class="sm:col-span-2 lg:col-span-3">
+            <div class="rounded-2xl border border-brand-100 bg-brand-50/40 p-4 dark:border-brand-500/20 dark:bg-brand-500/5">
+                <div class="mb-4 flex items-center gap-3">
+                    <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-500 text-white">
+                        <i class="ri-user-3-line"></i>
+                    </div>
+                    <div>
+                        <h4 class="text-sm font-semibold text-gray-800 dark:text-white/90">Datos de usuario</h4>
+                        <p class="text-xs text-gray-500">Completa la cuenta para acceso al sistema.</p>
+                    </div>
+                </div>
+                <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <div>
+                        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Usuario</label>
+                        <input
+                            type="text"
+                            name="user_name"
+                            value="{{ $userName }}"
+                            placeholder="Ingrese el usuario"
+                            class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+                        />
+                    </div>
+                    <div>
+                        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Contraseña</label>
+                        <input
+                            type="password"
+                            name="password"
+                            placeholder="Ingrese la contraseña"
+                            class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+                        />
+                    </div>
+                    <div>
+                        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Confirmar contraseña</label>
+                        <input
+                            type="password"
+                            name="password_confirmation"
+                            placeholder="Confirme la contraseña"
+                            class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+                        />
+                    </div>
+                    <div class="sm:col-span-2 lg:col-span-3">
+                        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Perfil</label>
+                        <select
+                            name="profile_id"
+                            x-model="selectedProfileId"
+                            class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+                        >
+                            <option value="">Seleccione perfil</option>
+                            <template x-for="profile in profiles" :key="profile.id">
+                                <option :value="profile.id" x-text="profile.name"></option>
+                            </template>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
 </div>

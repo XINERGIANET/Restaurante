@@ -7,6 +7,7 @@ use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\ModulesController;
 use App\Http\Controllers\PersonController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\RoleController;
 use App\Http\Controllers\OperationsController;
 use App\Http\Controllers\ParameterCategoriesController;
 use App\Http\Controllers\ParameterController;
@@ -64,6 +65,10 @@ Route::middleware('auth')->group(function () {
     Route::resource('/admin/herramientas/perfiles', ProfileController::class)
         ->names('admin.profiles')
         ->parameters(['perfiles' => 'profile'])
+        ->only(['index', 'store', 'edit', 'update', 'destroy']);
+    Route::resource('/admin/herramientas/roles', RoleController::class)
+        ->names('admin.roles')
+        ->parameters(['roles' => 'role'])
         ->only(['index', 'store', 'edit', 'update', 'destroy']);
 
     // dashboard pages
@@ -137,7 +142,6 @@ Route::middleware('auth')->group(function () {
 
     // Modulos administrativos
     Route::view('/admin/herramientas/usuarios', 'pages.blank', ['title' => 'Usuarios']);
-    Route::view('/admin/herramientas/roles', 'pages.blank', ['title' => 'Roles y permisos']);
     Route::view('/admin/herramientas/sucursales', 'pages.blank', ['title' => 'Sucursales']);
 
     // Modulos
