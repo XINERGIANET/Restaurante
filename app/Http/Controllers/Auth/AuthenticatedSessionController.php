@@ -10,13 +10,13 @@ class AuthenticatedSessionController extends Controller
 {
     public function create()
     {
-        return view('pages.auth.signin', ['title' => 'Sign In']);
+        return view('pages.auth.signin', ['title' => 'Login']);
     }
 
     public function store(Request $request)
     {
         $credentials = $request->validate([
-            'email' => ['required', 'email'],
+            'name' => ['required', 'string'],
             'password' => ['required', 'string'],
         ]);
 
@@ -27,8 +27,8 @@ class AuthenticatedSessionController extends Controller
         }
 
         return back()->withErrors([
-            'email' => 'Credenciales invalidas.',
-        ])->onlyInput('email');
+            'name' => 'Credenciales invalidas.',
+        ])->onlyInput('name');
     }
 
     public function destroy(Request $request)
