@@ -7,9 +7,12 @@ use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\ModulesController;
 use App\Http\Controllers\PersonController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\OperationsController;
 use App\Http\Controllers\ParameterCategoriesController;
 use App\Http\Controllers\ParameterController;
 use App\Http\Controllers\MenuOptionController;
+use App\Http\Controllers\ViewsController;
+use App\Http\Controllers\OperationsController;
 use App\Models\ParameterCategories;
 
 Route::prefix('restaurante')->name('restaurant.')->group(function () {
@@ -147,6 +150,17 @@ Route::middleware('auth')->group(function () {
         ->names('admin.modules.menu_options')
         ->parameters(['modulos' => 'module', 'menu' => 'menuOption']);
 
+    // Vistas
+    Route::resource('admin/herramientas/vistas', ViewsController::class)
+        ->names('admin.views')
+        ->parameters(['vistas' => 'view']);
+    Route::delete('/admin/herramientas/vistas/{view}', [ViewsController::class, 'destroy'])->name('admin.views.destroy');
+
+    Route::resource('admin/herramientas/vistas.operations', OperationsController::class)
+        ->names('admin.views.operations')
+        ->parameters(['vistas' => 'view', 'operations' => 'operation']);
+
+    
     //<-----Parametros----->
     //Categorias de parametros
     Route::get('/admin/herramientas/parametros/categorias', [ParameterCategoriesController::class, 'index'])->name('admin.parameters.categories.index');
@@ -160,6 +174,9 @@ Route::middleware('auth')->group(function () {
     Route::put('/admin/herramientas/parametros/{parameter}', [ParameterController::class, 'update'])->name('admin.parameters.update');
     Route::delete('/admin/herramientas/parametros/{parameter}', [ParameterController::class, 'destroy'])->name('admin.parameters.destroy');
 
+    // Operaciones
+    Route::get('/admin/herramientas/operaciones', [OperationsController::class, 'index'])->name('admin.operations.index');
+    Route::post('/admin/herramientas/operaciones', [OperationsController::class, 'store'])->name('admin.operations.store');
     Route::view('/admin/pedidos/ordenes', 'pages.blank', ['title' => 'Ordenes activas']);
     Route::view('/admin/pedidos/cocina', 'pages.blank', ['title' => 'Cocina']);
     Route::view('/admin/pedidos/delivery', 'pages.blank', ['title' => 'Delivery']);

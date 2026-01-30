@@ -9,7 +9,7 @@
 
 @php
     // Base classes
-    $base = 'inline-flex items-center justify-center font-medium gap-2 rounded-full transition';
+    $base = 'inline-flex items-center justify-center font-medium gap-2 rounded-xl transition';
 
     // Size map
     $sizeMap = [

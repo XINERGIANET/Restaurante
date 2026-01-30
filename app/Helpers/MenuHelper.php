@@ -6,43 +6,69 @@ use Illuminate\Support\Facades\URL;
 use App\Models\Module;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Route;
+use App\Models\MenuOption;
 
 class MenuHelper
 {
     public static function getMainNavItems()
     {
-        $modules = Module::where('status', 1) 
-        ->with(['menuOptions' => function ($query) {
-            $query->where('status', 1)   
-                  ->orderBy('id', 'asc'); 
-        }])
-        ->orderBy('order_num', 'asc')     
-        ->get();
-
         $menuStructure = [];
+
+        $resolvePath = function ($action) {
+            if (str_starts_with($action, '/') || str_starts_with($action, 'http')) {
+                return $action;
+            }
+            return Route::has($action) ? route($action) : '#';
+        };
+
+        $quickOptions = MenuOption::where('status', 1)
+            ->where('quick_access', 1)
+            ->orderBy('id', 'asc')
+            ->get();
+
+        foreach ($quickOptions as $option) {
+            $path = $resolvePath($option->action);
+
+            $menuStructure[] = [
+                'icon' => self::getIconSvg($option->icon),
+                'name' => $option->name,
+                'subItems' => [], 
+                'path' => $path,
+                'active' => self::isActive($path)
+            ];
+        }
+
+        $modules = Module::where('status', 1)
+            ->with(['menuOptions' => function ($query) {
+                $query->where('status', 1)
+                    ->where('quick_access', 0) 
+                    ->orderBy('id', 'asc');
+            }])
+            ->orderBy('order_num', 'asc')
+            ->get();
 
         foreach ($modules as $module) {
             $subItems = [];
 
             foreach ($module->menuOptions as $option) {
-                if (str_starts_with($option->action, '/')) {
-                    $finalPath = $option->action;
-                } else {
-                    $finalPath = Route::has($option->action) ? route($option->action) : '#';
-                }
+                $path = $resolvePath($option->action);
 
                 $subItems[] = [
                     'name' => $option->name,
-                    'path' => $finalPath,
+                    'path' => $path,
+                    'active' => self::isActive($path)
                 ];
             }
 
-            $menuStructure[] = [
-                'icon' => self::getIconSvg($module->icon),
-                'name' => $module->name,
-                'subItems' => $subItems,
-                'path' => '#',
-            ];
+            if (count($subItems) > 0) {
+                $menuStructure[] = [
+                    'icon' => self::getIconSvg($module->icon),
+                    'name' => $module->name,
+                    'subItems' => $subItems,
+                    'path' => '#',
+                    'active' => collect($subItems)->contains('active', true)
+                ];
+            }
         }
 
         return $menuStructure;
