@@ -1,37 +1,37 @@
 @extends('layouts.app')
 
 @section('content')
-    <x-common.page-breadcrumb pageTitle="Personal" />
+    <x-common.page-breadcrumb pageTitle="Roles" />
 
     <x-ui.modal
         x-data="{
             open: true,
             close() {
                 if (window.Turbo && typeof window.Turbo.visit === 'function') {
-                    window.Turbo.visit('{{ route('admin.companies.branches.people.index', [$company, $branch]) }}', { action: 'replace' });
+                    window.Turbo.visit('{{ route('admin.roles.index') }}', { action: 'replace' });
                 } else {
-                    window.location.href = '{{ route('admin.companies.branches.people.index', [$company, $branch]) }}';
+                    window.location.href = '{{ route('admin.roles.index') }}';
                 }
             }
         }"
         :isOpen="true"
         :showCloseButton="false"
-        class="max-w-6xl"
+        class="max-w-3xl"
     >
         <div class="p-6 sm:p-8">
             <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div class="flex items-center gap-4">
                     <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-500 dark:bg-brand-500/10">
-                        <i class="ri-team-line text-2xl"></i>
+                        <i class="ri-shield-user-line text-2xl"></i>
                     </div>
                     <div>
-                        <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Editar personal</h3>
-                        <p class="mt-1 text-sm text-gray-500">Actualiza la informacion del personal.</p>
+                        <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Editar rol</h3>
+                        <p class="mt-1 text-sm text-gray-500">Actualiza la informacion del rol.</p>
                     </div>
                 </div>
                 <a
-                    href="{{ route('admin.companies.branches.people.index', [$company, $branch]) }}"
-                    onclick="if (window.Turbo && typeof window.Turbo.visit === 'function') { window.Turbo.visit('{{ route('admin.companies.branches.people.index', [$company, $branch]) }}', { action: 'replace' }); return false; }"
+                    href="{{ route('admin.roles.index') }}"
+                    onclick="if (window.Turbo && typeof window.Turbo.visit === 'function') { window.Turbo.visit('{{ route('admin.roles.index') }}', { action: 'replace' }); return false; }"
                     class="flex h-11 w-11 items-center justify-center rounded-full bg-gray-100 text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
                     aria-label="Cerrar"
                 >
@@ -45,11 +45,11 @@
                 </div>
             @endif
 
-            <form method="POST" action="{{ route('admin.companies.branches.people.update', [$company, $branch, $person]) }}" class="space-y-6">
+            <form method="POST" action="{{ route('admin.roles.update', $role) }}" class="space-y-6">
                 @csrf
                 @method('PUT')
 
-                @include('branches.people._form', ['person' => $person])
+                @include('roles._form', ['role' => $role])
 
                 <div class="flex flex-wrap gap-3">
                     <x-ui.button type="submit" size="md" variant="primary">
@@ -59,8 +59,8 @@
                     <x-ui.link-button
                         size="md"
                         variant="outline"
-                        href="{{ route('admin.companies.branches.people.index', [$company, $branch]) }}"
-                        onclick="if (window.Turbo && typeof window.Turbo.visit === 'function') { window.Turbo.visit('{{ route('admin.companies.branches.people.index', [$company, $branch]) }}', { action: 'replace' }); return false; }"
+                        href="{{ route('admin.roles.index') }}"
+                        onclick="if (window.Turbo && typeof window.Turbo.visit === 'function') { window.Turbo.visit('{{ route('admin.roles.index') }}', { action: 'replace' }); return false; }"
                     >
                         <i class="ri-close-line"></i>
                         <span>Cancelar</span>
