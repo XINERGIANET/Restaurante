@@ -16,6 +16,15 @@
         >
             <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                 <form method="GET" class="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
+                    <div class="w-29">
+                            <select name="per_page"
+                                class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-3 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+                                onchange="this.form.submit()">
+                                @foreach ([10, 20, 50, 100] as $size)
+                                    <option value="{{ $size }}" @selected($perPage == $size)>{{ $size }} / pagina</option>
+                                @endforeach
+                            </select>
+                        </div>
                     <div class="relative flex-1">
                         <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
                             <i class="ri-search-line"></i>
@@ -33,6 +42,7 @@
                             <i class="ri-search-line"></i>
                             <span>Buscar</span>
                         </x-ui.button>
+                        
                         <x-ui.link-button size="sm" variant="outline" href="{{ route('admin.companies.branches.index', $company) }}">
                             <i class="ri-close-line"></i>
                             <span>Limpiar</span>
@@ -108,6 +118,32 @@
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
                                     <div class="flex items-center justify-end gap-2">
+                                        <div class="relative group">
+                                            <x-ui.link-button
+                                                size="icon"
+                                                variant="primary"
+                                                href="{{ route('admin.companies.branches.profiles.index', [$company, $branch, 'icon' => 'ri-user-settings-line']) }}"
+                                                className="bg-brand-500 text-white hover:bg-brand-600 ring-0 rounded-full"
+                                                style="border-radius: 100%; background-color: #603bf6; color: #FFFFFF;"
+                                                aria-label="Ver perfiles"
+                                            >
+                                                <i class="ri-user-settings-line"></i>
+                                            </x-ui.link-button>
+                                            <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">Perfiles</span>
+                                        </div>
+                                        <div class="relative group">
+                                            <x-ui.link-button
+                                                size="icon"
+                                                variant="primary"
+                                                href="{{ route('admin.companies.branches.people.index', [$company, $branch, 'icon' => 'ri-team-line']) }}"
+                                                className="bg-brand-500 text-white hover:bg-brand-600 ring-0 rounded-full"
+                                                style="border-radius: 100%; background-color: #3B82F6; color: #FFFFFF;"
+                                                aria-label="Ver personal"
+                                            >
+                                                <i class="ri-team-line"></i>
+                                            </x-ui.link-button>
+                                            <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">Personal</span>
+                                        </div>
                                         <div class="relative group">
                                             <x-ui.link-button
                                                 size="icon" variant="outline" href="{{ route('admin.companies.branches.edit', [$company, $branch]) }}"

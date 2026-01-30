@@ -1,10 +1,15 @@
 
 @php
     use App\Helpers\MenuHelper;
+    use App\Models\Profile;
     $menuGroups = MenuHelper::getMenuGroups();
 
     // Get current path
     $currentPath = request()->path();
+    $profileName = null;
+    if (auth()->check() && auth()->user()->profile_id) {
+        $profileName = Profile::where('id', auth()->user()->profile_id)->value('name');
+    }
 @endphp
 
 <aside id="sidebar"
@@ -91,12 +96,12 @@
         'justify-start'">
         <a href="/">
             <img x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
-                class="dark:hidden" src="/images/logo/logo.svg" alt="Logo" width="150" height="40" />
+                class="dark:hidden" src="/images/logo/Xinergia.png" alt="Logo" width="150" height="40" />
             <img x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
-                class="hidden dark:block" src="/images/logo/logo-dark.svg" alt="Logo" width="150"
+                class="hidden dark:block" src="/images/logo/Xinergia.png" alt="Logo" width="150"
                 height="40" />
             <img x-show="!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen"
-                src="/images/logo/logo-icon.svg" alt="Logo" width="32" height="32" />
+                src="/images/logo/Xinergia-icon.png" alt="Logo" width="32" height="32" />
 
         </a>
     </div>
@@ -113,7 +118,7 @@
                             'lg:justify-center' : 'justify-start'">
                             <template
                                 x-if="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen">
-                                <span>{{ $menuGroup['title'] }}</span>
+                                <span>{{ $profileName ?? $menuGroup['title'] }}</span>
                             </template>
                             <template x-if="!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -256,6 +261,5 @@
 <!-- Mobile Overlay -->
 <div x-show="$store.sidebar.isMobileOpen" @click="$store.sidebar.setMobileOpen(false)"
     class="fixed z-50 h-screen w-full bg-gray-900/50"></div>
-
 
 

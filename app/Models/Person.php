@@ -6,23 +6,27 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class Branch extends Model
+class Person extends Model
 {
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'tax_id',
-        'ruc',
-        'company_id',
-        'legal_name',
-        'logo',
+        'first_name',
+        'last_name',
+        'fecha_nacimiento',
+        'genero',
+        'person_type',
+        'phone',
+        'email',
+        'document_number',
         'address',
         'location_id',
+        'branch_id',
     ];
 
-    public function company()
+    public function branch()
     {
-        return $this->belongsTo(Company::class);
+        return $this->belongsTo(Branch::class);
     }
 
     public function location()
@@ -30,8 +34,8 @@ class Branch extends Model
         return $this->belongsTo(Location::class);
     }
 
-    public function people()
+    public function user()
     {
-        return $this->hasMany(Person::class);
+        return $this->hasOne(User::class, 'person_id');
     }
 }

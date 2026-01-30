@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Models\Location;
+use App\Models\Profile;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class BranchController extends Controller
@@ -14,23 +16,30 @@ class BranchController extends Controller
     {
         $search = $request->input('search');
 
+        $perPage = (int) $request->input('per_page', 10);
+        $allowedPerPage = [10, 20, 50, 100];
+        if (!in_array($perPage, $allowedPerPage, true)) {
+            $perPage = 10;
+        }
+
         $branches = $company->branches()
             ->with('location')
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
-                    $inner->where('legal_name', 'ilike', "%{$search}%")
-                        ->orWhere('tax_id', 'ilike', "%{$search}%")
-                        ->orWhere('address', 'ilike', "%{$search}%");
+                    $inner->where('legal_name', 'like', "%{$search}%")
+                        ->orWhere('tax_id', 'like', "%{$search}%")
+                        ->orWhere('address', 'like', "%{$search}%");
                 });
             })
             ->orderByDesc('id')
-            ->paginate(10)
+            ->paginate($perPage)
             ->withQueryString();
 
         return view('branches.index', [
             'company' => $company,
             'branches' => $branches,
             'search' => $search,
+            'perPage' => $perPage,
         ] + $this->getLocationData());
     }
 
@@ -75,6 +84,112 @@ class BranchController extends Controller
             'company' => $company,
             'branch' => $branch,
         ] + $this->getLocationData($branch));
+    }
+
+    public function profiles(Request $request, Company $company, Branch $branch)
+    {
+        $branch = $this->resolveBranch($company, $branch);
+        $search = $request->input('search');
+
+        $perPage = (int) $request->input('per_page', 10);
+        $allowedPerPage = [10, 20, 50, 100];
+        if (!in_array($perPage, $allowedPerPage, true)) {
+            $perPage = 10;
+        }
+
+        $profiles = Profile::query()
+            ->whereNull('profiles.deleted_at')
+            ->whereExists(function ($query) use ($branch) {
+                $query->select(DB::raw(1))
+                    ->from('profile_branch')
+                    ->whereColumn('profile_branch.profile_id', 'profiles.id')
+                    ->where('profile_branch.branch_id', $branch->id)
+                    ->whereNull('profile_branch.deleted_at');
+            })
+            ->when($search, function ($query) use ($search) {
+                $query->where('name', 'like', "%{$search}%");
+            })
+            ->orderBy('profiles.name')
+            ->paginate($perPage)
+            ->withQueryString();
+
+        return view('branches.profiles.index', [
+            'company' => $company,
+            'branch' => $branch,
+            'profiles' => $profiles,
+            'search' => $search,
+            'perPage' => $perPage,
+        ]);
+    }
+
+    public function profilePermissions(Request $request, Company $company, Branch $branch, Profile $profile)
+    {
+        $branch = $this->resolveBranch($company, $branch);
+        $this->ensureProfileAssignedToBranch($profile->id, $branch->id);
+
+        $search = $request->input('search');
+        $perPage = (int) $request->input('per_page', 10);
+        $allowedPerPage = [10, 20, 50, 100];
+        if (!in_array($perPage, $allowedPerPage, true)) {
+            $perPage = 10;
+        }
+
+        $permissions = DB::table('user_permission')
+            ->join('menu_option', 'menu_option.id', '=', 'user_permission.menu_option_id')
+            ->join('modules', 'modules.id', '=', 'menu_option.module_id')
+            ->where('user_permission.profile_id', $profile->id)
+            ->where('user_permission.branch_id', $branch->id)
+            ->whereNull('user_permission.deleted_at')
+            ->when($search, function ($query) use ($search) {
+                $query->where('user_permission.name', 'like', "%{$search}%");
+            })
+            ->orderBy('modules.name')
+            ->orderBy('user_permission.name')
+            ->select([
+                'user_permission.id',
+                'user_permission.name',
+                'user_permission.status',
+                'modules.name as module_name',
+            ])
+            ->paginate($perPage)
+            ->withQueryString();
+
+        return view('branches.profiles.permissions.index', [
+            'company' => $company,
+            'branch' => $branch,
+            'profile' => $profile,
+            'permissions' => $permissions,
+            'search' => $search,
+            'perPage' => $perPage,
+        ]);
+    }
+
+    public function toggleProfilePermission(Company $company, Branch $branch, Profile $profile, string $permission)
+    {
+        $branch = $this->resolveBranch($company, $branch);
+        $this->ensureProfileAssignedToBranch($profile->id, $branch->id);
+
+        $record = DB::table('user_permission')
+            ->where('id', $permission)
+            ->where('profile_id', $profile->id)
+            ->where('branch_id', $branch->id)
+            ->whereNull('deleted_at')
+            ->first();
+
+        if (!$record) {
+            abort(404);
+        }
+
+        DB::table('user_permission')
+            ->where('id', $permission)
+            ->update([
+                'status' => !$record->status,
+                'updated_at' => now(),
+            ]);
+
+        return redirect()
+            ->route('admin.companies.branches.profiles.permissions.index', [$company, $branch, $profile])
+            ->with('status', 'Permiso actualizado correctamente.');
     }
 
     public function update(Request $request, Company $company, Branch $branch)
@@ -166,5 +281,18 @@ class BranchController extends Controller
             'selectedProvinceId' => $selectedProvinceId,
             'selectedDistrictId' => $selectedDistrictId,
         ];
+    }
+
+    private function ensureProfileAssignedToBranch(int $profileId, int $branchId): void
+    {
+        $assigned = DB::table('profile_branch')
+            ->where('profile_id', $profileId)
+            ->where('branch_id', $branchId)
+            ->whereNull('deleted_at')
+            ->exists();
+
+        if (!$assigned) {
+            abort(404);
+        }
     }
 }
