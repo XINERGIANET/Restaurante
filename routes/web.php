@@ -12,6 +12,7 @@ use App\Http\Controllers\OperationsController;
 use App\Http\Controllers\ParameterCategoriesController;
 use App\Http\Controllers\ParameterController;
 use App\Http\Controllers\MenuOptionController;
+use App\Http\Controllers\TableController;
 use App\Http\Controllers\ViewsController;
 use App\Models\ParameterCategories;
 
@@ -182,8 +183,13 @@ Route::middleware('auth')->group(function () {
     // Areas
     Route::resource('/admin/pedidos/areas', AreaController::class)
         ->names('admin.areas')
-        ->parameters(['areas' => 'area']);
+        ->parameters(['areas' => 'area'])
+        ->only(['index', 'store', 'edit', 'update', 'destroy']);
     
+    // Mesas
+    Route::resource('/admin/pedidos/areas/{area}/mesas', TableController::class)
+        ->names('admin.areas.tables')
+        ->parameters(['areas' => 'area']);
     Route::view('/admin/configuracion/parametros', 'pages.blank', ['title' => 'Parametros']);
     Route::view('/admin/configuracion/menu', 'pages.blank', ['title' => 'Menu y recetas']);
     Route::view('/admin/configuracion/impuestos', 'pages.blank', ['title' => 'Impuestos']);
