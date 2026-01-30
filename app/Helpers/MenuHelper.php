@@ -62,6 +62,13 @@ class MenuHelper
                     'path' => '#',
                     'active' => collect($subItems)->contains('active', true)
                 ];
+            } else {
+                $menuStructure[] = [
+                    'icon' => self::getIconSvg($module->icon),
+                    'name' => $module->name,
+                    'path' => '#',
+                    'active' => false
+                ];
             }
         }
 

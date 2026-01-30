@@ -61,6 +61,7 @@
                         <tr class="border-b border-gray-100 dark:border-gray-800">
                             <th class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">ID</p></th>
                             <th class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Nombre</p></th>
+                            <th class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Abreviatura</p></th>
                             <th class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Estado</p></th>
                             <th class="px-5 py-3 text-right sm:px-6"><p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Acciones</p></th>
                         </tr>
@@ -71,6 +72,9 @@
                                 <td class="px-5 py-4 sm:px-6"><span class="font-bold text-gray-700 dark:text-gray-200">#{{ $view->id }}</span></td>
                                 <td class="px-5 py-4 sm:px-6">
                                     <p class="font-medium text-gray-800 text-theme-sm dark:text-white/90">{{ $view->name }}</p>
+                                </td>
+                                <td class="px-5 py-4 sm:px-6">
+                                    <p class="text-gray-500 text-theme-sm dark:text-gray-400">{{ $view->abbreviation ?? '-' }}</p>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
                                     <x-ui.badge variant="light" color="{{ $view->status ? 'success' : 'error' }}">
@@ -119,7 +123,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="4" class="px-6 py-12 text-center text-gray-500">
+                                <td colspan="5" class="px-6 py-12 text-center text-gray-500">
                                     No hay vistas registradas.
                                 </td>
                             </tr>

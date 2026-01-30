@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\Role;
 
 class Person extends Model
 {
@@ -37,5 +38,12 @@ class Person extends Model
     public function user()
     {
         return $this->hasOne(User::class, 'person_id');
+    }
+
+    public function roles()
+    {
+        return $this->belongsToMany(Role::class, 'role_person')
+            ->withPivot('branch_id')
+            ->withTimestamps();
     }
 }

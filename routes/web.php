@@ -177,24 +177,7 @@ Route::middleware('auth')->group(function () {
     // Operaciones
     Route::get('/admin/herramientas/operaciones', [OperationsController::class, 'index'])->name('admin.operations.index');
     Route::post('/admin/herramientas/operaciones', [OperationsController::class, 'store'])->name('admin.operations.store');
-    Route::view('/admin/pedidos/ordenes', 'pages.blank', ['title' => 'Ordenes activas']);
-    Route::view('/admin/pedidos/cocina', 'pages.blank', ['title' => 'Cocina']);
-    Route::view('/admin/pedidos/delivery', 'pages.blank', ['title' => 'Delivery']);
-    Route::view('/admin/ventas/pos', 'pages.blank', ['title' => 'POS']);
-    Route::view('/admin/ventas/facturacion', 'pages.blank', ['title' => 'Facturacion']);
-    Route::view('/admin/ventas/reportes', 'pages.blank', ['title' => 'Reportes']);
 
-    Route::view('/admin/compras/proveedores', 'pages.blank', ['title' => 'Proveedores']);
-    Route::view('/admin/compras/ordenes', 'pages.blank', ['title' => 'Ordenes de compra']);
-    Route::view('/admin/compras/recepciones', 'pages.blank', ['title' => 'Recepciones']);
-
-    Route::view('/admin/almacen/inventario', 'pages.blank', ['title' => 'Inventario']);
-    Route::view('/admin/almacen/insumos', 'pages.blank', ['title' => 'Insumos']);
-    Route::view('/admin/almacen/movimientos', 'pages.blank', ['title' => 'Movimientos']);
-
-    Route::view('/admin/caja/aperturas', 'pages.blank', ['title' => 'Apertura y cierre']);
-    Route::view('/admin/caja/arqueos', 'pages.blank', ['title' => 'Arqueos']);
-    Route::view('/admin/caja/gastos', 'pages.blank', ['title' => 'Gastos']);
 
     // Areas
     Route::resource('/admin/pedidos/areas', AreaController::class)

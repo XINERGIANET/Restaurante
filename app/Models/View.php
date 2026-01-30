@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class View extends Model
 {
     protected $table = 'views';
-    protected $fillable = ['name', 'status'];
+    protected $fillable = ['name', 'abbreviation', 'status'];
 
     public function operations(): HasMany
     {
