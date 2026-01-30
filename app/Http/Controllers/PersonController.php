@@ -6,7 +6,11 @@ use App\Models\Branch;
 use App\Models\Company;
 use App\Models\Location;
 use App\Models\Person;
+use App\Models\Profile;
+use App\Models\Role;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 class PersonController extends Controller
@@ -15,6 +19,8 @@ class PersonController extends Controller
     {
         $branch = $this->resolveBranch($company, $branch);
         $search = $request->input('search');
+        $roles = Role::query()->orderBy('name')->get(['id', 'name']);
+        $profiles = Profile::query()->orderBy('name')->get(['id', 'name']);
 
         $perPage = (int) $request->input('per_page', 10);
         $allowedPerPage = [10, 20, 50, 100];
@@ -42,6 +48,11 @@ class PersonController extends Controller
             'people' => $people,
             'search' => $search,
             'perPage' => $perPage,
+            'roles' => $roles,
+            'profiles' => $profiles,
+            'selectedRoleIds' => old('roles', []),
+            'selectedProfileId' => old('profile_id'),
+            'userName' => old('user_name'),
         ] + $this->getLocationData());
     }
 
@@ -50,8 +61,24 @@ class PersonController extends Controller
         $branch = $this->resolveBranch($company, $branch);
         $data = $this->validatePerson($request);
         $data['branch_id'] = $branch->id;
+        $roleIds = $this->validateRoles($request);
+        $hasUserRole = in_array(1, $roleIds, true);
+        $userData = $this->validateUserData($request, $hasUserRole, null);
 
-        $branch->people()->create($data);
+        DB::transaction(function () use ($branch, $data, $roleIds, $hasUserRole, $userData) {
+            $person = $branch->people()->create($data);
+            $this->syncRoles($person, $roleIds, $branch->id);
+
+            if ($hasUserRole) {
+                User::create([
+                    'name' => $userData['user_name'],
+                    'email' => $person->email,
+                    'password' => Hash::make($userData['password']),
+                    'person_id' => $person->id,
+                    'profile_id' => $userData['profile_id'],
+                ]);
+            }
+        });
 
         return redirect()
             ->route('admin.companies.branches.people.index', [$company, $branch])
@@ -62,11 +89,20 @@ class PersonController extends Controller
     {
         $branch = $this->resolveBranch($company, $branch);
         $person = $this->resolvePerson($branch, $person);
+        $roles = Role::query()->orderBy('name')->get(['id', 'name']);
+        $profiles = Profile::query()->orderBy('name')->get(['id', 'name']);
+        $selectedRoleIds = old('roles', $person->roles()->pluck('roles.id')->all());
+        $user = $person->user;
 
         return view('branches.people.edit', [
             'company' => $company,
             'branch' => $branch,
             'person' => $person,
+            'roles' => $roles,
+            'profiles' => $profiles,
+            'selectedRoleIds' => $selectedRoleIds,
+            'selectedProfileId' => old('profile_id', $user?->profile_id),
+            'userName' => old('user_name', $user?->name),
         ] + $this->getLocationData($person));
     }
 
@@ -75,8 +111,38 @@ class PersonController extends Controller
         $branch = $this->resolveBranch($company, $branch);
         $person = $this->resolvePerson($branch, $person);
         $data = $this->validatePerson($request);
+        $roleIds = $this->validateRoles($request);
+        $hasUserRole = in_array(1, $roleIds, true);
+        $userData = $this->validateUserData($request, $hasUserRole, $person);
 
-        $person->update($data);
+        DB::transaction(function () use ($person, $branch, $data, $roleIds, $hasUserRole, $userData) {
+            $person->update($data);
+            $this->syncRoles($person, $roleIds, $branch->id);
+
+            if ($hasUserRole) {
+                $user = $person->user;
+                if ($user) {
+                    $user->update([
+                        'name' => $userData['user_name'],
+                        'email' => $person->email,
+                        'profile_id' => $userData['profile_id'],
+                    ]);
+                    if (!empty($userData['password'])) {
+                        $user->update([
+                            'password' => Hash::make($userData['password']),
+                        ]);
+                    }
+                } else {
+                    User::create([
+                        'name' => $userData['user_name'],
+                        'email' => $person->email,
+                        'password' => Hash::make($userData['password']),
+                        'person_id' => $person->id,
+                        'profile_id' => $userData['profile_id'],
+                    ]);
+                }
+            }
+        });
 
         return redirect()
             ->route('admin.companies.branches.people.index', [$company, $branch])
@@ -133,6 +199,45 @@ class PersonController extends Controller
             'address' => ['required', 'string', 'max:255'],
             'location_id' => ['required', 'integer', 'exists:locations,id'],
         ]);
+    }
+
+    private function validateRoles(Request $request): array
+    {
+        $validated = $request->validate([
+            'roles' => ['nullable', 'array'],
+            'roles.*' => ['integer', 'exists:roles,id'],
+        ]);
+
+        return array_values(array_unique(array_map('intval', $validated['roles'] ?? [])));
+    }
+
+    private function validateUserData(Request $request, bool $hasUserRole, ?Person $person): array
+    {
+        if (!$hasUserRole) {
+            return [];
+        }
+
+        $rules = [
+            'user_name' => ['required', 'string', 'max:255'],
+            'profile_id' => ['required', 'integer', 'exists:profiles,id'],
+        ];
+
+        if ($person && $person->user) {
+            $rules['password'] = ['nullable', 'string', 'min:8', 'confirmed'];
+        } else {
+            $rules['password'] = ['required', 'string', 'min:8', 'confirmed'];
+        }
+
+        return $request->validate($rules);
+    }
+
+    private function syncRoles(Person $person, array $roleIds, int $branchId): void
+    {
+        $syncData = [];
+        foreach ($roleIds as $roleId) {
+            $syncData[$roleId] = ['branch_id' => $branchId];
+        }
+        $person->roles()->sync($syncData);
     }
 
     private function resolveBranch(Company $company, Branch $branch): Branch
