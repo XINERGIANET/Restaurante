@@ -7,6 +7,7 @@ use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\ModulesController;
 use App\Http\Controllers\PersonController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\OperationsController;
 use App\Http\Controllers\ParameterCategoriesController;
 use App\Http\Controllers\ParameterController;
 use App\Http\Controllers\MenuOptionController;
@@ -173,6 +174,9 @@ Route::middleware('auth')->group(function () {
     Route::put('/admin/herramientas/parametros/{parameter}', [ParameterController::class, 'update'])->name('admin.parameters.update');
     Route::delete('/admin/herramientas/parametros/{parameter}', [ParameterController::class, 'destroy'])->name('admin.parameters.destroy');
 
+    // Operaciones
+    Route::get('/admin/herramientas/operaciones', [OperationsController::class, 'index'])->name('admin.operations.index');
+    Route::post('/admin/herramientas/operaciones', [OperationsController::class, 'store'])->name('admin.operations.store');
     Route::view('/admin/pedidos/ordenes', 'pages.blank', ['title' => 'Ordenes activas']);
     Route::view('/admin/pedidos/cocina', 'pages.blank', ['title' => 'Cocina']);
     Route::view('/admin/pedidos/delivery', 'pages.blank', ['title' => 'Delivery']);

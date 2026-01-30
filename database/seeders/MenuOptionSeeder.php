@@ -32,6 +32,7 @@ class MenuOptionSeeder extends Seeder
                 ['name' => 'Modulos',            'action' => 'admin.modules.index',             'icon' => 'mdi-view-module'],
                 ['name' => 'Categorias de Parametros',         'action' => 'admin.parameters.categories.index',           'icon' => 'mdi-settings'],
                 ['name' => 'Parametros',         'action' => 'admin.parameters.index',           'icon' => 'mdi-settings'],
+                ['name' => 'Operaciones',        'action' => 'admin.operations.index',           'icon' => 'mdi-settings'],
             ],
             'Pedidos' => [
                 ['name' => 'Ordenes activas',    'action' => '/admin/pedidos/ordenes',          'icon' => 'mdi-food'],
