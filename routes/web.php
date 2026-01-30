@@ -10,6 +10,8 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ParameterCategoriesController;
 use App\Http\Controllers\ParameterController;
 use App\Http\Controllers\MenuOptionController;
+use App\Http\Controllers\ViewsController;
+use App\Http\Controllers\OperationsController;
 use App\Models\ParameterCategories;
 
 Route::prefix('restaurante')->name('restaurant.')->group(function () {
@@ -147,6 +149,17 @@ Route::middleware('auth')->group(function () {
         ->names('admin.modules.menu_options')
         ->parameters(['modulos' => 'module', 'menu' => 'menuOption']);
 
+    // Vistas
+    Route::resource('admin/herramientas/vistas', ViewsController::class)
+        ->names('admin.views')
+        ->parameters(['vistas' => 'view']);
+    Route::delete('/admin/herramientas/vistas/{view}', [ViewsController::class, 'destroy'])->name('admin.views.destroy');
+
+    Route::resource('admin/herramientas/vistas.operations', OperationsController::class)
+        ->names('admin.views.operations')
+        ->parameters(['vistas' => 'view', 'operations' => 'operation']);
+
+    
     //<-----Parametros----->
     //Categorias de parametros
     Route::get('/admin/herramientas/parametros/categorias', [ParameterCategoriesController::class, 'index'])->name('admin.parameters.categories.index');

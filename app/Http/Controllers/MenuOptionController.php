@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Module;
 use App\Models\MenuOption;
-use App\Models\View; // <--- 1. IMPORTANTE: Importar el modelo View
+use App\Models\View; 
 use Illuminate\Http\Request;
 
 class MenuOptionController extends Controller
@@ -52,7 +52,7 @@ class MenuOptionController extends Controller
         $module->menuOptions()->create($data);
 
         return redirect()
-            ->route('admin.modules.menu-options.index', $module)
+            ->route('admin.modules.menu_options.index', $module)
             ->with('status', 'Opción de menú creada correctamente.');
     }
 
@@ -69,8 +69,8 @@ class MenuOptionController extends Controller
     public function edit(Module $module, MenuOption $menuOption)
     {
         $menuOption = $this->resolveScope($module, $menuOption);
-        $views = View::where('status', 1)->orderBy('name', 'asc')->get(); // Obtener vistas para edit
-
+        $views = View::where('status', 1)->orderBy('name', 'asc')->get(); 
+        
         return view('menu_options.edit', [
             'module' => $module,
             'menuOption' => $menuOption,
@@ -86,7 +86,7 @@ class MenuOptionController extends Controller
         $menuOption->update($data);
 
         return redirect()
-            ->route('admin.modules.menu-options.index', $module)
+            ->route('admin.modules.menu_options.index', $module)
             ->with('status', 'Opción de menú actualizada correctamente.');
     }
 
@@ -96,7 +96,7 @@ class MenuOptionController extends Controller
         $menuOption->delete();
 
         return redirect()
-            ->route('admin.modules.menu-options.index', $module)
+            ->route('admin.modules.menu_options.index', $module)
             ->with('status', 'Opción de menú eliminada correctamente.');
     }
 
@@ -108,7 +108,7 @@ class MenuOptionController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'icon' => ['nullable', 'string', 'max:255'],
             'action' => ['required', 'string', 'max:255'],
-            'view_id' => ['required', 'integer', 'exists:views,id'], // <--- VALIDACIÓN AGREGADA
+            'view_id' => ['required', 'integer', 'exists:views,id'], 
             'status' => ['required', 'boolean'],
             'quick_access' => ['required', 'boolean'],
         ]);
