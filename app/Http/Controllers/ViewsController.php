@@ -3,10 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\View;
+use App\Models\Operation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
 
 class ViewsController extends Controller
 {
@@ -29,10 +31,48 @@ class ViewsController extends Controller
     public function store(Request $request)
     {
         try {
-            View::create([
-                'name'      => $request->name,
-                'status'    => $request->status,  
-            ]);
+            DB::transaction(function () use ($request) {
+                $view = View::create([
+                    'name'      => $request->name,
+                    'abbreviation' => $request->abbreviation,
+                    'status'    => $request->status,  
+                ]);
+
+                $base = $request->abbreviation ?: $request->name;
+                $actionBase = Str::slug($base, '.');
+
+                $operations = [
+                    [
+                        'name' => 'Nuevo ' . $view->name,
+                        'icon' => 'ri-add-line',
+                        'action' => $actionBase . '.create',
+                        'color' => '#12f00e',
+                    ],
+                    [
+                        'name' => 'Editar ' . $view->name,
+                        'icon' => 'ri-pencil-line',
+                        'action' => $actionBase . '.edit',
+                        'color' => '#FBBF24',
+                    ],
+                    [
+                        'name' => 'Eliminar ' . $view->name,
+                        'icon' => 'ri-delete-bin-line',
+                        'action' => $actionBase . '.destroy',
+                        'color' => '#EF4444',
+                    ],
+                ];
+
+                foreach ($operations as $operation) {
+                    Operation::create([
+                        'name' => $operation['name'],
+                        'icon' => $operation['icon'],
+                        'action' => $operation['action'],
+                        'view_id' => $view->id,
+                        'color' => $operation['color'],
+                        'status' => 1,
+                    ]);
+                }
+            });
 
             return redirect()->route('admin.views.index')
                 ->with('status', 'Vista creada correctamente');
@@ -60,6 +100,7 @@ class ViewsController extends Controller
         try {
             $view->update([
                 'name'      => $request->input('name'),
+                'abbreviation' => $request->input('abbreviation'),
                 'status'    => $request->input('status'),
             ]);
 

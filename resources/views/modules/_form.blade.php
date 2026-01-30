@@ -10,7 +10,7 @@
                 name="name"
                 required
                 placeholder="Ej: Ventas"
-                x-model="form.name"
+                value="{{ old('name', $module->name ?? '') }}"
                 class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 pl-[62px] text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
             />
         </div>
@@ -29,7 +29,7 @@
                 name="icon"
                 required
                 placeholder="Ej: dashboard"
-                x-model="form.icon"
+                value="{{ old('icon', $module->icon ?? '') }}"
                 class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 pl-[62px] text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
             />
         </div>
@@ -46,7 +46,7 @@
                     type="number"
                     name="order_num"
                     required
-                    x-model="form.order_num"
+                    value="{{ old('order_num', $module->order_num ?? '') }}"
                     class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 pl-[62px] text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
                 />
             </div>
@@ -60,11 +60,10 @@
                 </span>
                 <select
                     name="status"
-                    x-model="form.status"
                     class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 pl-[62px] text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
                 >
-                    <option value="1">Activo</option>
-                    <option value="0">Inactivo</option>
+                    <option value="1" {{ old('status', $module->status ?? 1) == 1 ? 'selected' : '' }}>Activo</option>
+                    <option value="0" {{ old('status', $module->status ?? 1) == 0 ? 'selected' : '' }}>Inactivo</option>
                 </select>
             </div>
         </div>
