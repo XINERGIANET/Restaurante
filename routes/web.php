@@ -9,6 +9,9 @@ use App\Http\Controllers\ModulesController;
 use App\Http\Controllers\PersonController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RoleController;
+use App\Http\Controllers\SalesController;
+use App\Http\Controllers\MovementTypeController;
+use App\Http\Controllers\DocumentTypeController;
 use App\Http\Controllers\OperationsController;
 use App\Http\Controllers\ParameterCategoriesController;
 use App\Http\Controllers\ParameterController;
@@ -59,6 +62,14 @@ Route::middleware('auth')->group(function () {
         ->name('admin.companies.branches.people.user.password');
     Route::get('/admin/herramientas/empresas/{company}/sucursales/{branch}/perfiles', [BranchController::class, 'profiles'])
         ->name('admin.companies.branches.profiles.index');
+    Route::get('/admin/herramientas/empresas/{company}/sucursales/{branch}/vistas', [BranchController::class, 'viewsIndex'])
+        ->name('admin.companies.branches.views.index');
+    Route::post('/admin/herramientas/empresas/{company}/sucursales/{branch}/vistas', [BranchController::class, 'updateViews'])
+        ->name('admin.companies.branches.views.update');
+    Route::delete('/admin/herramientas/empresas/{company}/sucursales/{branch}/vistas/{view}', [BranchController::class, 'removeViewAssignment'])
+        ->name('admin.companies.branches.views.destroy');
+    Route::get('/admin/herramientas/empresas/{company}/sucursales/{branch}/vistas/{view}/operaciones', [BranchController::class, 'viewOperationsIndex'])
+        ->name('admin.companies.branches.views.operations.index');
     Route::get('/admin/herramientas/empresas/{company}/sucursales/{branch}/perfiles/{profile}/permisos', [BranchController::class, 'profilePermissions'])
         ->name('admin.companies.branches.profiles.permissions.index');
     Route::patch('/admin/herramientas/empresas/{company}/sucursales/{branch}/perfiles/{profile}/permisos/{permission}', [BranchController::class, 'toggleProfilePermission'])
@@ -70,6 +81,18 @@ Route::middleware('auth')->group(function () {
     Route::resource('/admin/herramientas/roles', RoleController::class)
         ->names('admin.roles')
         ->parameters(['roles' => 'role'])
+        ->only(['index', 'store', 'edit', 'update', 'destroy']);
+    Route::resource('/admin/ventas', SalesController::class)
+        ->names('admin.sales')
+        ->parameters(['ventas' => 'sale'])
+        ->only(['index', 'store', 'edit', 'update', 'destroy']);
+    Route::resource('/admin/herramientas/tipos-movimiento', MovementTypeController::class)
+        ->names('admin.movement-types')
+        ->parameters(['tipos-movimiento' => 'movementType'])
+        ->only(['index', 'store', 'edit', 'update', 'destroy']);
+    Route::resource('/admin/herramientas/tipos-documento', DocumentTypeController::class)
+        ->names('admin.document-types')
+        ->parameters(['tipos-documento' => 'documentType'])
         ->only(['index', 'store', 'edit', 'update', 'destroy']);
 
     // dashboard pages

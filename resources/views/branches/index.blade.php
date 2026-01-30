@@ -49,16 +49,11 @@
                         </x-ui.link-button>
                     </div>
                 </form>
-                <x-ui.button
-                    size="md"
-                    variant="primary"
-                    type="button"
-                    style=" background-color: #12f00e; color: #111827;"
-                    @click="$dispatch('open-branch-modal')"
-                >
+                <x-ui.link-button size="md" variant="primary" type="button"
+                    style=" background-color: #12f00e; color: #111827;" @click="$dispatch('open-company-modal')">
                     <i class="ri-add-line"></i>
                     <span>Nueva sucursal</span>
-                </x-ui.button>
+                </x-ui.link-button>
             </div>
 
             <div class="mt-4 rounded-xl border border-gray-200 bg-white overflow-visible dark:border-gray-800 dark:bg-white/[0.03]">
@@ -118,6 +113,19 @@
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
                                     <div class="flex items-center justify-end gap-2">
+                                        <div class="relative group">
+                                            <x-ui.link-button
+                                                size="icon"
+                                                variant="primary"
+                                                href="{{ route('admin.companies.branches.views.index', [$company, $branch]) }}"
+                                                className="bg-brand-500 text-white hover:bg-brand-600 ring-0 rounded-full"
+                                                style="border-radius: 100%; background-color: #20d9d6; color: #FFFFFF;"
+                                                aria-label="Ver vistas"
+                                            >
+                                                <i class="ri-layout-2-line"></i>
+                                            </x-ui.link-button>
+                                            <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">Vistas</span>
+                                        </div>
                                         <div class="relative group">
                                             <x-ui.link-button
                                                 size="icon"

@@ -6,6 +6,7 @@ use App\Models\Branch;
 use App\Models\Company;
 use App\Models\Location;
 use App\Models\Profile;
+use App\Models\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -117,6 +118,156 @@ class BranchController extends Controller
             'company' => $company,
             'branch' => $branch,
             'profiles' => $profiles,
+            'search' => $search,
+            'perPage' => $perPage,
+        ]);
+    }
+
+    public function viewsIndex(Request $request, Company $company, Branch $branch)
+    {
+        $branch = $this->resolveBranch($company, $branch);
+        $search = $request->input('search');
+
+        $perPage = (int) $request->input('per_page', 10);
+        $allowedPerPage = [10, 20, 50, 100];
+        if (!in_array($perPage, $allowedPerPage, true)) {
+            $perPage = 10;
+        }
+
+        $assignedViewIds = DB::table('view_branch')
+            ->where('branch_id', $branch->id)
+            ->whereNull('deleted_at')
+            ->pluck('view_id')
+            ->all();
+
+        $assignedViews = View::query()
+            ->whereIn('id', $assignedViewIds)
+            ->when($search, function ($query) use ($search) {
+                $query->where(function ($inner) use ($search) {
+                    $inner->where('name', 'like', "%{$search}%")
+                        ->orWhere('abbreviation', 'like', "%{$search}%");
+                });
+            })
+            ->orderBy('name')
+            ->paginate($perPage)
+            ->withQueryString();
+
+        $allViews = View::query()
+            ->orderBy('name')
+            ->get(['id', 'name', 'abbreviation', 'status']);
+
+        return view('branches.views.index', [
+            'company' => $company,
+            'branch' => $branch,
+            'assignedViews' => $assignedViews,
+            'allViews' => $allViews,
+            'assignedViewIds' => $assignedViewIds,
+            'search' => $search,
+            'perPage' => $perPage,
+        ]);
+    }
+
+    public function updateViews(Request $request, Company $company, Branch $branch)
+    {
+        $branch = $this->resolveBranch($company, $branch);
+        $data = $request->validate([
+            'views' => ['nullable', 'array'],
+            'views.*' => ['integer', 'exists:views,id'],
+        ]);
+
+        $viewIds = array_values(array_unique(array_map('intval', $data['views'] ?? [])));
+
+        DB::transaction(function () use ($branch, $viewIds) {
+            DB::table('view_branch')
+                ->where('branch_id', $branch->id)
+                ->whereNull('deleted_at')
+                ->whereNotIn('view_id', $viewIds)
+                ->update(['deleted_at' => now(), 'updated_at' => now()]);
+
+            foreach ($viewIds as $viewId) {
+                $existing = DB::table('view_branch')
+                    ->where('branch_id', $branch->id)
+                    ->where('view_id', $viewId)
+                    ->first();
+
+                if ($existing) {
+                    if ($existing->deleted_at !== null) {
+                        DB::table('view_branch')
+                            ->where('branch_id', $branch->id)
+                            ->where('view_id', $viewId)
+                            ->update(['deleted_at' => null, 'updated_at' => now()]);
+                    }
+                    continue;
+                }
+
+                DB::table('view_branch')->insert([
+                    'branch_id' => $branch->id,
+                    'view_id' => $viewId,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        });
+
+        return redirect()
+            ->route('admin.companies.branches.views.index', [$company, $branch])
+            ->with('status', 'Vistas asignadas correctamente.');
+    }
+
+    public function removeViewAssignment(Company $company, Branch $branch, View $view)
+    {
+        $branch = $this->resolveBranch($company, $branch);
+        $this->ensureViewAssignedToBranch($view->id, $branch->id);
+
+        DB::table('view_branch')
+            ->where('branch_id', $branch->id)
+            ->where('view_id', $view->id)
+            ->whereNull('deleted_at')
+            ->update(['deleted_at' => now(), 'updated_at' => now()]);
+
+        return redirect()
+            ->route('admin.companies.branches.views.index', [$company, $branch])
+            ->with('status', 'Vista desasignada correctamente.');
+    }
+
+    public function viewOperationsIndex(Request $request, Company $company, Branch $branch, View $view)
+    {
+        $branch = $this->resolveBranch($company, $branch);
+        $this->ensureViewAssignedToBranch($view->id, $branch->id);
+
+        $search = $request->input('search');
+        $perPage = (int) $request->input('per_page', 10);
+        $allowedPerPage = [10, 20, 50, 100];
+        if (!in_array($perPage, $allowedPerPage, true)) {
+            $perPage = 10;
+        }
+
+        $operations = DB::table('branch_operation')
+            ->join('operations', 'operations.id', '=', 'branch_operation.operation_id')
+            ->where('branch_operation.branch_id', $branch->id)
+            ->whereNull('branch_operation.deleted_at')
+            ->whereNull('operations.deleted_at')
+            ->where('operations.view_id', $view->id)
+            ->when($search, function ($query) use ($search) {
+                $query->where('operations.name', 'like', "%{$search}%");
+            })
+            ->orderBy('operations.name')
+            ->select([
+                'branch_operation.id',
+                'branch_operation.status',
+                'operations.name',
+                'operations.icon',
+                'operations.action',
+                'operations.color',
+            ])
+            ->paginate($perPage)
+            ->withQueryString();
+
+        return view('branches.views.operations', [
+            'company' => $company,
+            'branch' => $branch,
+            'view' => $view,
+            'operations' => $operations,
             'search' => $search,
             'perPage' => $perPage,
         ]);
@@ -287,6 +438,19 @@ class BranchController extends Controller
     {
         $assigned = DB::table('profile_branch')
             ->where('profile_id', $profileId)
+            ->where('branch_id', $branchId)
+            ->whereNull('deleted_at')
+            ->exists();
+
+        if (!$assigned) {
+            abort(404);
+        }
+    }
+
+    private function ensureViewAssignedToBranch(int $viewId, int $branchId): void
+    {
+        $assigned = DB::table('view_branch')
+            ->where('view_id', $viewId)
             ->where('branch_id', $branchId)
             ->whereNull('deleted_at')
             ->exists();

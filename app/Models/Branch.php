@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Branch extends Model
 {
@@ -33,5 +34,12 @@ class Branch extends Model
     public function people()
     {
         return $this->hasMany(Person::class);
+    }
+
+    public function views(): BelongsToMany
+    {
+        return $this->belongsToMany(View::class, 'view_branch')
+            ->withTimestamps()
+            ->withPivot('deleted_at');
     }
 }
