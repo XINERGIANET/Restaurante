@@ -106,7 +106,17 @@
                                             </x-ui.link-button>
                                             <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">Editar</span>
                                         </div>
-                                        <form method="POST" action="{{ route('admin.views.destroy', $view) }}" class="relative group js-delete-view" data-name="{{ $view->name }}">
+                                        <form
+                                            method="POST"
+                                            action="{{ route('admin.views.destroy', $view) }}"
+                                            class="relative group js-swal-delete"
+                                            data-swal-title="Eliminar vista?"
+                                            data-swal-text="Se eliminara {{ $view->name }}. Esta accion no se puede deshacer."
+                                            data-swal-confirm="Si, eliminar"
+                                            data-swal-cancel="Cancelar"
+                                            data-swal-confirm-color="#ef4444"
+                                            data-swal-cancel-color="#6b7280"
+                                        >
                                             @csrf
                                             @method('DELETE')
                                             <x-ui.button
@@ -179,49 +189,4 @@
     
     </div> 
 
-@push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-<script>
-    const bindDeleteSweetAlert = () => {
-        document.querySelectorAll('.js-delete-view').forEach((form) => {
-            
-            if (form.dataset.swalBound === 'true') return;
-            form.dataset.swalBound = 'true';
-
-            form.addEventListener('submit', (event) => {
-                event.preventDefault(); 
-                
-                const name = form.dataset.name || 'esta vista';
-
-                if (!window.Swal) {
-                    console.warn('SweetAlert2 no está cargado. Enviando formulario sin confirmación.');
-                    form.submit();
-                    return;
-                }
-
-                Swal.fire({
-                    title: '¿Eliminar vista?',
-                    text: `Se eliminará "${name}". Esta acción no se puede deshacer.`,
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonText: 'Sí, eliminar',
-                    cancelButtonText: 'Cancelar',
-                    confirmButtonColor: '#ef4444', 
-                    cancelButtonColor: '#6b7280', 
-                    reverseButtons: true, 
-                    focusCancel: true 
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        form.submit(); 
-                    }
-                });
-            });
-        });
-    };
-
-    document.addEventListener('DOMContentLoaded', bindDeleteSweetAlert);
-    document.addEventListener('turbo:load', bindDeleteSweetAlert);
-</script>
-@endpush
 @endsection

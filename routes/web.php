@@ -14,6 +14,7 @@ use App\Http\Controllers\MovementTypeController;
 use App\Http\Controllers\DocumentTypeController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\OrderController;
 use App\Http\Controllers\OperationsController;
 use App\Http\Controllers\ParameterCategoriesController;
 use App\Http\Controllers\ParameterController;
@@ -105,6 +106,8 @@ Route::middleware('auth')->group(function () {
         ->names('admin.products')
         ->parameters(['productos' => 'product'])
         ->only(['index', 'store', 'edit', 'update', 'destroy']);
+    Route::get('/admin/pedidos', [OrderController::class, 'index'])
+        ->name('admin.orders.index');
 
     // dashboard pages
     Route::get('/', function () {
