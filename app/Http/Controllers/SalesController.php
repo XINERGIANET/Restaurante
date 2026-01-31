@@ -40,6 +40,11 @@ class SalesController extends Controller
         ] + $this->getFormData());
     }
 
+    public function create()
+    {
+        return view('sales.create');
+    }
+
     public function store(Request $request)
     {
         $data = $this->validateSale($request);

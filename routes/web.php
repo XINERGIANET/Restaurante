@@ -12,6 +12,8 @@ use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SalesController;
 use App\Http\Controllers\MovementTypeController;
 use App\Http\Controllers\DocumentTypeController;
+use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\ProductController;
 use App\Http\Controllers\OperationsController;
 use App\Http\Controllers\ParameterCategoriesController;
 use App\Http\Controllers\ParameterController;
@@ -85,7 +87,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('/admin/ventas', SalesController::class)
         ->names('admin.sales')
         ->parameters(['ventas' => 'sale'])
-        ->only(['index', 'store', 'edit', 'update', 'destroy']);
+        ->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
     Route::resource('/admin/herramientas/tipos-movimiento', MovementTypeController::class)
         ->names('admin.movement-types')
         ->parameters(['tipos-movimiento' => 'movementType'])
@@ -93,6 +95,14 @@ Route::middleware('auth')->group(function () {
     Route::resource('/admin/herramientas/tipos-documento', DocumentTypeController::class)
         ->names('admin.document-types')
         ->parameters(['tipos-documento' => 'documentType'])
+        ->only(['index', 'store', 'edit', 'update', 'destroy']);
+    Route::resource('/admin/herramientas/categorias', CategoryController::class)
+        ->names('admin.categories')
+        ->parameters(['categorias' => 'category'])
+        ->only(['index', 'store', 'edit', 'update', 'destroy']);
+    Route::resource('/admin/herramientas/productos', ProductController::class)
+        ->names('admin.products')
+        ->parameters(['productos' => 'product'])
         ->only(['index', 'store', 'edit', 'update', 'destroy']);
 
     // dashboard pages
