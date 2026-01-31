@@ -28,4 +28,9 @@ class Area extends Model
     {
         return $this->belongsTo(Branch::class);
     }
+
+    public function tables()
+    {
+        return $this->hasMany(Table::class);
+    }
 }
