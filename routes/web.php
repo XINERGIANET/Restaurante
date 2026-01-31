@@ -106,7 +106,7 @@ Route::middleware('auth')->group(function () {
         ->names('admin.products')
         ->parameters(['productos' => 'product'])
         ->only(['index', 'store', 'edit', 'update', 'destroy']);
-    Route::get('/admin/pedidos', [OrderController::class, 'index'])
+    Route::get('/admin/pedidos/salones', [OrderController::class, 'index'])
         ->name('admin.orders.index');
 
     // dashboard pages

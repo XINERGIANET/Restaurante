@@ -15,6 +15,7 @@
 
     <x-common.component-card title="Gestión de Vistas" desc="Administra las vistas del sistema para asociarlas a los menús.">
         
+        {{-- BARRA DE BÚSQUEDA Y ACCIONES --}}
         <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
             <form method="GET" class="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
                 <div class="relative flex-1">
@@ -53,7 +54,7 @@
             </div>
         </div>
 
-        {{-- TABLA --}}
+        {{-- TABLA DE DATOS --}}
         <div class="mt-4 overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
             <div class="max-w-full overflow-x-auto custom-scrollbar">
                 <table class="w-full min-w-[880px]">
@@ -83,50 +84,25 @@
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
                                     <div class="flex items-center justify-end gap-2">
+                                        {{-- Botones de Acción --}}
                                         <div class="relative group">
-                                            <x-ui.link-button
-                                                size="icon"
-                                                variant="primary"
-                                                href="{{ route('admin.views.operations.index', $view) }}"
-                                                className="bg-brand-500 text-white hover:bg-brand-600 ring-0 rounded-full"
-                                                style="border-radius: 100%; background-color: #3B82F6; color: #FFFFFF;"
-                                                aria-label="Ver personal"
-                                            >
+                                            <x-ui.link-button size="icon" variant="primary" href="{{ route('admin.views.operations.index', $view) }}" className="bg-brand-500 text-white hover:bg-brand-600 ring-0 rounded-full" style="border-radius: 100%; background-color: #3B82F6; color: #FFFFFF;" aria-label="Ver personal">
                                                 <i class="ri-team-line"></i>
                                             </x-ui.link-button>
-                                            <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">Personal</span>
+                                            <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50">Personal</span>
                                         </div>
                                         <div class="relative group">
-                                            <x-ui.link-button
-                                                size="icon" variant="outline" href="{{ route('admin.views.edit', $view) }}"
-                                                className="bg-warning-500 text-white hover:bg-warning-600 ring-0 rounded-full"
-                                                style="border-radius: 100%; background-color: #FBBF24; color: #111827;" aria-label="Editar"
-                                            >
+                                            <x-ui.link-button size="icon" variant="outline" href="{{ route('admin.views.edit', $view) }}" className="bg-warning-500 text-white hover:bg-warning-600 ring-0 rounded-full" style="border-radius: 100%; background-color: #FBBF24; color: #111827;" aria-label="Editar">
                                                 <i class="ri-pencil-line"></i>
                                             </x-ui.link-button>
-                                            <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">Editar</span>
+                                            <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50">Editar</span>
                                         </div>
-                                        <form
-                                            method="POST"
-                                            action="{{ route('admin.views.destroy', $view) }}"
-                                            class="relative group js-swal-delete"
-                                            data-swal-title="Eliminar vista?"
-                                            data-swal-text="Se eliminara {{ $view->name }}. Esta accion no se puede deshacer."
-                                            data-swal-confirm="Si, eliminar"
-                                            data-swal-cancel="Cancelar"
-                                            data-swal-confirm-color="#ef4444"
-                                            data-swal-cancel-color="#6b7280"
-                                        >
-                                            @csrf
-                                            @method('DELETE')
-                                            <x-ui.button
-                                                size="icon" variant="outline" className="bg-error-500 text-white hover:bg-error-600 ring-0 rounded-full"
-                                                style="border-radius: 100%; background-color: #EF4444; color: #FFFFFF;" aria-label="Eliminar"
-                                                type="submit"
-                                            >
+                                        <form method="POST" action="{{ route('admin.views.destroy', $view) }}" class="relative group js-swal-delete" data-swal-title="Eliminar vista?" data-swal-text="Se eliminara {{ $view->name }}. Esta accion no se puede deshacer.">
+                                            @csrf @method('DELETE')
+                                            <x-ui.button size="icon" variant="outline" className="bg-error-500 text-white hover:bg-error-600 ring-0 rounded-full" style="border-radius: 100%; background-color: #EF4444; color: #FFFFFF;" aria-label="Eliminar" type="submit">
                                                 <i class="ri-delete-bin-line"></i>
                                             </x-ui.button>
-                                            <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">Eliminar</span>
+                                            <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50">Eliminar</span>
                                         </form>
                                     </div>
                                 </td>
@@ -148,8 +124,19 @@
         </div>
     </x-common.component-card>
 
-
-    <x-ui.modal x-data="{ open: false }" @open-view-modal.window="open = true" @close-view-modal.window="open = false" :isOpen="false" class="max-w-3xl">
+    {{-- 
+        MODAL DE CREACIÓN 
+        Aquí está la corrección principal:
+        1. x-data evalúa si hay errores para iniciar en 'true'.
+        2. x-ui.alert muestra el mensaje específico de la excepción.
+    --}}
+    <x-ui.modal 
+        x-data="{ open: {{ $errors->any() ? 'true' : 'false' }} }" 
+        @open-view-modal.window="open = true" 
+        @close-view-modal.window="open = false" 
+        :isOpen="false" 
+        class="max-w-3xl"
+    >
         <div class="p-6 sm:p-8">
             <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
@@ -162,9 +149,26 @@
                 </div>
             </div>
 
+            {{-- 
+               BLOQUE DE ERRORES CORREGIDO
+               Si viene 'error' (del catch), lo muestra. Si no, muestra validación genérica.
+            --}}
             @if ($errors->any())
                 <div class="mb-5">
-                    <x-ui.alert variant="error" title="Revisa los campos" message="Hay errores en el formulario, corrige los datos e intenta nuevamente." />
+                    <x-ui.alert 
+                        variant="error" 
+                        title="Atención" 
+                        message="{{ $errors->first('error') ?: 'Existen errores de validación. Revisa los campos.' }}" 
+                    />
+                    
+                    {{-- Opcional: Listar los errores de campos específicos debajo --}}
+                    @if(!$errors->has('error'))
+                        <ul class="mt-2 list-disc list-inside text-sm text-red-500">
+                            @foreach($errors->all() as $err)
+                                <li>{{ $err }}</li>
+                            @endforeach
+                        </ul>
+                    @endif
                 </div>
             @endif
 
@@ -188,5 +192,4 @@
     </x-ui.modal>
     
     </div> 
-
 @endsection
