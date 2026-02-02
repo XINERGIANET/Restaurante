@@ -18,7 +18,6 @@ class TableController extends Controller
         }
 
         $tables = Table::query()
-            ->where('deleted', false)
             ->when($search, function ($query) use ($search) {
                 $query->where('name', 'like', "%{$search}%");
             })
@@ -51,7 +50,6 @@ class TableController extends Controller
 
         $tables = Table::query()
             ->where('area_id', $area->id)
-            ->where('deleted', false)
             ->when($search, function ($query) use ($search) {
                 $query->where('name', 'like', "%{$search}%");
             })
@@ -71,17 +69,20 @@ class TableController extends Controller
     {   
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'capacity' => ['nullable', 'integer', 'min:1'],
             'status' => ['required', 'integer', 'in:0,1'],
+            'situation' => ['required', 'in:libre,ocupada'],
             'opened_at' => ['nullable', 'date_format:H:i'],
         ]);
 
         Table::create([
             'name' => $data['name'],
+            'capacity' => $data['capacity'],
             'status' => $data['status'],
+            'situation' => $data['situation'] ?? 'libre',
             'opened_at' => $data['opened_at'],
             'area_id' => $area->id,
             'branch_id' => $area->branch_id,
-            'deleted' => false,
         ]);
 
         return redirect()->route('areas.tables.index', $area)
@@ -92,7 +93,9 @@ class TableController extends Controller
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'capacity' => ['nullable', 'integer', 'min:1'],
             'status' => ['required', 'integer', 'in:0,1'],
+            'situation' => ['required', 'in:libre,ocupada'],
             'opened_at' => ['nullable', 'date_format:H:i'],
             'area_id' => ['required', 'integer', 'exists:areas,id'],
         ]);
@@ -101,11 +104,12 @@ class TableController extends Controller
 
         Table::create([
             'name' => $data['name'],
+            'capacity' => $data['capacity'],
             'status' => $data['status'],
+            'situation' => $data['situation'] ?? 'libre',
             'opened_at' => $data['opened_at'],
             'area_id' => $area->id,
             'branch_id' => session('branch_id') ?? $area->branch_id,
-            'deleted' => false,
         ]);
 
         return redirect()->route('tables.index')
@@ -138,7 +142,9 @@ class TableController extends Controller
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'capacity' => ['nullable', 'integer', 'min:1'],
             'status' => ['required', 'integer', 'in:0,1'],
+            'situation' => ['required', 'in:libre,ocupada'],
             'opened_at' => ['nullable', 'date_format:H:i'],
         ]);
 
@@ -152,7 +158,9 @@ class TableController extends Controller
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'capacity' => ['nullable', 'integer', 'min:1'],
             'status' => ['required', 'integer', 'in:0,1'],
+            'situation' => ['required', 'in:libre,ocupada'],
             'opened_at' => ['nullable', 'date_format:H:i'],
             'area_id' => ['required', 'integer', 'exists:areas,id'],
         ]);
@@ -161,7 +169,9 @@ class TableController extends Controller
 
         $table->update([
             'name' => $data['name'],
+            'capacity' => $data['capacity'],
             'status' => $data['status'],
+            'situation' => $data['situation'],
             'opened_at' => $data['opened_at'],
             'area_id' => $area->id,
             'branch_id' => session('branch_id') ?? $area->branch_id,
@@ -173,7 +183,7 @@ class TableController extends Controller
 
     public function destroy(Area $area, Table $table)
     {
-        $table->update(['deleted' => true]);
+        $table->delete();
 
         return redirect()->route('areas.tables.index', $area)
             ->with('success', 'Mesa eliminada correctamente');
@@ -181,7 +191,7 @@ class TableController extends Controller
 
     public function destroyGeneral(Table $table)
     {
-        $table->update(['deleted' => true]);
+        $table->delete();
 
         return redirect()->route('tables.index')
             ->with('success', 'Mesa eliminada correctamente');

@@ -31,7 +31,6 @@ class AreaController extends Controller
             Area::create([
                 'name' => $validated['name'],
                 'branch_id' => session('branch_id'),
-                'deleted' => false,
             ]);
             
             return redirect()->route('areas.index')
@@ -81,7 +80,7 @@ class AreaController extends Controller
     public function destroy(Area $area)
     {
         try {
-            $area->update(['deleted' => true]);
+            $area->delete();
             
             return redirect()->route('areas.index')
                 ->with('success', 'Área eliminada correctamente');

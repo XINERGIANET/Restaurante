@@ -57,6 +57,9 @@
                                 <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Nombre</p>
                             </th>
                             <th class="px-5 py-3 text-left sm:px-6">
+                                <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Capacidad</p>
+                            </th>
+                            <th class="px-5 py-3 text-left sm:px-6">
                                 <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Area</p>
                             </th>
                             <th class="px-5 py-3 text-left sm:px-6">
@@ -64,6 +67,9 @@
                             </th>
                             <th class="px-5 py-3 text-left sm:px-6">
                                 <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Estado</p>
+                            </th>
+                            <th class="px-5 py-3 text-left sm:px-6">
+                                <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Situacion</p>
                             </th>
                             <th class="px-5 py-3 text-right sm:px-6">
                                 <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Acciones</p>
@@ -77,6 +83,9 @@
                                     <p class="font-medium text-gray-800 text-theme-sm dark:text-white/90">{{ $table->name }}</p>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
+                                    <p class="text-gray-500 text-theme-sm dark:text-gray-400">{{ $table->capacity ?? '-' }}</p>
+                                </td>
+                                <td class="px-5 py-4 sm:px-6">
                                     <p class="text-gray-500 text-theme-sm dark:text-gray-400">{{ $table->area?->name ?? '-' }}</p>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
@@ -85,6 +94,11 @@
                                 <td class="px-5 py-4 sm:px-6">
                                     <x-ui.badge variant="light" color="{{ $table->status ? 'success' : 'error' }}">
                                         {{ $table->status ? 'Activo' : 'Inactivo' }}
+                                    </x-ui.badge>
+                                </td>
+                                <td class="px-5 py-4 sm:px-6">
+                                    <x-ui.badge variant="light" color="{{ $table->situation === 'ocupada' ? 'warning' : 'success' }}">
+                                        {{ $table->situation === 'ocupada' ? 'Ocupada' : 'Libre' }}
                                     </x-ui.badge>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
@@ -132,7 +146,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="px-6 py-12">
+                                <td colspan="7" class="px-6 py-12">
                                     <div class="flex flex-col items-center gap-3 text-center text-sm text-gray-500">
                                         <div class="rounded-full bg-gray-100 p-3 text-gray-400 dark:bg-gray-800 dark:text-gray-300">
                                             <i class="ri-table-line"></i>
