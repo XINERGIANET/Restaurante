@@ -1,9 +1,11 @@
 <?php
 
 use App\Http\Controllers\AreaController;
+use App\Http\Controllers\DigitalWalletController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\BranchController;
+use App\Http\Controllers\CardController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\ModulesController;
 use App\Http\Controllers\PersonController;
@@ -19,9 +21,11 @@ use App\Http\Controllers\OperationsController;
 use App\Http\Controllers\ParameterCategoriesController;
 use App\Http\Controllers\ParameterController;
 use App\Http\Controllers\MenuOptionController;
+use App\Http\Controllers\PaymentGatewaysController;
+use App\Http\Controllers\PaymentMethodController;
 use App\Http\Controllers\TableController;
 use App\Http\Controllers\ViewsController;
-use App\Models\ParameterCategories;
+
 
 Route::prefix('restaurante')->name('restaurant.')->group(function () {
     Route::view('/', 'restaurant.home', ['title' => 'Xinergia Restaurante'])->name('home');
@@ -233,4 +237,24 @@ Route::middleware('auth')->group(function () {
     Route::view('/admin/configuracion/parametros', 'pages.blank', ['title' => 'Parametros']);
     Route::view('/admin/configuracion/menu', 'pages.blank', ['title' => 'Menu y recetas']);
     Route::view('/admin/configuracion/impuestos', 'pages.blank', ['title' => 'Impuestos']);
+
+    //Tarjetas
+    Route::resource('/admin/herramientas/tarjetas', CardController::class)
+        ->names('admin.cards')
+        ->parameters(['tarjetas' => 'card']);
+    
+    //Billeteras digitales
+    Route::resource('/admin/herramientas/billeteras-digitales', DigitalWalletController::class)
+        ->names('admin.digital_wallets')
+        ->parameters(['billeteras-digitales' => 'digitalWallet']);
+    
+    //Medios de pago
+    Route::resource('/admin/herramientas/medios-pago', PaymentGatewaysController::class)
+        ->names('admin.payment_gateways')
+        ->parameters(['medios-pago' => 'paymentGateway']);
+    
+    //Métodos de pago
+    Route::resource('/admin/herramientas/metodos-pago', PaymentMethodController::class)
+        ->names('admin.payment_methods')
+        ->parameters(['metodos-pago' => 'paymentMethod']);
 });

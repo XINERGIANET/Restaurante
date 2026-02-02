@@ -30,15 +30,29 @@ class ViewsController extends Controller
     
     public function store(Request $request)
     {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'abbreviation' => 'nullable|string|max:255',
+            'status' => 'required|in:0,1',
+        ], [
+            'name.required' => 'El nombre de la vista es obligatorio.',
+            'name.string' => 'El nombre debe ser una cadena de texto.',
+            'name.max' => 'El nombre no debe exceder los 255 caracteres.',
+            'abbreviation.string' => 'La abreviatura debe ser una cadena de texto.',
+            'abbreviation.max' => 'La abreviatura no debe exceder los 255 caracteres.',
+            'status.required' => 'El estado es obligatorio.',
+            'status.in' => 'El estado debe ser Activo o Inactivo.',
+        ]);
+
         try {
-            DB::transaction(function () use ($request) {
+            DB::transaction(function () use ($validated) {
                 $view = View::create([
-                    'name'      => $request->name,
-                    'abbreviation' => $request->abbreviation,
-                    'status'    => $request->status,  
+                    'name'      => $validated['name'],
+                    'abbreviation' => $validated['abbreviation'] ?? null,
+                    'status'    => (bool) $validated['status'],  
                 ]);
 
-                $base = $request->abbreviation ?: $request->name;
+                $base = $validated['abbreviation'] ?: $validated['name'];
                 $actionBase = Str::slug($base, '.');
 
                 $operations = [
