@@ -139,27 +139,10 @@
                 <x-ui.alert variant="error" title="Revisa los campos" message="Hay errores en el formulario, corrige los datos e intenta nuevamente." />
             </div>
         @endif
-            <form id="create-payment-gateway-form" class="space-y-4" action="{{ route('admin.payment_gateways.store') }}"
+        <form id="create-payment-gateway-form" class="space-y-4" action="{{ route('admin.payment_gateways.store') }}"
             method="POST">
             @csrf
-            <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Descripcion <span class="text-error-500">*</span></label>
-                <input type="text" name="description" id="description" value="{{ old('description') }}"
-                    placeholder="Ingrese la descripcion" required
-                    class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border {{ $errors->has('description') ? 'border-error-500' : 'border-gray-300' }} bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30">
-                @error('description')
-                    <p class="mt-1 text-sm text-error-500">{{ $message }}</p>
-                @enderror
-            </div>
-            <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Orden <span class="text-error-500">*</span></label>
-                <input type="number" name="order_num" id="order_num" value="{{ old('order_num') }}"
-                    placeholder="Ingrese el orden" required
-                    class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border {{ $errors->has('order_num') ? 'border-error-500' : 'border-gray-300' }} bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30">
-                @error('order_num')
-                    <p class="mt-1 text-sm text-error-500">{{ $message }}</p>
-                @enderror
-            </div>
+            @include('payment_gateways._form')
             <div class="flex flex-wrap gap-3 justify-end">
                 <x-ui.button type="submit" size="md" variant="primary">Guardar</x-ui.button>
                 <x-ui.button type="button" size="md" variant="outline"
@@ -169,43 +152,5 @@
     </div>
 </x-ui.modal>
 
-    <!--Modal de edicion de medio de pago-->
-<x-ui.modal x-data="{ open: false, paymentGatewayId: null, description: '', orderNum: null, status: '1' }"
-    @open-edit-payment-gateway-modal.window="open = true; paymentGatewayId = $event.detail.id; description = $event.detail.description; orderNum = $event.detail.order_num; status = $event.detail.status.toString()"
-    @close-edit-payment-gateway-modal.window="open = false" :isOpen="false" class="max-w-md">
-    <div class="p-6 space-y-4">
-        <h3 class="mb-6 text-lg font-semibold text-gray-800 dark:text-white/90">Editar Medio de Pago</h3>
-        <form id="edit-payment-gateway-form" class="space-y-4"
-            x-bind:action="paymentGatewayId ? '{{ url('/admin/herramientas/medios-pago') }}/' + paymentGatewayId : '#'"
-            method="POST">
-            @csrf
-            @method('PUT')
-            <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Descripcion</label>
-                <input type="text" name="description" id="edit-description" x-model="description"
-                    placeholder="Ingrese la descripcion" required
-                    class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30">
-            </div>
-            <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Orden</label>
-                <input type="number" name="order_num" id="edit-order_num" x-model="orderNum"
-                    placeholder="Ingrese el orden" required
-                    class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30">
-            </div>
-            <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Estado</label>
-                <select name="status" id="edit-status" x-model="status" required
-                    class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30">
-                    <option value="1">Activo</option>
-                    <option value="0">Inactivo</option>
-                </select>
-            </div>
-            <div class="flex flex-wrap gap-3 justify-end">
-                <x-ui.button type="submit" size="md" variant="primary">Guardar</x-ui.button>
-                <x-ui.button type="button" size="md" variant="outline"
-                    @click="open = false">Cancelar</x-ui.button>
-            </div>
-        </form>
-    </div>
-</x-ui.modal>
+@include('payment_gateways.edit')
 @endsection

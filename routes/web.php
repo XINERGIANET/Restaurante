@@ -21,6 +21,7 @@ use App\Http\Controllers\OperationsController;
 use App\Http\Controllers\ParameterCategoriesController;
 use App\Http\Controllers\ParameterController;
 use App\Http\Controllers\MenuOptionController;
+use App\Http\Controllers\PaymentConceptController;
 use App\Http\Controllers\PaymentGatewaysController;
 use App\Http\Controllers\PaymentMethodController;
 use App\Http\Controllers\TableController;
@@ -207,7 +208,10 @@ Route::middleware('auth')->group(function () {
         ->names('admin.views.operations')
         ->parameters(['vistas' => 'view', 'operations' => 'operation']);
 
-    
+    //Conceptos de pago
+    Route::resource('admin/herramientas/conceptos-pago', PaymentConceptController::class)
+        ->names('admin.payment_concepts')
+        ->parameters(['conceptos-pago' => 'paymentConcept']);
     //<-----Parametros----->
     //Categorias de parametros
     Route::get('/admin/herramientas/parametros/categorias', [ParameterCategoriesController::class, 'index'])->name('admin.parameters.categories.index');
