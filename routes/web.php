@@ -26,6 +26,7 @@ use App\Http\Controllers\PaymentGatewaysController;
 use App\Http\Controllers\PaymentMethodController;
 use App\Http\Controllers\TableController;
 use App\Http\Controllers\ViewsController;
+use App\Http\Controllers\ShiftController;
 
 
 Route::prefix('restaurante')->name('restaurant.')->group(function () {
@@ -261,7 +262,7 @@ Route::middleware('auth')->group(function () {
         ->names('admin.digital_wallets')
         ->parameters(['billeteras-digitales' => 'digitalWallet']);
     
-    //Medios de pago
+    //Pasarelas de pago
     Route::resource('/admin/herramientas/medios-pago', PaymentGatewaysController::class)
         ->names('admin.payment_gateways')
         ->parameters(['medios-pago' => 'paymentGateway']);
@@ -270,4 +271,9 @@ Route::middleware('auth')->group(function () {
     Route::resource('/admin/herramientas/metodos-pago', PaymentMethodController::class)
         ->names('admin.payment_methods')
         ->parameters(['metodos-pago' => 'paymentMethod']);
+
+    //Turnos
+    Route::resource('/admin/herramientas/turnos', ShiftController::class)
+        ->names('admin.shifts')
+        ->parameters(['turnos' => 'shifts']);
 });
