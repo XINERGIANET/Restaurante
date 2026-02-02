@@ -229,15 +229,20 @@ Route::middleware('auth')->group(function () {
 
 
     // Areas
-    Route::resource('/admin/pedidos/areas', AreaController::class)
-        ->names('admin.areas')
+    Route::resource('/areas', AreaController::class)
+        ->names('areas')
         ->parameters(['areas' => 'area'])
         ->only(['index', 'store', 'edit', 'update', 'destroy']);
     
     // Mesas
-    Route::resource('/admin/pedidos/areas/{area}/mesas', TableController::class)
-        ->names('admin.areas.tables')
+    Route::resource('/areas/{area}/mesas', TableController::class)
+        ->names('areas.tables')
         ->parameters(['areas' => 'area']);
+    Route::get('/mesas', [TableController::class, 'indexAll'])->name('tables.index');
+    Route::post('/mesas', [TableController::class, 'storeGeneral'])->name('tables.store');
+    Route::get('/mesas/{table}/edit', [TableController::class, 'editGeneral'])->name('tables.edit');
+    Route::put('/mesas/{table}', [TableController::class, 'updateGeneral'])->name('tables.update');
+    Route::delete('/mesas/{table}', [TableController::class, 'destroyGeneral'])->name('tables.destroy');
     Route::view('/admin/configuracion/parametros', 'pages.blank', ['title' => 'Parametros']);
     Route::view('/admin/configuracion/menu', 'pages.blank', ['title' => 'Menu y recetas']);
     Route::view('/admin/configuracion/impuestos', 'pages.blank', ['title' => 'Impuestos']);

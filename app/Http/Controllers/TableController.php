@@ -8,32 +8,192 @@ use Illuminate\Http\Request;
 
 class TableController extends Controller
 {
-    public function index(Area $area)
+    public function indexAll(Request $request)
     {
-        $tables = Table::where('area_id', $area->id)
-            ->where('deleted', false)
+        $search = $request->input('search');
+        $perPage = (int) $request->input('per_page', 10);
+        $allowedPerPage = [10, 20, 50, 100];
+        if (!in_array($perPage, $allowedPerPage, true)) {
+            $perPage = 10;
+        }
+
+        $tables = Table::query()
+            ->when($search, function ($query) use ($search) {
+                $query->where('name', 'like', "%{$search}%");
+            })
+            ->orderByDesc('id')
+            ->paginate($perPage)
+            ->withQueryString();
+
+        $branchId = session('branch_id');
+        $areas = Area::query()
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+            ->orderBy('name')
             ->get();
+
+        return view('tables.index', [
+            'tables' => $tables,
+            'areas' => $areas,
+            'search' => $search,
+            'perPage' => $perPage,
+        ]);
+    }
+
+    public function index(Area $area, Request $request)
+    {
+        $search = $request->input('search');
+        $perPage = (int) $request->input('per_page', 10);
+        $allowedPerPage = [10, 20, 50, 100];
+        if (!in_array($perPage, $allowedPerPage, true)) {
+            $perPage = 10;
+        }
+
+        $tables = Table::query()
+            ->where('area_id', $area->id)
+            ->when($search, function ($query) use ($search) {
+                $query->where('name', 'like', "%{$search}%");
+            })
+            ->orderByDesc('id')
+            ->paginate($perPage)
+            ->withQueryString();
                 
-        return view('restaurant.areas.tables.index', [
+        return view('areas.tables.index', [
             'tables' => $tables,
             'area' => $area,
+            'search' => $search,
+            'perPage' => $perPage,
         ]);
     }
 
     public function store(Area $area, Request $request)
     {   
-        $request->validate([
-            'name' => 'required|string|max:255',
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'capacity' => ['nullable', 'integer', 'min:1'],
+            'status' => ['required', 'integer', 'in:0,1'],
+            'situation' => ['required', 'in:libre,ocupada'],
+            'opened_at' => ['nullable', 'date_format:H:i'],
         ]);
 
         Table::create([
-            'name' => $request->name,
+            'name' => $data['name'],
+            'capacity' => $data['capacity'],
+            'status' => $data['status'],
+            'situation' => $data['situation'] ?? 'libre',
+            'opened_at' => $data['opened_at'],
             'area_id' => $area->id,
             'branch_id' => $area->branch_id,
-            'deleted' => false,
         ]);
 
-        return redirect()->route('admin.areas.tables.index', $area)
+        return redirect()->route('areas.tables.index', $area)
             ->with('success', 'Mesa creada correctamente');
+    }
+
+    public function storeGeneral(Request $request)
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'capacity' => ['nullable', 'integer', 'min:1'],
+            'status' => ['required', 'integer', 'in:0,1'],
+            'situation' => ['required', 'in:libre,ocupada'],
+            'opened_at' => ['nullable', 'date_format:H:i'],
+            'area_id' => ['required', 'integer', 'exists:areas,id'],
+        ]);
+
+        $area = Area::findOrFail($data['area_id']);
+
+        Table::create([
+            'name' => $data['name'],
+            'capacity' => $data['capacity'],
+            'status' => $data['status'],
+            'situation' => $data['situation'] ?? 'libre',
+            'opened_at' => $data['opened_at'],
+            'area_id' => $area->id,
+            'branch_id' => session('branch_id') ?? $area->branch_id,
+        ]);
+
+        return redirect()->route('tables.index')
+            ->with('success', 'Mesa creada correctamente');
+    }
+
+    public function edit(Area $area, Table $table)
+    {
+        return view('areas.tables.edit', [
+            'area' => $area,
+            'table' => $table,
+        ]);
+    }
+
+    public function editGeneral(Table $table)
+    {
+        $branchId = session('branch_id');
+        $areas = Area::query()
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+            ->orderBy('name')
+            ->get();
+
+        return view('tables.edit', [
+            'table' => $table,
+            'areas' => $areas,
+        ]);
+    }
+
+    public function update(Area $area, Table $table, Request $request)
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'capacity' => ['nullable', 'integer', 'min:1'],
+            'status' => ['required', 'integer', 'in:0,1'],
+            'situation' => ['required', 'in:libre,ocupada'],
+            'opened_at' => ['nullable', 'date_format:H:i'],
+        ]);
+
+        $table->update($data);
+
+        return redirect()->route('areas.tables.index', $area)
+            ->with('success', 'Mesa actualizada correctamente');
+    }
+
+    public function updateGeneral(Table $table, Request $request)
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'capacity' => ['nullable', 'integer', 'min:1'],
+            'status' => ['required', 'integer', 'in:0,1'],
+            'situation' => ['required', 'in:libre,ocupada'],
+            'opened_at' => ['nullable', 'date_format:H:i'],
+            'area_id' => ['required', 'integer', 'exists:areas,id'],
+        ]);
+
+        $area = Area::findOrFail($data['area_id']);
+
+        $table->update([
+            'name' => $data['name'],
+            'capacity' => $data['capacity'],
+            'status' => $data['status'],
+            'situation' => $data['situation'],
+            'opened_at' => $data['opened_at'],
+            'area_id' => $area->id,
+            'branch_id' => session('branch_id') ?? $area->branch_id,
+        ]);
+
+        return redirect()->route('tables.index')
+            ->with('success', 'Mesa actualizada correctamente');
+    }
+
+    public function destroy(Area $area, Table $table)
+    {
+        $table->delete();
+
+        return redirect()->route('areas.tables.index', $area)
+            ->with('success', 'Mesa eliminada correctamente');
+    }
+
+    public function destroyGeneral(Table $table)
+    {
+        $table->delete();
+
+        return redirect()->route('tables.index')
+            ->with('success', 'Mesa eliminada correctamente');
     }
 }

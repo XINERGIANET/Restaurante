@@ -13,9 +13,9 @@
                 </div>
                 <div class="flex flex-wrap gap-2">
                     <x-ui.link-button size="sm" variant="primary" type="submit"
-                        href="{{ route('admin.areas.tables.index', $area) }}">Buscar</x-ui.link-button>
+                        href="{{ route('areas.tables.index', $area) }}">Buscar</x-ui.link-button>
                     <x-ui.link-button size="sm" variant="outline"
-                        href="{{ route('admin.areas.tables.index', $area) }}">Limpiar</x-ui.link-button>
+                        href="{{ route('areas.tables.index', $area) }}">Limpiar</x-ui.link-button>
                     <x-ui.link-button size="md" variant="primary" type="button"
                         style=" background-color: #12f00e; color: #111827;" @click="$dispatch('open-tables-modal')">
                         <i class="ri-add-line"></i>
@@ -60,7 +60,7 @@
                             <div class="flex items-center justify-center gap-2">
                                 <div class="relative group">
                                     <x-ui.link-button size="icon" variant="edit"
-                                        href="{{ route('admin.areas.tables.edit', [$area, $table]) }}"
+                                        href="{{ route('areas.tables.edit', [$area, $table]) }}"
                                         className="bg-warning-500 text-white hover:bg-warning-600 ring-0 rounded-full"
                                         style="border-radius: 100%; background-color: #FBBF24; color: #111827;"
                                         aria-label="Editar mesa">
@@ -70,7 +70,7 @@
                                         class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50"
                                         style="transition-delay: 0.5s;">Editar mesa</span>
                                 </div>  
-                                <form method="POST" action="{{ route('admin.areas.tables.destroy', [$area, $table]) }}"
+                                <form method="POST" action="{{ route('areas.tables.destroy', [$area, $table]) }}"
                                     class="relative group js-swal-delete" data-swal-title="Eliminar mesa?"
                                     data-swal-text="Se eliminara {{ $table->name }}. Esta accion no se puede deshacer."
                                     data-swal-confirm="Si, eliminar" data-swal-cancel="Cancelar"
@@ -129,7 +129,7 @@
                 </div>
             @endif
 
-            <form id="create-table-form" class="space-y-6" action="{{ route('admin.areas.tables.store', $area) }}" method="POST">
+            <form id="create-table-form" class="space-y-6" action="{{ route('areas.tables.store', $area) }}" method="POST">
                 @csrf
                 
                 <div class="grid gap-5 sm:grid-cols-1">

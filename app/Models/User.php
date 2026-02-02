@@ -50,4 +50,9 @@ class User extends Authenticatable
     {
         return $this->belongsTo(Profile::class);
     }
+
+    public function person()
+    {
+        return $this->belongsTo(Person::class);
+    }
 }

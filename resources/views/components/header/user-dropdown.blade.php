@@ -13,8 +13,8 @@
         @click.prevent="toggleDropdown()"
         type="button"
     >
-        <span class="mr-3 overflow-hidden rounded-full h-11 w-11">
-            <img src="/images/user/owner.png" alt="User" />
+        <span class="mr-3 flex h-11 w-11 items-center justify-center rounded-full bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-300">
+            <i class="ri-user-3-line text-xl"></i>
         </span>
 
        <span class="block mr-1 font-medium text-theme-sm">{{ auth()->user()->name ?? 'Usuario' }}</span>
