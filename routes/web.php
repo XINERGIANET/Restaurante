@@ -21,6 +21,7 @@ use App\Http\Controllers\OperationsController;
 use App\Http\Controllers\ParameterCategoriesController;
 use App\Http\Controllers\ParameterController;
 use App\Http\Controllers\MenuOptionController;
+use App\Http\Controllers\PaymentConceptController;
 use App\Http\Controllers\PaymentGatewaysController;
 use App\Http\Controllers\PaymentMethodController;
 use App\Http\Controllers\TableController;
@@ -113,6 +114,8 @@ Route::middleware('auth')->group(function () {
         ->only(['index', 'store', 'edit', 'update', 'destroy']);
     Route::get('/admin/pedidos/salones', [OrderController::class, 'index'])
         ->name('admin.orders.index');
+    Route::get('/admin/pedidos/nuevo', [OrderController::class, 'create'])
+        ->name('admin.orders.create');
 
     // dashboard pages
     Route::get('/', function () {
@@ -206,7 +209,10 @@ Route::middleware('auth')->group(function () {
         ->names('admin.views.operations')
         ->parameters(['vistas' => 'view', 'operations' => 'operation']);
 
-    
+    //Conceptos de pago
+    Route::resource('admin/herramientas/conceptos-pago', PaymentConceptController::class)
+        ->names('admin.payment_concepts')
+        ->parameters(['conceptos-pago' => 'paymentConcept']);
     //<-----Parametros----->
     //Categorias de parametros
     Route::get('/admin/herramientas/parametros/categorias', [ParameterCategoriesController::class, 'index'])->name('admin.parameters.categories.index');
@@ -226,15 +232,20 @@ Route::middleware('auth')->group(function () {
 
 
     // Areas
-    Route::resource('/admin/pedidos/areas', AreaController::class)
-        ->names('admin.areas')
+    Route::resource('/areas', AreaController::class)
+        ->names('areas')
         ->parameters(['areas' => 'area'])
         ->only(['index', 'store', 'edit', 'update', 'destroy']);
     
     // Mesas
-    Route::resource('/admin/pedidos/areas/{area}/mesas', TableController::class)
-        ->names('admin.areas.tables')
+    Route::resource('/areas/{area}/mesas', TableController::class)
+        ->names('areas.tables')
         ->parameters(['areas' => 'area']);
+    Route::get('/mesas', [TableController::class, 'indexAll'])->name('tables.index');
+    Route::post('/mesas', [TableController::class, 'storeGeneral'])->name('tables.store');
+    Route::get('/mesas/{table}/edit', [TableController::class, 'editGeneral'])->name('tables.edit');
+    Route::put('/mesas/{table}', [TableController::class, 'updateGeneral'])->name('tables.update');
+    Route::delete('/mesas/{table}', [TableController::class, 'destroyGeneral'])->name('tables.destroy');
     Route::view('/admin/configuracion/parametros', 'pages.blank', ['title' => 'Parametros']);
     Route::view('/admin/configuracion/menu', 'pages.blank', ['title' => 'Menu y recetas']);
     Route::view('/admin/configuracion/impuestos', 'pages.blank', ['title' => 'Impuestos']);

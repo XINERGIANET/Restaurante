@@ -1,8 +1,39 @@
-@extends('layouts.app')
+﻿@extends('layouts.app')
 
 @section('title', 'Punto de Venta')
 
 @section('content')
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+        <div class="flex items-center gap-2">
+            <span class="text-gray-500 dark:text-gray-400"><i class="ri-restaurant-fill"></i></span>
+            <h2 class="text-xl font-semibold text-gray-800 dark:text-white/90">
+                Salones de Pedidos
+            </h2>
+        </div>
+        <nav>
+            <ol class="flex items-center gap-1.5">
+                <li>
+                    <a class="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400" href="{{ url('/') }}">
+                        Home
+                        <svg class="stroke-current" width="17" height="16" viewBox="0 0 17 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M6.0765 12.667L10.2432 8.50033L6.0765 4.33366" stroke="" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"></path>
+                        </svg>
+                    </a>
+                </li>
+                <li>
+                    <a class="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400" href="{{ route('admin.orders.index') }}">
+                        Salones de Pedidos
+                        <svg class="stroke-current" width="17" height="16" viewBox="0 0 17 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M6.0765 12.667L10.2432 8.50033L6.0765 4.33366" stroke="" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"></path>
+                        </svg>
+                    </a>
+                </li>
+                <li class="text-sm text-gray-800 dark:text-white/90">
+                    Mesa {{ str_pad($table->name ?? $table->id, 2, '0', STR_PAD_LEFT) }} | Crear pedido
+                </li>
+            </ol>
+        </nav>
+    </div>
     {{-- 
         CAMBIO 1: Contenedor Principal
         - Quitamos 'h-[calc...]' y 'overflow-hidden'.
@@ -113,12 +144,20 @@
             { id: 6, name: "Pasta Alfredo", price: 18.00, img: "https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?w=400" }
         ];
 
+        const serverTable = @js([
+            'id' => $table->id,
+            'name' => $table->name ?? $table->id,
+            'area' => $table->area?->name ?? 'Salon',
+            'waiter' => 'Sin asignar',
+            'clientName' => 'Publico General',
+            'status' => $table->situation === 'ocupada' ? 'occupied' : 'free',
+            'items' => [],
+        ]);
         let db = JSON.parse(localStorage.getItem('restaurantDB'));
-        if(!db) db = { 'salon-1': { id: 1, name: "03", area: "INTERIOR", waiter: "Sin asignar", clientName: "Público General", status: "occupied", items: [] } };
-        let activeKey = localStorage.getItem('activeTableKey') || 'salon-1'; 
-        let currentTable = db[activeKey] || { id: 1, name: "03", area: "INTERIOR", waiter: "Sin asignar", clientName: "Público General", items: [] };
-
-        function init() {
+        if(!db) db = {};
+        let activeKey = `table-{{ $table->id }}`;
+        let currentTable = db[activeKey] || serverTable;
+function init() {
             document.getElementById('pos-table-name').innerText = currentTable.name || "00";
             document.getElementById('pos-table-area').innerText = currentTable.area || "Salon";
             document.getElementById('pos-waiter-name').innerText = currentTable.waiter || "Sin asignar";
@@ -242,3 +281,5 @@
         init();
     </script>
 @endsection
+
+

@@ -84,6 +84,7 @@ class ViewsController extends Controller
                         'view_id' => $view->id,
                         'color' => $operation['color'],
                         'status' => 1,
+                        'type' => 'T',
                     ]);
                 }
             });

@@ -1,4 +1,4 @@
-@extends('layouts.app')
+﻿@extends('layouts.app')
 
 @php
     use Illuminate\Support\HtmlString;
@@ -34,7 +34,7 @@
                             type="text"
                             name="search"
                             value="{{ request('search') }}"
-                            placeholder="Buscar por nombre o acción..."
+                            placeholder="Buscar por nombre o acciÃ³n..."
                             class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 pl-10 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
                         />
                     </div>
@@ -48,7 +48,7 @@
                     </div>
                 </form>
 
-                {{-- BOTONES DE ACCIÓN --}}
+                {{-- BOTONES DE ACCIÃ“N --}}
                 <div class="flex gap-2">
                     <x-ui.link-button size="md" variant="outline" href="{{ route('admin.views.index') }}">
                         <i class="ri-arrow-left-line mr-1"></i> Volver
@@ -62,7 +62,7 @@
                         @click="$dispatch('open-create-modal')"
                     >
                         <i class="ri-add-line mr-1"></i>
-                        <span>Nueva Operación</span>
+                        <span>Nueva OperaciÃ³n</span>
                     </x-ui.button>
                 </div>
             </div>
@@ -83,7 +83,8 @@
                                 <th class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">ID</p></th>
                                 <th class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Icono</p></th>
                                 <th class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Nombre</p></th>
-                                <th class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Acción</p></th>
+                                <th class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Tipo</p></th>
+                                <th class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">AcciÃ³n</p></th>
                                 <th class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Estado</p></th>
                                 <th class="px-5 py-3 text-right sm:px-6"><p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Acciones</p></th>
                             </tr>
@@ -108,6 +109,12 @@
                                             <span class="w-2 h-2 rounded-full" style="background-color: {{ $operation->color }}"></span>
                                             <span class="text-xs text-gray-400">{{ $operation->color }}</span>
                                         </div>
+                                    </td>
+
+                                    <td class="px-5 py-4 sm:px-6">
+                                        <x-ui.badge variant="light" color="{{ $operation->type === 'T' ? 'info' : 'success' }}">
+                                            {{ $operation->type === 'T' ? 'Tabla' : 'Registro' }}
+                                        </x-ui.badge>
                                     </td>
 
                                     <td class="px-5 py-4 sm:px-6">
@@ -156,7 +163,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="6" class="px-6 py-12 text-center text-gray-500">
+                                    <td colspan="7" class="px-6 py-12 text-center text-gray-500">
                                         No hay operaciones registradas para esta vista.
                                     </td>
                                 </tr>
@@ -180,7 +187,7 @@
                             <i class="ri-add-circle-line text-2xl"></i>
                         </div>
                         <div>
-                            <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Nueva Operación</h3>
+                            <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Nueva OperaciÃ³n</h3>
                             <p class="mt-1 text-sm text-gray-500">Vista asociada: <strong>{{ $view->name }}</strong></p>
                         </div>
                     </div>
@@ -226,7 +233,7 @@
 
             form.addEventListener('submit', (event) => {
                 event.preventDefault();
-                const name = form.dataset.name || 'esta operación';
+                const name = form.dataset.name || 'esta operaciÃ³n';
 
                 if (!window.Swal) {
                     form.submit();
@@ -234,11 +241,11 @@
                 }
 
                 Swal.fire({
-                    title: '¿Eliminar operación?',
-                    text: `Se eliminará "${name}".`,
+                    title: 'Â¿Eliminar operaciÃ³n?',
+                    text: `Se eliminarÃ¡ "${name}".`,
                     icon: 'warning',
                     showCancelButton: true,
-                    confirmButtonText: 'Sí, eliminar',
+                    confirmButtonText: 'SÃ­, eliminar',
                     cancelButtonText: 'Cancelar',
                     confirmButtonColor: '#ef4444',
                     cancelButtonColor: '#6b7280',
@@ -257,3 +264,5 @@
 </script>
 @endpush
 @endsection
+
+

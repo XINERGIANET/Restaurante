@@ -81,7 +81,7 @@
                                     <td class="px-5 py-4 sm:px-6 text-center">
                                         <div class="flex items-center justify-center gap-2">
                                             <x-ui.link-button size="sm" variant="outline"
-                                                x-on:click.prevent="$dispatch('open-edit-card-modal', {{ Illuminate\Support\Js::from(['id' => $card->id, 'description' => $card->description, 'type' => $card->type, 'order_num' => $card->order_num, 'icon' => $card->icon, 'status' => $card->status]) }})"
+                                                x-on:click.prevent="$dispatch('open-edit-card-modal', {{ Illuminate\Support\Js::from(['id' => $card->id, 'description' => $card->description, 'type' => $card->type, 'order_num' => $card->order_num, 'icon' => $card->icon ?? '', 'status' => $card->status]) }})"
                                                 variant="edit"><i class="ri-pencil-line"></i></x-ui.link-button>
 
                                             <form action="{{ route('admin.cards.destroy', $card) }}"
@@ -153,45 +153,7 @@
             <form id="create-card-form" class="space-y-4" action="{{ route('admin.cards.store') }}"
                 method="POST" enctype="multipart/form-data">
                 @csrf
-                <div>
-                    <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Descripcion <span class="text-error-500">*</span></label>
-                    <input type="text" name="description" id="description" value="{{ old('description') }}"
-                        placeholder="Ingrese la descripcion" required
-                        class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border {{ $errors->has('description') ? 'border-error-500' : 'border-gray-300' }} bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30">
-                    @error('description')
-                        <p class="mt-1 text-sm text-error-500">{{ $message }}</p>
-                    @enderror
-                </div>
-                <div>
-                    <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Tipo <span class="text-error-500">*</span></label>
-                    <select name="type" id="type" required
-                        class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border {{ $errors->has('type') ? 'border-error-500' : 'border-gray-300' }} bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30">
-                        <option value="">Seleccione un tipo</option>
-                        <option value="C" {{ old('type') == 'C' ? 'selected' : '' }}>Credito</option>
-                        <option value="D" {{ old('type') == 'D' ? 'selected' : '' }}>Debito</option>
-                    </select>
-                    @error('type')
-                        <p class="mt-1 text-sm text-error-500">{{ $message }}</p>
-                    @enderror
-                </div>
-                <div>
-                    <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Orden <span class="text-error-500">*</span></label>
-                    <input type="number" name="order_num" id="order_num" value="{{ old('order_num') }}"
-                        placeholder="Ingrese el orden" required
-                        class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border {{ $errors->has('order_num') ? 'border-error-500' : 'border-gray-300' }} bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30">
-                    @error('order_num')
-                        <p class="mt-1 text-sm text-error-500">{{ $message }}</p>
-                    @enderror
-                </div>
-                <div>
-                    <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Icono</label>
-                    <input type="text" name="icon" id="icon" value="{{ old('icon') }}"
-                        placeholder="Ingrese el icono (opcional)"
-                        class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border {{ $errors->has('icon') ? 'border-error-500' : 'border-gray-300' }} bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30">
-                    @error('icon')
-                        <p class="mt-1 text-sm text-error-500">{{ $message }}</p>
-                    @enderror
-                </div>
+                @include('cards._form')
                 <div class="flex flex-wrap gap-3 justify-end">
                     <x-ui.button type="submit" size="md" variant="primary">Guardar</x-ui.button>
                     <x-ui.button type="button" size="md" variant="outline"
@@ -201,61 +163,6 @@
         </div>
     </x-ui.modal>
 
-    <!--Modal de edicion de tarjeta-->
-    <x-ui.modal x-data="{ open: false, cardId: null, description: '', type: '', orderNum: null, icon: '', status: '1' }"
-        @open-edit-card-modal.window="open = true; cardId = $event.detail.id; description = $event.detail.description; type = $event.detail.type; orderNum = $event.detail.order_num; icon = $event.detail.icon || ''; status = $event.detail.status.toString()"
-        @close-edit-card-modal.window="open = false" :isOpen="false" class="max-w-md">
-        <div class="p-6 space-y-4">
-            <h3 class="mb-6 text-lg font-semibold text-gray-800 dark:text-white/90">Editar Tarjeta</h3>
-            <form id="edit-card-form" class="space-y-4"
-                x-bind:action="cardId ? '{{ url('/admin/herramientas/tarjetas') }}/' + cardId : '#'"
-                method="POST" enctype="multipart/form-data">
-                @csrf
-                @method('PUT')
-                <div>
-                    <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Descripcion</label>
-                    <input type="text" name="description" id="edit-description" x-model="description"
-                        placeholder="Ingrese la descripcion" required
-                        class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30">
-                </div>
-                <div>
-                    <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Tipo</label>
-                    <select name="type" id="edit-type" x-model="type" required
-                        class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border {{ $errors->has('type') ? 'border-error-500' : 'border-gray-300' }} bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30">
-                        <option value="">Seleccione un tipo</option>
-                        <option value="C" {{ old('type') == 'C' ? 'selected' : '' }}>Credito</option>
-                        <option value="D" {{ old('type') == 'D' ? 'selected' : '' }}>Debito</option>
-                    </select>
-                    @error('type')
-                        <p class="mt-1 text-sm text-error-500">{{ $message }}</p>
-                    @enderror
-                </div>
-                <div>
-                    <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Orden</label>
-                    <input type="number" name="order_num" id="edit-order_num" x-model="orderNum"
-                        placeholder="Ingrese el orden" required
-                        class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30">
-                </div>
-                <div>
-                    <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Icono</label>
-                    <input type="text" name="icon" id="edit-icon" x-model="icon"
-                        placeholder="Ingrese el icono (opcional)"
-                        class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30">
-                </div>
-                <div>
-                    <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Estado</label>
-                    <select name="status" id="edit-status" x-model="status" required
-                        class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30">
-                        <option value="1">Activo</option>
-                        <option value="0">Inactivo</option>
-                    </select>
-                </div>
-                <div class="flex flex-wrap gap-3 justify-end">
-                    <x-ui.button type="submit" size="md" variant="primary">Guardar</x-ui.button>
-                    <x-ui.button type="button" size="md" variant="outline"
-                        @click="open = false">Cancelar</x-ui.button>
-                </div>
-            </form>
-        </div>
-    </x-ui.modal>
+    @include('cards.edit')
+
 @endsection

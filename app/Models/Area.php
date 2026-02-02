@@ -3,26 +3,16 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Area extends Model
 {
+    use SoftDeletes;
+
     protected $fillable = [
         'name',
         'branch_id',
-        'deleted',
     ];
-
-    protected $casts = [
-        'deleted' => 'boolean',
-    ];
-
-    protected static function booted()
-    {
-        static::addGlobalScope('notDeleted', function (Builder $builder) {
-            $builder->where('deleted', false);
-        });
-    }
 
     public function branch()
     {

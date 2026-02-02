@@ -219,6 +219,12 @@ class BranchController extends Controller
         $branch = $this->resolveBranch($company, $branch);
         $this->ensureViewAssignedToBranch($view->id, $branch->id);
 
+        $viewBranch = DB::table('view_branch')
+            ->where('branch_id', $branch->id)
+            ->where('view_id', $view->id)
+            ->whereNull('deleted_at')
+            ->first();
+
         DB::table('view_branch')
             ->where('branch_id', $branch->id)
             ->where('view_id', $view->id)
@@ -227,7 +233,8 @@ class BranchController extends Controller
 
         return redirect()
             ->route('admin.companies.branches.views.index', [$company, $branch])
-            ->with('status', 'Vista desasignada correctamente.');
+            ->with('status', 'Vista desasignada correctamente.')
+            ->with('viewBranch', $viewBranch);
     }
 
     public function viewOperationsIndex(Request $request, Company $company, Branch $branch, View $view)
