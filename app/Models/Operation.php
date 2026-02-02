@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Cache;
 class Operation extends Model
 {
     protected $table = 'operations';
-    protected $fillable = ['name', 'icon', 'action', 'view_id', 'color', 'status'];
+    protected $fillable = ['name', 'icon', 'action', 'view_id', 'color', 'status', 'type'];
 
     public function view()
     {

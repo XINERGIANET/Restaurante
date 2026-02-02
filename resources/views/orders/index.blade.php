@@ -127,6 +127,7 @@
             areas: @js($areas),
             tables: @js($tables),
             currentAreaId: @json(optional($areas->first())->id),
+            createUrl: @json(route('admin.orders.create')),
 
             get filteredTables() {
                 if (!this.currentAreaId) {
@@ -140,7 +141,13 @@
             },
 
             openTable(table) {
-                console.log('Mesa seleccionada:', table.id);
+                const target = new URL(this.createUrl, window.location.origin);
+                target.searchParams.set('table_id', table.id);
+                if (window.Turbo && typeof window.Turbo.visit === 'function') {
+                    window.Turbo.visit(target.toString(), { action: 'advance' });
+                } else {
+                    window.location.href = target.toString();
+                }
             }
         }));
     });

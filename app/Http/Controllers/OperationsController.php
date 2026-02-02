@@ -73,6 +73,7 @@ class OperationsController extends Controller
             'action' => ['required', 'string', 'max:255'], // Ej: create, edit, delete, export
             'color' => ['required', 'string', 'max:50'],   // Nuevo campo Color
             'status' => ['required', 'boolean'],
+            'type' => ['required', 'in:R,T'],
         ]);
     }
 

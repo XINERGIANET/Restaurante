@@ -47,4 +47,21 @@ class OrderController extends Controller
             'tables' => $tablesPayload,
         ]);
     }
+
+    public function create(Request $request)
+    {
+        $tableId = $request->query('table_id');
+        $branchId = session('branch_id');
+
+        $table = Table::query()
+            ->when($branchId, function ($query) use ($branchId) {
+                $query->where('branch_id', $branchId);
+            })
+            ->with('area:id,name')
+            ->findOrFail($tableId);
+
+        return view('orders.create', [
+            'table' => $table,
+        ]);
+    }
 }
