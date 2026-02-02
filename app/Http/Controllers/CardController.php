@@ -39,4 +39,41 @@ class CardController extends Controller
             return redirect()->route('admin.cards.index')->withErrors(['error' => 'Error al crear la tarjeta: ' . $e->getMessage()]);
         }
     }
+
+    public function edit($id)
+    {
+        $card = Card::findOrFail($id);
+        return view('cards.edit', compact('card'));
+    }
+
+    public function update(Request $request, $id)
+    {
+        $card = Card::findOrFail($id);
+        try {
+            $card->update([
+                'description' => $request->description,
+                'type' => $request->type,
+                'order_num' => $request->order_num,
+                'icon' => $request->icon,
+                'status' => $request->status,
+            ]);
+            return redirect()->route('admin.cards.index')->with('status', 'Tarjeta actualizada correctamente');
+        } catch (\Exception $e) {
+            return redirect()->route('admin.cards.index')->withErrors(['error' => 'Error al actualizar la tarjeta: ' . $e->getMessage()]);
+        }
+    }
+
+    public function destroy($id)
+    {
+        $card = Card::findOrFail($id);
+        try {
+            $card->update([
+                'status' => 0
+            ]);
+            $card->delete();
+            return redirect()->route('admin.cards.index')->with('status', 'Tarjeta eliminada correctamente');
+        } catch (\Exception $e) {
+            return redirect()->route('admin.cards.index')->withErrors(['error' => 'Error al eliminar la tarjeta: ' . $e->getMessage()]);
+        }
+    }
 }
