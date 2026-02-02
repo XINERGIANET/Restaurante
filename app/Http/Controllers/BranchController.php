@@ -270,14 +270,94 @@ class BranchController extends Controller
             ->paginate($perPage)
             ->withQueryString();
 
+        $assignedOperationIds = DB::table('branch_operation')
+            ->where('branch_id', $branch->id)
+            ->whereNull('deleted_at')
+            ->pluck('operation_id')
+            ->all();
+
+        $availableOperations = DB::table('operations')
+            ->where('view_id', $view->id)
+            ->whereNull('deleted_at')
+            ->orderBy('name')
+            ->get(['id', 'name', 'icon', 'action', 'color']);
+
         return view('branches.views.operations', [
             'company' => $company,
             'branch' => $branch,
             'view' => $view,
             'operations' => $operations,
+            'availableOperations' => $availableOperations,
+            'assignedOperationIds' => $assignedOperationIds,
             'search' => $search,
             'perPage' => $perPage,
         ]);
+    }
+
+    public function assignViewOperations(Request $request, Company $company, Branch $branch, View $view)
+    {
+        $branch = $this->resolveBranch($company, $branch);
+        $this->ensureViewAssignedToBranch($view->id, $branch->id);
+
+        $data = $request->validate([
+            'operations' => ['nullable', 'array'],
+            'operations.*' => ['integer', 'exists:operations,id'],
+        ]);
+
+        $operationIds = array_values(array_unique(array_map('intval', $data['operations'] ?? [])));
+
+        DB::transaction(function () use ($branch, $view, $operationIds) {
+            DB::table('branch_operation')
+                ->where('branch_id', $branch->id)
+                ->whereIn('operation_id', function ($query) use ($view) {
+                    $query->select('id')
+                        ->from('operations')
+                        ->where('view_id', $view->id)
+                        ->whereNull('deleted_at');
+                })
+                ->whereNull('deleted_at')
+                ->whereNotIn('operation_id', $operationIds)
+                ->update(['deleted_at' => now(), 'updated_at' => now()]);
+
+            foreach ($operationIds as $operationId) {
+                $operation = DB::table('operations')
+                    ->where('id', $operationId)
+                    ->where('view_id', $view->id)
+                    ->whereNull('deleted_at')
+                    ->first();
+
+                if (!$operation) {
+                    continue;
+                }
+
+                $existing = DB::table('branch_operation')
+                    ->where('branch_id', $branch->id)
+                    ->where('operation_id', $operationId)
+                    ->first();
+
+                if ($existing) {
+                    if ($existing->deleted_at !== null) {
+                        DB::table('branch_operation')
+                            ->where('branch_id', $branch->id)
+                            ->where('operation_id', $operationId)
+                            ->update(['deleted_at' => null, 'updated_at' => now()]);
+                    }
+                    continue;
+                }
+
+                DB::table('branch_operation')->insert([
+                    'branch_id' => $branch->id,
+                    'operation_id' => $operationId,
+                    'status' => 1,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        });
+
+        return redirect()
+            ->route('admin.companies.branches.views.operations.index', [$company, $branch, $view])
+            ->with('status', 'Operaciones asignadas correctamente.');
     }
 
     public function profilePermissions(Request $request, Company $company, Branch $branch, Profile $profile)

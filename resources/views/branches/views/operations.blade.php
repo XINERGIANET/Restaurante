@@ -52,10 +52,17 @@
                         </x-ui.link-button>
                     </div>
                 </form>
-                <x-ui.link-button size="md" variant="outline" href="{{ route('admin.companies.branches.views.index', [$company, $branch]) }}">
-                    <i class="ri-arrow-left-line"></i>
-                    <span>Volver</span>
-                </x-ui.link-button>
+                <div class="flex flex-wrap gap-2">
+                    <x-ui.link-button size="md" variant="outline" href="{{ route('admin.companies.branches.views.index', [$company, $branch]) }}">
+                        <i class="ri-arrow-left-line"></i>
+                        <span>Volver</span>
+                    </x-ui.link-button>
+                    <x-ui.button size="md" variant="primary" type="button" style=" background-color: #12f00e; color: #111827;"
+                        @click="$dispatch('open-assign-operations-modal')">
+                        <i class="ri-add-line"></i>
+                        <span>Asignar operaciones</span>
+                    </x-ui.button>
+                </div>
             </div>
 
             <div class="mt-4 rounded-xl border border-gray-200 bg-white overflow-visible dark:border-gray-800 dark:bg-white/[0.03]">
@@ -124,5 +131,66 @@
                 </div>
             </div>
         </x-common.component-card>
+
+        <x-ui.modal x-data="{ open: false }" @open-assign-operations-modal.window="open = true" @close-assign-operations-modal.window="open = false" :isOpen="false" :showCloseButton="false" class="max-w-3xl">
+            <div class="p-6 sm:p-8">
+                <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="flex items-center gap-4">
+                        <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-500 dark:bg-brand-500/10">
+                            <i class="ri-list-check-2 text-2xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Asignar operaciones</h3>
+                            <p class="mt-1 text-sm text-gray-500">Vista: <strong>{{ $view->name }}</strong></p>
+                        </div>
+                    </div>
+                    <button type="button" @click="open = false"
+                        class="flex h-11 w-11 items-center justify-center rounded-full bg-gray-100 text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
+                        aria-label="Cerrar">
+                        <i class="ri-close-line text-xl"></i>
+                    </button>
+                </div>
+
+                <form method="POST" action="{{ route('admin.companies.branches.views.operations.assign', [$company, $branch, $view]) }}" class="space-y-6">
+                    @csrf
+
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        @forelse ($availableOperations as $operation)
+                            <label class="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 shadow-sm transition hover:border-brand-300 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-200">
+                                <input
+                                    type="checkbox"
+                                    name="operations[]"
+                                    value="{{ $operation->id }}"
+                                    class="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500"
+                                    @checked(in_array($operation->id, $assignedOperationIds ?? [], true))
+                                />
+                                <span class="flex h-9 w-9 items-center justify-center rounded-lg text-white" style="background-color: {{ $operation->color }}">
+                                    <i class="{{ $operation->icon }}"></i>
+                                </span>
+                                <span class="flex-1">
+                                    <span class="block font-medium">{{ $operation->name }}</span>
+                                    <span class="block text-xs text-gray-500">{{ $operation->action }}</span>
+                                </span>
+                            </label>
+                        @empty
+                            <div class="sm:col-span-2 rounded-xl border border-dashed border-gray-200 px-4 py-6 text-center text-sm text-gray-500 dark:border-gray-800">
+                                No hay operaciones disponibles para esta vista.
+                            </div>
+                        @endforelse
+                    </div>
+
+                    <div class="flex flex-wrap gap-3">
+                        <x-ui.button type="submit" size="md" variant="primary">
+                            <i class="ri-save-line"></i>
+                            <span>Guardar</span>
+                        </x-ui.button>
+                        <x-ui.button type="button" size="md" variant="outline" @click="open = false">
+                            <i class="ri-close-line"></i>
+                            <span>Cancelar</span>
+                        </x-ui.button>
+                    </div>
+                </form>
+            </div>
+        </x-ui.modal>
     </div>
 @endsection

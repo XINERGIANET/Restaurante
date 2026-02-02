@@ -80,6 +80,8 @@ Route::middleware('auth')->group(function () {
         ->name('admin.companies.branches.views.destroy');
     Route::get('/admin/herramientas/empresas/{company}/sucursales/{branch}/vistas/{view}/operaciones', [BranchController::class, 'viewOperationsIndex'])
         ->name('admin.companies.branches.views.operations.index');
+    Route::post('/admin/herramientas/empresas/{company}/sucursales/{branch}/vistas/{view}/operaciones/asignar', [BranchController::class, 'assignViewOperations'])
+        ->name('admin.companies.branches.views.operations.assign');
     Route::get('/admin/herramientas/empresas/{company}/sucursales/{branch}/perfiles/{profile}/permisos', [BranchController::class, 'profilePermissions'])
         ->name('admin.companies.branches.profiles.permissions.index');
     Route::patch('/admin/herramientas/empresas/{company}/sucursales/{branch}/perfiles/{profile}/permisos/{permission}', [BranchController::class, 'toggleProfilePermission'])
