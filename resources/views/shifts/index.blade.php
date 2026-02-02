@@ -77,7 +77,7 @@
                                 </td>
                                 <td class="px-5 py-4">
                                     <x-ui.badge variant="light" color="primary">
-                                        {{ $shift->branch->name ?? 'Sin asignar' }}
+                                        {{ $shift->branch->legal_name ?? 'Sin asignar' }}
                                     </x-ui.badge>
                                 </td>
                                 <td class="px-5 py-4">
@@ -148,7 +148,13 @@
 
             @if ($errors->any())
                 <div class="mb-5">
-                    <x-ui.alert variant="error" title="Revisa los campos" message="Hay errores en el formulario, corrige los datos e intenta nuevamente." />
+                    <x-ui.alert variant="error" title="Revisa los campos">
+                        <ul class="mt-2 list-disc list-inside text-sm">
+                            @foreach ($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                    </x-ui.alert>
                 </div>
             @endif
 

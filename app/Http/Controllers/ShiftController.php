@@ -33,12 +33,17 @@ class ShiftController extends Controller
     
     public function store(Request $request)
     {
+        $branchId = session('branch_id');
+
         $request->validate([
             'name' => 'required|string|max:255',
-            'branch_id' => 'required|exists:branches,id',
             'start_time' => 'required',
             'end_time' => 'required',
         ]);
+
+        if (!$branchId) {
+            return back()->withErrors(['error' => 'No se pudo identificar tu sucursal.']);
+        }
 
         try {
             Shift::create([
@@ -46,7 +51,7 @@ class ShiftController extends Controller
                 'abbreviation' => $request->abbreviation,     
                 'start_time'   => $request->start_time,
                 'end_time'     => $request->end_time,
-                'branch_id'    => $request->branch_id,
+                'branch_id'    => $branchId,
             ]);
 
             return redirect()->route('admin.shifts.index')
@@ -73,13 +78,19 @@ class ShiftController extends Controller
     {
         $shift = Shift::findOrFail($id);
 
+        $branchId = session('branch_id');
+
+        if (!$branchId) {
+            return back()->withErrors(['error' => 'No se pudo identificar tu sucursal.']);
+        }
+
         try {
             $shift->update([
                 'name'         => $request->input('name'),
                 'abbreviation' => $request->input('abbreviation'), 
                 'start_time'   => $request->input('start_time'),
                 'end_time'     => $request->input('end_time'),
-                'branch_id'    => $request->input('branch_id'),
+                'branch_id'    => $branchId,
             ]);
 
             return redirect()->route('admin.shifts.index')
