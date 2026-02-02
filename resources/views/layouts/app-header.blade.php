@@ -29,6 +29,14 @@
                 </svg>
             </button>
 
+            @php
+                $branchName = null;
+                if (session()->has('branch_id')) {
+                    $branchName = optional(\App\Models\Branch::find(session('branch_id')))->legal_name;
+                }
+                
+            @endphp
+
             <!-- Mobile Menu Toggle Button (visible below xl) -->
             <button
                 class="flex xl:hidden items-center justify-center w-10 h-10 text-gray-500 rounded-lg dark:text-gray-400 lg:h-11 lg:w-11"
@@ -47,6 +55,11 @@
                         fill="" />
                 </svg>
             </button>
+            @if ($branchName)
+                <h1 class="ml-2 inline-flex items-center text-lg font-semibold text-gray-900 dark:text-gray-300">
+                    {{ $branchName }}
+                </h1>
+            @endif
 
             <!-- Logo (mobile only) -->
             <a href="/" class="xl:hidden">

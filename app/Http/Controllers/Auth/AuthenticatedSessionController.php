@@ -22,6 +22,9 @@ class AuthenticatedSessionController extends Controller
 
         if (Auth::attempt($credentials)) {
             $request->session()->regenerate();
+            $user = Auth::user();
+            $branchId = $user?->person?->branch_id;
+            $request->session()->put('branch_id', $branchId);
 
             return redirect()->intended(route('dashboard'));
         }

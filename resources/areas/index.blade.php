@@ -13,9 +13,9 @@
                 </div>
                 <div class="flex flex-wrap gap-2">
                     <x-ui.link-button size="sm" variant="primary" type="submit"
-                        href="{{ route('admin.areas.index') }}">Buscar</x-ui.link-button>
+                        href="{{ route('areas.index') }}">Buscar</x-ui.link-button>
                     <x-ui.link-button size="sm" variant="outline"
-                        href="{{ route('admin.areas.index') }}">Limpiar</x-ui.link-button>
+                        href="{{ route('areas.index') }}">Limpiar</x-ui.link-button>
                     <x-ui.link-button size="md" variant="primary" type="button"
                         style=" background-color: #12f00e; color: #111827;" @click="$dispatch('open-area-modal')">
                         <i class="ri-add-line"></i>
@@ -59,7 +59,7 @@
                             <div class="flex items-center justify-center gap-2">
                                 <div class="relative group">
                                     <x-ui.link-button size="icon" variant="primary"
-                                        href="{{ route('admin.areas.tables.index', $area) }}"
+                                        href="{{ route('areas.tables.index', $area) }}"
                                         className="bg-brand-500 text-white hover:bg-brand-600 ring-0 rounded-full"
                                         style="border-radius: 100%; background-color: #3B82F6; color: #FFFFFF;"
                                         aria-label="Ver mesas">
@@ -71,7 +71,7 @@
                                 </div>
                                 <div class="relative group">
                                     <x-ui.link-button size="icon" variant="edit"
-                                        href="{{ route('admin.areas.edit', $area) }}"
+                                        href="{{ route('areas.edit', $area) }}"
                                         className="bg-warning-500 text-white hover:bg-warning-600 ring-0 rounded-full"
                                         style="border-radius: 100%; background-color: #FBBF24; color: #111827;"
                                         aria-label="Editar area">
@@ -82,7 +82,7 @@
                                         style="transition-delay: 0.5s;">Editar area</span>
                                 </div>
                                 <div class="relative group">
-                                    <form method="POST" action="{{ route('admin.areas.destroy', $area) }}"
+                                    <form method="POST" action="{{ route('areas.destroy', $area) }}"
                                         class="js-swal-delete" data-swal-title="Eliminar area?"
                                         data-swal-text="Se eliminara {{ $area->name }}. Esta accion no se puede deshacer."
                                         data-swal-confirm="Si, eliminar" data-swal-cancel="Cancelar"
@@ -146,7 +146,7 @@
                 </div>
             @endif
 
-            <form id="create-area-form" class="space-y-6 js-form-create" method="POST" action="{{ route('admin.areas.store') }}">
+            <form id="create-area-form" class="space-y-6 js-form-create" method="POST" action="{{ route('areas.store') }}">
                 @csrf
                 
                 <div class="grid gap-5 sm:grid-cols-1">
