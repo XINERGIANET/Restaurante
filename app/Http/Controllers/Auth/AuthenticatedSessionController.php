@@ -46,6 +46,7 @@ class AuthenticatedSessionController extends Controller
                 if ($assignedShift) {
                     $request->session()->put('shift_id', $assignedShift->id);
                     $shiftSnapshot = [
+                        'name' => $assignedShift->name,
                         'start_time' => $assignedShift->start_time,
                         'end_time'   => $assignedShift->end_time
                     ];

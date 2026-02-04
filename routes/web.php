@@ -218,7 +218,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('admin/herramientas/conceptos-pago', PaymentConceptController::class)
         ->names('admin.payment_concepts')
         ->parameters(['conceptos-pago' => 'paymentConcept']);
-    //<-----Parametros----->
+    
     //Categorias de parametros
     Route::get('/admin/herramientas/parametros/categorias', [ParameterCategoriesController::class, 'index'])->name('admin.parameters.categories.index');
     Route::post('/admin/herramientas/parametros/categorias', [ParameterCategoriesController::class, 'store'])->name('admin.parameters.categories.store');
