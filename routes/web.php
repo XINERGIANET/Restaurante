@@ -29,6 +29,7 @@ use App\Http\Controllers\ViewsController;
 use App\Http\Controllers\ShiftController;
 use App\Http\Controllers\PettyCashController;
 use App\Http\Controllers\BoxController;
+use App\Http\Controllers\UnitController;
 
 
 Route::prefix('restaurante')->name('restaurant.')->group(function () {
