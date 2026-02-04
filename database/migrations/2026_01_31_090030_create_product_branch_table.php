@@ -21,6 +21,8 @@ return new class extends Migration
             $table->string('unit_sale', 255)->default('N')->comment('Y => Yes, N => No');
             $table->unsignedBigInteger('product_id');
             $table->unsignedBigInteger('branch_id');
+            $table->integer('stock')->default(0);
+            $table->decimal('price', 10, 2);
             $table->timestamps();
             $table->softDeletes();
             $table->decimal('duration_minutes', 8, 2)->default(0)->comment('minutes');

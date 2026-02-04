@@ -97,6 +97,20 @@
                                             <x-ui.link-button
                                                 size="icon"
                                                 variant="edit"
+                                                href="{{ route('admin.products.product_branch.show', $product) }}"
+                                                className="bg-warning-500 text-white hover:bg-warning-600 ring-0 rounded-full"
+                                                style="border-radius: 100%; background-color: #2493fb; color: #111827;"
+                                                aria-label="Productos por sucursal"
+                                            >
+                                                <i class="ri-store-line"></i>
+                                            </x-ui.link-button>
+                                            <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">Productos por sucursal</span>
+                                        </div>
+                                        <div class="relative group">
+
+                                            <x-ui.link-button
+                                                size="icon"
+                                                variant="edit"
                                                 href="{{ route('admin.products.edit', $product) }}"
                                                 className="bg-warning-500 text-white hover:bg-warning-600 ring-0 rounded-full"
                                                 style="border-radius: 100%; background-color: #FBBF24; color: #111827;"
@@ -106,6 +120,7 @@
                                             </x-ui.link-button>
                                             <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">Editar</span>
                                         </div>
+
                                         <form
                                             method="POST"
                                             action="{{ route('admin.products.destroy', $product) }}"
