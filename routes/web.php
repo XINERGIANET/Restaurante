@@ -27,6 +27,8 @@ use App\Http\Controllers\PaymentMethodController;
 use App\Http\Controllers\TableController;
 use App\Http\Controllers\ViewsController;
 use App\Http\Controllers\ShiftController;
+use App\Http\Controllers\PettyCashController;
+use App\Http\Controllers\BoxController;
 
 
 Route::prefix('restaurante')->name('restaurant.')->group(function () {
@@ -276,4 +278,14 @@ Route::middleware('auth')->group(function () {
     Route::resource('/admin/herramientas/turnos', ShiftController::class)
         ->names('admin.shifts')
         ->parameters(['turnos' => 'shifts']);
+
+    //Caja chica
+    Route::resource('/configuracion/caja-chica', PettyCashController::class)
+        ->names('admin.petty-cash')
+        ->parameters(['caja-chica' => 'pettyCash']);
+
+    //Cajas
+    Route::resource('/admin/herramientas/cajas', BoxController::class)
+        ->names('admin.boxes')
+        ->parameters(['cajas' => 'box']);
 });
