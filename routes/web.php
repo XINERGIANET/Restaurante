@@ -27,7 +27,7 @@ use App\Http\Controllers\PaymentMethodController;
 use App\Http\Controllers\TableController;
 use App\Http\Controllers\ViewsController;
 use App\Http\Controllers\ShiftController;
-
+use App\Http\Controllers\UnitController;
 
 Route::prefix('restaurante')->name('restaurant.')->group(function () {
     Route::view('/', 'restaurant.home', ['title' => 'Xinergia Restaurante'])->name('home');
@@ -231,6 +231,11 @@ Route::middleware('auth')->group(function () {
     // Operaciones
     Route::get('/admin/herramientas/operaciones', [OperationsController::class, 'index'])->name('admin.operations.index');
     Route::post('/admin/herramientas/operaciones', [OperationsController::class, 'store'])->name('admin.operations.store');
+
+    //Unidades
+    Route::resource('/admin/herramientas/unidades', UnitController::class)
+        ->names('admin.units')
+        ->parameters(['unidades' => 'unit']);
 
 
     // Areas
