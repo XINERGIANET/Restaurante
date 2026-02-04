@@ -96,7 +96,7 @@
                                             <x-ui.link-button
                                                 size="icon"
                                                 variant="primary"
-                                                href="#"
+                                                href="{{ route('admin.companies.branches.profiles.operations.index', [$company, $branch, $profile, 'icon' => 'ri-tools-line']) }}"
                                                 className="bg-brand-500 text-white hover:bg-brand-600 ring-0 rounded-full"
                                                 style="border-radius: 100%; background-color: #3B82F6; color: #FFFFFF;"
                                                 aria-label="Ver operaciones"

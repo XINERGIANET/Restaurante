@@ -129,6 +129,7 @@ if (window.__sidebarResizeHandler) {
     {{-- preloader --}}
     <x-common.preloader/>
     {{-- preloader end --}}
+    <x-common.loading-overlay/>
 
     @yield('content')
 
@@ -137,5 +138,4 @@ if (window.__sidebarResizeHandler) {
 @stack('scripts')
 
 </html>
-
 

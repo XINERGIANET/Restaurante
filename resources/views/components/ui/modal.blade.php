@@ -14,7 +14,7 @@
     x-show="open"
     x-cloak
     x-effect="document.body.style.overflow = open ? 'hidden' : 'unset'"
-    class="modal fixed inset-0 z-99999 flex items-center justify-center overflow-y-auto p-5"
+    class="modal fixed inset-0 z-99999 flex items-center justify-center overflow-y-auto p-4 sm:p-6"
     {{ $attributes->except(['class', 'x-data']) }}>
 
     <!-- Backdrop -->
@@ -25,7 +25,7 @@
     </div>
 
     <!-- Modal Content -->
-    <div @click.stop class="relative w-full rounded-3xl bg-white dark:bg-gray-900 {{ $attributes->get('class') }}"
+    <div @click.stop class="relative w-full max-h-[90vh] overflow-hidden rounded-3xl bg-white dark:bg-gray-900 {{ $attributes->get('class') }}"
         x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 transform scale-95"
         x-transition:enter-end="opacity-100 transform scale-100" x-transition:leave="transition ease-in duration-200"
         x-transition:leave-start="opacity-100 transform scale-100"
@@ -45,7 +45,7 @@
         @endif
 
         <!-- Modal Body -->
-        <div>
+        <div class="max-h-full overflow-y-auto">
             {{ $slot }}
         </div>
     </div>

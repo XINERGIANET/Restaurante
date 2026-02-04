@@ -23,8 +23,6 @@ class UserPermissionSeeder extends Seeder
         }
 
         $now = now();
-        $nextId = (int) (DB::table('user_permission')->max('id') ?? 0);
-
         foreach ($menuOptions as $menuOption) {
             $existing = DB::table('user_permission')
                 ->where('profile_id', $profileId)
@@ -55,9 +53,8 @@ class UserPermissionSeeder extends Seeder
                 continue;
             }
 
-            $nextId++;
             DB::table('user_permission')->insert([
-                'id' => (string) $nextId,
+                'id' => (string) Str::uuid(),
                 'name' => $menuOption->name,
                 'profile_id' => $profileId,
                 'menu_option_id' => $menuOption->id,

@@ -34,7 +34,7 @@
                             type="text"
                             name="search"
                             value="{{ request('search') }}"
-                            placeholder="Buscar por nombre o acciÃ³n..."
+                            placeholder="Buscar por nombre o acción..."
                             class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 pl-10 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
                         />
                     </div>
@@ -62,7 +62,7 @@
                         @click="$dispatch('open-create-modal')"
                     >
                         <i class="ri-add-line mr-1"></i>
-                        <span>Nueva OperaciÃ³n</span>
+                        <span>Nueva Operación</span>
                     </x-ui.button>
                 </div>
             </div>
@@ -84,7 +84,7 @@
                                 <th class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Icono</p></th>
                                 <th class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Nombre</p></th>
                                 <th class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Tipo</p></th>
-                                <th class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">AcciÃ³n</p></th>
+                                <th class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Acción</p></th>
                                 <th class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Estado</p></th>
                                 <th class="px-5 py-3 text-right sm:px-6"><p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Acciones</p></th>
                             </tr>
@@ -187,7 +187,7 @@
                             <i class="ri-add-circle-line text-2xl"></i>
                         </div>
                         <div>
-                            <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Nueva OperaciÃ³n</h3>
+                            <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Nueva Operación</h3>
                             <p class="mt-1 text-sm text-gray-500">Vista asociada: <strong>{{ $view->name }}</strong></p>
                         </div>
                     </div>
@@ -205,7 +205,7 @@
                 <form method="POST" action="{{ route('admin.views.operations.store', $view) }}" class="space-y-6">
                     @csrf
 
-                    @include('views.operations._form', ['operation' => null])
+                    @include('views.operations._form', ['operation' => null, 'viewsList' => $viewsList ?? []])
 
                     <div class="flex flex-wrap gap-3">
                         <x-ui.button type="submit" size="md" variant="primary">
@@ -264,5 +264,4 @@
 </script>
 @endpush
 @endsection
-
 

@@ -7,12 +7,30 @@ use App\Models\Module;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Route;
 use App\Models\MenuOption;
+use Illuminate\Support\Facades\DB;
 
 class MenuHelper
 {
     public static function getMainNavItems()
     {
         $menuStructure = [];
+
+        $allowedMenuOptionIds = null;
+        $user = auth()->user();
+        if ($user && $user->profile_id) {
+            $branchId = session('branch_id') ?? $user->person?->branch_id;
+            if ($branchId) {
+                $allowedMenuOptionIds = DB::table('user_permission')
+                    ->where('profile_id', $user->profile_id)
+                    ->where('branch_id', $branchId)
+                    ->whereNull('deleted_at')
+                    ->where('status', 1)
+                    ->pluck('menu_option_id')
+                    ->all();
+            } else {
+                $allowedMenuOptionIds = [];
+            }
+        }
 
         $resolvePath = function ($action) {
             if (str_starts_with($action, '/') || str_starts_with($action, 'http')) {
@@ -33,10 +51,13 @@ class MenuHelper
 
         // Módulos con opciones - solo las que NO son acceso rápido
         $modules = Module::where('status', 1)
-            ->with(['menuOptions' => function ($query) {
+            ->with(['menuOptions' => function ($query) use ($allowedMenuOptionIds) {
                 $query->where('status', 1)
-                    ->where('quick_access', 0) 
                     ->orderBy('id', 'asc');
+
+                if (is_array($allowedMenuOptionIds)) {
+                    $query->whereIn('menu_option.id', $allowedMenuOptionIds);
+                }
             }])
             ->orderBy('order_num', 'asc')
             ->get();
@@ -46,6 +67,7 @@ class MenuHelper
 
             foreach ($module->menuOptions as $option) {
                 $path = $resolvePath($option->action);
+                $path = self::appendViewIdToPath($path, $option->view_id);
 
                 $subItems[] = [
                     'name' => $option->name,
@@ -61,13 +83,6 @@ class MenuHelper
                     'subItems' => $subItems,
                     'path' => '#',
                     'active' => collect($subItems)->contains('active', true)
-                ];
-            } else {
-                $menuStructure[] = [
-                    'icon' => self::getIconSvg($module->icon),
-                    'name' => $module->name,
-                    'path' => '#',
-                    'active' => false
                 ];
             }
         }
@@ -98,7 +113,45 @@ class MenuHelper
 
     public static function isActive($path)
     {
-        return request()->is(ltrim($path, '/'));
+        $pathOnly = parse_url($path, PHP_URL_PATH) ?? $path;
+        return request()->is(ltrim($pathOnly, '/'));
+    }
+
+    public static function appendViewIdToPath($path, $viewId)
+    {
+        if (!$path || $path === '#' || $viewId === null || $viewId === '') {
+            return $path;
+        }
+
+        if (str_contains($path, 'view_id=')) {
+            return $path;
+        }
+
+        $parts = parse_url($path);
+        if ($parts === false) {
+            return $path;
+        }
+
+        $query = [];
+        if (!empty($parts['query'])) {
+            parse_str($parts['query'], $query);
+        }
+
+        $query['view_id'] = $viewId;
+        $queryString = http_build_query($query);
+
+        $schemeHost = '';
+        if (!empty($parts['scheme'])) {
+            $schemeHost = $parts['scheme'] . '://' . ($parts['host'] ?? '');
+            if (!empty($parts['port'])) {
+                $schemeHost .= ':' . $parts['port'];
+            }
+        }
+
+        $pathPart = $parts['path'] ?? '';
+        $fragment = isset($parts['fragment']) ? '#' . $parts['fragment'] : '';
+
+        return $schemeHost . $pathPart . ($queryString ? '?' . $queryString : '') . $fragment;
     }
 
     public static function getIconSvg($iconName)

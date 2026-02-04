@@ -24,6 +24,10 @@ class AuthenticatedSessionController extends Controller
         if (Auth::attempt($credentials)) {
             $request->session()->regenerate();
             $user = Auth::user();
+            $branchId = $user?->person?->branch_id;
+            $profileId = $user?->profile_id;
+            $request->session()->put('branch_id', $branchId);
+            $request->session()->put('profile_id', $profileId);
             $person = $user->person; 
 
             $request->session()->put('user_id', $user->id);

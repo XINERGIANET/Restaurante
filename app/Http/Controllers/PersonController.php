@@ -53,7 +53,7 @@ class PersonController extends Controller
             'selectedRoleIds' => old('roles', []),
             'selectedProfileId' => old('profile_id'),
             'userName' => old('user_name'),
-        ] + $this->getLocationData());
+        ] + $this->getLocationData(null, $branch->location_id));
     }
 
     public function store(Request $request, Company $company, Branch $branch)
@@ -258,7 +258,7 @@ class PersonController extends Controller
         return $person;
     }
 
-    private function getLocationData(?Person $person = null): array
+    private function getLocationData(?Person $person = null, ?int $defaultLocationId = null): array
     {
         $departments = Location::query()
             ->where('type', 'department')
@@ -275,7 +275,7 @@ class PersonController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'parent_location_id']);
 
-        $selectedDistrictId = $person?->location_id;
+        $selectedDistrictId = $person?->location_id ?? $defaultLocationId;
         $selectedProvinceId = null;
         $selectedDepartmentId = null;
 

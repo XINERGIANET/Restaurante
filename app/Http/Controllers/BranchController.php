@@ -5,11 +5,13 @@ namespace App\Http\Controllers;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Models\Location;
+use App\Models\Module;
 use App\Models\Profile;
 use App\Models\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class BranchController extends Controller
 {
@@ -360,6 +362,151 @@ class BranchController extends Controller
             ->with('status', 'Operaciones asignadas correctamente.');
     }
 
+    public function profileOperationsIndex(Request $request, Company $company, Branch $branch, Profile $profile)
+    {
+        $branch = $this->resolveBranch($company, $branch);
+        $this->ensureProfileAssignedToBranch($profile->id, $branch->id);
+
+        $search = $request->input('search');
+        $perPage = (int) $request->input('per_page', 10);
+        $allowedPerPage = [10, 20, 50, 100];
+        if (!in_array($perPage, $allowedPerPage, true)) {
+            $perPage = 10;
+        }
+
+        $operations = DB::table('operation_profile_branch')
+            ->join('operations', 'operations.id', '=', 'operation_profile_branch.operation_id')
+            ->join('branch_operation', function ($join) use ($branch) {
+                $join->on('branch_operation.operation_id', '=', 'operation_profile_branch.operation_id')
+                    ->where('branch_operation.branch_id', $branch->id)
+                    ->whereNull('branch_operation.deleted_at');
+            })
+            ->where('operation_profile_branch.branch_id', $branch->id)
+            ->where('operation_profile_branch.profile_id', $profile->id)
+            ->whereNull('operation_profile_branch.deleted_at')
+            ->whereNull('operations.deleted_at')
+            ->when($search, function ($query) use ($search) {
+                $query->where(function ($inner) use ($search) {
+                    $inner->where('operations.name', 'like', "%{$search}%")
+                        ->orWhere('operations.action', 'like', "%{$search}%");
+                });
+            })
+            ->orderBy('operations.name')
+            ->select([
+                'operations.id',
+                'operation_profile_branch.status',
+                'operations.name',
+                'operations.icon',
+                'operations.action',
+                'operations.color',
+            ])
+            ->paginate($perPage)
+            ->withQueryString();
+
+        $assignedOperationIds = DB::table('operation_profile_branch')
+            ->where('branch_id', $branch->id)
+            ->where('profile_id', $profile->id)
+            ->whereNull('deleted_at')
+            ->pluck('operation_id')
+            ->all();
+
+        $availableOperations = DB::table('branch_operation')
+            ->join('operations', 'operations.id', '=', 'branch_operation.operation_id')
+            ->where('branch_operation.branch_id', $branch->id)
+            ->whereNull('branch_operation.deleted_at')
+            ->whereNull('operations.deleted_at')
+            ->orderBy('operations.name')
+            ->select([
+                'operations.id',
+                'operations.name',
+                'operations.icon',
+                'operations.action',
+                'operations.color',
+            ])
+            ->get();
+
+        return view('branches.profiles.operations', [
+            'company' => $company,
+            'branch' => $branch,
+            'profile' => $profile,
+            'operations' => $operations,
+            'availableOperations' => $availableOperations,
+            'assignedOperationIds' => $assignedOperationIds,
+            'search' => $search,
+            'perPage' => $perPage,
+        ]);
+    }
+
+    public function assignProfileOperations(Request $request, Company $company, Branch $branch, Profile $profile)
+    {
+        $branch = $this->resolveBranch($company, $branch);
+        $this->ensureProfileAssignedToBranch($profile->id, $branch->id);
+
+        $data = $request->validate([
+            'operations' => ['nullable', 'array'],
+            'operations.*' => ['integer', 'exists:operations,id'],
+        ]);
+
+        $operationIds = array_values(array_unique(array_map('intval', $data['operations'] ?? [])));
+
+        DB::transaction(function () use ($branch, $profile, $operationIds) {
+            DB::table('operation_profile_branch')
+                ->where('branch_id', $branch->id)
+                ->where('profile_id', $profile->id)
+                ->whereIn('operation_id', function ($query) use ($branch) {
+                    $query->select('operation_id')
+                        ->from('branch_operation')
+                        ->where('branch_id', $branch->id)
+                        ->whereNull('deleted_at');
+                })
+                ->whereNull('deleted_at')
+                ->whereNotIn('operation_id', $operationIds)
+                ->update(['deleted_at' => now(), 'updated_at' => now()]);
+
+            foreach ($operationIds as $operationId) {
+                $allowed = DB::table('branch_operation')
+                    ->where('branch_id', $branch->id)
+                    ->where('operation_id', $operationId)
+                    ->whereNull('deleted_at')
+                    ->exists();
+
+                if (!$allowed) {
+                    continue;
+                }
+
+                $existing = DB::table('operation_profile_branch')
+                    ->where('branch_id', $branch->id)
+                    ->where('profile_id', $profile->id)
+                    ->where('operation_id', $operationId)
+                    ->first();
+
+                if ($existing) {
+                    if ($existing->deleted_at !== null) {
+                        DB::table('operation_profile_branch')
+                            ->where('branch_id', $branch->id)
+                            ->where('profile_id', $profile->id)
+                            ->where('operation_id', $operationId)
+                            ->update(['deleted_at' => null, 'updated_at' => now()]);
+                    }
+                    continue;
+                }
+
+                DB::table('operation_profile_branch')->insert([
+                    'branch_id' => $branch->id,
+                    'profile_id' => $profile->id,
+                    'operation_id' => $operationId,
+                    'status' => 1,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        });
+
+        return redirect()
+            ->route('admin.companies.branches.profiles.operations.index', [$company, $branch, $profile])
+            ->with('status', 'Operaciones asignadas correctamente.');
+    }
+
     public function profilePermissions(Request $request, Company $company, Branch $branch, Profile $profile)
     {
         $branch = $this->resolveBranch($company, $branch);
@@ -392,14 +539,139 @@ class BranchController extends Controller
             ->paginate($perPage)
             ->withQueryString();
 
+        $modules = Module::query()
+            ->where('status', 1)
+            ->orderBy('order_num')
+            ->with(['menuOptions' => function ($query) {
+                $query->whereNull('menu_option.deleted_at')
+                    ->where('menu_option.status', 1)
+                    ->orderBy('menu_option.name')
+                    ->select([
+                        'menu_option.id',
+                        'menu_option.name',
+                        'menu_option.icon',
+                        'menu_option.action',
+                        'menu_option.module_id',
+                        'menu_option.status',
+                    ]);
+            }])
+            ->get(['id', 'name', 'icon', 'order_num', 'status']);
+
+        $modules = $modules->filter(fn ($module) => $module->menuOptions->isNotEmpty())->values();
+
+        $assignedMenuOptionIds = DB::table('user_permission')
+            ->where('profile_id', $profile->id)
+            ->where('branch_id', $branch->id)
+            ->whereNull('deleted_at')
+            ->pluck('menu_option_id')
+            ->all();
+
         return view('branches.profiles.permissions.index', [
             'company' => $company,
             'branch' => $branch,
             'profile' => $profile,
             'permissions' => $permissions,
+            'modules' => $modules,
+            'assignedMenuOptionIds' => $assignedMenuOptionIds,
             'search' => $search,
             'perPage' => $perPage,
         ]);
+    }
+
+    public function assignProfilePermissions(Request $request, Company $company, Branch $branch, Profile $profile)
+    {
+        $branch = $this->resolveBranch($company, $branch);
+        $this->ensureProfileAssignedToBranch($profile->id, $branch->id);
+
+        $data = $request->validate([
+            'permissions' => ['nullable', 'array'],
+            'permissions.*' => ['integer', 'exists:menu_option,id'],
+        ]);
+
+        $selectedIds = array_values(array_unique(array_map('intval', $data['permissions'] ?? [])));
+
+        $allowedIds = DB::table('menu_option')
+            ->join('modules', 'modules.id', '=', 'menu_option.module_id')
+            ->whereNull('menu_option.deleted_at')
+            ->whereNull('modules.deleted_at')
+            ->where('menu_option.status', 1)
+            ->where('modules.status', 1)
+            ->pluck('menu_option.id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $allowedIds = array_values(array_unique($allowedIds));
+        $selectedIds = array_values(array_intersect($selectedIds, $allowedIds));
+
+        $menuOptionNames = DB::table('menu_option')
+            ->whereIn('id', $selectedIds)
+            ->pluck('name', 'id');
+
+        DB::transaction(function () use ($branch, $profile, $allowedIds, $selectedIds, $menuOptionNames) {
+            if (!empty($allowedIds)) {
+                $deleteQuery = DB::table('user_permission')
+                    ->where('profile_id', $profile->id)
+                    ->where('branch_id', $branch->id)
+                    ->whereNull('deleted_at')
+                    ->whereIn('menu_option_id', $allowedIds);
+
+                if (!empty($selectedIds)) {
+                    $deleteQuery->whereNotIn('menu_option_id', $selectedIds);
+                }
+
+                $deleteQuery->update([
+                    'deleted_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+
+            foreach ($selectedIds as $menuOptionId) {
+                $existing = DB::table('user_permission')
+                    ->where('profile_id', $profile->id)
+                    ->where('branch_id', $branch->id)
+                    ->where('menu_option_id', $menuOptionId)
+                    ->first();
+
+                $name = $menuOptionNames[$menuOptionId] ?? '';
+
+                if ($existing) {
+                    if ($existing->deleted_at !== null) {
+                        DB::table('user_permission')
+                            ->where('id', $existing->id)
+                            ->update([
+                                'deleted_at' => null,
+                                'status' => true,
+                                'name' => $name ?: $existing->name,
+                                'updated_at' => now(),
+                            ]);
+                    } elseif ($name && $existing->name !== $name) {
+                        DB::table('user_permission')
+                            ->where('id', $existing->id)
+                            ->update([
+                                'name' => $name,
+                                'updated_at' => now(),
+                            ]);
+                    }
+
+                    continue;
+                }
+
+                DB::table('user_permission')->insert([
+                    'id' => (string) Str::uuid(),
+                    'name' => $name,
+                    'profile_id' => $profile->id,
+                    'menu_option_id' => $menuOptionId,
+                    'branch_id' => $branch->id,
+                    'status' => true,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        });
+
+        return redirect()
+            ->route('admin.companies.branches.profiles.permissions.index', [$company, $branch, $profile])
+            ->with('status', 'Permisos asignados correctamente.');
     }
 
     public function toggleProfilePermission(Company $company, Branch $branch, Profile $profile, string $permission)

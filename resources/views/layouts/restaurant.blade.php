@@ -19,6 +19,8 @@
         <div class="absolute inset-0 grain pointer-events-none"></div>
     </div>
 
+    <x-common.loading-overlay/>
+
     @include('restaurant.partials.nav')
 
     <main class="relative">
