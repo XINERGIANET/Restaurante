@@ -54,7 +54,8 @@ class AuthenticatedSessionController extends Controller
                         'start_time' => $assignedShift->start_time,
                         'end_time'   => $assignedShift->end_time
                     ];
-                    $request->session()->put('shift_snapshot', $shiftSnapshot);
+                    $shiftJsonString = json_encode($shiftSnapshot, JSON_UNESCAPED_UNICODE);
+                    $request->session()->put('shift_snapshot', $shiftJsonString);
                 }
             }
             
