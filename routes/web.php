@@ -30,7 +30,10 @@ use App\Http\Controllers\ViewsController;
 use App\Http\Controllers\ShiftController;
 use App\Http\Controllers\TaxRateController;
 use App\Http\Controllers\TaxRatesController;
+use App\Http\Controllers\PettyCashController;
+use App\Http\Controllers\BoxController;
 use App\Http\Controllers\UnitController;
+
 
 Route::prefix('restaurante')->name('restaurant.')->group(function () {
     Route::view('/', 'restaurant.home', ['title' => 'Xinergia Restaurante'])->name('home');
@@ -293,14 +296,4 @@ Route::middleware('auth')->group(function () {
     Route::resource('/admin/herramientas/turnos', ShiftController::class)
         ->names('admin.shifts')
         ->parameters(['turnos' => 'shifts']);
-
-    //Productos por sucursal
-    Route::resource('/admin/herramientas/productos-sucursal', ProductBranchController::class)
-        ->names('admin.product_branches')
-        ->parameters(['productos-sucursal' => 'productBranch']);
-
-    //Tasas de impuesto
-    Route::resource('/admin/herramientas/tasas-impuesto', TaxRateController::class)
-        ->names('admin.tax_rates')
-        ->parameters(['tasas-impuesto' => 'taxRate']);
 });

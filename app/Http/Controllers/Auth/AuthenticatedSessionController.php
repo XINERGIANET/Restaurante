@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\Shift;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -23,9 +24,35 @@ class AuthenticatedSessionController extends Controller
         if (Auth::attempt($credentials)) {
             $request->session()->regenerate();
             $user = Auth::user();
-            $branchId = $user?->person?->branch_id;
-            $request->session()->put('branch_id', $branchId);
+            $person = $user->person; 
 
+            $request->session()->put('user_id', $user->id);
+            $request->session()->put('user_name', $user->name);
+
+            if ($person) {
+                $request->session()->put('person_id', $person->id);             
+                $fullName = $person->first_name . ' ' . $person->last_name;
+                $request->session()->put('person_fullname', $fullName);
+                $request->session()->put('branch_id', $person->branch_id);
+
+                $shifts = Shift::where('branch_id', $person->branch_id)->get();
+                $currentTime = now()->format('H:i:s');
+                $assignedShift = $shifts->filter(function ($shift) use ($currentTime) {
+                    return $currentTime >= $shift->start_time && $currentTime <= $shift->end_time;
+                })->first();
+                if (!$assignedShift && $shifts->count() === 1) {
+                    $assignedShift = $shifts->first();
+                }
+                if ($assignedShift) {
+                    $request->session()->put('shift_id', $assignedShift->id);
+                    $shiftSnapshot = [
+                        'start_time' => $assignedShift->start_time,
+                        'end_time'   => $assignedShift->end_time
+                    ];
+                    $request->session()->put('shift_snapshot', $shiftSnapshot);
+                }
+            }
+            
             return redirect()->intended(route('dashboard'));
         }
 
