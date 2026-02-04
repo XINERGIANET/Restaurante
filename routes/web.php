@@ -234,6 +234,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/admin/herramientas/operaciones', [OperationsController::class, 'index'])->name('admin.operations.index');
     Route::post('/admin/herramientas/operaciones', [OperationsController::class, 'store'])->name('admin.operations.store');
 
+    //Unidades
+    Route::resource('/admin/herramientas/unidades', UnitController::class)
+        ->names('admin.units')
+        ->parameters(['unidades' => 'unit']);
+
 
     // Areas
     Route::resource('/areas', AreaController::class)

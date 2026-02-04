@@ -7,6 +7,7 @@ use App\Models\DocumentType;
 use App\Models\Movement;
 use App\Models\MovementType;
 use App\Models\Person;
+use App\Models\Product;
 use Illuminate\Http\Request;
 
 class SalesController extends Controller
@@ -42,7 +43,24 @@ class SalesController extends Controller
 
     public function create()
     {
-        return view('sales.create');
+        $products = Product::where('type', 'PRODUCT')
+            ->with('category')
+            ->get()
+            ->map(function($product) {
+                $imageUrl = $product->image 
+                    ? asset('storage/' . $product->image) 
+                    : asset('images/no-image.png');
+                return [
+                    'id' => $product->id,
+                    'name' => $product->description,
+                    'price' => 0.00,
+                    'img' => $imageUrl,
+                    'category' => $product->category ? $product->category->description : 'Sin categoría'
+                ];
+            });
+        return view('sales.create', [
+            'products' => $products,
+        ]);
     }
 
     public function store(Request $request)

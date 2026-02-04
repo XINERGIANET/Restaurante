@@ -45,7 +45,7 @@ class ProductController extends Controller
     {
         $data = $this->validateProduct($request);
         Product::create($data);
-
+        
         return redirect()
             ->route('admin.products.index')
             ->with('status', 'Producto creado correctamente.');
