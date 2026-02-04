@@ -14,6 +14,143 @@ window.ApexCharts = ApexCharts;
 window.flatpickr = flatpickr;
 window.FullCalendar = Calendar;
 
+const loadingOverlay = (() => {
+    let overlayEl = null;
+
+    const getEl = () => {
+        if (!overlayEl) {
+            overlayEl = document.querySelector('[data-loading-overlay]');
+        }
+        return overlayEl;
+    };
+
+    const show = () => {
+        const el = getEl();
+        if (!el) return;
+        el.classList.remove('hidden');
+        el.setAttribute('aria-hidden', 'false');
+    };
+
+    const hide = () => {
+        const el = getEl();
+        if (!el) return;
+        el.classList.add('hidden');
+        el.setAttribute('aria-hidden', 'true');
+    };
+
+    return { show, hide };
+})();
+
+window.showLoadingModal = loadingOverlay.show;
+window.hideLoadingModal = loadingOverlay.hide;
+
+const shouldIgnoreLink = (link, event) => {
+    if (!link) return true;
+    if (link.closest('[data-no-loading]')) return true;
+    if (link.hasAttribute('download')) return true;
+    const href = link.getAttribute('href');
+    if (!href) return true;
+    if (href.startsWith('#')) return true;
+    if (href.startsWith('javascript:')) return true;
+    if (href.startsWith('mailto:') || href.startsWith('tel:')) return true;
+    const target = link.getAttribute('target');
+    if (target && target !== '_self') return true;
+    if (event) {
+        if (event.defaultPrevented) return true;
+        if (event.button !== 0) return true;
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return true;
+    }
+    return false;
+};
+
+const shouldIgnoreForm = (form, event) => {
+    if (!form) return true;
+    if (form.closest('[data-no-loading]')) return true;
+    if (form.classList.contains('js-swal-delete')) return true;
+    const target = form.getAttribute('target');
+    if (target && target !== '_self') return true;
+    if (event && event.defaultPrevented) return true;
+    return false;
+};
+
+const bindLoadingOverlay = () => {
+    if (window.__loadingOverlayBound) return;
+    window.__loadingOverlayBound = true;
+
+    document.addEventListener('click', (event) => {
+        const link = event.target.closest('a');
+        if (shouldIgnoreLink(link, event)) return;
+        loadingOverlay.show();
+    });
+
+    document.addEventListener('submit', (event) => {
+        const form = event.target;
+        if (shouldIgnoreForm(form, event)) return;
+        loadingOverlay.show();
+    });
+
+    document.addEventListener('pageshow', () => loadingOverlay.hide());
+
+    if (window.Turbo) {
+        document.addEventListener('turbo:visit', () => loadingOverlay.show());
+        document.addEventListener('turbo:submit-start', () => loadingOverlay.show());
+        document.addEventListener('turbo:submit-end', () => loadingOverlay.hide());
+        document.addEventListener('turbo:render', () => loadingOverlay.hide());
+        document.addEventListener('turbo:load', () => loadingOverlay.hide());
+        document.addEventListener('turbo:before-cache', () => loadingOverlay.hide());
+        document.addEventListener('turbo:frame-load', () => loadingOverlay.hide());
+    } else {
+        document.addEventListener('DOMContentLoaded', () => loadingOverlay.hide(), { once: true });
+    }
+};
+
+bindLoadingOverlay();
+
+const syncSelectAllState = (scope) => {
+    if (!scope) return;
+    const selectAll = scope.querySelector('input[data-select-all]');
+    if (!selectAll) return;
+    const items = Array.from(scope.querySelectorAll('input[data-select-item]'))
+        .filter((input) => !input.disabled);
+    if (items.length === 0) {
+        selectAll.checked = false;
+        return;
+    }
+    selectAll.checked = items.every((input) => input.checked);
+};
+
+const syncAllSelectAllStates = () => {
+    document.querySelectorAll('[data-select-scope]').forEach(syncSelectAllState);
+};
+
+const bindSelectAllCheckboxes = () => {
+    if (window.__selectAllBound) return;
+    window.__selectAllBound = true;
+
+    document.addEventListener('change', (event) => {
+        const selectAll = event.target.closest('input[data-select-all]');
+        if (selectAll) {
+            const scope = selectAll.closest('[data-select-scope]') || selectAll.closest('form') || document;
+            scope.querySelectorAll('input[data-select-item]').forEach((input) => {
+                if (input.disabled) return;
+                input.checked = selectAll.checked;
+            });
+            return;
+        }
+
+        const item = event.target.closest('input[data-select-item]');
+        if (!item) return;
+        const scope = item.closest('[data-select-scope]') || item.closest('form') || document;
+        syncSelectAllState(scope);
+    });
+
+    document.addEventListener('turbo:load', syncAllSelectAllStates);
+    document.addEventListener('turbo:render', syncAllSelectAllStates);
+    document.addEventListener('DOMContentLoaded', syncAllSelectAllStates, { once: true });
+};
+
+bindSelectAllCheckboxes();
+
 Alpine.data('crudModal', (el) => {
     const parseJson = (value, fallback) => {
         if (value === undefined || value === null || value === '') {
@@ -95,6 +232,9 @@ const bindSwalDelete = () => {
                 allowOutsideClick: false,
             }).then((result) => {
                 if (result.isConfirmed) {
+                    if (window.showLoadingModal) {
+                        window.showLoadingModal();
+                    }
                     form.submit();
                 }
             });

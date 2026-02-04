@@ -72,6 +72,10 @@ Route::middleware('auth')->group(function () {
         ->name('admin.companies.branches.people.user.password');
     Route::get('/admin/herramientas/empresas/{company}/sucursales/{branch}/perfiles', [BranchController::class, 'profiles'])
         ->name('admin.companies.branches.profiles.index');
+    Route::get('/admin/herramientas/empresas/{company}/sucursales/{branch}/perfiles/{profile}/operaciones', [BranchController::class, 'profileOperationsIndex'])
+        ->name('admin.companies.branches.profiles.operations.index');
+    Route::post('/admin/herramientas/empresas/{company}/sucursales/{branch}/perfiles/{profile}/operaciones/asignar', [BranchController::class, 'assignProfileOperations'])
+        ->name('admin.companies.branches.profiles.operations.assign');
     Route::get('/admin/herramientas/empresas/{company}/sucursales/{branch}/vistas', [BranchController::class, 'viewsIndex'])
         ->name('admin.companies.branches.views.index');
     Route::post('/admin/herramientas/empresas/{company}/sucursales/{branch}/vistas', [BranchController::class, 'updateViews'])
@@ -84,6 +88,8 @@ Route::middleware('auth')->group(function () {
         ->name('admin.companies.branches.views.operations.assign');
     Route::get('/admin/herramientas/empresas/{company}/sucursales/{branch}/perfiles/{profile}/permisos', [BranchController::class, 'profilePermissions'])
         ->name('admin.companies.branches.profiles.permissions.index');
+    Route::post('/admin/herramientas/empresas/{company}/sucursales/{branch}/perfiles/{profile}/permisos/asignar', [BranchController::class, 'assignProfilePermissions'])
+        ->name('admin.companies.branches.profiles.permissions.assign');
     Route::patch('/admin/herramientas/empresas/{company}/sucursales/{branch}/perfiles/{profile}/permisos/{permission}', [BranchController::class, 'toggleProfilePermission'])
         ->name('admin.companies.branches.profiles.permissions.toggle');
     Route::resource('/admin/herramientas/perfiles', ProfileController::class)
