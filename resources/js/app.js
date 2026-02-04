@@ -14,6 +14,122 @@ window.ApexCharts = ApexCharts;
 window.flatpickr = flatpickr;
 window.FullCalendar = Calendar;
 
+const remixIconCatalog = {
+    list: null,
+    promise: null,
+    error: null,
+    source: 'https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css',
+};
+
+const resolveRemixIconSource = () => {
+    const link = document.querySelector('link[href*="remixicon"]');
+    if (link && link.href) {
+        remixIconCatalog.source = link.href;
+    }
+};
+
+const loadRemixIconList = () => {
+    if (Array.isArray(remixIconCatalog.list)) {
+        return Promise.resolve(remixIconCatalog.list);
+    }
+    if (remixIconCatalog.promise) {
+        return remixIconCatalog.promise;
+    }
+    resolveRemixIconSource();
+    remixIconCatalog.promise = fetch(remixIconCatalog.source)
+        .then((response) => response.text())
+        .then((css) => {
+            const regex = /\.ri-([a-z0-9-]+)::?before/g;
+            const icons = new Set();
+            let match;
+            while ((match = regex.exec(css)) !== null) {
+                icons.add(`ri-${match[1]}`);
+            }
+            remixIconCatalog.list = Array.from(icons).sort();
+            remixIconCatalog.error = null;
+            return remixIconCatalog.list;
+        })
+        .catch((error) => {
+            remixIconCatalog.list = [];
+            remixIconCatalog.error = error || true;
+            return remixIconCatalog.list;
+        });
+    return remixIconCatalog.promise;
+};
+
+window.iconPicker = function () {
+    return {
+        open: false,
+        search: '',
+        icons: [],
+        loading: false,
+        error: false,
+        maxVisible: 180,
+        selected: '',
+        init() {
+            if (this.$refs?.iconInput) {
+                const current = this.$refs.iconInput.value || '';
+                this.search = current;
+                this.selected = current;
+            }
+        },
+        loadIcons() {
+            if (this.icons.length || this.loading) return;
+            this.loading = true;
+            this.error = false;
+            loadRemixIconList()
+                .then((icons) => {
+                    this.icons = icons || [];
+                    this.error = !!remixIconCatalog.error || this.icons.length === 0;
+                })
+                .finally(() => {
+                    this.loading = false;
+                });
+        },
+        get filteredIcons() {
+            if (!this.search) return this.icons;
+            const query = this.search.toLowerCase();
+            return this.icons.filter((icon) => icon.includes(query));
+        },
+        get displayedIcons() {
+            const icons = this.filteredIcons || [];
+            if (!icons.length) return [];
+            return icons.slice(0, this.maxVisible);
+        },
+        openDropdown() {
+            this.open = true;
+            this.loadIcons();
+        },
+        toggleDropdown() {
+            if (this.open) {
+                this.open = false;
+                return;
+            }
+            this.openDropdown();
+        },
+        closeDropdown() {
+            this.open = false;
+        },
+        select(icon) {
+            this.selected = icon;
+            this.search = icon;
+            if (this.$refs?.iconInput) {
+                this.$refs.iconInput.value = icon;
+                this.$refs.iconInput.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+            this.open = false;
+        },
+        clear() {
+            this.selected = '';
+            this.search = '';
+            if (this.$refs?.iconInput) {
+                this.$refs.iconInput.value = '';
+                this.$refs.iconInput.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        },
+    };
+};
+
 const loadingOverlay = (() => {
     let overlayEl = null;
 

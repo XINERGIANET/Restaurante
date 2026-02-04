@@ -3,9 +3,71 @@
 @php
     use App\Models\MenuOption;
     use App\Helpers\MenuHelper;
+    use Illuminate\Http\Request as HttpRequest;
 
     $currentPath = '/' . trim(request()->path(), '/');
     $currentRouteName = optional(request()->route())->getName();
+    $breadcrumbViewId = request()->query('view_id');
+    $crumbList = $crumbs ?? ($breadcrumbs ?? null);
+    $resolveViewIdForUrl = function ($url) {
+        if (!$url || $url === '#') {
+            return null;
+        }
+
+        $parts = parse_url($url);
+        if ($parts === false) {
+            return null;
+        }
+
+        if (!empty($parts['query'])) {
+            parse_str($parts['query'], $query);
+            if (!empty($query['view_id'])) {
+                return $query['view_id'];
+            }
+        }
+
+        $path = $parts['path'] ?? null;
+        if (!$path) {
+            return null;
+        }
+
+        $routeName = null;
+        try {
+            $matched = app('router')->getRoutes()->match(HttpRequest::create($path));
+            $routeName = $matched?->getName();
+        } catch (\Exception $e) {
+            $routeName = null;
+        }
+
+        if ($routeName) {
+            $menuOption = MenuOption::query()
+                ->where('status', 1)
+                ->where('action', $routeName)
+                ->first();
+            if ($menuOption?->view_id) {
+                return $menuOption->view_id;
+            }
+        }
+
+        $normalizedPath = ltrim($path, '/');
+        $menuOption = MenuOption::query()
+            ->where('status', 1)
+            ->where(function ($query) use ($path, $normalizedPath) {
+                $query->orWhere('action', $path)
+                    ->orWhere('action', $normalizedPath);
+            })
+            ->first();
+
+        return $menuOption?->view_id;
+    };
+
+    $appendViewId = function ($url) use ($breadcrumbViewId, $resolveViewIdForUrl) {
+        if (!$breadcrumbViewId || !$url) {
+            return $url;
+        }
+        $viewIdForUrl = $resolveViewIdForUrl($url) ?: $breadcrumbViewId;
+        return MenuHelper::appendViewIdToPath($url, $viewIdForUrl);
+    };
 
     $menuOption = MenuOption::query()
         ->where('status', 1)
@@ -35,12 +97,12 @@
         </h2>
     </div>
     <nav>
-        @if (!empty($crumbs))
+        @if (!empty($crumbList))
             <ol class="flex items-center gap-1.5">
                 <li>
                     <a
                         class="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400"
-                        href="{{ url('/') }}"
+                        href="{{ $appendViewId(url('/')) }}"
                     >
                         Home
                         <svg
@@ -61,11 +123,12 @@
                         </svg>
                     </a>
                 </li>
-                @foreach ($crumbs as $index => $crumb)
+                @foreach ($crumbList as $index => $crumb)
                     @php
-                        $isLast = $index === array_key_last($crumbs);
-                        $label = $crumb['label'] ?? '';
-                        $url = $crumb['url'] ?? null;
+                        $isLast = $index === array_key_last($crumbList);
+                        $label = $crumb['label'] ?? $crumb['name'] ?? '';
+                        $url = $crumb['url'] ?? $crumb['href'] ?? null;
+                        $url = $appendViewId($url);
                     @endphp
                     <li class="text-sm {{ $isLast ? 'text-gray-800 dark:text-white/90' : 'text-gray-500 dark:text-gray-400' }}">
                         @if (!$isLast && $url)
@@ -99,7 +162,7 @@
                 <li>
                     <a
                         class="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400"
-                        href="{{ url('/') }}"
+                        href="{{ $appendViewId(url('/')) }}"
                     >
                         Home
                         <svg

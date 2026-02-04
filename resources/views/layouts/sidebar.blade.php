@@ -59,6 +59,7 @@
                     path = new URL(path).pathname;
                 }
             } catch (e) {}
+            path = path.split('?')[0].split('#')[0];
             const normalized = path.replace(/\/+$/, '');
             return normalized === '' ? '/' : normalized;
         },

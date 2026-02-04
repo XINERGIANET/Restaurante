@@ -14,7 +14,7 @@
     x-show="open"
     x-cloak
     x-effect="document.body.style.overflow = open ? 'hidden' : 'unset'"
-    class="modal fixed inset-0 z-99999 flex items-start justify-center overflow-y-auto p-4 sm:p-6"
+    class="modal fixed inset-0 z-99999 flex items-center justify-center overflow-y-auto p-4 sm:p-6"
     {{ $attributes->except(['class', 'x-data']) }}>
 
     <!-- Backdrop -->
