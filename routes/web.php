@@ -24,9 +24,12 @@ use App\Http\Controllers\MenuOptionController;
 use App\Http\Controllers\PaymentConceptController;
 use App\Http\Controllers\PaymentGatewaysController;
 use App\Http\Controllers\PaymentMethodController;
+use App\Http\Controllers\ProductBranchController;
 use App\Http\Controllers\TableController;
 use App\Http\Controllers\ViewsController;
 use App\Http\Controllers\ShiftController;
+use App\Http\Controllers\TaxRateController;
+use App\Http\Controllers\TaxRatesController;
 use App\Http\Controllers\UnitController;
 
 Route::prefix('restaurante')->name('restaurant.')->group(function () {
@@ -114,6 +117,15 @@ Route::middleware('auth')->group(function () {
         ->names('admin.products')
         ->parameters(['productos' => 'product'])
         ->only(['index', 'store', 'edit', 'update', 'destroy']);
+    
+    Route::get('/admin/herramientas/productos/{product}/product-branches/create', [ProductBranchController::class, 'create'])
+        ->name('admin.products.product_branches.create');
+    Route::post('/admin/herramientas/productos/{product}/product-branches', [ProductBranchController::class, 'store'])
+        ->name('admin.products.product_branches.store');
+    Route::post('/admin/herramientas/product-branches/store', [ProductBranchController::class, 'storeGeneric'])
+        ->name('admin.product_branches.store_generic');
+    Route::put('/admin/herramientas/product-branches/{productBranch}', [ProductBranchController::class, 'update'])
+        ->name('admin.product_branches.update');
     Route::get('/admin/pedidos/salones', [OrderController::class, 'index'])
         ->name('admin.orders.index');
     Route::get('/admin/pedidos/nuevo', [OrderController::class, 'create'])
@@ -281,4 +293,14 @@ Route::middleware('auth')->group(function () {
     Route::resource('/admin/herramientas/turnos', ShiftController::class)
         ->names('admin.shifts')
         ->parameters(['turnos' => 'shifts']);
+
+    //Productos por sucursal
+    Route::resource('/admin/herramientas/productos-sucursal', ProductBranchController::class)
+        ->names('admin.product_branches')
+        ->parameters(['productos-sucursal' => 'productBranch']);
+
+    //Tasas de impuesto
+    Route::resource('/admin/herramientas/tasas-impuesto', TaxRateController::class)
+        ->names('admin.tax_rates')
+        ->parameters(['tasas-impuesto' => 'taxRate']);
 });

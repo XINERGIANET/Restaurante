@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Branch;
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\TaxRate;
 use App\Models\Unit;
 use Illuminate\Http\Request;
 
@@ -19,7 +21,7 @@ class ProductController extends Controller
         }
 
         $products = Product::query()
-            ->with(['category', 'baseUnit'])
+            ->with(['category', 'baseUnit', 'productBranches.branch', 'productBranches.taxRate'])
             ->when($search, function ($query) use ($search) {
                 $query->where('description', 'like', "%{$search}%")
                     ->orWhere('code', 'like', "%{$search}%")
@@ -31,11 +33,15 @@ class ProductController extends Controller
 
         $categories = Category::query()->orderBy('description')->get();
         $units = Unit::query()->orderBy('description')->get();
+        $taxRates = TaxRate::query()->where('status', true)->orderBy('order_num')->get();
+        $currentBranch = Branch::find(session('branch_id'));
 
         return view('products.index', [
             'products' => $products,
             'categories' => $categories,
             'units' => $units,
+            'taxRates' => $taxRates,
+            'currentBranch' => $currentBranch,
             'search' => $search,
             'perPage' => $perPage,
         ]);
