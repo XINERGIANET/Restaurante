@@ -1,24 +1,87 @@
-*.log
-.DS_Store
+# --------------------------------------
+# Laravel + Tailwind (Vite) .gitignore
+# --------------------------------------
+
+# ENV
 .env
-.env.backup
-.env.production
-.phpactor.json
-.phpunit.result.cache
-/.fleet
-/.idea
-/.nova
-/.phpunit.cache
-/.vscode
-/.zed
-/auth.json
-/node_modules
-/public/build
-/public/hot
+.env.*
+!.env.example
+
+# Composer
+/vendor/
+
+# Node
+/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Vite / Mix build
+/public/build/
+/public/hot/
+
+# Storage (symlink)
 /public/storage
+
+# Laravel storage
 /storage/*.key
-/storage/pail
-/vendor
+/storage/app/public/*
+!/storage/app/public/.gitignore
+/storage/app/*.sqlite
+/storage/framework/cache/*
+/storage/framework/sessions/*
+/storage/framework/testing/*
+/storage/framework/views/*
+/storage/logs/*
+/storage/debugbar/*
+/storage/pail/
+
+# Cache / compiled files
+/bootstrap/cache/*
+!/bootstrap/cache/.gitignore
+
+# PHPUnit / Pest
+.phpunit.result.cache
+/.phpunit.cache
+/.pest.cache
+
+# Laravel IDE helpers
+_ide_helper.php
+.phpstorm.meta.php
+/.phpactor.json
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDEs / editors
+/.idea/
+/.vscode/
+/.fleet/
+/.zed/
+/.nova/
+
+# Auth tokens
+/auth.json
+
+# Homestead
 Homestead.json
 Homestead.yaml
-Thumbs.db
+
+# Docker / Sail
+/.docker
+docker-compose.override.yml
+
+# Laravel Telescope (si existe)
+/storage/telescope.sqlite
+
+# Temporary / backup
+*.bak
+*.tmp
+*.swp
+*.swo
