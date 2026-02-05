@@ -115,7 +115,7 @@
         @enderror
     </div>
 
-    <div class="sm:col-span-2 lg:col-span-3">
+    <div class="sm:col-span-1 lg:col-span-2">
         <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Razon social</label>
         <div class="relative">
             <span class="absolute top-1/2 left-0 -translate-y-1/2 border-r border-gray-200 px-3.5 py-3 text-gray-500 dark:border-gray-800 dark:text-gray-400">
@@ -135,7 +135,7 @@
         @enderror
     </div>
 
-    <div class="sm:col-span-2 lg:col-span-3">
+    <div class="sm:col-span-1 lg:col-span-2">
         <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Direccion</label>
         <div class="relative">
             <span class="absolute top-1/2 left-0 -translate-y-1/2 border-r border-gray-200 px-3.5 py-3 text-gray-500 dark:border-gray-800 dark:text-gray-400">
@@ -153,7 +153,7 @@
             <p class="mt-1 text-xs text-error-500">{{ $message }}</p>
         @enderror
     </div>
-    <div class="sm:col-span-1 lg:col-span-2">
+    <div class="sm:col-span-1 lg:col-span-1">
         <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Logo (opcional)</label>
         <div class="relative">
             <span class="absolute top-1/2 left-0 -translate-y-1/2 border-r border-gray-200 px-3.5 py-3 text-gray-500 dark:border-gray-800 dark:text-gray-400">
