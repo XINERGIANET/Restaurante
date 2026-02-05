@@ -122,12 +122,11 @@ class PettyCashController extends Controller
                     'cash_register_id'   => $validated['cash_register_id'],
                     'cash_register'      => $boxName,
                     'shift_id'           => session('shift_id'),
-                    'shift_snapshot'     => json_encode(session('shift_snapshot'), JSON_UNESCAPED_UNICODE),
+                    'shift_snapshot' => json_encode(session('shift_snapshot'), JSON_UNESCAPED_UNICODE),
                     'movement_id'        => Movement::latest()->first()->id,
                     'branch_id'          => session('branch_id'),
                 ];
                 
-                dd($dataToInsertCash);
                 CashMovements::create($dataToInsertCash);
             }); 
 
