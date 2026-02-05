@@ -32,7 +32,7 @@
                 </div>
                 <div class="flex flex-wrap gap-2">
                     <x-ui.button size="sm" variant="primary" type="submit" :startIcon="$SearchIcon">Buscar</x-ui.button>
-                    <x-ui.link-button size="sm" variant="outline" href="{{ route('admin.boxes.index') }}" :startIcon="$ClearIcon">Limpiar</x-ui.link-button>
+                    <x-ui.link-button size="sm" variant="outline" href="{{ route('boxes.index') }}" :startIcon="$ClearIcon">Limpiar</x-ui.link-button>
                 </div>
             </form>
             
@@ -86,12 +86,12 @@
                                     <div class="flex items-center justify-end gap-2">
                                         {{-- Botones de Acción --}}
                                         <div class="relative group">
-                                            <x-ui.link-button size="icon" variant="outline" href="{{ route('admin.boxes.edit', $box) }}" className="bg-warning-500 text-white hover:bg-warning-600 ring-0 rounded-full" style="border-radius: 100%; background-color: #FBBF24; color: #111827;" aria-label="Editar">
+                                            <x-ui.link-button size="icon" variant="outline" href="{{ route('boxes.edit', $box) }}" className="bg-warning-500 text-white hover:bg-warning-600 ring-0 rounded-full" style="border-radius: 100%; background-color: #FBBF24; color: #111827;" aria-label="Editar">
                                                 <i class="ri-pencil-line"></i>
                                             </x-ui.link-button>
                                             <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50">Editar</span>
                                         </div>
-                                        <form method="POST" action="{{ route('admin.boxes.destroy', $box) }}" class="relative group js-swal-delete" data-swal-title="Eliminar caja?" data-swal-text="Se eliminara {{ $box->number }}. Esta accion no se puede deshacer.">
+                                        <form method="POST" action="{{ route('boxes.destroy', $box) }}" class="relative group js-swal-delete" data-swal-title="Eliminar caja?" data-swal-text="Se eliminara {{ $box->number }}. Esta accion no se puede deshacer.">
                                             @csrf @method('DELETE')
                                             <x-ui.button size="icon" variant="outline" className="bg-error-500 text-white hover:bg-error-600 ring-0 rounded-full" style="border-radius: 100%; background-color: #EF4444; color: #FFFFFF;" aria-label="Eliminar" type="submit">
                                                 <i class="ri-delete-bin-line"></i>
@@ -154,7 +154,7 @@
                 </div>
             @endif
 
-            <form method="POST" action="{{ route('admin.boxes.store') }}" class="space-y-6">
+            <form method="POST" action="{{ route('boxes.store') }}" class="space-y-6">
                 @csrf
 
                 @include('boxes._form', ['box' => null])

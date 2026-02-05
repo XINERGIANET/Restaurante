@@ -113,9 +113,7 @@ class PettyCashController extends Controller
 
         try {
             DB::transaction(function () use ($request, $validated, $cash_register_id) {
-
-                // 1. Datos del Turno
-                $selectedShift = \App\Models\Shift::findOrFail($request->shift_id);
+                $selectedShift = Shift::findOrFail($request->shift_id);
                 $shiftSnapshotData = [
                     'name'       => $selectedShift->name,
                     'start_time' => $selectedShift->start_time,
@@ -128,7 +126,7 @@ class PettyCashController extends Controller
                 $lastRecord = Movement::select('movements.*')
                     ->join('cash_movements', 'movements.id', '=', 'cash_movements.movement_id')
                     ->where('movements.movement_type_id', $typeId)
-                    ->where('cash_movements.cash_register_id', $cash_register_id) 
+                    ->where('cash_movements.cash_register_id', $cash_register_id)
                     ->latest('movements.id')
                     ->lockForUpdate()
                     ->first();
@@ -170,13 +168,36 @@ class PettyCashController extends Controller
                     'cash_register_id'   => $cash_register_id,
                     'cash_register'      => $boxName,
                     'shift_id'           => $selectedShift->id,
-                    'shift_snapshot' => $shiftSnapshotJson, 
+                    'shift_snapshot'     => $shiftSnapshotJson, 
                     'movement_id'        => $movement->id, 
                     'branch_id'          => session('branch_id'),
-                ];
-                
-                dd($dataToInsertCash);
-                CashMovements::create($dataToInsertCash);
+                ]);
+
+                $concept = PaymentConcept::find($validated['payment_concept_id']);
+                $conceptName = strtolower($concept->description);
+
+                if (str_contains($conceptName, 'apertura')) {
+                    CashShiftRelation::create([
+                        'started_at'             => now(),
+                        'status'                 => '1',
+                        'cash_movement_start_id' => $cashMovement->id, 
+                        'branch_id'              => session('branch_id'),
+                    ]);
+
+                } elseif (str_contains($conceptName, 'cierre')) {
+                    $openRelation = CashShiftRelation::where('branch_id', session('branch_id'))
+                                                     ->where('status', '1')
+                                                     ->latest('id')
+                                                     ->first();
+
+                    if ($openRelation) {
+                        $openRelation->update([
+                            'ended_at'             => now(),
+                            'status'               => '0', 
+                            'cash_movement_end_id' => $cashMovement->id,
+                        ]);
+                    }
+                }
             }); 
 
             return redirect()->route('admin.petty-cash.index', ['cash_register_id' => $cash_register_id])

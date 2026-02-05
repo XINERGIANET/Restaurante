@@ -315,7 +315,7 @@ Route::middleware('auth')->group(function () {
     });
 
     //Cajas
-    Route::resource('/admin/herramientas/cajas', BoxController::class)
-        ->names('admin.boxes')
+    Route::resource('/caja/cajas', BoxController::class)
+        ->names('boxes')
         ->parameters(['cajas' => 'box']);
 });
