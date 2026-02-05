@@ -63,7 +63,7 @@
 
             <!-- Logo (mobile only) -->
             <a href="/" class="xl:hidden">
-                <img class="dark:hidden" src="/images/logo/logo.svg" alt="Logo" />
+                <img class="dark:hidden" src="/images/logo/Xinergia.png" alt="Logo" width="150" height="40"  />
                 <img class="hidden dark:block" src="/images/logo/logo-dark.svg" alt="Logo" />
             </a>
 

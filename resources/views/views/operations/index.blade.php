@@ -13,8 +13,7 @@
             pageTitle="Operaciones"
             :breadcrumbs="[
                 ['name' => 'Vistas', 'href' => route('admin.views.index')],
-                ['name' => $view->name, 'href' => '#'], 
-                ['name' => 'Operaciones', 'href' => route('admin.views.operations.index', $view)],
+                ['name' => $view->name . ' | Operaciones', 'href' => '#'],
             ]"
         />
 
@@ -264,4 +263,3 @@
 </script>
 @endpush
 @endsection
-
