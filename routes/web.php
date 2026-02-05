@@ -29,7 +29,6 @@ use App\Http\Controllers\TableController;
 use App\Http\Controllers\ViewsController;
 use App\Http\Controllers\ShiftController;
 use App\Http\Controllers\TaxRateController;
-use App\Http\Controllers\TaxRatesController;
 use App\Http\Controllers\PettyCashController;
 use App\Http\Controllers\BoxController;
 use App\Http\Controllers\UnitController;
@@ -318,4 +317,9 @@ Route::middleware('auth')->group(function () {
     Route::resource('/admin/herramientas/cajas', BoxController::class)
         ->names('admin.boxes')
         ->parameters(['cajas' => 'box']);
+
+    //tax_rate
+    Route::resource('/admin/herramientas/tasas-impuesto', TaxRateController::class)
+        ->names('admin.tax_rates')
+        ->parameters(['tasas-impuesto' => 'taxRate']);
 });
