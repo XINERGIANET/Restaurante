@@ -298,8 +298,8 @@ Route::middleware('auth')->group(function () {
         ->parameters(['metodos-pago' => 'paymentMethod']);
 
     //Turnos
-    Route::resource('/admin/configuracion/turnos', ShiftController::class)
-        ->names('admin.shifts')
+    Route::resource('/configuracion/turnos', ShiftController::class)
+        ->names('shifts')
         ->parameters(['turnos' => 'shifts']);
 
     //Caja chica
