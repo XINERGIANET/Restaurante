@@ -1,4 +1,4 @@
-@props(['pageTitle' => 'Page', 'crumbs' => null, 'iconHtml' => null])
+@props(['pageTitle' => 'Page', 'crumbs' => null, 'breadcrumbs' => null, 'iconHtml' => null])
 
 @php
     use App\Models\MenuOption;
@@ -8,7 +8,10 @@
     $currentPath = '/' . trim(request()->path(), '/');
     $currentRouteName = optional(request()->route())->getName();
     $breadcrumbViewId = request()->query('view_id');
-    $crumbList = $crumbs ?? ($breadcrumbs ?? null);
+    $crumbList = $crumbs
+        ?? $breadcrumbs
+        ?? $attributes->get('crumbs')
+        ?? $attributes->get('breadcrumbs');
     $resolveViewIdForUrl = function ($url) {
         if (!$url || $url === '#') {
             return null;

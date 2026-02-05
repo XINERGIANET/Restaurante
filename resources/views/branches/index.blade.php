@@ -2,10 +2,105 @@
 
 @section('content')
     <div x-data="{}">
+        @php
+            use Illuminate\Support\Facades\Route;
+
+            $viewId = request('view_id');
+            $companyViewId = request('company_view_id');
+            $requestIcon = request('icon');
+            $pageIconHtml = null;
+            if (is_string($requestIcon) && preg_match('/^ri-[a-z0-9-]+$/', $requestIcon)) {
+                $pageIconHtml = '<i class="' . $requestIcon . '"></i>';
+            }
+            $operacionesCollection = collect($operaciones ?? []);
+            $topOperations = $operacionesCollection->where('type', 'T');
+            $rowOperations = $operacionesCollection->where('type', 'R');
+
+            $resolveActionUrl = function ($action, array $routeParams = [], $operation = null) use ($viewId, $companyViewId, $requestIcon) {
+                if (!$action) {
+                    return '#';
+                }
+
+                if (str_starts_with($action, '/') || str_starts_with($action, 'http')) {
+                    $url = $action;
+                } else {
+                    $routeCandidates = [$action];
+                    if (!str_starts_with($action, 'admin.')) {
+                        $routeCandidates[] = 'admin.' . $action;
+                    }
+                    $routeCandidates = array_merge(
+                        $routeCandidates,
+                        array_map(fn ($name) => $name . '.index', $routeCandidates)
+                    );
+
+                    $routeName = null;
+                    foreach ($routeCandidates as $candidate) {
+                        if (Route::has($candidate)) {
+                            $routeName = $candidate;
+                            break;
+                        }
+                    }
+
+                    if ($routeName) {
+                        $attempts = [];
+                        if (!empty($routeParams)) {
+                            $attempts[] = $routeParams;
+                        }
+                        if (count($routeParams) > 1) {
+                            $attempts[] = array_slice($routeParams, 0, 1);
+                        }
+                        $attempts[] = [];
+
+                        $url = '#';
+                        foreach ($attempts as $params) {
+                            try {
+                                $url = empty($params) ? route($routeName) : route($routeName, $params);
+                                break;
+                            } catch (\Exception $e) {
+                                $url = '#';
+                            }
+                        }
+                    } else {
+                        $url = '#';
+                    }
+                }
+
+                $targetViewId = $viewId;
+                if ($operation && !empty($operation->view_id_action)) {
+                    $targetViewId = $operation->view_id_action;
+                }
+
+                if ($targetViewId && $url !== '#') {
+                    $separator = str_contains($url, '?') ? '&' : '?';
+                    $url .= $separator . 'view_id=' . urlencode($targetViewId);
+                }
+
+                if ($companyViewId && $url !== '#' && !str_contains($url, 'company_view_id=')) {
+                    $separator = str_contains($url, '?') ? '&' : '?';
+                    $url .= $separator . 'company_view_id=' . urlencode($companyViewId);
+                }
+
+                if ($requestIcon && $url !== '#' && !str_contains($url, 'icon=')) {
+                    $separator = str_contains($url, '?') ? '&' : '?';
+                    $url .= $separator . 'icon=' . urlencode($requestIcon);
+                }
+
+                return $url;
+            };
+
+            $resolveTextColor = function ($operation) {
+                $action = $operation->action ?? '';
+                if (str_contains($action, 'branches.create')) {
+                    return '#111827';
+                }
+                return '#FFFFFF';
+            };
+        @endphp
         <x-common.page-breadcrumb
             pageTitle="Sucursales"
+            :iconHtml="$pageIconHtml"
             :crumbs="[
-                ['label' => 'Empresas', 'url' => route('admin.companies.index')],
+                ['label' => 'Empresas', 'url' => route('admin.companies.index', $companyViewId ? ['view_id' => $companyViewId] : [])],
                 ['label' =>  $company->legal_name . ' | Sucursales' ]
             ]"
         />
@@ -16,6 +111,15 @@
         >
             <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                 <form method="GET" class="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
+                    @if ($viewId)
+                        <input type="hidden" name="view_id" value="{{ $viewId }}">
+                    @endif
+                    @if ($companyViewId)
+                        <input type="hidden" name="company_view_id" value="{{ $companyViewId }}">
+                    @endif
+                    @if ($requestIcon)
+                        <input type="hidden" name="icon" value="{{ $requestIcon }}">
+                    @endif
                     <div class="w-29">
                             <select name="per_page"
                                 class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-3 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
@@ -43,17 +147,35 @@
                             <span>Buscar</span>
                         </x-ui.button>
                         
-                        <x-ui.link-button size="sm" variant="outline" href="{{ route('admin.companies.branches.index', $company) }}">
+                        <x-ui.link-button size="sm" variant="outline" href="{{ route('admin.companies.branches.index', $viewId || $companyViewId || $requestIcon ? array_merge([$company], array_filter(['view_id' => $viewId, 'company_view_id' => $companyViewId, 'icon' => $requestIcon])) : $company) }}">
                             <i class="ri-close-line"></i>
                             <span>Limpiar</span>
                         </x-ui.link-button>
                     </div>
                 </form>
-                <x-ui.link-button size="md" variant="primary" type="button"
-                    style=" background-color: #12f00e; color: #111827;" @click="$dispatch('open-company-modal')">
-                    <i class="ri-add-line"></i>
-                    <span>Nueva sucursal</span>
-                </x-ui.link-button>
+                @foreach ($topOperations as $operation)
+                    @php
+                        $topTextColor = $resolveTextColor($operation);
+                        $topColor = $operation->color ?: '#3B82F6';
+                        $topStyle = "background-color: {$topColor}; color: {$topTextColor};";
+                        $topActionUrl = $resolveActionUrl($operation->action ?? '', [$company], $operation);
+                        $isCreate = str_contains($operation->action ?? '', 'branches.create');
+                    @endphp
+                    @if ($isCreate)
+                        <x-ui.button size="md" variant="primary" type="button"
+                            style="{{ $topStyle }}" @click="$dispatch('open-branch-modal')">
+                            <i class="{{ $operation->icon }}"></i>
+                            <span>{{ $operation->name }}</span>
+                        </x-ui.button>
+                    @else
+                        <x-ui.link-button size="md" variant="primary"
+                            style="{{ $topStyle }}"
+                            href="{{ $topActionUrl }}">
+                            <i class="{{ $operation->icon }}"></i>
+                            <span>{{ $operation->name }}</span>
+                        </x-ui.link-button>
+                    @endif
+                @endforeach
             </div>
 
             <div class="mt-4 rounded-xl border border-gray-200 bg-white overflow-visible dark:border-gray-800 dark:bg-white/[0.03]">
@@ -113,74 +235,62 @@
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
                                     <div class="flex items-center justify-end gap-2">
-                                        <div class="relative group">
-                                            <x-ui.link-button
-                                                size="icon"
-                                                variant="primary"
-                                                href="{{ route('admin.companies.branches.views.index', [$company, $branch]) }}"
-                                                className="bg-brand-500 text-white hover:bg-brand-600 ring-0 rounded-full"
-                                                style="border-radius: 100%; background-color: #20d9d6; color: #FFFFFF;"
-                                                aria-label="Ver vistas"
-                                            >
-                                                <i class="ri-layout-2-line"></i>
-                                            </x-ui.link-button>
-                                            <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">Vistas</span>
-                                        </div>
-                                        <div class="relative group">
-                                            <x-ui.link-button
-                                                size="icon"
-                                                variant="primary"
-                                                href="{{ route('admin.companies.branches.profiles.index', [$company, $branch, 'icon' => 'ri-user-settings-line']) }}"
-                                                className="bg-brand-500 text-white hover:bg-brand-600 ring-0 rounded-full"
-                                                style="border-radius: 100%; background-color: #603bf6; color: #FFFFFF;"
-                                                aria-label="Ver perfiles"
-                                            >
-                                                <i class="ri-user-settings-line"></i>
-                                            </x-ui.link-button>
-                                            <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">Perfiles</span>
-                                        </div>
-                                        <div class="relative group">
-                                            <x-ui.link-button
-                                                size="icon"
-                                                variant="primary"
-                                                href="{{ route('admin.companies.branches.people.index', [$company, $branch, 'icon' => 'ri-team-line']) }}"
-                                                className="bg-brand-500 text-white hover:bg-brand-600 ring-0 rounded-full"
-                                                style="border-radius: 100%; background-color: #3B82F6; color: #FFFFFF;"
-                                                aria-label="Ver personal"
-                                            >
-                                                <i class="ri-team-line"></i>
-                                            </x-ui.link-button>
-                                            <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">Personal</span>
-                                        </div>
-                                        <div class="relative group">
-                                            <x-ui.link-button
-                                                size="icon" variant="outline" href="{{ route('admin.companies.branches.edit', [$company, $branch]) }}"
-                                                className="bg-warning-500 text-white hover:bg-warning-600 ring-0 rounded-full"
-                                                style="border-radius: 100%; background-color: #FBBF24; color: #111827;" aria-label="Editar"
-                                            >
-                                                <i class="ri-pencil-line"></i>
-                                            </x-ui.link-button>
-                                            <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">Editar</span>
-                                        </div>
-                                        <form method="POST" action="{{ route('admin.companies.branches.destroy', [$company, $branch]) }}"
-                                            class="relative group js-swal-delete"
-                                            data-swal-title="¿Eliminar sucursal?"
-                                            data-swal-text="Se eliminara {{ $branch->legal_name }}. Esta acción no se puede deshacer."
-                                            data-swal-confirm="Sí, eliminar"
-                                            data-swal-cancel="Cancelar"
-                                            data-swal-confirm-color="#ef4444"
-                                            data-swal-cancel-color="#6b7280">
-                                            @csrf
-                                            @method('DELETE')
-                                            <x-ui.button
-                                                size="icon" variant="outline" className="bg-error-500 text-white hover:bg-error-600 ring-0 rounded-full"
-                                                style="border-radius: 100%; background-color: #EF4444; color: #FFFFFF;" aria-label="Eliminar"
-                                                type="submit"
-                                            >
-                                                <i class="ri-delete-bin-line"></i>
-                                            </x-ui.button>
-                                            <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">Eliminar</span>
-                                        </form>
+                                        @foreach ($rowOperations as $operation)
+                                            @php
+                                                $action = $operation->action ?? '';
+                                                $isDelete = str_contains($action, 'destroy');
+                                                $actionUrl = $resolveActionUrl($action, [$company, $branch], $operation);
+                                                $textColor = $resolveTextColor($operation);
+                                                $buttonColor = $operation->color ?: '#3B82F6';
+                                                $buttonStyle = "border-radius: 100%; background-color: {$buttonColor}; color: {$textColor};";
+                                                $variant = $isDelete ? 'eliminate' : (str_contains($action, 'edit') ? 'edit' : 'primary');
+                                            @endphp
+                                            @if ($isDelete)
+                                                <form method="POST" action="{{ $actionUrl }}"
+                                                    class="relative group js-swal-delete"
+                                                    data-swal-title="Eliminar sucursal?"
+                                                    data-swal-text="Se eliminara {{ $branch->legal_name }}. Esta accion no se puede deshacer."
+                                                    data-swal-confirm="Si, eliminar"
+                                                    data-swal-cancel="Cancelar"
+                                                    data-swal-confirm-color="#ef4444"
+                                                    data-swal-cancel-color="#6b7280">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    @if ($viewId)
+                                                        <input type="hidden" name="view_id" value="{{ $viewId }}">
+                                                    @endif
+                                                    @if ($companyViewId)
+                                                        <input type="hidden" name="company_view_id" value="{{ $companyViewId }}">
+                                                    @endif
+                                                    @if ($requestIcon)
+                                                        <input type="hidden" name="icon" value="{{ $requestIcon }}">
+                                                    @endif
+                                                    <x-ui.button
+                                                        size="icon" variant="{{ $variant }}" type="submit"
+                                                        className="bg-error-500 text-white hover:bg-error-600 ring-0 rounded-full"
+                                                        style="{{ $buttonStyle }}"
+                                                        aria-label="{{ $operation->name }}"
+                                                    >
+                                                        <i class="{{ $operation->icon }}"></i>
+                                                    </x-ui.button>
+                                                    <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">{{ $operation->name }}</span>
+                                                </form>
+                                            @else
+                                                <div class="relative group">
+                                                    <x-ui.link-button
+                                                        size="icon"
+                                                        variant="{{ $variant }}"
+                                                        href="{{ $actionUrl }}"
+                                                        className="bg-brand-500 text-white hover:bg-brand-600 ring-0 rounded-full"
+                                                        style="{{ $buttonStyle }}"
+                                                        aria-label="{{ $operation->name }}"
+                                                    >
+                                                        <i class="{{ $operation->icon }}"></i>
+                                                    </x-ui.link-button>
+                                                    <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">{{ $operation->name }}</span>
+                                                </div>
+                                            @endif
+                                        @endforeach
                                     </div>
                                 </td>
                             </tr>
@@ -255,6 +365,15 @@
 
                 <form method="POST" action="{{ route('admin.companies.branches.store', $company) }}" class="space-y-6" enctype="multipart/form-data">
                     @csrf
+                    @if ($viewId)
+                        <input type="hidden" name="view_id" value="{{ $viewId }}">
+                    @endif
+                    @if ($companyViewId)
+                        <input type="hidden" name="company_view_id" value="{{ $companyViewId }}">
+                    @endif
+                    @if ($requestIcon)
+                        <input type="hidden" name="icon" value="{{ $requestIcon }}">
+                    @endif
 
                     @include('branches._form', ['branch' => null])
 

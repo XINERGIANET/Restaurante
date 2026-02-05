@@ -36,8 +36,7 @@ class MenuOptionSeeder extends Seeder
                 ['name' => 'Vistas',        'action' => 'admin.views.index',           'icon' => 'mdi-settings'],
                 ['name' => 'Tarjetas',        'action' => 'admin.cards.index',           'icon' => 'mdi-credit-card'],
                 ['name' => 'Billeteras digitales',        'action' => 'admin.digital_wallets.index',           'icon' => 'mdi-wallet'],
-                ['name' => 'Tipo de movimientos',        'action' => 'admin.movement_types.index',           'icon' => 'mdi-settings'],           
-                
+                ['name' => 'Tipo de movimientos',        'action' => 'admin.movement_types.index',           'icon' => 'mdi-settings'],            
             ],
             'Pedidos' => [
                 ['name' => 'Registro de areas',    'action' => 'areas.index',          'icon' => 'mdi-food'],

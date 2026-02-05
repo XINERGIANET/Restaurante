@@ -56,18 +56,25 @@
                     $url .= $separator . 'view_id=' . urlencode($targetViewId);
                 }
 
+                if ($viewId && $operation && !empty($operation->view_id_action) && $url !== '#') {
+                    $separator = str_contains($url, '?') ? '&' : '?';
+                    $url .= $separator . 'company_view_id=' . urlencode($viewId);
+                }
+
+                if ($operation && !empty($operation->icon) && str_contains($action, 'branches') && $url !== '#') {
+                    $separator = str_contains($url, '?') ? '&' : '?';
+                    $url .= $separator . 'icon=' . urlencode($operation->icon);
+                }
+
                 return $url;
             };
 
             $resolveTextColor = function ($operation) {
                 $action = $operation->action ?? '';
-                if (str_contains($action, 'destroy')) {
-                    return '#FFFFFF';
+                if ($action === 'companies.create') {
+                    return '#111827';
                 }
-                if (str_contains($action, 'branches')) {
-                    return '#FFFFFF';
-                }
-                return '#111827';
+                return '#FFFFFF';
             };
         @endphp
 

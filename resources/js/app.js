@@ -160,6 +160,25 @@ const loadingOverlay = (() => {
 window.showLoadingModal = loadingOverlay.show;
 window.hideLoadingModal = loadingOverlay.hide;
 
+const bindGlobalLoadingOverlay = () => {
+    if (!window.showLoadingModal || !window.hideLoadingModal) {
+        return;
+    }
+
+    document.addEventListener('turbo:visit', () => {
+        window.showLoadingModal();
+    });
+
+    const hideEvents = ['turbo:load', 'turbo:render', 'turbo:frame-load', 'turbo:frame-render'];
+    hideEvents.forEach((eventName) => {
+        document.addEventListener(eventName, () => {
+            window.hideLoadingModal();
+        });
+    });
+};
+
+bindGlobalLoadingOverlay();
+
 const shouldIgnoreLink = (link, event) => {
     if (!link) return true;
     if (link.closest('[data-no-loading]')) return true;

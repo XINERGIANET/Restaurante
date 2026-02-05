@@ -8,6 +8,7 @@ use App\Models\Movement;
 use App\Models\MovementType;
 use App\Models\Person;
 use App\Models\Product;
+use App\Models\ProductBranch;
 use Illuminate\Http\Request;
 
 class SalesController extends Controller
@@ -58,8 +59,20 @@ class SalesController extends Controller
                     'category' => $product->category ? $product->category->description : 'Sin categoría'
                 ];
             });
+        $productsBranches = ProductBranch::where('branch_id', session('branch_id'))
+            ->with('product')
+            ->get()
+            ->map(function($productBranch) {
+                return [
+                    'id' => $productBranch->product_id,
+                    'name' => $productBranch->product->description,
+                    'price' => $productBranch->price,
+                    'image' => $productBranch->product->image,
+                ];
+            });
         return view('sales.create', [
             'products' => $products,
+            'productsBranches' => $productsBranches,
         ]);
     }
 

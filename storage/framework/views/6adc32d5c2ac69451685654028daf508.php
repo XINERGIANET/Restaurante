@@ -29,13 +29,13 @@
                 </svg>
             </button>
 
-            @php
+            <?php
                 $branchName = null;
                 if (session()->has('branch_id')) {
                     $branchName = optional(\App\Models\Branch::find(session('branch_id')))->legal_name;
                 }
                 
-            @endphp
+            ?>
 
             <!-- Mobile Menu Toggle Button (visible below xl) -->
             <button
@@ -55,15 +55,16 @@
                         fill="" />
                 </svg>
             </button>
-            @if ($branchName)
+            <?php if($branchName): ?>
                 <h1 class="ml-2 inline-flex items-center text-lg font-semibold text-gray-900 dark:text-gray-300">
-                    {{ $branchName }}
+                    <?php echo e($branchName); ?>
+
                 </h1>
-            @endif
+            <?php endif; ?>
 
             <!-- Logo (mobile only) -->
             <a href="/" class="xl:hidden">
-                <img class="dark:hidden" src="/images/logo/Xinergia.png" alt="Logo" width="150" height="40"  />
+                <img class="dark:hidden" src="/images/logo/logo.svg" alt="Logo" />
                 <img class="hidden dark:block" src="/images/logo/logo-dark.svg" alt="Logo" />
             </a>
 
@@ -78,29 +79,23 @@
                 </svg>
             </button>
 
+            <!--Accesos directos-->
+            <div class="hidden xl:flex items-center gap-2 ml-auto">
+                <?php $__currentLoopData = $quickOptions; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $option): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                    <a href="<?php echo e(route($option->action)); ?>" 
+                       class="group flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 transition-all duration-200 bg-white border border-gray-200 rounded-lg hover:bg-brand-50 hover:border-brand-300 hover:text-brand-700 dark:bg-gray-900 dark:border-gray-800 dark:text-gray-400 dark:hover:bg-brand-500/10 dark:hover:border-brand-800 dark:hover:text-brand-400"
+                       title="<?php echo e($option->name); ?>">
+                        <i class="<?php echo e($option->icon); ?> text-lg group-hover:scale-110 transition-transform"></i>
+                        <span><?php echo e($option->name); ?></span>
+                    </a>
+                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+            </div>
         </div>
 
         <!-- Application Menu (mobile) and Right Side Actions (desktop) -->
         <div :class="isApplicationMenuOpen ? 'flex' : 'hidden'"
             class="items-center justify-between w-full gap-4 px-5 py-4 xl:flex shadow-theme-md xl:justify-end xl:px-0 xl:shadow-none">
             <div class="flex items-center gap-2 2xsm:gap-3">
-                @if (!empty($quickOptions) && $quickOptions->count())
-                    <div class="hidden xl:flex items-center gap-2">
-                        @foreach ($quickOptions as $option)
-                            @php
-                                $quickUrl = \App\Helpers\MenuHelper::appendViewIdToPath(route($option->action), $option->view_id);
-                            @endphp
-                            <a
-                                href="{{ $quickUrl }}"
-                                class="relative flex items-center justify-center text-gray-500 transition-colors bg-white border border-gray-200 rounded-full hover:text-dark-900 h-11 w-11 hover:bg-gray-100 hover:text-gray-700 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
-                                aria-label="{{ $option->name }}"
-                            >
-                                <i class="{{ $option->icon }} text-lg"></i>
-                            </a>
-                        @endforeach
-                    </div>
-                @endif
-
                 <!-- Theme Toggle Button -->
                 <button
                     class="relative flex items-center justify-center text-gray-500 transition-colors bg-white border border-gray-200 rounded-full hover:text-dark-900 h-11 w-11 hover:bg-gray-100 hover:text-gray-700 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
@@ -120,11 +115,50 @@
                 </button>
 
                 <!-- Notification Dropdown -->
-                <x-header.notification-dropdown />
+                <?php if (isset($component)) { $__componentOriginal2b232f9a301d4925ad5656db130f5bef = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal2b232f9a301d4925ad5656db130f5bef = $attributes; } ?>
+<?php $component = App\View\Components\Header\NotificationDropdown::resolve([] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('header.notification-dropdown'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\App\View\Components\Header\NotificationDropdown::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes([]); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal2b232f9a301d4925ad5656db130f5bef)): ?>
+<?php $attributes = $__attributesOriginal2b232f9a301d4925ad5656db130f5bef; ?>
+<?php unset($__attributesOriginal2b232f9a301d4925ad5656db130f5bef); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal2b232f9a301d4925ad5656db130f5bef)): ?>
+<?php $component = $__componentOriginal2b232f9a301d4925ad5656db130f5bef; ?>
+<?php unset($__componentOriginal2b232f9a301d4925ad5656db130f5bef); ?>
+<?php endif; ?>
             </div>
 
             <!-- User Dropdown -->
-            <x-header.user-dropdown />
+            <?php if (isset($component)) { $__componentOriginal1ebc2f7ddf1174544e5925832beaca6f = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal1ebc2f7ddf1174544e5925832beaca6f = $attributes; } ?>
+<?php $component = App\View\Components\Header\UserDropdown::resolve([] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('header.user-dropdown'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\App\View\Components\Header\UserDropdown::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes([]); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal1ebc2f7ddf1174544e5925832beaca6f)): ?>
+<?php $attributes = $__attributesOriginal1ebc2f7ddf1174544e5925832beaca6f; ?>
+<?php unset($__attributesOriginal1ebc2f7ddf1174544e5925832beaca6f); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal1ebc2f7ddf1174544e5925832beaca6f)): ?>
+<?php $component = $__componentOriginal1ebc2f7ddf1174544e5925832beaca6f; ?>
+<?php unset($__componentOriginal1ebc2f7ddf1174544e5925832beaca6f); ?>
+<?php endif; ?>
         </div>
     </div>
 </header>
+<?php /**PATH C:\laragon\www\Restaurante\resources\views/layouts/app-header.blade.php ENDPATH**/ ?>

@@ -174,7 +174,7 @@
             :showCloseButton="false"
             class="max-w-4xl"
         >
-            <div class="p-6 sm:p-8">
+            <div class="flex max-h-[85vh] flex-col overflow-hidden p-6 sm:p-8">
                 <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div class="flex items-center gap-4">
                         <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-500 dark:bg-brand-500/10">
@@ -195,10 +195,10 @@
                     </button>
                 </div>
 
-                <form method="POST" action="{{ route('admin.companies.branches.views.update', [$company, $branch]) }}" class="space-y-6">
+                <form method="POST" action="{{ route('admin.companies.branches.views.update', [$company, $branch]) }}" class="flex min-h-0 flex-col gap-6">
                     @csrf
 
-                    <div class="rounded-xl border border-gray-200 bg-white overflow-visible dark:border-gray-800 dark:bg-white/[0.03]">
+                    <div class="flex-1 min-h-0 overflow-y-auto rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
                         <table class="w-full">
                             <thead>
                                 <tr class="border-b border-gray-100 dark:border-gray-800">

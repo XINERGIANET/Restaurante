@@ -4,18 +4,18 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class TaxRates extends Model
+class TaxRate extends Model
 {
     protected $fillable = [
         'code',
         'description',
-        'rate',
+        'tax_rate',
         'order_num',
-        'is_active',
+        'status',
     ];
 
     public function productBranch()
     {
-        return $this->hasMany(ProductBranchController::class);
+        return $this->hasMany(ProductBranch::class);
     }
 }

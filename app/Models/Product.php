@@ -34,4 +34,9 @@ class Product extends Model
     {
         return $this->belongsTo(Unit::class, 'base_unit_id');
     }
+
+    public function productBranches()
+    {
+        return $this->hasMany(ProductBranch::class);
+    }
 }

@@ -1,7 +1,5 @@
-@extends('layouts.app')
-
-@section('content')
-    {{-- Breadcrumb --}}
+<?php $__env->startSection('content'); ?>
+    
     <div class=" flex flex-wrap items-center justify-between gap-3 mb-4">
         <div class="flex items-center gap-2">
             <span class="text-gray-500 dark:text-gray-400"><i class="ri-restaurant-fill"></i></span>
@@ -13,7 +11,7 @@
             <ol class="flex items-center gap-1.5">
                 <li>
                     <a class="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-                        href="{{ route('admin.sales.index') }}">
+                        href="<?php echo e(route('admin.sales.index')); ?>">
                         Ventas
                         <svg class="stroke-current" width="17" height="16" viewBox="0 0 17 16" fill="none"
                             xmlns="http://www.w3.org/2000/svg">
@@ -29,14 +27,14 @@
         </nav>
     </div>
 
-    {{-- Contenedor Principal - Full Width con fondo --}}
+    
     <div class="-mx-4 md:-mx-6 -mb-4 md:-mb-6">
         <div class="flex items-start w-full dark:bg-slate-950 fade-in min-h-[calc(100vh-180px)]" style="--brand:#3B82F6;">
 
-            {{-- ================= SECCIÓN IZQUIERDA: MENÚ ================= --}}
+            
             <main class="flex-1 p-4 flex flex-col min-w-0">
 
-                {{-- Header --}}
+                
                 <header
                     class="h-20 px-6 flex items-center justify-between dark:bg-slate-900/80 backdrop-blur-sm border-b border-gray-200 dark:border-slate-800 shadow-sm z-10">
                     <div class="flex items-center gap-4">
@@ -67,7 +65,7 @@
                     </div>
                 </header>
 
-                {{-- Grid de Productos --}}
+                
                 <div class="p-6  dark:bg-slate-900 min-h-[calc(100vh-260px)]">
                     <h3 class="font-semibold text-slate-700 dark:text-gray-300 mb-5 text-base flex items-center gap-2">
                         <i class="ri-restaurant-2-line text-blue-600 dark:text-blue-400"></i>
@@ -75,16 +73,16 @@
                     </h3>
                     <div id="products-grid"
                         class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 w-full">
-                        {{-- JS llenará esto --}}
+                        
                     </div>
                 </div>
             </main>
 
-            {{-- ================= SECCIÓN DERECHA: CARRITO (STICKY) ================= --}}
+            
             <aside
                 class="w-[600px] dark:bg-slate-900 backdrop-blur-sm border-l border-gray-300 dark:border-slate-800 flex flex-col shadow-2xl z-20 shrink-0 sticky top-0 h-screen">
 
-                {{-- Header Carrito --}}
+                
                 <div
                     class="h-16 px-6 border-b border-gray-200 dark:border-slate-800 dark:bg-slate-900/80 backdrop-blur-sm flex justify-between items-center shrink-0">
                     <h3 class="text-xl font-bold text-slate-800 dark:text-white">Orden Actual</h3>
@@ -93,10 +91,10 @@
                         curso</span>
                 </div>
 
-                {{-- Lista Items --}}
+                
                 <div id="cart-container" class="flex-1 overflow-y-auto p-5 space-y-3 dark:bg-slate-900"></div>
 
-                {{-- Footer Totales --}}
+                
                 <div
                     class="p-6 dark:bg-slate-950/90 backdrop-blur-sm border-t border-gray-300 dark:border-slate-800 shadow-[0_-5px_25px_rgba(0,0,0,0.05)] dark:shadow-[0_-5px_25px_rgba(0,0,0,0.3)] shrink-0 z-30">
                     <div class="space-y-3 mb-5 text-sm">
@@ -131,8 +129,8 @@
     </div>
 
     <script>
-        const productsDB = @json($products);
-        const productsBranches = @json($productsBranches);
+        const productsDB = <?php echo json_encode($products, 15, 512) ?>;
+        const productsBranches = <?php echo json_encode($productsBranches, 15, 512) ?>;
         console.log('productsDB:', productsDB);
         console.log('productsBranches:', productsBranches);
         const serverSale = {
@@ -180,7 +178,7 @@
                         alt="${prod.name}" 
                         class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                         loading="lazy"
-                        onerror="this.src='{{ asset('images/no-image.png') }}'">
+                        onerror="this.src='<?php echo e(asset('images/no-image.png')); ?>'">
                     
                 
                    
@@ -326,7 +324,7 @@
 
         function goBack() {
             saveDB();
-            window.location.href = "{{ route('admin.sales.index') }}";
+            window.location.href = "<?php echo e(route('admin.sales.index')); ?>";
         }
 
         function sendOrder() {
@@ -337,9 +335,11 @@
                 saveDB();
                 alert("Cobrado");
                 renderTicket();
-                window.location.href = "{{ route('admin.sales.index') }}";
+                window.location.href = "<?php echo e(route('admin.sales.index')); ?>";
             }
         }
         init();
     </script>
-@endsection
+<?php $__env->stopSection(); ?>
+
+<?php echo $__env->make('layouts.app', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH C:\laragon\www\Restaurante\resources\views/sales/create.blade.php ENDPATH**/ ?>
