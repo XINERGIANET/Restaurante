@@ -2,12 +2,11 @@
     
     <input type="hidden" name="movement_type_id" value="4">
 
-    {{-- 1. INPUT: DESCRIPCIÓN --}}
     <div>
-        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Descripción</label>
+        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Nota</label>
         <div class="relative">
             <span class="absolute top-1/2 left-0 -translate-y-1/2 border-r border-gray-200 px-3.5 py-3 text-gray-500 dark:border-gray-800 dark:text-gray-400">
-                <i class="ri-file-text-line"></i>
+                <i class="ri-sticky-note-line"></i>
             </span>
             <input
                 type="text"

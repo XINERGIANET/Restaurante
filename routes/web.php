@@ -299,7 +299,7 @@ Route::middleware('auth')->group(function () {
         ->parameters(['metodos-pago' => 'paymentMethod']);
 
     //Turnos
-    Route::resource('/admin/herramientas/turnos', ShiftController::class)
+    Route::resource('/admin/configuracion/turnos', ShiftController::class)
         ->names('admin.shifts')
         ->parameters(['turnos' => 'shifts']);
 
