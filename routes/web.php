@@ -302,4 +302,20 @@ Route::middleware('auth')->group(function () {
     Route::resource('/admin/herramientas/turnos', ShiftController::class)
         ->names('admin.shifts')
         ->parameters(['turnos' => 'shifts']);
+
+    //Caja chica
+    Route::get('/caja/caja-chica', [PettyCashController::class, 'redirectBase'])
+        ->name('admin.petty-cash.base');
+
+    Route::group(['prefix' => 'caja/caja-chica/{cash_register_id}', 'as' => 'admin.petty-cash.'], function () {     
+        Route::get('/', [PettyCashController::class, 'index'])->name('index');
+        Route::post('/', [PettyCashController::class, 'store'])->name('store');
+        Route::put('/{movement}', [PettyCashController::class, 'update'])->name('update');
+        Route::delete('/{movement}', [PettyCashController::class, 'destroy'])->name('destroy');
+    });
+
+    //Cajas
+    Route::resource('/admin/herramientas/cajas', BoxController::class)
+        ->names('admin.boxes')
+        ->parameters(['cajas' => 'box']);
 });

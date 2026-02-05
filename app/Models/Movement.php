@@ -49,5 +49,9 @@ class Movement extends Model
     public function documentType()
     {
         return $this->belongsTo(DocumentType::class);
+    }  
+    public function cashMovement()
+    {
+        return $this->hasOne(CashMovements::class, 'movement_id');
     }
 }
