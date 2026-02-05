@@ -4,8 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class ProductBranchController extends Model
+class ProductBranch extends Model
 {
+    protected $table = 'product_branch';
 
     protected $fillable = [
         'product_id',
@@ -16,6 +17,13 @@ class ProductBranchController extends Model
         'stock_maximum',
         'minimum_sell',
         'minimum_purchase',
+        'tax_rate_id',
+        'unit_sale',
+        'status',
+        'expiration_date',
+        'favorite',
+        'duration_minutes',
+        'supplier_id',
     ];
 
     public function product()
@@ -30,7 +38,7 @@ class ProductBranchController extends Model
 
     public function taxRate()
     {
-        return $this->belongsTo(TaxRates::class);
+        return $this->belongsTo(TaxRate::class, 'tax_rate_id');
     }
 
     public function unit()
