@@ -78,23 +78,29 @@
                 </svg>
             </button>
 
-            <!--Accesos directos-->
-            <div class="hidden xl:flex items-center gap-2 ml-auto">
-                @foreach ($quickOptions as $option)
-                    <a href="{{ route($option->action) }}" 
-                       class="group flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 transition-all duration-200 bg-white border border-gray-200 rounded-lg hover:bg-brand-50 hover:border-brand-300 hover:text-brand-700 dark:bg-gray-900 dark:border-gray-800 dark:text-gray-400 dark:hover:bg-brand-500/10 dark:hover:border-brand-800 dark:hover:text-brand-400"
-                       title="{{ $option->name }}">
-                        <i class="{{ $option->icon }} text-lg group-hover:scale-110 transition-transform"></i>
-                        <span>{{ $option->name }}</span>
-                    </a>
-                @endforeach
-            </div>
         </div>
 
         <!-- Application Menu (mobile) and Right Side Actions (desktop) -->
         <div :class="isApplicationMenuOpen ? 'flex' : 'hidden'"
             class="items-center justify-between w-full gap-4 px-5 py-4 xl:flex shadow-theme-md xl:justify-end xl:px-0 xl:shadow-none">
             <div class="flex items-center gap-2 2xsm:gap-3">
+                @if (!empty($quickOptions) && $quickOptions->count())
+                    <div class="hidden xl:flex items-center gap-2">
+                        @foreach ($quickOptions as $option)
+                            @php
+                                $quickUrl = \App\Helpers\MenuHelper::appendViewIdToPath(route($option->action), $option->view_id);
+                            @endphp
+                            <a
+                                href="{{ $quickUrl }}"
+                                class="relative flex items-center justify-center text-gray-500 transition-colors bg-white border border-gray-200 rounded-full hover:text-dark-900 h-11 w-11 hover:bg-gray-100 hover:text-gray-700 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
+                                aria-label="{{ $option->name }}"
+                            >
+                                <i class="{{ $option->icon }} text-lg"></i>
+                            </a>
+                        @endforeach
+                    </div>
+                @endif
+
                 <!-- Theme Toggle Button -->
                 <button
                     class="relative flex items-center justify-center text-gray-500 transition-colors bg-white border border-gray-200 rounded-full hover:text-dark-900 h-11 w-11 hover:bg-gray-100 hover:text-gray-700 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"

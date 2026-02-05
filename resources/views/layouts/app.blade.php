@@ -213,6 +213,7 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
     {{-- preloader --}}
     <x-common.preloader/>
     {{-- preloader end --}}
+    <x-common.loading-overlay/>
 
     <div class="flex-1 xl:flex">
         @include('layouts.backdrop')
@@ -335,6 +336,9 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
                 },
             }).then((result) => {
                 if (result.isConfirmed) {
+                    if (window.showLoadingModal) {
+                        window.showLoadingModal();
+                    }
                     form.dataset.swalBound = 'true';
                     form.submit();
                 }
@@ -354,8 +358,6 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
     @stack('scripts')
 
 </html>
-
-
 
 
 

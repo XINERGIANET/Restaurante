@@ -24,6 +24,10 @@ class AuthenticatedSessionController extends Controller
         if (Auth::attempt($credentials)) {
             $request->session()->regenerate();
             $user = Auth::user();
+            $branchId = $user?->person?->branch_id;
+            $profileId = $user?->profile_id;
+            $request->session()->put('branch_id', $branchId);
+            $request->session()->put('profile_id', $profileId);
             $person = $user->person; 
 
             $request->session()->put('user_id', $user->id);
@@ -46,10 +50,12 @@ class AuthenticatedSessionController extends Controller
                 if ($assignedShift) {
                     $request->session()->put('shift_id', $assignedShift->id);
                     $shiftSnapshot = [
+                        'name' => $assignedShift->name,
                         'start_time' => $assignedShift->start_time,
                         'end_time'   => $assignedShift->end_time
                     ];
-                    $request->session()->put('shift_snapshot', $shiftSnapshot);
+                    $shiftJsonString = json_encode($shiftSnapshot, JSON_UNESCAPED_UNICODE);
+                    $request->session()->put('shift_snapshot', $shiftJsonString);
                 }
             }
             

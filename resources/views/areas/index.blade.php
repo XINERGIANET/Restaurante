@@ -1,4 +1,4 @@
-@extends('layouts.app')
+´ñ{+@extends('layouts.app')
 
 @section('content')
     <div x-data="{ editOpen: {{ isset($area) ? 'true' : 'false' }} }">

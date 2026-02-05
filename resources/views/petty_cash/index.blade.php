@@ -17,11 +17,9 @@
 
     <x-common.component-card title="Gestión de Movimientos" desc="Control de ingresos, egresos y traslados de fondos.">
         
-        {{-- 1. BOTONERA SUPERIOR --}}
-        <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-            <div class="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
-                 {{-- Buscador --}}
-                <form method="GET" class="relative flex-1">
+        <div class="flex flex-col gap-5">
+            <form method="GET" class="flex w-full flex-col gap-3 sm:flex-row sm:items-center">
+                <div class="w-full flex-1 relative">
                     <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
                         {!! $SearchIcon !!}
                     </span>
@@ -29,13 +27,41 @@
                         type="text"
                         name="search"
                         value="{{ request('search') }}"
-                        placeholder=" Buscar movimiento..."
+                        placeholder="Buscar movimiento..."
                         class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 pl-10 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
                     />
-                </form>
-            </div>
-            
-            <div class="flex flex-wrap gap-2">
+                </div>
+
+                <div class="relative flex">
+                    <select 
+                        name="cash_register_id"
+                        class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+                    >
+                        @if(isset($cashRegisters))
+                            @foreach($cashRegisters as $register)
+                                <option 
+                                    value="{{ $register->id }}" 
+                                    {{ request('cash_register_id') == $register->id ? 'selected' : '' }}
+                                >
+                                    {{ $register->number }}
+                                </option>
+                            @endforeach
+                        @endif
+                    </select>
+                </div>
+
+                <div class="flex shrink-0 items-center gap-2">
+                    <x-ui.button size="sm" variant="primary" type="submit" :startIcon="$SearchIcon">
+                        Buscar
+                    </x-ui.button>
+                    
+                    <x-ui.link-button size="sm" variant="outline" href="{{ route('admin.boxes.index') }}" :startIcon="$ClearIcon">
+                        Limpiar
+                    </x-ui.link-button>
+                </div>
+            </form>
+
+            <div class="flex flex-wrap gap-3 border-t border-gray-100 pt-4 dark:border-gray-800">
                 @if(!$hasOpening)
                     <x-ui.link-button
                         size="md"
@@ -139,19 +165,40 @@
         </div>
     </x-common.component-card>
     
-    {{-- MODAL PARA REGISTRAR MOVIMIENTO --}}
+   {{-- ... Resto de tu código anterior ... --}}
+
     <x-ui.modal 
             x-data="{ 
                 open: {{ $errors->any() ? 'true' : 'false' }}, 
-                formConcept: '{{ old('concept') }}', 
+                formConcept: '{{ old('comment') }}', 
                 formDocId: '{{ old('document_type_id') }}',
-                ingresoId: '{{ $ingresoDocId }}' 
+                
+                refIngresoId: '{{ $ingresoDocId }}',
+                refEgresoId: '{{ $egresoDocId }}',
+
+                listIngresos: {{ Illuminate\Support\Js::from($conceptsIngreso) }},
+                listEgresos: {{ Illuminate\Support\Js::from($conceptsEgreso) }},
+                
+                currentConcepts: []
             }" 
             
             @open-movement-modal.window="
                 open = true; 
                 formConcept = $event.detail.concept || ''; 
-                formDocId = $event.detail.docId || '';
+                
+                let receivedId = String($event.detail.docId);
+                formDocId = receivedId;
+
+                if (receivedId === refIngresoId) {
+                    console.log('Cargando lista de INGRESOS...');
+                    currentConcepts = listIngresos;
+                } else {
+                    console.log('Cargando lista de EGRESOS...');
+                    currentConcepts = listEgresos;
+                }
+                
+                $nextTick(() => { 
+                });
             " 
             @close-module-modal.window="open = false" 
             :isOpen="false" 
@@ -170,7 +217,6 @@
                     x-text="formDocId == ingresoId ? 'Ingrese los detalles del ingreso.' : 'Ingrese los detalles del egreso.'">
                     </p>
                 </div>
-                
                 <div class="flex h-12 w-12 items-center justify-center rounded-2xl transition-colors duration-300"
                     :class="formDocId == ingresoId ? 'bg-brand-50 text-brand-500' : 'bg-red-50 text-red-500'">
                     <i class="text-xl" :class="formDocId == ingresoId ? 'ri-add-line' : 'ri-subtract-line'"></i>
@@ -179,7 +225,6 @@
 
             <form method="POST" action="{{ route('admin.petty-cash.store') }}" class="space-y-6">
                 @csrf
-
                 <input type="hidden" name="document_type_id" x-model="formDocId">
 
                 @include('petty_cash._form', ['movement' => null])

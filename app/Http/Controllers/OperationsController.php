@@ -16,7 +16,8 @@ class OperationsController extends Controller
 
         return view('views.operations.index', [
             'view' => $view,
-            'operations' => $operations
+            'operations' => $operations,
+            'viewsList' => View::query()->orderBy('name')->get(['id', 'name']),
         ]);
     }
 
@@ -38,6 +39,7 @@ class OperationsController extends Controller
         return view('views.operations.edit', [
             'view' => $view,
             'operation' => $operation,
+            'viewsList' => View::query()->orderBy('name')->get(['id', 'name']),
         ]);
     }
 
@@ -67,10 +69,15 @@ class OperationsController extends Controller
 
     private function validateData(Request $request): array
     {
+        $request->merge([
+            'view_id_action' => $request->input('view_id_action') ?: null,
+        ]);
+
         return $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'icon' => ['required', 'string', 'max:255'], // Asumo requerido para botones
             'action' => ['required', 'string', 'max:255'], // Ej: create, edit, delete, export
+            'view_id_action' => ['nullable', 'integer', 'exists:views,id'],
             'color' => ['required', 'string', 'max:50'],   // Nuevo campo Color
             'status' => ['required', 'boolean'],
             'type' => ['required', 'in:R,T'],

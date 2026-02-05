@@ -61,18 +61,21 @@ class ViewsController extends Controller
                         'icon' => 'ri-add-line',
                         'action' => $actionBase . '.create',
                         'color' => '#12f00e',
+                        'type' => 'T',
                     ],
                     [
                         'name' => 'Editar ' . $view->name,
                         'icon' => 'ri-pencil-line',
                         'action' => $actionBase . '.edit',
                         'color' => '#FBBF24',
+                        'type' => 'R',
                     ],
                     [
                         'name' => 'Eliminar ' . $view->name,
                         'icon' => 'ri-delete-bin-line',
                         'action' => $actionBase . '.destroy',
                         'color' => '#EF4444',
+                        'type' => 'R',
                     ],
                 ];
 
@@ -84,7 +87,7 @@ class ViewsController extends Controller
                         'view_id' => $view->id,
                         'color' => $operation['color'],
                         'status' => 1,
-                        'type' => 'T',
+                        'type' => $operation['type'],
                     ]);
                 }
             });

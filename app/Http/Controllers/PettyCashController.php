@@ -7,6 +7,9 @@ use App\Models\Movement;
 use Illuminate\Http\Request;
 use App\Models\DocumentType;
 use App\Models\CashRegister;
+use App\Models\PaymentConcept;
+use App\Models\CashMovements;
+
 
 class PettyCashController extends Controller
 {
@@ -20,12 +23,18 @@ class PettyCashController extends Controller
 
         $docIngreso = $documentTypes->firstWhere('name', 'Ingreso'); 
         $ingresoDocId = $docIngreso ? $docIngreso->id : '';
-
         $docEgreso = $documentTypes->firstWhere('name', 'Egreso');
         $egresoDocId = $docEgreso ? $docEgreso->id : '';
 
         $cashRegisters = CashRegister::where('status', '1')->get();
 
+        $conceptsIngreso = PaymentConcept::where('type', 'I')
+                                 ->where('restricted', false)
+                                 ->get();
+        $conceptsEgreso = PaymentConcept::where('type', 'E')
+                                ->where('restricted', false)
+                                ->get();
+                                    
         $movements = Movement::query()
             ->with('documentType')
             ->where('movement_type_id', 4)
@@ -47,6 +56,8 @@ class PettyCashController extends Controller
             'ingresoDocId'  => $ingresoDocId, 
             'egresoDocId'   => $egresoDocId,
             'cashRegisters'  => $cashRegisters,
+            'conceptsIngreso' => $conceptsIngreso,
+            'conceptsEgreso'  => $conceptsEgreso,
         ]);
     }
 
@@ -55,6 +66,10 @@ class PettyCashController extends Controller
         $validated = $request->validate([
             'comment'          => 'required|string|max:255',
             'document_type_id' => 'nullable|exists:document_types,id',
+
+            'payment_concept_id' => 'required|exists:payment_concepts,id',
+            'cash_register_id'  => 'required|exists:cash_registers,id',
+            'amount'           => 'required|numeric|min:0',
         ]);
 
         try {
@@ -95,6 +110,25 @@ class PettyCashController extends Controller
                     'shift_snapshot'       => session('shift_snapshot'),
                 ];
                 Movement::create($dataToInsert);
+
+                $box = CashRegister::find($request->cash_register_id);
+                $boxName = $box ? $box->number : 'Caja Desconocida';
+
+                $dataToInsertCash = [
+                    'payment_concept_id' => $validated['payment_concept_id'],
+                    'currency'           => 'PEN',
+                    'exchange_rate'      => 3.71,
+                    'total'              => $validated['amount'],
+                    'cash_register_id'   => $validated['cash_register_id'],
+                    'cash_register'      => $boxName,
+                    'shift_id'           => session('shift_id'),
+                    'shift_snapshot'     => json_encode(session('shift_snapshot'), JSON_UNESCAPED_UNICODE),
+                    'movement_id'        => Movement::latest()->first()->id,
+                    'branch_id'          => session('branch_id'),
+                ];
+                
+                dd($dataToInsertCash);
+                CashMovements::create($dataToInsertCash);
             }); 
 
             return redirect()->route('admin.petty-cash.index')
