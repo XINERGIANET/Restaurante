@@ -522,16 +522,19 @@
   @apply !right-7;
 }
 
-span.flatpickr-weekday,
-.flatpickr-months .flatpickr-month {
-  @apply dark:!fill-white dark:!text-white;
+.dark span.flatpickr-weekday,
+.dark .flatpickr-months .flatpickr-month {
+  @apply !fill-white !text-white;
 }
 
 .flatpickr-day.inRange {
   box-shadow:
     -5px 0 0 #f9fafb,
     5px 0 0 #f9fafb !important;
-  @apply dark:!shadow-datepicker;
+}
+
+.dark .flatpickr-day.inRange {
+  @apply !shadow-datepicker;
 }
 
 .flatpickr-day.inRange,
