@@ -1,13 +1,16 @@
 @extends('layouts.app')
 
 @section('content')
+    @php
+        $viewId = request('view_id');
+    @endphp
     <x-common.page-breadcrumb pageTitle="Vistas" />
 
     <x-ui.modal
         x-data="{ 
             open: true,
             redirectToIndex() {
-                window.location.href = '{{ route('admin.views.index') }}';
+                window.location.href = '{{ $viewId ? route('admin.views.index', ['view_id' => $viewId]) : route('admin.views.index') }}';
             }
         }"
         x-init="$watch('open', value => {
@@ -51,6 +54,9 @@
             <form method="POST" action="{{ route('admin.views.update', $view->id) }}" class="space-y-6">
                 @csrf
                 @method('PUT')
+                @if ($viewId)
+                    <input type="hidden" name="view_id" value="{{ $viewId }}">
+                @endif
 
                 <div class="grid gap-5">
                     

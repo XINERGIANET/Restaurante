@@ -152,7 +152,9 @@ class ViewsController extends Controller
                 'status'    => $request->input('status'),
             ]);
 
-            return redirect()->route('admin.views.index')
+            $redirectParams = $request->filled('view_id') ? ['view_id' => $request->input('view_id')] : [];
+
+            return redirect()->route('admin.views.index', $redirectParams)
                 ->with('status', 'Vista actualizada correctamente');
 
         } catch (\Exception $e) {

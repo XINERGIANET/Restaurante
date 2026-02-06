@@ -58,9 +58,17 @@ class OperationsController extends Controller
         
         $view->operations()->create($data);
 
-        return redirect()
+        $viewId = $request->input('view_id');
+
+        $redirect = redirect()
             ->route('admin.views.operations.index', $view)
             ->with('status', 'Operación creada correctamente.');
+
+        if ($viewId) {
+            $redirect->with('view_id', $viewId);
+        }
+
+        return $redirect;
     }
 
     public function edit(View $view, Operation $operation)
@@ -81,8 +89,10 @@ class OperationsController extends Controller
 
         $operation->update($data);
 
+        $viewId = $request->input('view_id');
+       
         return redirect()
-            ->route('admin.views.operations.index', $view)
+            ->route('admin.views.operations.index', $viewId ? [$view, 'view_id' => $viewId] : $view)
             ->with('status', 'Operación actualizada correctamente.');
     }
 
@@ -91,9 +101,17 @@ class OperationsController extends Controller
         $operation = $this->resolveScope($view, $operation);
         $operation->delete();
 
-        return redirect()
+        $viewId = request('view_id');
+
+        $redirect = redirect()
             ->route('admin.views.operations.index', $view)
             ->with('status', 'Operación eliminada correctamente.');
+
+        if ($viewId) {
+            $redirect->with('view_id', $viewId);
+        }
+
+        return $redirect;
     }
 
     // --- Validaciones y Helpers ---
@@ -124,3 +142,7 @@ class OperationsController extends Controller
         return $operation;
     }
 }
+
+
+
+

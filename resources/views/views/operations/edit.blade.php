@@ -1,6 +1,9 @@
 @extends('layouts.app')
 
 @section('content')
+    @php
+        $viewId = request('view_id');
+    @endphp
     <x-common.page-breadcrumb pageTitle="Operaciones" />
 
     <x-ui.modal
@@ -51,7 +54,7 @@
                 </div>
             @endif
 
-            <form method="POST" action="{{ route('admin.views.operations.update', [$view->id, $operation->id]) }}" class="space-y-6">
+            <form method="POST" action="{{ $viewId ? route('admin.views.operations.update', [$view->id, $operation->id]) . '?view_id=' . $viewId : route('admin.views.operations.update', [$view->id, $operation->id]) }}" class="space-y-6">
                 @csrf
                 @method('PUT')
 
