@@ -11,6 +11,12 @@ use App\Models\PaymentConcept;
 use App\Models\CashMovements;
 use App\Models\Shift;
 use App\Models\CashShiftRelation;
+use App\Models\PaymentGateways;
+use App\Models\PaymentMethod;
+use App\Models\Bank;
+use App\Models\DigitalWallet;
+use App\Models\Card;
+use App\Models\CashMovementDetail;
 
 
 class PettyCashController extends Controller
@@ -84,6 +90,16 @@ class PettyCashController extends Controller
         
         $shifts = Shift::where('branch_id', session('branch_id'))->get();
 
+        $paymentMethods = PaymentMethod::where('status', true)->orderBy('order_num', 'asc')->get();
+
+        $banks = Bank::where('status', true)->orderBy('order_num', 'asc')->get();
+
+        $paymentGateways = PaymentGateways::where('status', true)->orderBy('order_num', 'asc')->get();
+
+        $digitalWallets = DigitalWallet::where('status', true)->orderBy('order_num', 'asc')->get();
+
+        $cards = Card::where('status', true)->orderBy('order_num', 'asc')->get();
+
         return view('petty_cash.index', [
             'title'           => 'Caja Chica',
             'movements'       => $movements,
@@ -96,6 +112,12 @@ class PettyCashController extends Controller
             'conceptsEgreso'  => $conceptsEgreso,            
             'selectedBoxId'   => $selectedBoxId, 
             'shifts'          => $shifts,
+
+            'paymentMethods'  => $paymentMethods,
+            'paymentGateways' => $paymentGateways,
+            'banks'           => $banks,
+            'digitalWallets'  => $digitalWallets,
+            'cards'           => $cards,
         ]);
     }
 
@@ -107,8 +129,12 @@ class PettyCashController extends Controller
             'comment'            => 'required|string|max:255',
             'document_type_id'   => 'nullable|exists:document_types,id',
             'payment_concept_id' => 'required|exists:payment_concepts,id',
-            'amount'             => 'required|numeric|min:0',
             'shift_id'           => 'required|exists:shifts,id',
+
+            'payments'           => 'required|array|min:1',
+            'payments.*.amount'  => 'required|numeric|min:0.01',
+            'payments.*.payment_method_id' => 'required|exists:payment_methods,id',
+            'payments.*.number'  => 'nullable|string|max:100',
         ]);
 
         try {
@@ -121,8 +147,7 @@ class PettyCashController extends Controller
                 ];
                 $shiftSnapshotJson = json_encode($shiftSnapshotData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
-                $typeId = 4;
-
+                $typeId = 4; 
                 $lastRecord = Movement::select('movements.*')
                     ->join('cash_movements', 'movements.id', '=', 'cash_movements.movement_id')
                     ->where('movements.movement_type_id', $typeId)
@@ -131,13 +156,10 @@ class PettyCashController extends Controller
                     ->lockForUpdate()
                     ->first();
 
-                if ($lastRecord) {
-                    $nextSequence = intval($lastRecord->number) + 1;
-                } else {
-                    $nextSequence = 1;
-                }
-
+                $nextSequence = $lastRecord ? intval($lastRecord->number) + 1 : 1;
                 $generatedNumber = str_pad($nextSequence, 8, '0', STR_PAD_LEFT);
+
+                $totalAmount = collect($request->payments)->sum('amount');
 
                 $movement = Movement::create([
                     'number'             => $generatedNumber, 
@@ -157,14 +179,14 @@ class PettyCashController extends Controller
                     'shift_snapshot'     => $shiftSnapshotJson,
                 ]);
 
-                $box = CashRegister::find($request->cash_register_id); 
+                $box = CashRegister::find($request->cash_register_id);
                 $boxName = $box ? $box->number : 'Caja Desconocida';
 
                 $cashMovement = CashMovements::create([
                     'payment_concept_id' => $validated['payment_concept_id'],
                     'currency'           => 'PEN',
-                    'exchange_rate'      => 3.71,
-                    'total'              => $validated['amount'],
+                    'exchange_rate'      => 3.71, 
+                    'total'              => $totalAmount, 
                     'cash_register_id'   => $cash_register_id,
                     'cash_register'      => $boxName,
                     'shift_id'           => $selectedShift->id,
@@ -173,6 +195,58 @@ class PettyCashController extends Controller
                     'branch_id'          => session('branch_id'),
                 ]);
 
+                foreach ($request->payments as $paymentData) {
+                    
+                    $cardName = !empty($paymentData['card_id']) 
+                        ? Card::find($paymentData['card_id'])?->description 
+                        : null;
+
+                    $bankName = !empty($paymentData['bank_id']) 
+                        ? Bank::find($paymentData['bank_id'])?->description 
+                        : null;
+
+                    $walletName = !empty($paymentData['digital_wallet_id']) 
+                        ? DigitalWallet::find($paymentData['digital_wallet_id'])?->description 
+                        : null;
+
+                    $gatewayName = !empty($paymentData['payment_gateway_id']) 
+                        ? PaymentGateways::find($paymentData['payment_gateway_id'])?->description 
+                        : null;
+
+                    $individualComment = ($paymentData['payment_method_id'] != 1 && !empty($paymentData['number'])) 
+                        ? $paymentData['number'] 
+                        : $validated['comment'];
+
+                    CashMovementDetail::create([
+                        'cash_movement_id'   => $cashMovement->id,
+                        'branch_id'          => session('branch_id'),
+                        
+                        'type'               => 'PAGADO', 
+                        'status'             => 'A',      
+                        'paid_at'            => now(),
+                        
+                        'amount'             => $paymentData['amount'],
+                        'payment_method_id'  => $paymentData['payment_method_id'],
+                        'payment_method'     => $paymentData['payment_method'] ?? 'Desconocido',
+                        'comment'            => $individualComment,
+
+                        'number'             => $paymentData['number'] ?? null,
+                        
+                        'card_id'            => $paymentData['card_id'] ?? null,
+                        'card'               => $cardName, 
+                        
+                        'bank_id'            => $paymentData['bank_id'] ?? null,
+                        'bank'               => $bankName, 
+
+                        'digital_wallet_id'  => $paymentData['digital_wallet_id'] ?? null,
+                        'digital_wallet'     => $walletName,
+
+                        'payment_gateway_id' => $paymentData['payment_gateway_id'] ?? null,
+                        'payment_gateway'    => $gatewayName,
+                    ]);
+                }
+
+                // LÓGICA DE APERTURA / CIERRE
                 $concept = PaymentConcept::find($validated['payment_concept_id']);
                 $conceptName = strtolower($concept->description);
 
@@ -206,6 +280,124 @@ class PettyCashController extends Controller
         } catch (\Exception $e) {
             return back()->withErrors(['error' => 'Error al guardar: ' . $e->getMessage()])
                          ->withInput();
+        }
+    }
+
+    public function edit($cash_register_id, $id)
+    {
+        $movement = Movement::with(['cashMovement.details', 'cashMovement'])->findOrFail($id);
+        $shifts          = Shift::all();
+        $conceptsIngreso = PaymentConcept::where('type', 'I')
+            ->where('restricted', false)
+            ->get();
+        $conceptsEgreso = PaymentConcept::where('type', 'E')
+            ->where('restricted', false)
+            ->get();
+
+        $cards           = Card::where('status', true)->orderBy('order_num', 'asc')->get();
+        $banks           = Bank::where('status', true)->orderBy('order_num', 'asc')->get();
+        $digitalWallets  = DigitalWallet::where('status', true)->orderBy('order_num', 'asc')->get();
+        $paymentGateways = PaymentGateways::where('status', true)->orderBy('order_num', 'asc')->get();
+
+        return view('petty_cash.edit', compact(
+            'cash_register_id', 
+            'movement',
+            'shifts',
+            'conceptsIngreso',
+            'conceptsEgreso', 
+            'cards',
+            'banks',
+            'digitalWallets',
+            'paymentGateways'
+        ));
+    }
+
+    public function update(Request $request, $cash_register_id, $id)
+    {
+        $validated = $request->validate([
+            'comment'            => 'required|string|max:255',
+            'shift_id'           => 'required|exists:shifts,id',
+            'payment_concept_id' => 'required|exists:payment_concepts,id',
+            'payments'           => 'required|array|min:1',
+            'payments.*.amount'  => 'required|numeric|min:0.01',
+            'payments.*.payment_method_id' => 'required|exists:payment_methods,id',
+            'payments.*.number'  => 'nullable|string|max:100', 
+        ]);
+
+        try {
+            DB::transaction(function () use ($request, $validated, $id, $cash_register_id) {
+                
+                $movement = Movement::findOrFail($id);
+                $cashMovement = CashMovements::where('movement_id', $movement->id)->firstOrFail();
+
+                $selectedShift = Shift::findOrFail($request->shift_id);
+                $shiftSnapshotJson = json_encode([
+                    'name'       => $selectedShift->name,
+                    'start_time' => $selectedShift->start_time,
+                    'end_time'   => $selectedShift->end_time
+                ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+                $newTotalAmount = collect($request->payments)->sum('amount');
+
+                $movement->update([
+                    'comment'        => $validated['comment'],
+                    'shift_id'       => $selectedShift->id,
+                    'shift_snapshot' => $shiftSnapshotJson,
+                    'document_type_id' => $request->document_type_id 
+                ]);
+
+                $cashMovement->update([
+                    'payment_concept_id' => $validated['payment_concept_id'],
+                    'total'              => $newTotalAmount,
+                    'shift_id'           => $selectedShift->id,
+                    'shift_snapshot'     => $shiftSnapshotJson,
+                ]);
+                
+                CashMovementDetail::where('cash_movement_id', $cashMovement->id)->delete();
+
+                foreach ($request->payments as $paymentData) {
+                    
+                    $cardName = !empty($paymentData['card_id']) ? Card::find($paymentData['card_id'])?->description : null;
+                    $bankName = !empty($paymentData['bank_id']) ? Bank::find($paymentData['bank_id'])?->description : null;
+                    $walletName = !empty($paymentData['digital_wallet_id']) ? DigitalWallet::find($paymentData['digital_wallet_id'])?->description : null;
+                    $gatewayName = !empty($paymentData['payment_gateway_id']) ? PaymentGateways::find($paymentData['payment_gateway_id'])?->description : null;
+
+                    $individualComment = ($paymentData['payment_method_id'] != 1 && !empty($paymentData['number'])) 
+                        ? $paymentData['number'] 
+                        : $validated['comment'];
+
+                    CashMovementDetail::create([
+                        'cash_movement_id'   => $cashMovement->id,
+                        'branch_id'          => session('branch_id'),
+                        'type'               => 'PAGADO', 
+                        'status'             => 'A',      
+                        'paid_at'            => $movement->moved_at, 
+                        
+                        'amount'             => $paymentData['amount'],
+                        'payment_method_id'  => $paymentData['payment_method_id'],
+                        'payment_method'     => $paymentData['payment_method'] ?? 'Desconocido',
+                        
+                        'comment'            => $individualComment,
+
+                        'number'             => $paymentData['number'] ?? null,
+                        'card_id'            => $paymentData['card_id'] ?? null,
+                        'card'               => $cardName,
+                        'bank_id'            => $paymentData['bank_id'] ?? null,
+                        'bank'               => $bankName,
+                        'digital_wallet_id'  => $paymentData['digital_wallet_id'] ?? null,
+                        'digital_wallet'     => $walletName,
+                        'payment_gateway_id' => $paymentData['payment_gateway_id'] ?? null,
+                        'payment_gateway'    => $gatewayName,
+                    ]);
+                }
+            });
+
+            return redirect()->route('admin.petty-cash.index', ['cash_register_id' => $cash_register_id])
+                            ->with('success', 'Movimiento actualizado correctamente.');
+
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => 'Error al actualizar: ' . $e->getMessage()])
+                        ->withInput();
         }
     }
 }

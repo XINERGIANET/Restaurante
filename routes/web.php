@@ -309,6 +309,7 @@ Route::middleware('auth')->group(function () {
     Route::group(['prefix' => 'caja/caja-chica/{cash_register_id}', 'as' => 'admin.petty-cash.'], function () {     
         Route::get('/', [PettyCashController::class, 'index'])->name('index');
         Route::post('/', [PettyCashController::class, 'store'])->name('store');
+        Route::get('/{movement}/edit', [PettyCashController::class, 'edit'])->name('edit');
         Route::put('/{movement}', [PettyCashController::class, 'update'])->name('update');
         Route::delete('/{movement}', [PettyCashController::class, 'destroy'])->name('destroy');
     });
