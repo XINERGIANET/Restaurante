@@ -85,7 +85,10 @@ class ProfileController extends Controller
             }
         });
 
-        return redirect()->route('admin.profiles.index')
+        $viewId = $request->input('view_id');
+
+        return redirect()
+            ->route('admin.profiles.index', $viewId ? ['view_id' => $viewId] : [])
             ->with('status', 'Perfil creado correctamente.');
     }
 
@@ -102,7 +105,10 @@ class ProfileController extends Controller
         $data = $this->validateProfile($request);
         $profile->update($data);
 
-        return redirect()->route('admin.profiles.index')
+        $viewId = $request->input('view_id');
+
+        return redirect()
+            ->route('admin.profiles.index', $viewId ? ['view_id' => $viewId] : [])
             ->with('status', 'Perfil actualizado correctamente.');
     }
 
@@ -110,7 +116,10 @@ class ProfileController extends Controller
     {
         $profile->delete();
 
-        return redirect()->route('admin.profiles.index')
+        $viewId = request('view_id');
+
+        return redirect()
+            ->route('admin.profiles.index', $viewId ? ['view_id' => $viewId] : [])
             ->with('status', 'Perfil eliminado correctamente.');
     }
 

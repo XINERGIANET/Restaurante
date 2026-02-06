@@ -9,10 +9,85 @@
     ');
 @endphp
 @section('content')
+    @php
+        use Illuminate\Support\Facades\Route;
+
+        $viewId = request('view_id');
+        $operacionesCollection = collect($operaciones ?? []);
+        $topOperations = $operacionesCollection->where('type', 'T');
+        $rowOperations = $operacionesCollection->where('type', 'R');
+
+        $resolveActionUrl = function ($action, $model = null, $operation = null) use ($viewId) {
+            if (!$action) {
+                return '#';
+            }
+
+            if (str_starts_with($action, '/') || str_starts_with($action, 'http')) {
+                $url = $action;
+            } else {
+                $routeCandidates = [$action];
+                if (!str_starts_with($action, 'admin.')) {
+                    $routeCandidates[] = 'admin.' . $action;
+                }
+                $routeCandidates = array_merge(
+                    $routeCandidates,
+                    array_map(fn ($name) => $name . '.index', $routeCandidates)
+                );
+
+                $routeName = null;
+                foreach ($routeCandidates as $candidate) {
+                    if (Route::has($candidate)) {
+                        $routeName = $candidate;
+                        break;
+                    }
+                }
+
+                if ($routeName) {
+                    try {
+                        $url = $model ? route($routeName, $model) : route($routeName);
+                    } catch (\Exception $e) {
+                        $url = '#';
+                    }
+                } else {
+                    $url = '#';
+                }
+            }
+
+            $targetViewId = $viewId;
+            if ($operation && !empty($operation->view_id_action)) {
+                $targetViewId = $operation->view_id_action;
+            }
+
+            if ($targetViewId && $url !== '#') {
+                $separator = str_contains($url, '?') ? '&' : '?';
+                $url .= $separator . 'view_id=' . urlencode($targetViewId);
+            }
+
+            return $url;
+        };
+
+        $resolveTextColor = function ($operation) {
+            $action = $operation->action ?? '';
+            if (str_contains($action, 'parameters.create')) {
+                return '#111827';
+            }
+            return '#FFFFFF';
+        };
+
+        $isCreateOp = fn ($operation) => str_contains($operation->action ?? '', 'parameters.create')
+            || str_contains($operation->action ?? '', 'parameters.store')
+            || str_contains($operation->action ?? '', 'open-create-parameter-modal');
+        $isEditOp = fn ($operation) => str_contains($operation->action ?? '', 'parameters.edit')
+            || str_contains($operation->action ?? '', 'parameters.update');
+        $isDeleteOp = fn ($operation) => str_contains($operation->action ?? '', 'parameters.destroy');
+    @endphp
     <x-common.page-breadcrumb pageTitle="{{ 'Parametros' }}" />
     <x-common.component-card title="Listado de parametros" desc="Gestiona los parametros registrados en el sistema.">
         <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
             <form method="GET" class="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
+                @if ($viewId)
+                    <input type="hidden" name="view_id" value="{{ $viewId }}">
+                @endif
                 <div class="relative flex-1">
                     <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"> {!! $SearchIcon !!}
                     </span>
@@ -21,11 +96,33 @@
                 </div>
                 <div class="flex flex-wrap gap-2">
                     <x-ui.button size="sm" variant="primary" type="submit">Buscar</x-ui.button>
-                    <x-ui.button size="sm" variant="outline" class="rounded-xl" @click="window.location.href='{{ route('admin.parameters.index') }}'">Limpiar</x-ui.button>
+                    <x-ui.button size="sm" variant="outline" class="rounded-xl" @click="window.location.href='{{ $viewId ? route('admin.parameters.index', ['view_id' => $viewId]) : route('admin.parameters.index') }}'">Limpiar</x-ui.button>
                 </div>
             </form>
-            <x-ui.button size="md" variant="create" @click="$dispatch('open-create-parameter-modal')"><i
-                class="ri-add-line"></i> Crear Parametro</x-ui.button>
+            <div class="flex flex-wrap items-center gap-2">
+                @foreach ($topOperations as $operation)
+                    @php
+                        $topTextColor = $resolveTextColor($operation);
+                        $topColor = $operation->color ?: '#3B82F6';
+                        $topStyle = "background-color: {$topColor}; color: {$topTextColor};";
+                        $topActionUrl = $resolveActionUrl($operation->action ?? '', null, $operation);
+                        $isCreate = $isCreateOp($operation);
+                    @endphp
+                    @if ($isCreate)
+                        <x-ui.button size="md" variant="primary" type="button"
+                            style="{{ $topStyle }}" @click="$dispatch('open-create-parameter-modal')">
+                            <i class="{{ $operation->icon }}"></i>
+                            <span>{{ $operation->name }}</span>
+                        </x-ui.button>
+                    @else
+                        <x-ui.link-button size="md" variant="primary"
+                            style="{{ $topStyle }}" href="{{ $topActionUrl }}">
+                            <i class="{{ $operation->icon }}"></i>
+                            <span>{{ $operation->name }}</span>
+                        </x-ui.link-button>
+                    @endif
+                @endforeach
+            </div>
         </div>
         @if ($parameters->count() > 0)
             <div
@@ -88,27 +185,64 @@
                                     
                                     <td class="px-5 py-4 sm:px-6 text-center">
                                         <div class="flex items-center justify-center gap-2">
-                                            <x-ui.link-button size="sm" variant="outline"
-                                                x-on:click.prevent="$dispatch('open-edit-parameter-modal', {{ Illuminate\Support\Js::from(['id' => $parameter->id, 'description' => $parameter->description, 'value' => $parameter->value, 'parameter_category_id' => $parameter->parameterCategory?->id, 'status' => $parameter->status]) }})"
-                                                variant="edit"><i class="ri-pencil-line"></i></x-ui.link-button>
-                                            
-                                            <form action="{{ route('admin.parameters.destroy', $parameter) }}" method="POST" data-swal-title="Eliminar parametro?"
-                                                class="relative group js-swal-delete"
-
-                                                data-swal-title="Eliminar parametro?"
-                                                data-swal-text="Se eliminara {{ $parameter->description }}. Esta accion no se puede deshacer."
-                                                data-swal-confirm="Si, eliminar"
-                                                data-swal-cancel="Cancelar"
-                                                data-swal-confirm-color="#ef4444"
-                                                data-swal-cancel-color="#6b7280">
-                                                @csrf
-                                                @method('DELETE')
-                                                <x-ui.button size="sm" variant="eliminate" type="submit" style="border-radius: 100%; background-color: #EF4444; color: #FFFFFF;">
-                                                    <i class="ri-delete-bin-line"></i>
-                                                </x-ui.button>
-                                            </form>
-                                            </div>
-
+                                            @foreach ($rowOperations as $operation)
+                                                @php
+                                                    $action = $operation->action ?? '';
+                                                    $isDelete = str_contains($action, 'destroy');
+                                                    $isEdit = $isEditOp($operation);
+                                                    $actionUrl = $resolveActionUrl($action, $parameter, $operation);
+                                                    $textColor = $resolveTextColor($operation);
+                                                    $buttonColor = $operation->color ?: '#3B82F6';
+                                                    $buttonStyle = "background-color: {$buttonColor}; color: {$textColor};";
+                                                    $variant = $isDelete ? 'eliminate' : (str_contains($action, 'edit') ? 'edit' : 'primary');
+                                                @endphp
+                                                @if ($isDelete)
+                                                    <form method="POST" action="{{ $actionUrl }}"
+                                                        class="relative group js-swal-delete"
+                                                        data-swal-title="Eliminar parametro?"
+                                                        data-swal-text="Se eliminara {{ $parameter->description }}. Esta accion no se puede deshacer."
+                                                        data-swal-confirm="Si, eliminar"
+                                                        data-swal-cancel="Cancelar"
+                                                        data-swal-confirm-color="#ef4444"
+                                                        data-swal-cancel-color="#6b7280">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        @if ($viewId)
+                                                            <input type="hidden" name="view_id" value="{{ $viewId }}">
+                                                        @endif
+                                                        <x-ui.button size="icon" variant="{{ $variant }}" type="submit"
+                                                            className="bg-error-500 text-white hover:bg-error-600 ring-0 rounded-xl"
+                                                            style="{{ $buttonStyle }}"
+                                                            aria-label="{{ $operation->name }}">
+                                                            <i class="{{ $operation->icon }}"></i>
+                                                        </x-ui.button>
+                                                        <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">{{ $operation->name }}</span>
+                                                    </form>
+                                                @elseif ($isEdit)
+                                                    <div class="relative group">
+                                                        <x-ui.button size="icon" variant="{{ $variant }}" type="button"
+                                                            className="rounded-xl"
+                                                            style="{{ $buttonStyle }}"
+                                                            aria-label="{{ $operation->name }}"
+                                                            x-on:click.prevent="$dispatch('open-edit-parameter-modal', {{ Illuminate\Support\Js::from(['id' => $parameter->id, 'description' => $parameter->description, 'value' => $parameter->value, 'parameter_category_id' => $parameter->parameterCategory?->id, 'status' => $parameter->status]) }})">
+                                                            <i class="{{ $operation->icon }}"></i>
+                                                        </x-ui.button>
+                                                        <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">{{ $operation->name }}</span>
+                                                    </div>
+                                                @else
+                                                    <div class="relative group">
+                                                        <x-ui.link-button size="icon" variant="{{ $variant }}"
+                                                            href="{{ $actionUrl }}"
+                                                            className="rounded-xl"
+                                                            style="{{ $buttonStyle }}"
+                                                            aria-label="{{ $operation->name }}">
+                                                            <i class="{{ $operation->icon }}"></i>
+                                                        </x-ui.link-button>
+                                                        <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">{{ $operation->name }}</span>
+                                                    </div>
+                                                @endif
+                                            @endforeach
+                                        </div>
                                     </td>
                                 </tr>
                             @endforeach
@@ -139,6 +273,9 @@
             </div>
             <div>
                 <form method="GET" action="{{ route('admin.parameters.index') }}">
+                    @if ($viewId)
+                        <input type="hidden" name="view_id" value="{{ $viewId }}">
+                    @endif
                     <input type="hidden" name="search" value="{{ $search }}">
                     <select
                         name="per_page"
@@ -172,9 +309,12 @@
                     </ul>
                 </div>
             @endif
-            <form id="create-parameter-form" class="space-y-4" action="{{ route('admin.parameters.store') }}"
+            <form id="create-parameter-form" class="space-y-4" action="{{ $viewId ? route('admin.parameters.store') . '?view_id=' . $viewId : route('admin.parameters.store') }}"
                 method="POST" enctype="multipart/form-data">
                 @csrf
+                @if ($viewId)
+                    <input type="hidden" name="view_id" value="{{ $viewId }}">
+                @endif
                 <div>
                     <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Descripcion</label>
                     <input type="text" name="description" id="description" value="{{ old('description') }}"
@@ -227,11 +367,14 @@
         <div class="p-6 space-y-4">
             <h3 class="mb-6 text-lg font-semibold text-gray-800 dark:text-white/90">Editar Parametro</h3>
             <form id="edit-parameter-form" class="space-y-4"
-                x-bind:action="parameterId ? '{{ url('/admin/herramientas/parametros') }}/' + parameterId : '#'" 
+                x-bind:action="parameterId ? '{{ url('/admin/herramientas/parametros') }}/' + parameterId + '{{ $viewId ? '?view_id=' . $viewId : '' }}' : '#'" 
                 method="POST"
                 enctype="multipart/form-data">
                 @csrf
                 @method('PUT')
+                @if ($viewId)
+                    <input type="hidden" name="view_id" value="{{ $viewId }}">
+                @endif
                 <div>
                     <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Descripcion</label>
                     <input type="text" name="description" id="edit-description" x-model="description"

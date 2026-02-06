@@ -74,7 +74,10 @@ class RoleController extends Controller
 
         Role::create($data);
 
-        return redirect()->route('admin.roles.index')
+        $viewId = $request->input('view_id');
+
+        return redirect()
+            ->route('admin.roles.index', $viewId ? ['view_id' => $viewId] : [])
             ->with('status', 'Rol creado correctamente.');
     }
 
@@ -92,7 +95,10 @@ class RoleController extends Controller
 
         $role->update($data);
 
-        return redirect()->route('admin.roles.index')
+        $viewId = $request->input('view_id');
+
+        return redirect()
+            ->route('admin.roles.index', $viewId ? ['view_id' => $viewId] : [])
             ->with('status', 'Rol actualizado correctamente.');
     }
 
@@ -100,7 +106,10 @@ class RoleController extends Controller
     {
         $role->delete();
 
-        return redirect()->route('admin.roles.index')
+        $viewId = request('view_id');
+
+        return redirect()
+            ->route('admin.roles.index', $viewId ? ['view_id' => $viewId] : [])
             ->with('status', 'Rol eliminado correctamente.');
     }
 }
