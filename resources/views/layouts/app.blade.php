@@ -219,7 +219,7 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
         @include('layouts.backdrop')
         @include('layouts.sidebar')
 
-        <div class="flex-1 transition-all duration-300 ease-in-out"
+        <div class="flex-1 flex flex-col transition-all duration-300 ease-in-out"
             :class="{
                 'xl:ml-[290px]': $store.sidebar.isExpanded || $store.sidebar.isHovered,
                 'xl:ml-[90px]': !$store.sidebar.isExpanded && !$store.sidebar.isHovered,
@@ -228,16 +228,18 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
             <!-- app header start -->
             @include('layouts.app-header')
             <!-- app header end -->
-            <div class="p-4 mx-auto max-w-(--breakpoint-2xl) md:p-6">
+            
+            <div class="flex-1 p-4 mx-auto w-full max-w-(--breakpoint-2xl) md:p-6">
                 @yield('content')
             </div>
+
+            <footer class="mt-auto border-t border-gray-200 bg-[#F4F6FA] px-6 py-4 text-center text-sm text-gray-500 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
+                © 2026 Pie por Xinergia.
+            </footer>
         </div>
 
     </div>
 
-    <footer class="mt-auto border-t border-gray-200 bg-white px-6 py-4 text-center text-sm text-gray-500 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
-        © 2026 Foot by Xinergia.
-    </footer>
 </body>
 
 @if (session('status'))

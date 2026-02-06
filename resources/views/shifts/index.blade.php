@@ -37,6 +37,7 @@
             </form>
             
             <x-ui.button
+            <x-ui.button
                 size="md"
                 variant="primary"
                 style=" background-color: #12f00e; color: #111827;"  

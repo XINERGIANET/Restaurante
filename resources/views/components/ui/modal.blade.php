@@ -25,7 +25,7 @@
     </div>
 
     <!-- Modal Content -->
-    <div @click.stop class="relative flex w-full max-h-[90vh] flex-col overflow-hidden rounded-3xl bg-white dark:bg-gray-900 {{ $attributes->get('class') }}"
+    <div @click.stop class="relative flex w-full max-h-[90vh] flex-col overflow-hidden rounded-3xl bg-[#F4F6FA] dark:bg-gray-900 {{ $attributes->get('class') }}"
         x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 transform scale-95"
         x-transition:enter-end="opacity-100 transform scale-100" x-transition:leave="transition ease-in duration-200"
         x-transition:leave-start="opacity-100 transform scale-100"

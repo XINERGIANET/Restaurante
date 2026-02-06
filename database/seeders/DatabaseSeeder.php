@@ -17,5 +17,6 @@ class DatabaseSeeder extends Seeder
         $this->call(MenuOptionSeeder::class);
         $this->call(UserPermissionSeeder::class);
         $this->call(PaymentConceptSeeder::class);
+        $this->call(UnitSeeder::class);
     }
 }

@@ -82,180 +82,196 @@
 
 
         <x-common.component-card title="Listado de empresas" desc="Gestiona las empresas registradas en el sistema.">
-            <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-                <form method="GET" class="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
+            <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between mb-6">
+                <form method="GET" class="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center min-w-0">
                     @if ($viewId)
                         <input type="hidden" name="view_id" value="{{ $viewId }}">
                     @endif
-                    <div class="w-29">
+                    <div class="w-auto flex-none">
+                        <label class="mb-1.5 block text-xs font-medium text-gray-500 sm:hidden">Por página</label>
                         <select name="per_page"
                             class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-3 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
                             onchange="this.form.submit()">
                             @foreach ([10, 20, 50, 100] as $size)
                                 <option value="{{ $size }}" @selected($perPage == $size)>{{ $size }} /
-                                    pagina</option>
+                                    página</option>
                             @endforeach
                         </select>
                     </div>
-                    <div class="relative flex-1">
-                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-                            <i class="ri-search-line"></i>
-                        </span>
-                        <input type="text" name="search" value="{{ $search }}"
-                            placeholder=" Buscar por razon social, RUC o direccion"
-                            class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 pl-12 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30" />
+                    <div class="flex-1 min-w-0">
+                        <label class="mb-1.5 block text-xs font-medium text-gray-500 sm:hidden">Buscar</label>
+                        <div class="relative">
+                            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                                <i class="ri-search-line"></i>
+                            </span>
+                            <input type="text" name="search" value="{{ $search }}"
+                                placeholder="Buscar por razón social, RUC..."
+                                class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 pl-11 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30" />
+                        </div>
                     </div>
-                    <div class="flex flex-wrap gap-2">
-                        <x-ui.link-button size="sm" variant="primary" type="submit"
-                            href="{{ route('admin.companies.index', $viewId ? ['view_id' => $viewId] : []) }}">
+                    <div class="flex items-center gap-2 flex-none">
+                        <x-ui.button size="md" variant="primary" type="submit" class="flex-1 sm:flex-none h-11 px-4 shadow-sm hover:shadow-md transition-all duration-200 active:scale-95">
                             <i class="ri-search-line"></i>
-                            <span>Buscar</span>
-                            </x-ui.button>
+                            <span class="font-medium">Buscar</span>
+                        </x-ui.button>
 
-                            <x-ui.link-button size="sm" variant="outline" href="{{ route('admin.companies.index', $viewId ? ['view_id' => $viewId] : []) }}">
-                                <i class="ri-close-line"></i>
-                                <span>Limpiar</span>
-                            </x-ui.link-button>
+                        <x-ui.link-button size="md" variant="outline" href="{{ route('admin.companies.index', $viewId ? ['view_id' => $viewId] : []) }}" class="flex-1 sm:flex-none h-11 px-4 border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200">
+                            <i class="ri-refresh-line"></i>
+                            <span class="font-medium">Limpiar</span>
+                        </x-ui.link-button>
                     </div>
                 </form>
 
-                @foreach ($topOperations as $operation)
-                    @php
-                        $topTextColor = $resolveTextColor($operation);
-                        $topColor = $operation->color ?: '#3B82F6';
-                        $topStyle = "background-color: {$topColor}; color: {$topTextColor};";
-                        $topActionUrl = $resolveActionUrl($operation->action ?? '', null, $operation);
-                    @endphp
-                    @if ($operation->action === 'companies.create')
-                        <x-ui.button size="md" variant="primary" type="button"
-                            style="{{ $topStyle }}" @click="$dispatch('open-company-modal')">
-                            <i class="{{ $operation->icon }}"></i>
-                            <span>{{ $operation->name }}</span>
-                        </x-ui.button>
-                    @else
-                        <x-ui.link-button size="md" variant="primary"
-                            style="{{ $topStyle }}"
-                            href="{{ $topActionUrl }}">
-                            <i class="{{ $operation->icon }}"></i>
-                            <span>{{ $operation->name }}</span>
-                        </x-ui.link-button>
-                    @endif
-                @endforeach
+                <div class="flex items-center gap-3 border-t border-gray-100 pt-4 lg:border-0 lg:pt-0 flex-none ml-auto">
+                    @foreach ($topOperations as $operation)
+                        @php
+                            $topTextColor = $resolveTextColor($operation);
+                            $topColor = $operation->color ?: '#3B82F6';
+                            $topStyle = "background-color: {$topColor}; color: {$topTextColor};";
+                            $topActionUrl = $resolveActionUrl($operation->action ?? '', null, $operation);
+                        @endphp
+                        @if ($operation->action === 'companies.create')
+                            <x-ui.button size="md" variant="primary" type="button"
+                                class="w-full sm:w-auto h-11 px-6 shadow-sm"
+                                style="{{ $topStyle }}" @click="$dispatch('open-company-modal')">
+                                <i class="{{ $operation->icon }} text-lg"></i>
+                                <span>{{ $operation->name }}</span>
+                            </x-ui.button>
+                        @else
+                            <x-ui.link-button size="md" variant="primary"
+                                class="w-full sm:w-auto h-11 px-6 shadow-sm"
+                                style="{{ $topStyle }}"
+                                href="{{ $topActionUrl }}">
+                                <i class="{{ $operation->icon }} text-lg"></i>
+                                <span>{{ $operation->name }}</span>
+                            </x-ui.link-button>
+                        @endif
+                    @endforeach
+                </div>
             </div>
 
 
             <div
-                class="mt-4 rounded-xl border border-gray-200 bg-white overflow-visible dark:border-gray-800 dark:bg-white/[0.03]">
-
-                <table class="w-full">
-                    <thead>
-                        <tr class="border-b border-gray-100 dark:border-gray-800">
-                            <th class="px-5 py-3 text-center sm:px-6">
-                                <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Razon social</p>
-                            </th>
-                            <th class="px-5 py-3 text-center sm:px-6">
-                                <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">RUC</p>
-                            </th>
-                            <th class="px-5 py-3 text-center sm:px-6">
-                                <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Direccion</p>
-                            </th>
-                            <th class="px-5 py-3 text-center sm:px-6">
-                                <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Acciones</p>
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse ($companies as $company)
-                            <tr
-                                class="border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-white/5">
-                                <td class="px-5 py-4 sm:px-6 text-center">
-                                    <div class="space-y-1">
-                                        <p class="font-medium text-gray-800 text-theme-sm dark:text-white/90">
-                                            {{ $company->legal_name }}</p>
-                                    </div>
-                                </td>
-                                <td class="px-5 py-4 sm:px-6 text-center">
-                                    <p class="font-medium text-gray-700 text-theme-sm dark:text-gray-200">
-                                        {{ $company->tax_id }}</p>
-                                </td>
-                                <td class="px-5 py-4 sm:px-6 text-center    ">
-                                    <p class="text-gray-500 text-theme-sm dark:text-gray-400">{{ $company->address }}</p>
-                                </td>
-                                <td class="px-5 py-4 sm:px-6 text-center">
-                                    <div class="flex items-center justify-center gap-2">
-                                        @foreach ($rowOperations as $operation)
-                                            @php
-                                                $action = $operation->action ?? '';
-                                                $isDelete = str_contains($action, 'destroy');
-                                                $actionUrl = $resolveActionUrl($action, $company, $operation);
-                                                $textColor = $resolveTextColor($operation);
-                                                $buttonColor = $operation->color ?: '#3B82F6';
-                                                $buttonStyle = "border-radius: 100%; background-color: {$buttonColor}; color: {$textColor};";
-                                                $variant = $isDelete ? 'eliminate' : (str_contains($action, 'edit') ? 'edit' : 'primary');
-                                            @endphp
-                                            @if ($isDelete)
-                                                <form method="POST" action="{{ $actionUrl }}"
-                                                    class="relative group js-swal-delete" data-swal-title="Eliminar empresa?"
-                                                    data-swal-text="Se eliminara {{ $company->legal_name }}. Esta accion no se puede deshacer."
-                                                    data-swal-confirm="Si, eliminar" data-swal-cancel="Cancelar"
-                                                    data-swal-confirm-color="#ef4444" data-swal-cancel-color="#6b7280">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    @if ($viewId)
-                                                        <input type="hidden" name="view_id" value="{{ $viewId }}">
-                                                    @endif
-                                                    <x-ui.button size="icon" variant="{{ $variant }}" type="submit"
-                                                        className="bg-error-500 text-white hover:bg-error-600 ring-0 rounded-full"
-                                                        style="{{ $buttonStyle }}"
-                                                        aria-label="{{ $operation->name }}">
-                                                        <i class="{{ $operation->icon }}"></i>
-                                                    </x-ui.button>
-                                                    <span
-                                                        class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50"
-                                                        style="transition-delay: 0.5s;">{{ $operation->name }}</span>
-                                                </form>
-                                            @else
-                                                <div class="relative group">
-                                                    <x-ui.link-button size="icon" variant="{{ $variant }}"
-                                                        href="{{ $actionUrl }}"
-                                                        className="bg-brand-500 text-white hover:bg-brand-600 ring-0 rounded-full"
-                                                        style="{{ $buttonStyle }}"
-                                                        aria-label="{{ $operation->name }}">
-                                                        <i class="{{ $operation->icon }}"></i>
-                                                    </x-ui.link-button>
-                                                    <span
-                                                        class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50"
-                                                        style="transition-delay: 0.5s;">{{ $operation->name }}</span>
-                                                </div>
-                                            @endif
-                                        @endforeach
-
-                                    </div>
-                                </td>
+                class="rounded-xl border border-gray-200 bg-white overflow-hidden dark:border-gray-800 dark:bg-white/[0.03]">
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="text-white">
+                                <th style="background-color: #465fff;" class="px-5 py-4 text-left whitespace-nowrap first:rounded-tl-xl">
+                                    <p class="font-bold text-white text-xs uppercase tracking-wider">Razón social</p>
+                                </th>
+                                <th style="background-color: #465fff;" class="px-5 py-4 text-center whitespace-nowrap">
+                                    <p class="font-bold text-white text-xs uppercase tracking-wider">RUC</p>
+                                </th>
+                                <th style="background-color: #465fff;" class="px-5 py-4 text-left whitespace-nowrap">
+                                    <p class="font-bold text-white text-xs uppercase tracking-wider">Dirección</p>
+                                </th>
+                                <th style="background-color: #465fff;" class="px-5 py-4 text-center whitespace-nowrap last:rounded-tr-xl">
+                                    <p class="font-bold text-white text-xs uppercase tracking-wider">Acciones</p>
+                                </th>
                             </tr>
-                        @empty
-                            <tr>
-                                <td colspan="4" class="px-6 py-12">
-                                    <div class="flex flex-col items-center gap-3 text-center text-sm text-gray-500">
-                                        <div
-                                            class="rounded-full bg-gray-100 p-3 text-gray-400 dark:bg-gray-800 dark:text-gray-300">
-                                            <i class="ri-building-line"></i>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                            @forelse ($companies as $company)
+                                <tr class="transition hover:bg-gray-50/80 dark:hover:bg-white/5">
+                                    <td class="px-5 py-4 whitespace-nowrap">
+                                        <div class="flex items-center gap-3">
+                                            <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/10">
+                                                <i class="ri-building-line text-lg"></i>
+                                            </div>
+                                            <p class="font-semibold text-gray-800 text-theme-sm dark:text-white/90">
+                                                {{ $company->legal_name }}
+                                            </p>
                                         </div>
-                                        <p class="text-base font-semibold text-gray-700 dark:text-gray-200">No hay empresas
-                                            registradas.</p>
-                                        <p class="text-gray-500">Crea tu primera empresa para comenzar.</p>
-                                        <x-ui.button size="sm" variant="primary" type="button"
-                                            @click="$dispatch('open-company-modal')">
-                                            <i class="ri-add-line"></i>
-                                            <span>Registrar empresa</span>
-                                        </x-ui.button>
-                                    </div>
-                                </td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
+                                    </td>
+                                    <td class="px-5 py-4 text-center whitespace-nowrap">
+                                        <span class="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+                                            {{ $company->tax_id }}
+                                        </span>
+                                    </td>
+                                    <td class="px-5 py-4 min-w-[200px]">
+                                        <p class="text-gray-600 text-theme-sm dark:text-gray-400 line-clamp-1" title="{{ $company->address }}">
+                                            {{ $company->address }}
+                                        </p>
+                                    </td>
+                                    <td class="px-5 py-4 whitespace-nowrap">
+                                        <div class="flex items-center justify-center gap-2">
+                                            @foreach ($rowOperations as $operation)
+                                                @php
+                                                    $action = $operation->action ?? '';
+                                                    $isDelete = str_contains($action, 'destroy');
+                                                    $actionUrl = $resolveActionUrl($action, $company, $operation);
+                                                    $textColor = $resolveTextColor($operation);
+                                                    $buttonColor = $operation->color ?: '#3B82F6';
+                                                    $buttonStyle = "background-color: {$buttonColor}; color: {$textColor};";
+                                                    $variant = $isDelete ? 'eliminate' : (str_contains($action, 'edit') ? 'edit' : 'primary');
+                                                @endphp
+                                                @if ($isDelete)
+                                                    <form method="POST" action="{{ $actionUrl }}"
+                                                        class="relative group js-swal-delete" data-swal-title="Eliminar empresa?"
+                                                        data-swal-text="Se eliminará {{ $company->legal_name }}. Esta acción no se puede deshacer."
+                                                        data-swal-confirm="Sí, eliminar" data-swal-cancel="Cancelar"
+                                                        data-swal-confirm-color="#ef4444" data-swal-cancel-color="#6b7280">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        @if ($viewId)
+                                                            <input type="hidden" name="view_id" value="{{ $viewId }}">
+                                                        @endif
+                                                        <x-ui.button size="icon" variant="{{ $variant }}" type="submit"
+                                                            className="h-9 w-9 rounded-xl shadow-sm transition-transform active:scale-95 group-hover:shadow-md"
+                                                            style="{{ $buttonStyle }}"
+                                                            aria-label="{{ $operation->name }}">
+                                                            <i class="{{ $operation->icon }} text-lg"></i>
+                                                        </x-ui.button>
+                                                        <span
+                                                            class="invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-2 whitespace-nowrap rounded-lg bg-gray-900 px-2.5 py-1.5 text-[11px] font-medium text-white shadow-xl z-50">
+                                                            {{ $operation->name }}
+                                                            <span class="absolute top-full left-1/2 -ml-1 border-4 border-transparent border-t-gray-900"></span>
+                                                        </span>
+                                                    </form>
+                                                @else
+                                                    <div class="relative group">
+                                                        <x-ui.link-button size="icon" variant="{{ $variant }}"
+                                                            href="{{ $actionUrl }}"
+                                                            className="h-9 w-9 rounded-xl shadow-sm transition-transform active:scale-95 group-hover:shadow-md"
+                                                            style="{{ $buttonStyle }}"
+                                                            aria-label="{{ $operation->name }}">
+                                                            <i class="{{ $operation->icon }} text-lg"></i>
+                                                        </x-ui.link-button>
+                                                        <span
+                                                            class="invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-2 whitespace-nowrap rounded-lg bg-gray-900 px-2.5 py-1.5 text-[11px] font-medium text-white shadow-xl z-50">
+                                                            {{ $operation->name }}
+                                                            <span class="absolute top-full left-1/2 -ml-1 border-4 border-transparent border-t-gray-900"></span>
+                                                        </span>
+                                                    </div>
+                                                @endif
+                                            @endforeach
+                                        </div>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="4" class="px-6 py-16">
+                                        <div class="flex flex-col items-center gap-4 text-center">
+                                            <div class="flex h-16 w-16 items-center justify-center rounded-2xl bg-gray-50 text-gray-400 dark:bg-gray-800/50 dark:text-gray-600">
+                                                <i class="ri-building-line text-3xl"></i>
+                                            </div>
+                                            <div class="space-y-1">
+                                                <p class="text-base font-semibold text-gray-800 dark:text-white/90">No hay empresas registradas</p>
+                                                <p class="text-sm text-gray-500">Comienza registrando tu primera empresa para gestionar el sistema.</p>
+                                            </div>
+                                            <x-ui.button size="md" variant="primary" type="button" class="mt-2"
+                                                @click="$dispatch('open-company-modal')">
+                                                <i class="ri-add-line text-lg"></i>
+                                                <span>Registrar empresa</span>
+                                            </x-ui.button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
 
             <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div class="text-sm text-gray-500">

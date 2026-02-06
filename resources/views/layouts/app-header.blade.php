@@ -1,5 +1,6 @@
 <header
-    class="sticky top-0 flex w-full bg-white border-gray-200 z-99999 dark:border-gray-800 dark:bg-gray-900 xl:border-b"
+    style="background-color: #244BB3 !important;"
+    class="sticky top-0 flex w-full bg-[#244BB3] border-[#1c3a8c] z-99999 dark:border-gray-800 dark:bg-gray-900 xl:border-b shadow-md"
     x-data="{
         isApplicationMenuOpen: false,
         toggleApplicationMenu() {
@@ -8,12 +9,12 @@
     }">
     <div class="flex flex-col items-center justify-between grow xl:flex-row xl:px-6">
         <div
-            class="flex items-center justify-between w-full gap-2 px-3 py-3 border-b border-gray-200 dark:border-gray-800 sm:gap-4 xl:justify-normal xl:border-b-0 xl:px-0 lg:py-4">
+            class="flex items-center justify-between w-full gap-2 px-3 py-3 border-b border-[#1c3a8c] dark:border-gray-800 sm:gap-4 xl:justify-normal xl:border-b-0 xl:px-0 lg:py-4">
 
-            <!-- Desktop Sidebar Toggle Button (visible on xl and up) -->
+            <!-- Desktop Sidebar Toggle Button -->
             <button
-                class="hidden xl:flex items-center justify-center w-10 h-10 text-gray-500 border border-gray-200 rounded-lg dark:border-gray-800 dark:text-gray-400 lg:h-11 lg:w-11"
-                :class="{ 'bg-gray-100 dark:bg-white/[0.03]': !$store.sidebar.isExpanded }"
+                class="hidden xl:flex items-center justify-center w-10 h-10 text-white border border-white/10 rounded-xl hover:bg-white/10 hover:text-white transition-all duration-200 lg:h-11 lg:w-11"
+                :class="{ 'bg-white/10 text-white': !$store.sidebar.isExpanded }"
                 @click="$store.sidebar.toggleExpanded()" aria-label="Toggle Sidebar">
                 <svg x-show="!$store.sidebar.isMobileOpen" width="16" height="12" viewBox="0 0 16 12" fill="none"
                     xmlns="http://www.w3.org/2000/svg">
@@ -34,13 +35,12 @@
                 if (session()->has('branch_id')) {
                     $branchName = optional(\App\Models\Branch::find(session('branch_id')))->legal_name;
                 }
-                
             @endphp
 
-            <!-- Mobile Menu Toggle Button (visible below xl) -->
+            <!-- Mobile Menu Toggle Button -->
             <button
-                class="flex xl:hidden items-center justify-center w-10 h-10 text-gray-500 rounded-lg dark:text-gray-400 lg:h-11 lg:w-11"
-                :class="{ 'bg-gray-100 dark:bg-white/[0.03]': $store.sidebar.isMobileOpen }"
+                class="flex xl:hidden items-center justify-center w-10 h-10 text-white rounded-lg hover:bg-white/10 hover:text-white transition-all duration-200 lg:h-11 lg:w-11"
+                :class="{ 'bg-white/10 text-white': $store.sidebar.isMobileOpen }"
                 @click="$store.sidebar.toggleMobileOpen()" aria-label="Toggle Mobile Menu">
                 <svg x-show="!$store.sidebar.isMobileOpen" width="16" height="12" viewBox="0 0 16 12" fill="none"
                     xmlns="http://www.w3.org/2000/svg">
@@ -55,21 +55,22 @@
                         fill="" />
                 </svg>
             </button>
+
             @if ($branchName)
-                <h1 class="ml-2 inline-flex items-center text-lg font-semibold text-gray-900 dark:text-gray-300">
+                <h1 class="ml-2 inline-flex items-center text-lg font-bold text-white tracking-tight">
+                    <span class="opacity-80 font-medium mr-2">/</span>
                     {{ $branchName }}
                 </h1>
             @endif
 
             <!-- Logo (mobile only) -->
             <a href="/" class="xl:hidden">
-                <img class="dark:hidden" src="/images/logo/Xinergia.png" alt="Logo" width="150" height="40"  />
-                <img class="hidden dark:block" src="/images/logo/logo-dark.svg" alt="Logo" />
+                <img class="brightness-0 invert opacity-90" src="/images/logo/Xinergia.png" alt="Logo" width="130" height="35" />
             </a>
 
-            <!-- Application Menu Toggle (mobile only) -->
+            <!-- Application Menu Toggle -->
             <button @click="toggleApplicationMenu()"
-                class="flex items-center justify-center w-10 h-10 text-gray-700 rounded-lg z-99999 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 xl:hidden">
+                class="flex items-center justify-center w-10 h-10 text-white rounded-lg z-99999 hover:bg-white/10 hover:text-white transition-all xl:hidden">
                 <!-- Dots Icon -->
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                     <path fill-rule="evenodd" clip-rule="evenodd"
@@ -82,7 +83,8 @@
 
         <!-- Application Menu (mobile) and Right Side Actions (desktop) -->
         <div :class="isApplicationMenuOpen ? 'flex' : 'hidden'"
-            class="items-center justify-between w-full gap-4 px-5 py-4 xl:flex shadow-theme-md xl:justify-end xl:px-0 xl:shadow-none">
+            style="background-color: #244BB3 !important;"
+            class="items-center justify-between w-full gap-4 px-5 py-4 xl:flex shadow-theme-md xl:justify-end xl:px-0 xl:shadow-none bg-[#244BB3] border-t border-white/5 xl:border-0">
             <div class="flex items-center gap-2 2xsm:gap-3">
                 @if (!empty($quickOptions) && $quickOptions->count())
                     <div class="hidden xl:flex items-center gap-2">
@@ -92,7 +94,7 @@
                             @endphp
                             <a
                                 href="{{ $quickUrl }}"
-                                class="relative flex items-center justify-center text-gray-500 transition-colors bg-white border border-gray-200 rounded-full hover:text-dark-900 h-11 w-11 hover:bg-gray-100 hover:text-gray-700 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
+                                class="relative flex items-center justify-center text-white transition-all bg-white/5 border border-white/10 rounded-full hover:text-white h-11 w-11 hover:bg-white/10 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
                                 aria-label="{{ $option->name }}"
                             >
                                 <i class="{{ $option->icon }} text-lg"></i>
@@ -103,7 +105,7 @@
 
                 <!-- Theme Toggle Button -->
                 <button
-                    class="relative flex items-center justify-center text-gray-500 transition-colors bg-white border border-gray-200 rounded-full hover:text-dark-900 h-11 w-11 hover:bg-gray-100 hover:text-gray-700 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
+                    class="relative flex items-center justify-center text-white transition-all bg-white/5 border border-white/10 rounded-full hover:text-white h-11 w-11 hover:bg-white/10 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
                     @click="$store.theme.toggle()">
                     <svg class="hidden dark:block" width="20" height="20" viewBox="0 0 20 20" fill="none"
                         xmlns="http://www.w3.org/2000/svg">
@@ -120,11 +122,11 @@
                 </button>
 
                 <!-- Notification Dropdown -->
-                <x-header.notification-dropdown />
+                <x-header.notification-dropdown class="text-white hover:text-white" />
             </div>
 
             <!-- User Dropdown -->
-            <x-header.user-dropdown />
+            <x-header.user-dropdown class="text-white hover:text-white" />
         </div>
     </div>
 </header>

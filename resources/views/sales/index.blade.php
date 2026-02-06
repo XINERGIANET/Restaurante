@@ -7,7 +7,7 @@
         <x-common.component-card title="Listado de ventas" desc="Gestiona las ventas registradas.">
             <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                 <form method="GET" class="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
-                    <div class="w-29">
+                    <div class="w-full sm:w-24">
                         <select
                             name="per_page"
                             class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-3 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
@@ -31,13 +31,13 @@
                         />
                     </div>
                     <div class="flex flex-wrap gap-2">
-                        <x-ui.button size="sm" variant="primary" type="submit">
+                        <x-ui.button size="md" variant="primary" type="submit" class="flex-1 sm:flex-none h-11 px-6 shadow-sm hover:shadow-md transition-all duration-200 active:scale-95">
                             <i class="ri-search-line"></i>
-                            <span>Buscar</span>
+                            <span class="font-medium">Buscar</span>
                         </x-ui.button>
-                        <x-ui.link-button size="sm" variant="outline" href="{{ route('admin.sales.index') }}">
-                            <i class="ri-close-line"></i>
-                            <span>Limpiar</span>
+                        <x-ui.link-button size="md" variant="outline" href="{{ route('admin.sales.index') }}" class="flex-1 sm:flex-none h-11 px-6 border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200">
+                            <i class="ri-refresh-line"></i>
+                            <span class="font-medium">Limpiar</span>
                         </x-ui.link-button>
                     </div>
                 </form>
@@ -52,27 +52,27 @@
             <div class="mt-4 rounded-xl border border-gray-200 bg-white overflow-visible dark:border-gray-800 dark:bg-white/[0.03]">
                 <table class="w-full">
                     <thead>
-                        <tr class="border-b border-gray-100 dark:border-gray-800">
-                            <th class="px-5 py-3 text-left sm:px-6">
-                                <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Numero</p>
+                        <tr class="text-white">
+                            <th style="background-color: #465fff;" class="px-5 py-3 text-left sm:px-6 first:rounded-tl-xl">
+                                <p class="font-semibold text-white text-theme-xs">Número</p>
                             </th>
-                            <th class="px-5 py-3 text-left sm:px-6">
-                                <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Fecha</p>
+                            <th style="background-color: #465fff;" class="px-5 py-3 text-left sm:px-6">
+                                <p class="font-semibold text-white text-theme-xs">Fecha</p>
                             </th>
-                            <th class="px-5 py-3 text-left sm:px-6">
-                                <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Sucursal</p>
+                            <th style="background-color: #465fff;" class="px-5 py-3 text-left sm:px-6">
+                                <p class="font-semibold text-white text-theme-xs">Sucursal</p>
                             </th>
-                            <th class="px-5 py-3 text-left sm:px-6">
-                                <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Tipo</p>
+                            <th style="background-color: #465fff;" class="px-5 py-3 text-left sm:px-6">
+                                <p class="font-semibold text-white text-theme-xs">Tipo</p>
                             </th>
-                            <th class="px-5 py-3 text-left sm:px-6">
-                                <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Documento</p>
+                            <th style="background-color: #465fff;" class="px-5 py-3 text-left sm:px-6">
+                                <p class="font-semibold text-white text-theme-xs">Documento</p>
                             </th>
-                            <th class="px-5 py-3 text-left sm:px-6">
-                                <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Estado</p>
+                            <th style="background-color: #465fff;" class="px-5 py-3 text-left sm:px-6">
+                                <p class="font-semibold text-white text-theme-xs">Estado</p>
                             </th>
-                            <th class="px-5 py-3 text-right sm:px-6">
-                                <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Acciones</p>
+                            <th style="background-color: #465fff;" class="px-5 py-3 text-right sm:px-6 last:rounded-tr-xl">
+                                <p class="font-semibold text-white text-theme-xs">Acciones</p>
                             </th>
                         </tr>
                     </thead>

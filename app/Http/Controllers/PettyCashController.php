@@ -22,7 +22,7 @@ use App\Models\CashMovementDetail;
 class PettyCashController extends Controller
 {
 
-    public function redirectBase()
+    public function     redirectBase()
     {
         $firstBox = CashRegister::where('status', '1')->first();
         if ($firstBox) {

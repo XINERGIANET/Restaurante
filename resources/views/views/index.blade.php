@@ -10,6 +10,71 @@
 
 @section('content')
     <div x-data="{}">
+        @php
+            use Illuminate\Support\Facades\Route;
+
+            $viewId = request('view_id');
+            $operacionesCollection = collect($operaciones ?? []);
+            $topOperations = $operacionesCollection->where('type', 'T');
+            $rowOperations = $operacionesCollection->where('type', 'R');
+
+            $resolveActionUrl = function ($action, $model = null, $operation = null) use ($viewId) {
+                if (!$action) {
+                    return '#';
+                }
+
+                if (str_starts_with($action, '/') || str_starts_with($action, 'http')) {
+                    $url = $action;
+                } else {
+                    $routeCandidates = [$action];
+                    if (!str_starts_with($action, 'admin.')) {
+                        $routeCandidates[] = 'admin.' . $action;
+                    }
+                    $routeCandidates = array_merge(
+                        $routeCandidates,
+                        array_map(fn ($name) => $name . '.index', $routeCandidates)
+                    );
+
+                    $routeName = null;
+                    foreach ($routeCandidates as $candidate) {
+                        if (Route::has($candidate)) {
+                            $routeName = $candidate;
+                            break;
+                        }
+                    }
+
+                    if ($routeName) {
+                        try {
+                            $url = $model ? route($routeName, $model) : route($routeName);
+                        } catch (\Exception $e) {
+                            $url = '#';
+                        }
+                    } else {
+                        $url = '#';
+                    }
+                }
+
+                $targetViewId = $viewId;
+                if ($operation && !empty($operation->view_id_action)) {
+                    $targetViewId = $operation->view_id_action;
+                }
+
+                if ($targetViewId && $url !== '#') {
+                    $separator = str_contains($url, '?') ? '&' : '?';
+                    $url .= $separator . 'view_id=' . urlencode($targetViewId);
+                }
+
+                return $url;
+            };
+
+            $resolveTextColor = function ($operation) {
+                $action = $operation->action ?? '';
+                if (str_contains($action, 'views.create')) {
+                    return '#111827';
+                }
+                return '#FFFFFF';
+            };
+        @endphp
     
     <x-common.page-breadcrumb pageTitle="Vistas" />
 
@@ -18,6 +83,9 @@
         {{-- BARRA DE BÚSQUEDA Y ACCIONES --}}
         <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
             <form method="GET" class="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
+                @if ($viewId)
+                    <input type="hidden" name="view_id" value="{{ $viewId }}">
+                @endif
                 <div class="relative flex-1">
                     <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
                         {!! $SearchIcon !!}
@@ -32,19 +100,43 @@
                 </div>
                 <div class="flex flex-wrap gap-2">
                     <x-ui.button size="sm" variant="primary" type="submit" :startIcon="$SearchIcon">Buscar</x-ui.button>
-                    <x-ui.link-button size="sm" variant="outline" href="{{ route('admin.views.index') }}" :startIcon="$ClearIcon">Limpiar</x-ui.link-button>
+                    <x-ui.link-button size="sm" variant="outline" href="{{ route('admin.views.index', $viewId ? ['view_id' => $viewId] : []) }}" :startIcon="$ClearIcon">Limpiar</x-ui.link-button>
                 </div>
             </form>
             
-            <x-ui.button
-                size="md"
-                variant="primary"
-                type="button"  style=" background-color: #12f00e; color: #111827;"  
-                @click="$dispatch('open-view-modal')"
-            >
-                <i class="ri-add-line"></i>
-                <span>Nueva vista</span>
-            </x-ui.button>
+            <div class="flex flex-wrap items-center gap-2">
+                @foreach ($topOperations as $operation)
+                    @php
+                        $topTextColor = $resolveTextColor($operation);
+                        $topColor = $operation->color ?: '#3B82F6';
+                        $topStyle = "background-color: {$topColor}; color: {$topTextColor};";
+                        $topActionUrl = $resolveActionUrl($operation->action ?? '', null, $operation);
+                        $isCreate = str_contains($operation->action ?? '', 'views.create');
+                    @endphp
+                    @if ($isCreate)
+                        <x-ui.button
+                            size="md"
+                            variant="primary"
+                            type="button"
+                            style="{{ $topStyle }}"
+                            @click="$dispatch('open-view-modal')"
+                        >
+                            <i class="{{ $operation->icon }}"></i>
+                            <span>{{ $operation->name }}</span>
+                        </x-ui.button>
+                    @else
+                        <x-ui.link-button
+                            size="md"
+                            variant="primary"
+                            style="{{ $topStyle }}"
+                            href="{{ $topActionUrl }}"
+                        >
+                            <i class="{{ $operation->icon }}"></i>
+                            <span>{{ $operation->name }}</span>
+                        </x-ui.link-button>
+                    @endif
+                @endforeach
+            </div>
         </div>
 
         <div class="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -59,12 +151,12 @@
             <div class="max-w-full overflow-x-auto custom-scrollbar">
                 <table class="w-full min-w-[880px]">
                     <thead>
-                        <tr class="border-b border-gray-100 dark:border-gray-800">
-                            <th class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">ID</p></th>
-                            <th class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Nombre</p></th>
-                            <th class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Abreviatura</p></th>
-                            <th class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Estado</p></th>
-                            <th class="px-5 py-3 text-right sm:px-6"><p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Acciones</p></th>
+                        <tr class="text-white">
+                            <th style="background-color: #465fff;" class="px-5 py-3 text-left sm:px-6 first:rounded-tl-xl"><p class="font-semibold text-white text-theme-xs">ID</p></th>
+                            <th style="background-color: #465fff;" class="px-5 py-3 text-left sm:px-6"><p class="font-semibold text-white text-theme-xs">Nombre</p></th>
+                            <th style="background-color: #465fff;" class="px-5 py-3 text-left sm:px-6"><p class="font-semibold text-white text-theme-xs">Abreviatura</p></th>
+                            <th style="background-color: #465fff;" class="px-5 py-3 text-left sm:px-6"><p class="font-semibold text-white text-theme-xs">Estado</p></th>
+                            <th style="background-color: #465fff;" class="px-5 py-3 text-right sm:px-6 last:rounded-tr-xl"><p class="font-semibold text-white text-theme-xs">Acciones</p></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -84,26 +176,59 @@
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
                                     <div class="flex items-center justify-end gap-2">
-                                        {{-- Botones de Acción --}}
-                                        <div class="relative group">
-                                            <x-ui.link-button size="icon" variant="primary" href="{{ route('admin.views.operations.index', $view) }}" className="bg-brand-500 text-white hover:bg-brand-600 ring-0 rounded-full" style="border-radius: 100%; background-color: #3B82F6; color: #FFFFFF;" aria-label="Ver personal">
-                                                <i class="ri-team-line"></i>
-                                            </x-ui.link-button>
-                                            <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50">Personal</span>
-                                        </div>
-                                        <div class="relative group">
-                                            <x-ui.link-button size="icon" variant="outline" href="{{ route('admin.views.edit', $view) }}" className="bg-warning-500 text-white hover:bg-warning-600 ring-0 rounded-full" style="border-radius: 100%; background-color: #FBBF24; color: #111827;" aria-label="Editar">
-                                                <i class="ri-pencil-line"></i>
-                                            </x-ui.link-button>
-                                            <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50">Editar</span>
-                                        </div>
-                                        <form method="POST" action="{{ route('admin.views.destroy', $view) }}" class="relative group js-swal-delete" data-swal-title="Eliminar vista?" data-swal-text="Se eliminara {{ $view->name }}. Esta accion no se puede deshacer.">
-                                            @csrf @method('DELETE')
-                                            <x-ui.button size="icon" variant="outline" className="bg-error-500 text-white hover:bg-error-600 ring-0 rounded-full" style="border-radius: 100%; background-color: #EF4444; color: #FFFFFF;" aria-label="Eliminar" type="submit">
-                                                <i class="ri-delete-bin-line"></i>
-                                            </x-ui.button>
-                                            <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50">Eliminar</span>
-                                        </form>
+                                        @foreach ($rowOperations as $operation)
+                                            @php
+                                                $action = $operation->action ?? '';
+                                                $isDelete = str_contains($action, 'destroy');
+                                                $actionUrl = $resolveActionUrl($action, $view, $operation);
+                                                $textColor = $resolveTextColor($operation);
+                                                $buttonColor = $operation->color ?: '#3B82F6';
+                                                $buttonStyle = "background-color: {$buttonColor}; color: {$textColor};";
+                                                $variant = $isDelete ? 'eliminate' : (str_contains($action, 'edit') ? 'edit' : 'primary');
+                                            @endphp
+                                            @if ($isDelete)
+                                                <form method="POST" action="{{ $actionUrl }}"
+                                                    class="relative group js-swal-delete"
+                                                    data-swal-title="Eliminar vista?"
+                                                    data-swal-text="Se eliminara {{ $view->name }}. Esta accion no se puede deshacer."
+                                                    data-swal-confirm="S�, eliminar"
+                                                    data-swal-cancel="Cancelar"
+                                                    data-swal-confirm-color="#ef4444"
+                                                    data-swal-cancel-color="#6b7280">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    @if ($viewId)
+                                                        <input type="hidden" name="view_id" value="{{ $viewId }}">
+                                                    @endif
+                                                    <x-ui.button size="icon" variant="{{ $variant }}" type="submit"
+                                                        className="h-9 w-9 rounded-xl shadow-sm transition-transform active:scale-95 group-hover:shadow-md"
+                                                        style="{{ $buttonStyle }}"
+                                                        aria-label="{{ $operation->name }}">
+                                                        <i class="{{ $operation->icon }} text-lg"></i>
+                                                    </x-ui.button>
+                                                    <span
+                                                        class="invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-2 whitespace-nowrap rounded-lg bg-gray-900 px-2.5 py-1.5 text-[11px] font-medium text-white shadow-xl z-50">
+                                                        {{ $operation->name }}
+                                                        <span class="absolute top-full left-1/2 -ml-1 border-4 border-transparent border-t-gray-900"></span>
+                                                    </span>
+                                                </form>
+                                            @else
+                                                <div class="relative group">
+                                                    <x-ui.link-button size="icon" variant="{{ $variant }}"
+                                                        href="{{ $actionUrl }}"
+                                                        className="h-9 w-9 rounded-xl shadow-sm transition-transform active:scale-95 group-hover:shadow-md"
+                                                        style="{{ $buttonStyle }}"
+                                                        aria-label="{{ $operation->name }}">
+                                                        <i class="{{ $operation->icon }} text-lg"></i>
+                                                    </x-ui.link-button>
+                                                    <span
+                                                        class="invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-2 whitespace-nowrap rounded-lg bg-gray-900 px-2.5 py-1.5 text-[11px] font-medium text-white shadow-xl z-50">
+                                                        {{ $operation->name }}
+                                                        <span class="absolute top-full left-1/2 -ml-1 border-4 border-transparent border-t-gray-900"></span>
+                                                    </span>
+                                                </div>
+                                            @endif
+                                        @endforeach
                                     </div>
                                 </td>
                             </tr>
@@ -193,3 +318,4 @@
     
     </div> 
 @endsection
+

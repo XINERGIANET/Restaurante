@@ -15,16 +15,46 @@ class ViewsController extends Controller
     public function index(Request $request)
     {
         $search = $request->input('search');
+        $viewId = $request->input('view_id');
+        $branchId = $request->session()->get('branch_id');
+        $profileId = $request->session()->get('profile_id') ?? $request->user()?->profile_id;
+        $operaciones = collect();
+
+        if ($viewId && $branchId && $profileId) {
+            $operaciones = Operation::query()
+                ->select('operations.*')
+                ->join('branch_operation', function ($join) use ($branchId) {
+                    $join->on('branch_operation.operation_id', '=', 'operations.id')
+                        ->where('branch_operation.branch_id', $branchId)
+                        ->where('branch_operation.status', 1)
+                        ->whereNull('branch_operation.deleted_at');
+                })
+                ->join('operation_profile_branch', function ($join) use ($branchId, $profileId) {
+                    $join->on('operation_profile_branch.operation_id', '=', 'operations.id')
+                        ->where('operation_profile_branch.branch_id', $branchId)
+                        ->where('operation_profile_branch.profile_id', $profileId)
+                        ->where('operation_profile_branch.status', 1)
+                        ->whereNull('operation_profile_branch.deleted_at');
+                })
+                ->where('operations.status', 1)
+                ->where('operations.view_id', $viewId)
+                ->whereNull('operations.deleted_at')
+                ->orderBy('operations.id')
+                ->distinct()
+                ->get();
+        }
 
         $views = View::query()
             ->when($search, function ($query, $search) {
                 $query->where('name', 'like', "%{$search}%");
             })
-            ->paginate(10); 
+            ->paginate(10)
+            ->withQueryString(); 
 
         return view('views.index', [
             'title' => 'Vistas',
-            'views' => $views
+            'views' => $views,
+            'operaciones' => $operaciones,
         ]);
     }
     
@@ -79,17 +109,17 @@ class ViewsController extends Controller
                     ],
                 ];
 
-                foreach ($operations as $operation) {
-                    Operation::create([
-                        'name' => $operation['name'],
-                        'icon' => $operation['icon'],
-                        'action' => $operation['action'],
-                        'view_id' => $view->id,
-                        'color' => $operation['color'],
-                        'status' => 1,
-                        'type' => $operation['type'],
-                    ]);
-                }
+                    foreach ($operations as $operation) {
+                        Operation::create([
+                            'name' => $operation['name'],
+                            'icon' => $operation['icon'],
+                            'action' => $operation['action'],
+                            'view_id' => $view->id,
+                            'color' => $operation['color'],
+                            'status' => 1,
+                            'type' => $operation['type'],
+                        ]);
+                    }
             });
 
             return redirect()->route('admin.views.index')
