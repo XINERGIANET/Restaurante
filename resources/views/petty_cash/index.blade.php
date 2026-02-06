@@ -96,32 +96,32 @@
 
                 <div class="flex shrink-0 items-center gap-2">
                     <x-ui.button size="sm" variant="primary" type="submit" :startIcon="$SearchIcon">Buscar</x-ui.button>
-                    <x-ui.link-button size="sm" variant="outline" href="{{ route('admin.petty-cash.base') }}" :startIcon="$ClearIcon">Limpiar</x-ui.link-button>
+                    <x-ui.button size="sm" variant="outline" href="{{ route('admin.petty-cash.base') }}" :startIcon="$ClearIcon">Limpiar</x-ui.button>
                 </div>
             </form>
 
             {{-- BOTONERA --}}
             <div class="flex flex-wrap gap-3 border-t border-gray-100 pt-4 dark:border-gray-800">
                 @if(!$hasOpening)
-                    <x-ui.link-button size="md" variant="primary" style="background-color: #3B82F6; color: #FFFFFF;"  
+                    <x-ui.button size="md" variant="primary" style="background-color: #3B82F6; color: #FFFFFF;"  
                         @click="$dispatch('open-movement-modal', { concept: 'Apertura de caja', docId: '{{ $ingresoDocId }}' })">
                         <i class="ri-key-2-line"></i><span>Aperturar Caja</span>
-                    </x-ui.link-button>
+                    </x-ui.button>
                 @else
-                    <x-ui.link-button size="md" variant="primary" style="background-color: #00A389; color: #FFFFFF;"  
+                    <x-ui.button size="md" variant="primary" style="background-color: #00A389; color: #FFFFFF;"  
                         @click="$dispatch('open-movement-modal', { concept: '', docId: '{{ $ingresoDocId }}' })">
                         <i class="ri-add-line"></i><span>Ingreso</span>
-                    </x-ui.link-button>
+                    </x-ui.button>
 
-                    <x-ui.link-button size="md" variant="primary" style="background-color: #EF4444; color: #FFFFFF; border: none;" 
+                    <x-ui.button size="md" variant="primary" style="background-color: #EF4444; color: #FFFFFF; border: none;" 
                         @click="$dispatch('open-movement-modal', { concept: '', docId: '{{ $egresoDocId }}' })">
                         <i class="ri-subtract-line mr-1"></i><span>Egreso</span>
-                    </x-ui.link-button>
+                    </x-ui.button>
 
-                    <x-ui.link-button size="md" style="background-color: #FACC15; color: #111827;"
+                    <x-ui.button size="md" style="background-color: #FACC15; color: #111827;"
                         @click="$dispatch('open-movement-modal', { concept: 'Cierre de caja', docId: '{{ $egresoDocId }}' })">
                         <i class="ri-lock-2-line"></i> Cerrar
-                    </x-ui.link-button>
+                    </x-ui.button>
                 @endif
             </div>
         </div>
@@ -207,7 +207,7 @@
 
                                 <td class="px-5 py-4 sm:px-6">
                                     <span class="font-bold text-gray-800 dark:text-gray-200">
-                                        S/. {{ number_format($movement->amount ?? 0, 2) }}
+                                        S/. {{ number_format($movement->cashMovement->total ?? 0, 2) }}
                                     </span>
                                 </td>
 
@@ -219,9 +219,9 @@
 
                                 <td class="px-5 py-4 sm:px-6">
                                     <div class="flex items-center justify-end gap-2">
-                                        <x-ui.link-button size="icon" variant="edit" href="#" style="border-radius: 100%; background-color: #FBBF24; color: #111827;">
+                                        <x-ui.button size="icon" variant="edit" href="#" style="border-radius: 100%; background-color: #FBBF24; color: #111827;">
                                             <i class="ri-pencil-line"></i>
-                                        </x-ui.link-button>
+                                        </x-ui.button>
                                     </div>
                                 </td>
                             </tr>

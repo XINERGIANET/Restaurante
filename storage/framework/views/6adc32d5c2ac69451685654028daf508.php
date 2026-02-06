@@ -64,7 +64,7 @@
 
             <!-- Logo (mobile only) -->
             <a href="/" class="xl:hidden">
-                <img class="dark:hidden" src="/images/logo/logo.svg" alt="Logo" />
+                <img class="dark:hidden" src="/images/logo/Xinergia.png" alt="Logo" width="150" height="40"  />
                 <img class="hidden dark:block" src="/images/logo/logo-dark.svg" alt="Logo" />
             </a>
 
@@ -79,23 +79,29 @@
                 </svg>
             </button>
 
-            <!--Accesos directos-->
-            <div class="hidden xl:flex items-center gap-2 ml-auto">
-                <?php $__currentLoopData = $quickOptions; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $option): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                    <a href="<?php echo e(route($option->action)); ?>" 
-                       class="group flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 transition-all duration-200 bg-white border border-gray-200 rounded-lg hover:bg-brand-50 hover:border-brand-300 hover:text-brand-700 dark:bg-gray-900 dark:border-gray-800 dark:text-gray-400 dark:hover:bg-brand-500/10 dark:hover:border-brand-800 dark:hover:text-brand-400"
-                       title="<?php echo e($option->name); ?>">
-                        <i class="<?php echo e($option->icon); ?> text-lg group-hover:scale-110 transition-transform"></i>
-                        <span><?php echo e($option->name); ?></span>
-                    </a>
-                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
-            </div>
         </div>
 
         <!-- Application Menu (mobile) and Right Side Actions (desktop) -->
         <div :class="isApplicationMenuOpen ? 'flex' : 'hidden'"
             class="items-center justify-between w-full gap-4 px-5 py-4 xl:flex shadow-theme-md xl:justify-end xl:px-0 xl:shadow-none">
             <div class="flex items-center gap-2 2xsm:gap-3">
+                <?php if(!empty($quickOptions) && $quickOptions->count()): ?>
+                    <div class="hidden xl:flex items-center gap-2">
+                        <?php $__currentLoopData = $quickOptions; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $option): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                            <?php
+                                $quickUrl = \App\Helpers\MenuHelper::appendViewIdToPath(route($option->action), $option->view_id);
+                            ?>
+                            <a
+                                href="<?php echo e($quickUrl); ?>"
+                                class="relative flex items-center justify-center text-gray-500 transition-colors bg-white border border-gray-200 rounded-full hover:text-dark-900 h-11 w-11 hover:bg-gray-100 hover:text-gray-700 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
+                                aria-label="<?php echo e($option->name); ?>"
+                            >
+                                <i class="<?php echo e($option->icon); ?> text-lg"></i>
+                            </a>
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                    </div>
+                <?php endif; ?>
+
                 <!-- Theme Toggle Button -->
                 <button
                     class="relative flex items-center justify-center text-gray-500 transition-colors bg-white border border-gray-200 rounded-full hover:text-dark-900 h-11 w-11 hover:bg-gray-100 hover:text-gray-700 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"

@@ -25,6 +25,15 @@ class Product extends Model
         'features',
     ];
 
+    /**
+     * Mutator para el campo image
+     * Convierte strings vacíos a null
+     */
+    public function setImageAttribute($value)
+    {
+        $this->attributes['image'] = empty($value) ? null : $value;
+    }
+
     public function category()
     {
         return $this->belongsTo(Category::class);
