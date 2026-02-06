@@ -9,11 +9,12 @@
 }" @click.away="closeDropdown()">
     <!-- User Button -->
     <button
-        class="flex items-center text-gray-700 dark:text-gray-400"
+        <?php echo e($attributes->merge(['class' => 'flex items-center text-white hover:text-white transition-colors duration-200'])); ?>
+
         @click.prevent="toggleDropdown()"
         type="button"
     >
-        <span class="mr-3 flex h-11 w-11 items-center justify-center rounded-full bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-300">
+        <span class="mr-3 flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white group-hover:text-white transition-all">
             <i class="ri-user-3-line text-xl"></i>
         </span>
 
@@ -40,7 +41,7 @@
         x-transition:leave="transition ease-in duration-75"
         x-transition:leave-start="transform opacity-100 scale-100"
         x-transition:leave-end="transform opacity-0 scale-95"
-        class="absolute right-0 mt-[17px] flex w-[260px] flex-col rounded-2xl border border-gray-200 bg-white p-3 shadow-theme-lg dark:border-gray-800 dark:bg-gray-dark z-50"
+        class="absolute right-0 mt-[17px] flex w-[260px] flex-col rounded-2xl border border-gray-200 bg-[#F4F6FA] p-3 shadow-theme-lg dark:border-gray-800 dark:bg-gray-dark z-50"
         style="display: none;"
     >
         <!-- User Info -->

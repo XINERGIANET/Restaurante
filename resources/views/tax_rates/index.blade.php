@@ -49,12 +49,12 @@
                 </x-ui.button>
             </div>
 
-            <div class="mt-4 rounded-xl border border-gray-200 bg-white overflow-visible dark:border-gray-800 dark:bg-white/[0.03]">
-                <table class="w-full">
+            <div class="mt-4 rounded-xl border border-gray-200 bg-white overflow-x-auto dark:border-gray-800 dark:bg-white/[0.03]">
+                <table class="w-full min-w-[700px]">
                     <thead>
                         <tr class="border-b border-gray-100 dark:border-gray-800">
-                            <th class="px-5 py-3 text-left sm:px-6">
-                                <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Codigo</p>
+                            <th style="background-color: #465fff;" class="px-3 py-3 text-left sm:px-6 first:rounded-tl-xl sticky left-0 z-20 w-24 max-w-[96px] sm:w-auto sm:max-w-none shadow-[2px_0_5px_rgba(0,0,0,0.1)]">
+                                <p class="font-semibold text-white text-theme-xs truncate">Codigo</p>
                             </th>
                             <th class="px-5 py-3 text-left sm:px-6">
                                 <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Descripcion</p>
@@ -75,9 +75,9 @@
                     </thead>
                     <tbody>
                         @forelse ($taxRates as $taxRate)
-                            <tr class="border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-white/5">
-                                <td class="px-5 py-4 sm:px-6">
-                                    <p class="font-medium text-gray-800 text-theme-sm dark:text-white/90">{{ $taxRate->code }}</p>
+                            <tr class="group border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-white/5">
+                                <td class="px-3 py-4 sm:px-6 sticky left-0 z-10 bg-white dark:bg-[#121212] group-hover:bg-gray-50 dark:group-hover:bg-gray-800 shadow-[2px_0_5px_rgba(0,0,0,0.05)] w-24 max-w-[96px] sm:w-auto sm:max-w-none">
+                                    <p class="font-medium text-gray-800 text-theme-sm dark:text-white/90 truncate" title="{{ $taxRate->code }}">{{ $taxRate->code }}</p>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
                                     <p class="text-gray-500 text-theme-sm dark:text-gray-400">{{ $taxRate->description }}</p>

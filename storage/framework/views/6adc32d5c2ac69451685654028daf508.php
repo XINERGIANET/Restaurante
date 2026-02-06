@@ -1,5 +1,6 @@
 <header
-    class="sticky top-0 flex w-full bg-white border-gray-200 z-99999 dark:border-gray-800 dark:bg-gray-900 xl:border-b"
+    style="background-color: #244BB3 !important;"
+    class="sticky top-0 flex w-full bg-[#244BB3] border-[#1c3a8c] z-99999 dark:border-gray-800 dark:bg-gray-900 xl:border-b shadow-md"
     x-data="{
         isApplicationMenuOpen: false,
         toggleApplicationMenu() {
@@ -8,18 +9,18 @@
     }">
     <div class="flex flex-col items-center justify-between grow xl:flex-row xl:px-6">
         <div
-            class="flex items-center justify-between w-full gap-2 px-3 py-3 border-b border-gray-200 dark:border-gray-800 sm:gap-4 xl:justify-normal xl:border-b-0 xl:px-0 lg:py-4">
+            class="flex items-center justify-between w-full gap-2 px-3 py-3 border-b border-[#1c3a8c] dark:border-gray-800 sm:gap-4 xl:justify-normal xl:border-b-0 xl:px-0 lg:py-4">
 
-            <!-- Desktop Sidebar Toggle Button (visible on xl and up) -->
+            <!-- Desktop Sidebar Toggle Button -->
             <button
-                class="hidden xl:flex items-center justify-center w-10 h-10 text-gray-500 border border-gray-200 rounded-lg dark:border-gray-800 dark:text-gray-400 lg:h-11 lg:w-11"
-                :class="{ 'bg-gray-100 dark:bg-white/[0.03]': !$store.sidebar.isExpanded }"
+                class="hidden xl:flex items-center justify-center w-10 h-10 text-white border border-white/10 rounded-xl hover:bg-white/10 hover:text-white transition-all duration-200 lg:h-11 lg:w-11"
+                :class="{ 'bg-white/10 text-white': !$store.sidebar.isExpanded }"
                 @click="$store.sidebar.toggleExpanded()" aria-label="Toggle Sidebar">
                 <svg x-show="!$store.sidebar.isMobileOpen" width="16" height="12" viewBox="0 0 16 12" fill="none"
                     xmlns="http://www.w3.org/2000/svg">
                     <path fill-rule="evenodd" clip-rule="evenodd"
                         d="M0.583252 1C0.583252 0.585788 0.919038 0.25 1.33325 0.25H14.6666C15.0808 0.25 15.4166 0.585786 15.4166 1C15.4166 1.41421 15.0808 1.75 14.6666 1.75L1.33325 1.75C0.919038 1.75 0.583252 1.41422 0.583252 1ZM0.583252 11C0.583252 10.5858 0.919038 10.25 1.33325 10.25L14.6666 10.25C15.0808 10.25 15.4166 10.5858 15.4166 11C15.4166 11.4142 15.0808 11.75 14.6666 11.75L1.33325 11.75C0.919038 11.75 0.583252 11.4142 0.583252 11ZM1.33325 5.25C0.919038 5.25 0.583252 5.58579 0.583252 6C0.583252 6.41421 0.919038 6.75 1.33325 6.75L7.99992 6.75C8.41413 6.75 8.74992 6.41421 8.74992 6C8.74992 5.58579 8.41413 5.25 7.99992 5.25L1.33325 5.25Z"
-                        fill="currentColor"></path>
+                        fill="white"></path>
                 </svg>
                 <svg x-show="$store.sidebar.isMobileOpen" class="fill-current" width="24" height="24" viewBox="0 0 24 24"
                     fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -34,19 +35,18 @@
                 if (session()->has('branch_id')) {
                     $branchName = optional(\App\Models\Branch::find(session('branch_id')))->legal_name;
                 }
-                
             ?>
 
-            <!-- Mobile Menu Toggle Button (visible below xl) -->
+            <!-- Mobile Menu Toggle Button -->
             <button
-                class="flex xl:hidden items-center justify-center w-10 h-10 text-gray-500 rounded-lg dark:text-gray-400 lg:h-11 lg:w-11"
-                :class="{ 'bg-gray-100 dark:bg-white/[0.03]': $store.sidebar.isMobileOpen }"
+                class="flex xl:hidden items-center justify-center w-10 h-10 text-white rounded-lg hover:bg-white/10 hover:text-white transition-all duration-200 lg:h-11 lg:w-11"
+                :class="{ 'bg-white/10 text-white': $store.sidebar.isMobileOpen }"
                 @click="$store.sidebar.toggleMobileOpen()" aria-label="Toggle Mobile Menu">
                 <svg x-show="!$store.sidebar.isMobileOpen" width="16" height="12" viewBox="0 0 16 12" fill="none"
                     xmlns="http://www.w3.org/2000/svg">
                     <path fill-rule="evenodd" clip-rule="evenodd"
                         d="M0.583252 1C0.583252 0.585788 0.919038 0.25 1.33325 0.25H14.6666C15.0808 0.25 15.4166 0.585786 15.4166 1C15.4166 1.41421 15.0808 1.75 14.6666 1.75L1.33325 1.75C0.919038 1.75 0.583252 1.41422 0.583252 1ZM0.583252 11C0.583252 10.5858 0.919038 10.25 1.33325 10.25L14.6666 10.25C15.0808 10.25 15.4166 10.5858 15.4166 11C15.4166 11.4142 15.0808 11.75 14.6666 11.75L1.33325 11.75C0.919038 11.75 0.583252 11.4142 0.583252 11ZM1.33325 5.25C0.919038 5.25 0.583252 5.58579 0.583252 6C0.583252 6.41421 0.919038 6.75 1.33325 6.75L7.99992 6.75C8.41413 6.75 8.74992 6.41421 8.74992 6C8.74992 5.58579 8.41413 5.25 7.99992 5.25L1.33325 5.25Z"
-                        fill="currentColor"></path>
+                        fill="white"></path>
                 </svg>
                 <svg x-show="$store.sidebar.isMobileOpen" class="fill-current" width="24" height="24" viewBox="0 0 24 24"
                     fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -55,8 +55,9 @@
                         fill="" />
                 </svg>
             </button>
+
             <?php if($branchName): ?>
-                <h1 class="ml-2 inline-flex items-center text-lg font-semibold text-gray-900 dark:text-gray-300">
+                <h1 class="ml-2 inline-flex items-center text-lg font-bold text-white tracking-tight">
                     <?php echo e($branchName); ?>
 
                 </h1>
@@ -64,13 +65,12 @@
 
             <!-- Logo (mobile only) -->
             <a href="/" class="xl:hidden">
-                <img class="dark:hidden" src="/images/logo/Xinergia.png" alt="Logo" width="150" height="40"  />
-                <img class="hidden dark:block" src="/images/logo/logo-dark.svg" alt="Logo" />
+                <img class="brightness-0 invert opacity-90" src="/images/logo/Xinergia.png" alt="Logo" width="130" height="35" />
             </a>
 
-            <!-- Application Menu Toggle (mobile only) -->
+            <!-- Application Menu Toggle -->
             <button @click="toggleApplicationMenu()"
-                class="flex items-center justify-center w-10 h-10 text-gray-700 rounded-lg z-99999 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 xl:hidden">
+                class="flex items-center justify-center w-10 h-10 text-white rounded-lg z-99999 hover:bg-white/10 hover:text-white transition-all xl:hidden">
                 <!-- Dots Icon -->
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                     <path fill-rule="evenodd" clip-rule="evenodd"
@@ -83,7 +83,8 @@
 
         <!-- Application Menu (mobile) and Right Side Actions (desktop) -->
         <div :class="isApplicationMenuOpen ? 'flex' : 'hidden'"
-            class="items-center justify-between w-full gap-4 px-5 py-4 xl:flex shadow-theme-md xl:justify-end xl:px-0 xl:shadow-none">
+            style="background-color: #244BB3 !important;"
+            class="items-center justify-between w-full gap-4 px-5 py-4 xl:flex shadow-theme-md xl:justify-end xl:px-0 xl:shadow-none bg-[#244BB3] border-t border-white/5 xl:border-0">
             <div class="flex items-center gap-2 2xsm:gap-3">
                 <?php if(!empty($quickOptions) && $quickOptions->count()): ?>
                     <div class="hidden xl:flex items-center gap-2">
@@ -93,7 +94,7 @@
                             ?>
                             <a
                                 href="<?php echo e($quickUrl); ?>"
-                                class="relative flex items-center justify-center text-gray-500 transition-colors bg-white border border-gray-200 rounded-full hover:text-dark-900 h-11 w-11 hover:bg-gray-100 hover:text-gray-700 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
+                                class="relative flex items-center justify-center text-white transition-all bg-white/5 border border-white/10 rounded-full hover:text-white h-11 w-11 hover:bg-white/10 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
                                 aria-label="<?php echo e($option->name); ?>"
                             >
                                 <i class="<?php echo e($option->icon); ?> text-lg"></i>
@@ -102,9 +103,10 @@
                     </div>
                 <?php endif; ?>
 
+
                 <!-- Theme Toggle Button -->
                 <button
-                    class="relative flex items-center justify-center text-gray-500 transition-colors bg-white border border-gray-200 rounded-full hover:text-dark-900 h-11 w-11 hover:bg-gray-100 hover:text-gray-700 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
+                    class="relative flex items-center justify-center text-white transition-all bg-white/5 border border-white/10 rounded-full hover:text-white h-11 w-11 hover:bg-white/10 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
                     @click="$store.theme.toggle()">
                     <svg class="hidden dark:block" width="20" height="20" viewBox="0 0 20 20" fill="none"
                         xmlns="http://www.w3.org/2000/svg">
@@ -130,7 +132,7 @@
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\App\View\Components\Header\NotificationDropdown::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes([]); ?>
+<?php $component->withAttributes(['class' => 'text-white hover:text-white']); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginal2b232f9a301d4925ad5656db130f5bef)): ?>
@@ -153,7 +155,7 @@
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\App\View\Components\Header\UserDropdown::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes([]); ?>
+<?php $component->withAttributes(['class' => 'text-white hover:text-white']); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginal1ebc2f7ddf1174544e5925832beaca6f)): ?>

@@ -12,7 +12,7 @@
 ?>
 
 <aside id="sidebar"
-    class="fixed flex flex-col mt-0 top-0 px-5 left-0 bg-white dark:bg-gray-900 dark:border-gray-800 text-gray-900 h-screen transition-all duration-300 ease-in-out z-99999 border-r border-gray-200"
+    class="fixed flex flex-col mt-0 top-0 bottom-0 px-5 left-0 bg-[#F4F6FA] dark:bg-gray-900 dark:border-gray-800 text-gray-900 transition-all duration-300 ease-in-out z-99999 border-r border-gray-200"
     x-data="{
         openSubmenus: {},
         init() {
@@ -84,46 +84,42 @@
     @mouseenter="if (!$store.sidebar.isExpanded) $store.sidebar.setHovered(true)"
     @mouseleave="$store.sidebar.setHovered(false)">
 
-    <div class="pt-8 pb-7 flex"
+    <div class="pt-8 pb-8 flex px-2"
         :class="(!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ?
         'xl:justify-center' :
-        'justify-start'">
-        <a href="/">
+        'justify-start ml-2'">
+        <a href="/" class="transition-opacity duration-300 hover:opacity-80">
             <img x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
-                class="dark:hidden" src="/images/logo/Xinergia.png" alt="Logo" width="150" height="40" />
+                class="dark:hidden" src="/images/logo/Xinergia.png" alt="Logo" width="140" height="36" />
             <img x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
-                class="hidden dark:block" src="/images/logo/Xinergia.png" alt="Logo" width="150"
-                height="40" />
+                class="hidden dark:block" src="/images/logo/Xinergia.png" alt="Logo" width="140"
+                height="36" />
             <img x-show="!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen"
                 src="/images/logo/Xinergia-icon.png" alt="Logo" width="32" height="32" />
         </a>
     </div>
 
-    <div class="flex flex-col overflow-y-auto duration-300 ease-linear no-scrollbar">
-        <nav class="mb-6">
-            <div class="flex flex-col gap-4">
+    <div class="flex-1 flex flex-col overflow-y-auto duration-300 ease-linear no-scrollbar px-1">
+        <nav class="mb-8 mt-4">
+            <div class="flex flex-col gap-6">
                 <?php $__currentLoopData = $menuGroups; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $groupIndex => $menuGroup): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                     <div>
-                        <h2 class="mb-4 text-xs uppercase flex leading-[20px] text-gray-400"
+                        <h2 class="mb-3 px-4 text-[11px] font-bold uppercase tracking-widest flex leading-[20px] text-gray-400/80 dark:text-gray-500"
                             :class="(!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ?
-                            'lg:justify-center' : 'justify-start'">
+                            'lg:justify-center px-0' : 'justify-start'">
                             <template
                                 x-if="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen">
                                 <span><?php echo e($profileName ?? $menuGroup['title']); ?></span>
                             </template>
                             <template x-if="!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path fill-rule="evenodd" clip-rule="evenodd" d="M5.99915 10.2451C6.96564 10.2451 7.74915 11.0286 7.74915 11.9951V12.0051C7.74915 12.9716 6.96564 13.7551 5.99915 13.7551C5.03265 13.7551 4.24915 12.9716 4.24915 12.0051V11.9951C4.24915 11.0286 5.03265 10.2451 5.99915 10.2451ZM17.9991 10.2451C18.9656 10.2451 19.7491 11.0286 19.7491 11.9951V12.0051C19.7491 12.9716 18.9656 13.7551 17.9991 13.7551C17.0326 13.7551 16.2491 12.9716 16.2491 12.0051V11.9951C16.2491 11.0286 17.0326 10.2451 17.9991 10.2451ZM13.7491 11.9951C13.7491 11.0286 12.9656 10.2451 11.9991 10.2451C11.0326 10.2451 10.2491 11.0286 10.2491 11.9951V12.0051C10.2491 12.9716 11.0326 13.7551 11.9991 13.7551C12.9656 13.7551 13.7491 12.9716 13.7491 12.0051V11.9951Z" fill="currentColor"/>
-                                </svg>
+                                <span class="h-px w-6 bg-gray-200 dark:bg-gray-800"></span>
                             </template>
                         </h2>
 
-                        <ul class="flex flex-col gap-1">
+                        <ul class="flex flex-col gap-1.5">
                             <?php $__currentLoopData = $menuGroup['items']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $itemIndex => $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                                 <li>
-                                    
                                     <?php if(!empty($item['subItems'])): ?>
-                                        
                                         <button @click="toggleSubmenu(<?php echo e($groupIndex); ?>, <?php echo e($itemIndex); ?>)"
                                             class="menu-item group w-full"
                                             :class="[
@@ -144,42 +140,37 @@
                                                 class="menu-item-text flex items-center gap-2">
                                                 <?php echo e($item['name']); ?>
 
-                                                
-                                                <?php if(!empty($item['new'])): ?>
-                                                    <span class="absolute right-10" :class="isActive('<?php echo e($item['path'] ?? ''); ?>') ? 'menu-dropdown-badge menu-dropdown-badge-active' : 'menu-dropdown-badge menu-dropdown-badge-inactive'">new</span>
-                                                <?php endif; ?>
                                             </span>
 
                                             <svg x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
-                                                class="ml-auto w-5 h-5 transition-transform duration-200"
+                                                class="ml-auto w-4 h-4 transition-transform duration-300 opacity-60"
                                                 :class="{
-                                                    'rotate-180 text-brand-500': isSubmenuOpen(<?php echo e($groupIndex); ?>, <?php echo e($itemIndex); ?>)
+                                                    'rotate-180 text-brand-500 opacity-100': isSubmenuOpen(<?php echo e($groupIndex); ?>, <?php echo e($itemIndex); ?>)
                                                 }"
                                                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                                             </svg>
                                         </button>
 
-                                        <div x-show="isSubmenuOpen(<?php echo e($groupIndex); ?>, <?php echo e($itemIndex); ?>) && ($store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen)">
-                                            <ul class="mt-2 space-y-1 ml-9">
+                                        <div x-show="isSubmenuOpen(<?php echo e($groupIndex); ?>, <?php echo e($itemIndex); ?>) && ($store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen)"
+                                             x-transition:enter="transition ease-out duration-200"
+                                             x-transition:enter-start="opacity-0 -translate-y-2"
+                                             x-transition:enter-end="opacity-100 translate-y-0">
+                                            <ul class="mt-1.5 space-y-1 ml-10 border-l border-gray-100 dark:border-gray-800/50 pl-2">
                                                 <?php $__currentLoopData = $item['subItems']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $subItem): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                                                     <li>
                                                         <a href="<?php echo e($subItem['path']); ?>" 
                                                             @click="keepSubmenuOpen(<?php echo e($groupIndex); ?>, <?php echo e($itemIndex); ?>)"
-                                                            class="menu-dropdown-item"
+                                                            class="menu-dropdown-item group/sub"
                                                             :class="isActiveExact('<?php echo e($subItem['path']); ?>') ?
                                                                 'menu-dropdown-item-active' :
                                                                 'menu-dropdown-item-inactive'">
+                                                            <span class="w-5 h-5 flex items-center justify-center opacity-70 group-hover/sub:opacity-100 transition-opacity">
+                                                                <?php echo $subItem['icon'] ?? ''; ?>
+
+                                                            </span>
                                                             <?php echo e($subItem['name']); ?>
 
-                                                            <span class="flex items-center gap-1 ml-auto">
-                                                                <?php if(!empty($subItem['new'])): ?>
-                                                                    <span :class="isActive('<?php echo e($subItem['path']); ?>') ? 'menu-dropdown-badge menu-dropdown-badge-active' : 'menu-dropdown-badge menu-dropdown-badge-inactive'">new</span>
-                                                                <?php endif; ?>
-                                                                <?php if(!empty($subItem['pro'])): ?>
-                                                                    <span :class="isActive('<?php echo e($subItem['path']); ?>') ? 'menu-dropdown-badge-pro menu-dropdown-badge-pro-active' : 'menu-dropdown-badge-pro menu-dropdown-badge-pro-inactive'">pro</span>
-                                                                <?php endif; ?>
-                                                            </span>
                                                         </a>
                                                     </li>
                                                 <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
@@ -222,6 +213,47 @@
                 <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
             </div>
         </nav>
+
+        <!-- Quick Access Section -->
+        <?php if(!empty($quickOptions) && $quickOptions->count()): ?>
+            <div class="mb-8 pb-44 px-1 xl:hidden">
+                <h2 class="mb-3 px-4 text-[11px] font-bold uppercase tracking-widest flex leading-[20px] text-gray-400/80 dark:text-gray-500"
+                    :class="(!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ?
+                    'lg:justify-center px-0' : 'justify-start'">
+                    <template x-if="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen">
+                        <span>ACCESOS RÁPIDOS</span>
+                    </template>
+                    <template x-if="!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen">
+                        <span class="h-px w-6 bg-gray-200 dark:bg-gray-800"></span>
+                    </template>
+                </h2>
+
+                <ul class="flex flex-col gap-1.5">
+                    <?php $__currentLoopData = $quickOptions; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $option): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                        <?php
+                            $quickUrl = \App\Helpers\MenuHelper::appendViewIdToPath(route($option->action), $option->view_id);
+                        ?>
+                        <li>
+                            <a href="<?php echo e($quickUrl); ?>" 
+                               class="menu-item group w-full menu-item-inactive"
+                               :class="!$store.sidebar.isExpanded && !$store.sidebar.isHovered ? 'xl:justify-center' : 'xl:justify-start'">
+                                <span class="menu-item-icon-inactive">
+                                    <i class="<?php echo e($option->icon); ?> text-lg"></i>
+                                </span>
+                                <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
+                                      class="menu-item-text flex items-center gap-2">
+                                    <?php echo e($option->name); ?>
+
+                                </span>
+                            </a>
+                        </li>
+                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                </ul>
+            </div>
+        <?php endif; ?>
+
+        <!-- Spacer for mobile scroll -->
+        <div class="h-32 xl:hidden"></div>
     </div>
 </aside>
 

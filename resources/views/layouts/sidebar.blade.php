@@ -12,7 +12,7 @@
 @endphp
 
 <aside id="sidebar"
-    class="fixed flex flex-col mt-0 top-0 px-5 left-0 bg-[#F4F6FA] dark:bg-gray-900 dark:border-gray-800 text-gray-900 h-screen transition-all duration-300 ease-in-out z-99999 border-r border-gray-200"
+    class="fixed flex flex-col mt-0 top-0 bottom-0 px-5 left-0 bg-[#F4F6FA] dark:bg-gray-900 dark:border-gray-800 text-gray-900 transition-all duration-300 ease-in-out z-99999 border-r border-gray-200"
     x-data="{
         openSubmenus: {},
         init() {
@@ -99,7 +99,7 @@
         </a>
     </div>
 
-    <div class="flex flex-col overflow-y-auto duration-300 ease-linear no-scrollbar px-1">
+    <div class="flex-1 flex flex-col overflow-y-auto duration-300 ease-linear no-scrollbar px-1">
         <nav class="mb-8 mt-4">
             <div class="flex flex-col gap-6">
                 @foreach ($menuGroups as $groupIndex => $menuGroup)
@@ -207,6 +207,46 @@
                 @endforeach
             </div>
         </nav>
+
+        <!-- Quick Access Section -->
+        @if (!empty($quickOptions) && $quickOptions->count())
+            <div class="mb-8 pb-44 px-1 xl:hidden">
+                <h2 class="mb-3 px-4 text-[11px] font-bold uppercase tracking-widest flex leading-[20px] text-gray-400/80 dark:text-gray-500"
+                    :class="(!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ?
+                    'lg:justify-center px-0' : 'justify-start'">
+                    <template x-if="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen">
+                        <span>ACCESOS RÁPIDOS</span>
+                    </template>
+                    <template x-if="!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen">
+                        <span class="h-px w-6 bg-gray-200 dark:bg-gray-800"></span>
+                    </template>
+                </h2>
+
+                <ul class="flex flex-col gap-1.5">
+                    @foreach ($quickOptions as $option)
+                        @php
+                            $quickUrl = \App\Helpers\MenuHelper::appendViewIdToPath(route($option->action), $option->view_id);
+                        @endphp
+                        <li>
+                            <a href="{{ $quickUrl }}" 
+                               class="menu-item group w-full menu-item-inactive"
+                               :class="!$store.sidebar.isExpanded && !$store.sidebar.isHovered ? 'xl:justify-center' : 'xl:justify-start'">
+                                <span class="menu-item-icon-inactive">
+                                    <i class="{{ $option->icon }} text-lg"></i>
+                                </span>
+                                <span x-show="$store.sidebar.isExpanded || $store.sidebar.isHovered || $store.sidebar.isMobileOpen"
+                                      class="menu-item-text flex items-center gap-2">
+                                    {{ $option->name }}
+                                </span>
+                            </a>
+                        </li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
+        <!-- Spacer for mobile scroll -->
+        <div class="h-32 xl:hidden"></div>
     </div>
 </aside>
 

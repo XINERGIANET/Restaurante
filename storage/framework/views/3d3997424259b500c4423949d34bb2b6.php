@@ -257,7 +257,7 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
         <?php echo $__env->make('layouts.backdrop', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
         <?php echo $__env->make('layouts.sidebar', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
-        <div class="flex-1 transition-all duration-300 ease-in-out"
+        <div class="flex-1 flex flex-col transition-all duration-300 ease-in-out"
             :class="{
                 'xl:ml-[290px]': $store.sidebar.isExpanded || $store.sidebar.isHovered,
                 'xl:ml-[90px]': !$store.sidebar.isExpanded && !$store.sidebar.isHovered,
@@ -266,16 +266,18 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
             <!-- app header start -->
             <?php echo $__env->make('layouts.app-header', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
             <!-- app header end -->
-            <div class="p-4 mx-auto max-w-(--breakpoint-2xl) md:p-6">
+            
+            <div class="flex-1 p-4 mx-auto w-full max-w-(--breakpoint-2xl) md:p-6">
                 <?php echo $__env->yieldContent('content'); ?>
             </div>
+
+            <footer class="mt-auto border-t border-gray-200 bg-[#F4F6FA] px-6 py-4 text-center text-sm text-gray-500 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
+                © 2026 Pie por Xinergia.
+            </footer>
         </div>
 
     </div>
 
-    <footer class="mt-auto border-t border-gray-200 bg-white px-6 py-4 text-center text-sm text-gray-500 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
-        © 2026 Foot by Xinergia.
-    </footer>
 </body>
 
 <?php if(session('status')): ?>

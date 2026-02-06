@@ -157,8 +157,8 @@
                     <table class="w-full">
                         <thead>
                             <tr class="text-white">
-                                <th style="background-color: #465fff;" class="px-5 py-4 text-left whitespace-nowrap first:rounded-tl-xl">
-                                    <p class="font-bold text-white text-xs uppercase tracking-wider">Razón social</p>
+                                <th style="background-color: #465fff;" class="px-3 py-4 text-left whitespace-nowrap first:rounded-tl-xl sticky left-0 z-20 w-32 max-w-[128px] sm:w-auto sm:max-w-none">
+                                    <p class="font-bold text-white text-xs uppercase tracking-wider truncate">Razón social</p>
                                 </th>
                                 <th style="background-color: #465fff;" class="px-5 py-4 text-center whitespace-nowrap">
                                     <p class="font-bold text-white text-xs uppercase tracking-wider">RUC</p>
@@ -173,13 +173,13 @@
                         </thead>
                         <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
                             @forelse ($companies as $company)
-                                <tr class="transition hover:bg-gray-50/80 dark:hover:bg-white/5">
-                                    <td class="px-5 py-4 whitespace-nowrap">
-                                        <div class="flex items-center gap-3">
-                                            <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/10">
-                                                <i class="ri-building-line text-lg"></i>
+                                <tr class="group transition hover:bg-gray-50/80 dark:hover:bg-white/5">
+                                    <td class="px-3 py-4 whitespace-nowrap sticky left-0 z-10 bg-white dark:bg-[#121212] group-hover:bg-gray-50 dark:group-hover:bg-gray-800 w-32 max-w-[128px] sm:w-auto sm:max-w-none">
+                                        <div class="flex items-center gap-2">
+                                            <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/10 shrink-0">
+                                                <i class="ri-building-line text-xs"></i>
                                             </div>
-                                            <p class="font-semibold text-gray-800 text-theme-sm dark:text-white/90">
+                                            <p class="font-semibold text-gray-800 text-theme-sm dark:text-white/90 truncate" title="{{ $company->legal_name }}">
                                                 {{ $company->legal_name }}
                                             </p>
                                         </div>

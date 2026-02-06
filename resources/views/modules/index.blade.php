@@ -61,7 +61,9 @@
                 <table class="w-full min-w-[880px]">
                     <thead>
                         <tr class="text-white">
-                            <th style="background-color: #465fff;" class="px-5 py-3 text-left sm:px-6 first:rounded-tl-xl"><p class="font-semibold text-white text-theme-xs">Orden</p></th>
+                            <th style="background-color: #465fff;" class="px-3 py-3 text-left sm:px-6 first:rounded-tl-xl sticky left-0 z-20 w-16 max-w-[64px] sm:w-auto sm:max-w-none shadow-[2px_0_5px_rgba(0,0,0,0.1)]">
+                                <p class="font-semibold text-white text-theme-xs truncate">Orden</p>
+                            </th>
                             <th style="background-color: #465fff;" class="px-5 py-3 text-left sm:px-6"><p class="font-semibold text-white text-theme-xs">Nombre</p></th>
                             <th style="background-color: #465fff;" class="px-5 py-3 text-left sm:px-6"><p class="font-semibold text-white text-theme-xs">Icono</p></th>
                             <th style="background-color: #465fff;" class="px-5 py-3 text-left sm:px-6"><p class="font-semibold text-white text-theme-xs">Estado</p></th>
@@ -70,8 +72,10 @@
                     </thead>
                     <tbody>
                         @forelse ($modules as $module)
-                            <tr class="border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-white/5">
-                                <td class="px-5 py-4 sm:px-6"><span class="font-bold text-gray-700 dark:text-gray-200">#{{ $module->order_num }}</span></td>
+                            <tr class="group border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-white/5">
+                                <td class="px-3 py-4 sm:px-6 sticky left-0 z-10 bg-white dark:bg-[#121212] group-hover:bg-gray-50 dark:group-hover:bg-gray-800 shadow-[2px_0_5px_rgba(0,0,0,0.05)] w-16 max-w-[64px] sm:w-auto sm:max-w-none text-center">
+                                    <span class="font-bold text-gray-700 dark:text-gray-200 text-xs text-center block">#{{ $module->order_num }}</span>
+                                </td>
                                 <td class="px-5 py-4 sm:px-6">
                                     <p class="font-medium text-gray-800 text-theme-sm dark:text-white/90">{{ $module->name }}</p>
                                 </td>

@@ -42,12 +42,12 @@
                 </x-ui.button>
             </div>
 
-            <div class="mt-4 rounded-xl border border-gray-200 bg-white overflow-visible dark:border-gray-800 dark:bg-white/[0.03]">
-                <table class="w-full">
+            <div class="mt-4 rounded-xl border border-gray-200 bg-white overflow-x-auto dark:border-gray-800 dark:bg-white/[0.03]">
+                <table class="w-full min-w-[600px]">
                     <thead>
                         <tr class="border-b border-gray-100 dark:border-gray-800">
-                            <th class="px-5 py-3 text-center sm:px-6">
-                                <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Nombre</p>
+                            <th class="px-3 py-3 text-center sm:px-6 sticky left-0 z-20 bg-gray-50 dark:bg-gray-800 shadow-[2px_0_5px_rgba(0,0,0,0.05)] w-24 max-w-[96px] sm:w-auto sm:max-w-none">
+                                <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400 truncate">Nombre</p>
                             </th>
                             <th class="px-5 py-3 text-center sm:px-6">
                                 <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Estado</p>
@@ -59,10 +59,10 @@
                     </thead>
                     <tbody>
                         @forelse ($profiles as $profile)
-                            <tr class="border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-white/5">
-                                <td class="px-5 py-4 sm:px-6 text-center">
+                            <tr class="group border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-white/5">
+                                <td class="px-3 py-4 sm:px-6 text-center sticky left-0 z-10 bg-white dark:bg-[#121212] group-hover:bg-gray-50 dark:group-hover:bg-gray-800 shadow-[2px_0_5px_rgba(0,0,0,0.05)] w-24 max-w-[96px] sm:w-auto sm:max-w-none">
                                     <div class="space-y-1">
-                                        <p class="font-medium text-gray-800 text-theme-sm dark:text-white/90">{{ $profile->name }}</p>
+                                        <p class="font-medium text-gray-800 text-theme-sm dark:text-white/90 truncate" title="{{ $profile->name }}">{{ $profile->name }}</p>
                                     </div>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6 text-center">

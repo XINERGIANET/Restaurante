@@ -21,8 +21,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Compartir quickOptions con todas las vistas que incluyan el header
-        View::composer('layouts.app-header', function ($view) {
+        // Compartir quickOptions con el header y el sidebar
+        View::composer(['layouts.app-header', 'layouts.sidebar'], function ($view) {
             $quickOptions = MenuOption::where('status', 1)
                 ->where('quick_access', 1)
                 ->orderBy('id', 'asc')
