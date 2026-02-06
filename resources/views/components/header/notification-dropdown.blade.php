@@ -20,7 +20,7 @@
 }" @click.away="closeDropdown()">
     <!-- Notification Button -->
     <button
-        class="relative flex items-center justify-center text-gray-500 transition-colors bg-white border border-gray-200 rounded-full hover:text-dark-900 h-11 w-11 hover:bg-gray-100 hover:text-gray-700 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
+        {{ $attributes->merge(['class' => 'relative flex items-center justify-center text-white transition-all bg-white/10 border border-white/10 rounded-full hover:text-white h-11 w-11 hover:bg-white/20']) }}
         @click="toggleDropdown()"
         type="button"
     >
@@ -61,7 +61,7 @@
         x-transition:leave="transition ease-in duration-75"
         x-transition:leave-start="transform opacity-100 scale-100"
         x-transition:leave-end="transform opacity-0 scale-95"
-        class="absolute -right-[240px] mt-[17px] flex h-[480px] w-[350px] flex-col rounded-2xl border border-gray-200 bg-white p-3 shadow-theme-lg dark:border-gray-800 dark:bg-gray-dark sm:w-[361px] lg:right-0"
+        class="absolute -right-[240px] mt-[17px] flex h-[480px] w-[350px] flex-col rounded-2xl border border-gray-200 bg-[#F4F6FA] p-3 shadow-theme-lg dark:border-gray-800 dark:bg-gray-dark sm:w-[361px] lg:right-0"
         style="display: none;"
     >
         <!-- Dropdown Header -->

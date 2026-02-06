@@ -44,7 +44,7 @@
         <x-common.component-card title="Productos" desc="Gestiona los productos.">
             <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                 <form method="GET" class="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
-                    <div class="w-29">
+                    <div class="w-full sm:w-24">
                         <select name="per_page"
                             class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-3 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
                             onchange="this.form.submit()">
@@ -63,13 +63,13 @@
                             class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 pl-12 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30" />
                     </div>
                     <div class="flex flex-wrap gap-2">
-                        <x-ui.button size="sm" variant="primary" type="submit">
+                        <x-ui.button size="md" variant="primary" type="submit" class="flex-1 sm:flex-none h-11 px-6 shadow-sm hover:shadow-md transition-all duration-200 active:scale-95">
                             <i class="ri-search-line"></i>
-                            <span>Buscar</span>
+                            <span class="font-medium">Buscar</span>
                         </x-ui.button>
-                        <x-ui.link-button size="sm" variant="outline" href="{{ route('admin.products.index') }}">
-                            <i class="ri-close-line"></i>
-                            <span>Limpiar</span>
+                        <x-ui.link-button size="md" variant="outline" href="{{ route('admin.products.index') }}" class="flex-1 sm:flex-none h-11 px-6 border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200">
+                            <i class="ri-refresh-line"></i>
+                            <span class="font-medium">Limpiar</span>
                         </x-ui.link-button>
                     </div>
                 </form>
@@ -85,25 +85,27 @@
                 class="mt-4 rounded-xl border border-gray-200 bg-white overflow-visible dark:border-gray-800 dark:bg-white/[0.03]">
                 <table class="w-full">
                     <thead>
-                        <th class="w-12 px-4 py-4 text-center"></th>
-                        <th class="px-5 py-3 text-left sm:px-6">
-                            <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Codigo</p>
-                        </th>
-                        <th class="px-5 py-3 text-left sm:px-6">
-                            <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Descripcion</p>
-                        </th>
-                        <th class="px-5 py-3 text-left sm:px-6">
-                            <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Categoria</p>
-                        </th>
-                        <th class="px-5 py-3 text-left sm:px-6">
-                            <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Unidad base</p>
-                        </th>
-                        <th class="px-5 py-3 text-left sm:px-6">
-                            <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Tipo</p>
-                        </th>
-                        <th class="px-5 py-3 text-right sm:px-6">
-                            <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Acciones</p>
-                        </th>
+                        <tr class="text-white">
+                            <th style="background-color: #465fff;" class="w-12 px-4 py-4 text-center first:rounded-tl-xl"></th>
+                            <th style="background-color: #465fff;" class="px-5 py-3 text-left sm:px-6">
+                                <p class="font-semibold text-white text-theme-xs">Código</p>
+                            </th>
+                            <th style="background-color: #465fff;" class="px-5 py-3 text-left sm:px-6">
+                                <p class="font-semibold text-white text-theme-xs">Descripción</p>
+                            </th>
+                            <th style="background-color: #465fff;" class="px-5 py-3 text-left sm:px-6">
+                                <p class="font-semibold text-white text-theme-xs">Categoría</p>
+                            </th>
+                            <th style="background-color: #465fff;" class="px-5 py-3 text-left sm:px-6">
+                                <p class="font-semibold text-white text-theme-xs">Unidad base</p>
+                            </th>
+                            <th style="background-color: #465fff;" class="px-5 py-3 text-left sm:px-6">
+                                <p class="font-semibold text-white text-theme-xs">Tipo</p>
+                            </th>
+                            <th style="background-color: #465fff;" class="px-5 py-3 text-right sm:px-6 last:rounded-tr-xl">
+                                <p class="font-semibold text-white text-theme-xs">Acciones</p>
+                            </th>
+                        </tr>
                     </thead>
                     <tbody>
                         @forelse ($products as $product)

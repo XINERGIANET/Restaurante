@@ -59,12 +59,12 @@
             <div class="max-w-full overflow-x-auto custom-scrollbar">
                 <table class="w-full min-w-[880px]">
                     <thead>
-                        <tr class="border-b border-gray-100 dark:border-gray-800">
-                            <th class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Orden</p></th>
-                            <th class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Nombre</p></th>
-                            <th class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Icono</p></th>
-                            <th class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Estado</p></th>
-                            <th class="px-5 py-3 text-right sm:px-6"><p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Acciones</p></th>
+                        <tr class="text-white">
+                            <th style="background-color: #465fff;" class="px-5 py-3 text-left sm:px-6 first:rounded-tl-xl"><p class="font-semibold text-white text-theme-xs">Orden</p></th>
+                            <th style="background-color: #465fff;" class="px-5 py-3 text-left sm:px-6"><p class="font-semibold text-white text-theme-xs">Nombre</p></th>
+                            <th style="background-color: #465fff;" class="px-5 py-3 text-left sm:px-6"><p class="font-semibold text-white text-theme-xs">Icono</p></th>
+                            <th style="background-color: #465fff;" class="px-5 py-3 text-left sm:px-6"><p class="font-semibold text-white text-theme-xs">Estado</p></th>
+                            <th style="background-color: #465fff;" class="px-5 py-3 text-right sm:px-6 last:rounded-tr-xl"><p class="font-semibold text-white text-theme-xs">Acciones</p></th>
                         </tr>
                     </thead>
                     <tbody>
