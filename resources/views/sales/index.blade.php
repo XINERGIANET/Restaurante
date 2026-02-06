@@ -95,12 +95,40 @@
                                     <p class="text-gray-500 text-theme-sm dark:text-gray-400">{{ $sale->documentType?->name ?? '-' }}</p>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
-                                    <x-ui.badge variant="light" color="{{ ($sale->status ?? 'A') === 'A' ? 'success' : 'error' }}">
-                                        {{ ($sale->status ?? 'A') === 'A' ? 'Activo' : 'Inactivo' }}
+                                    @php
+                                        $status = $sale->status ?? 'A';
+                                        $badgeColor = 'success';
+                                        $badgeText = 'Activo';
+                                        if ($status === 'P') {
+                                            $badgeColor = 'warning';
+                                            $badgeText = 'Pendiente';
+                                        } elseif ($status !== 'A') {
+                                            $badgeColor = 'error';
+                                            $badgeText = 'Inactivo';
+                                        }
+                                    @endphp
+                                    <x-ui.badge variant="light" color="{{ $badgeColor }}">
+                                        {{ $badgeText }}
                                     </x-ui.badge>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
                                     <div class="flex items-center justify-end gap-2">
+                                        @if(($sale->status ?? 'A') === 'P')
+                                            {{-- Botón para cobrar venta pendiente --}}
+                                            <div class="relative group">
+                                                <x-ui.link-button
+                                                    size="icon"
+                                                    variant="primary"
+                                                    href="{{ route('admin.sales.charge', ['movement_id' => $sale->id]) }}"
+                                                    className="bg-success-500 text-white hover:bg-success-600 ring-0 rounded-full"
+                                                    style="border-radius: 100%; background-color: #10B981; color: #FFFFFF;"
+                                                    aria-label="Cobrar"
+                                                >
+                                                    <i class="ri-money-dollar-circle-line"></i>
+                                                </x-ui.link-button>
+                                                <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">Cobrar</span>
+                                            </div>
+                                        @endif
                                         <div class="relative group">
                                             <x-ui.link-button
                                                 size="icon"

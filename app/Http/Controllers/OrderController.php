@@ -32,9 +32,9 @@ class OrderController extends Controller
             return [
                 'id' => $table->id,
                 'name' => $table->name,
-                'area_id' => $table->area_id,
+                'area_id' => (int) $table->area_id,
                 'situation' => $table->situation ?? 'libre',
-                'diners' => $table->capacity ?? 0,
+                'diners' => (int) ($table->capacity ?? 0),
                 'waiter' => '-',
                 'client' => '-',
                 'total' => 0,
@@ -42,8 +42,16 @@ class OrderController extends Controller
             ];
         })->values();
 
+        // Convertir áreas a array para asegurar compatibilidad con Alpine.js
+        $areasArray = $areas->map(function ($area) {
+            return [
+                'id' => (int) $area->id,
+                'name' => $area->name,
+            ];
+        })->values();
+
         return view('orders.index', [
-            'areas' => $areas,
+            'areas' => $areasArray,
             'tables' => $tablesPayload,
         ]);
     }
