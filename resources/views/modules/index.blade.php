@@ -262,6 +262,9 @@
 
             <form method="POST" action="{{ route('admin.modules.store') }}" class="space-y-6">
                 @csrf
+                @if ($viewId)
+                    <input type="hidden" name="view_id" value="{{ $viewId }}">
+                @endif
 
                 @include('modules._form', ['module' => null])
 

@@ -16,7 +16,7 @@
                 <div class="flex flex-wrap gap-2">
                     <x-ui.link-button size="sm" variant="primary" type="submit" href="{{ route('admin.parameters.categories.index') }}">Buscar</x-ui.link-button>
                     <x-ui.link-button size="sm" variant="outline" class="rounded-full" href="{{ route('admin.parameters.categories.index') }}">Limpiar</x-ui.link-button>
-                    <x-ui.link-button size="md" variant="create" 
+                    <x-ui.button size="md" variant="create" 
                         @click="$dispatch('open-create-category-modal')">
                         <i class="ri-add-line"></i> Crear Categoria</x-ui.link-button>
                 </div>

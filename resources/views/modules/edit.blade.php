@@ -1,26 +1,23 @@
 @extends('layouts.app')
 
 @section('content')
+    @php
+        $viewId = request('view_id');
+        $indexUrl = route('admin.modules.index', $viewId ? ['view_id' => $viewId] : []);
+    @endphp
     <x-common.page-breadcrumb pageTitle="Módulos" />
 
     <x-ui.modal
-        {{-- 1. LÓGICA DE REDIRECCIÓN Y ESTADO --}}
-        x-data="{ 
+        x-data="{
             open: true,
-            wasOpen: true,
-            redirectToIndex() {
-                window.location.href = '{{ route('admin.modules.index') }}';
+            close() {
+                if (window.Turbo && typeof window.Turbo.visit === 'function') {
+                    window.Turbo.visit('{{ $indexUrl }}', { action: 'replace' });
+                } else {
+                    window.location.href = '{{ $indexUrl }}';
+                }
             }
         }"
-        x-effect="
-            if (wasOpen && !open) {
-                redirectToIndex();
-            }
-            wasOpen = open;
-        "
-        {{-- 3. EVENTO ESCAPE: Al presionar Esc, redirige --}}
-        @keydown.escape.window="redirectToIndex()"
-        
         :isOpen="true"
         :showCloseButton="false"
         class="max-w-3xl"
@@ -41,7 +38,7 @@
                 {{-- BOTÓN CERRAR SUPERIOR (X) --}}
                 <button
                     type="button"
-                    @click="redirectToIndex()"
+                    @click="close()"
                     class="flex h-11 w-11 items-center justify-center rounded-full bg-gray-100 text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
                     aria-label="Cerrar"
                 >
@@ -60,10 +57,12 @@
             <form method="POST" action="{{ route('admin.modules.update', $module->id) }}" class="space-y-6">
                 @csrf
                 @method('PUT')
+                @if ($viewId)
+                    <input type="hidden" name="view_id" value="{{ $viewId }}">
+                @endif
 
                 <div class="grid gap-5">
                     
-                    {{-- CAMPO: NOMBRE --}}
                     <div>
                         <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Nombre del Módulo</label>
                         <div class="relative">
@@ -133,7 +132,7 @@
                         type="button"
                         size="md"
                         variant="outline"
-                        @click="redirectToIndex()"
+                        @click="close()"
                     >
                         <i class="ri-close-line"></i>
                         <span>Cancelar</span>
