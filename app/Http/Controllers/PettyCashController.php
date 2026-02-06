@@ -69,7 +69,6 @@ class PettyCashController extends Controller
                                     
        $movements = Movement::query()
             ->with('documentType') 
-            ->where('movement_type_id', 4)            
             ->whereHas('cashMovement', function ($query) use ($selectedBoxId) {
                 $query->where('cash_register_id', $selectedBoxId);
             })
