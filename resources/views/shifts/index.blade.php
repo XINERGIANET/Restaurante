@@ -31,8 +31,8 @@
                     />
                 </div>
                 <div class="flex flex-wrap gap-2">
-                    <x-ui.link-button size="sm" variant="primary" type="submit" href="{{ route('admin.shifts.index') }}" :startIcon="$SearchIcon">Buscar</x-ui.link-button>
-                    <x-ui.link-button  size="sm" variant="outline" href="{{ route('admin.shifts.index') }}" :startIcon="$ClearIcon">Limpiar</x-ui.link-button>
+                    <x-ui.link-button size="sm" variant="primary" type="submit" href="{{ route('shifts.index') }}" :startIcon="$SearchIcon">Buscar</x-ui.link-button>
+                    <x-ui.link-button  size="sm" variant="outline" href="{{ route('shifts.index') }}" :startIcon="$ClearIcon">Limpiar</x-ui.link-button>
                 </div>
             </form>
             
@@ -92,14 +92,14 @@
                                 <td class="px-5 py-4">
                                     <div class="flex items-center justify-end gap-2">
                                         <x-ui.link-button
-                                            size="icon" variant="edit" href="{{ route('admin.shifts.edit', $shift) }}"
+                                            size="icon" variant="edit" href="{{ route('shifts.edit', $shift) }}"
                                             style="border-radius: 100%; background-color: #FBBF24; color: #111827;"
                                             title="Editar"
                                         >
                                             <i class="ri-pencil-line"></i>
                                         </x-ui.link-button>
 
-                                        <form method="POST" action="{{ route('admin.shifts.destroy', $shift) }}" 
+                                        <form method="POST" action="{{ route('shifts.destroy', $shift) }}" 
                                               class="js-delete-shift" data-shift-name="{{ $shift->name }}">
                                             @csrf
                                             @method('DELETE')
@@ -158,7 +158,7 @@
                 </div>
             @endif
 
-            <form method="POST" action="{{ route('admin.shifts.store') }}" class="space-y-6">
+            <form method="POST" action="{{ route('shifts.store') }}" class="space-y-6">
                 @csrf
 
                 @include('shifts._form', ['shift' => null])

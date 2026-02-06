@@ -54,7 +54,7 @@ class ShiftController extends Controller
                 'branch_id'    => $branchId,
             ]);
 
-            return redirect()->route('admin.shifts.index')
+            return redirect()->route('shifts.index')
                 ->with('status', 'Turno creado correctamente');
 
         } catch (\Exception $e) {
@@ -93,7 +93,7 @@ class ShiftController extends Controller
                 'branch_id'    => $branchId,
             ]);
 
-            return redirect()->route('admin.shifts.index')
+            return redirect()->route('shifts.index')
                 ->with('status', 'Turno actualizado correctamente');
 
         } catch (\Exception $e) {
@@ -109,7 +109,7 @@ class ShiftController extends Controller
         try {
             $shift->delete();
 
-            return redirect()->route('admin.shifts.index')
+            return redirect()->route('shifts.index')
                 ->with('status', 'Turno eliminado correctamente');
 
         } catch (\Exception $e) {
