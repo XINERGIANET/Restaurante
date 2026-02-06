@@ -70,7 +70,12 @@ class ModulesController extends Controller
                 'status'    => $request->status,  
             ]);
 
-            return redirect()->route('admin.modules.index')
+            $params = [];
+            if ($request->has('view_id')) {
+                $params['view_id'] = $request->input('view_id');
+            }
+            
+            return redirect()->route('admin.modules.index', $params)
                 ->with('status', 'Módulo creado correctamente');
 
         } catch (\Exception $e) {
@@ -101,7 +106,12 @@ class ModulesController extends Controller
                 'status'    => $request->input('status'),
             ]);
 
-            return redirect()->route('admin.modules.index')
+            $params = [];
+            if ($request->has('view_id')) {
+                $params['view_id'] = $request->input('view_id');
+            }
+
+            return redirect()->route('admin.modules.index', $params)
                 ->with('status', 'Módulo actualizado correctamente');
 
         } catch (\Exception $e) {
@@ -110,7 +120,7 @@ class ModulesController extends Controller
         }
     }
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
         $module = Modules::findOrFail($id);
 
@@ -121,7 +131,12 @@ class ModulesController extends Controller
 
             $module->delete();
 
-            return redirect()->route('admin.modules.index')
+            $params = [];
+            if ($request->has('view_id')) {
+                $params['view_id'] = $request->input('view_id');
+            }
+
+            return redirect()->route('admin.modules.index', $params)
                 ->with('status', 'Módulo eliminado correctamente');
 
         } catch (\Exception $e) {
