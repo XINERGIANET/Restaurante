@@ -44,11 +44,11 @@ class BoxController extends Controller
                 'status'    => $validated['status'],
             ]);
             
-            return redirect()->route('admin.boxes.index')
+            return redirect()->route('boxes.index')
                 ->with('success', 'Caja creada correctamente');
 
         } catch (\Exception $e) {
-            return redirect()->route('admin.boxes.index')
+            return redirect()->route('boxes.index')
                 ->withErrors(['error' => 'Error al crear la caja: ' . $e->getMessage()])
                 ->withInput();
         }
@@ -80,12 +80,12 @@ class BoxController extends Controller
                 'status' => $validated['status'],
             ]);
             
-            return redirect()->route('admin.boxes.index')
+            return redirect()->route('boxes.index')
                 ->with('success', 'Caja actualizada correctamente');
 
         } catch (\Exception $e) {
             \Log::error('Error al actualizar la caja: ' . $e->getMessage());
-            return redirect()->route('admin.boxes.index')
+            return redirect()->route('boxes.index')
                 ->withErrors(['error' => 'Error al actualizar: ' . $e->getMessage()])
             ->withInput();
         }
@@ -95,10 +95,10 @@ class BoxController extends Controller
     {
         try {
             $box->delete();
-            return redirect()->route('admin.boxes.index')
+            return redirect()->route('boxes.index')
                 ->with('success', 'Caja eliminada correctamente');
         } catch (\Exception $e) {
-            return redirect()->route('admin.boxes.index')
+            return redirect()->route('boxes.index')
                 ->withErrors(['error' => 'Error al eliminar: ' . $e->getMessage()]);
         }
     }

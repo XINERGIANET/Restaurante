@@ -59,6 +59,7 @@
                     path = new URL(path).pathname;
                 }
             } catch (e) {}
+            path = path.split('?')[0].split('#')[0];
             const normalized = path.replace(/\/+$/, '');
             return normalized === '' ? '/' : normalized;
         },
@@ -225,4 +226,5 @@
 </aside>
 
 <div x-show="$store.sidebar.isMobileOpen" @click="$store.sidebar.setMobileOpen(false)"
-    class="fixed z-50 h-screen w-full bg-gray-900/50"></div><?php /**PATH C:\laragon\www\Restaurante\resources\views/layouts/sidebar.blade.php ENDPATH**/ ?>
+    class="fixed z-50 h-screen w-full bg-gray-900/50"></div>
+<?php /**PATH C:\laragon\www\Restaurante\resources\views/layouts/sidebar.blade.php ENDPATH**/ ?>

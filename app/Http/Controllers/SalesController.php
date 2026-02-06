@@ -9,7 +9,13 @@ use App\Models\MovementType;
 use App\Models\Person;
 use App\Models\Product;
 use App\Models\ProductBranch;
+use App\Models\SalesMovement;
+use App\Models\SalesMovementDetail;
+use App\Models\TaxRate;
+use App\Models\Unit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class SalesController extends Controller
 {
@@ -48,9 +54,9 @@ class SalesController extends Controller
             ->with('category')
             ->get()
             ->map(function($product) {
-                $imageUrl = $product->image 
+                $imageUrl = ($product->image && !empty($product->image))
                     ? asset('storage/' . $product->image) 
-                    : asset('images/no-image.png');
+                    : null;
                 return [
                     'id' => $product->id,
                     'name' => $product->description,
@@ -62,6 +68,9 @@ class SalesController extends Controller
         $productsBranches = ProductBranch::where('branch_id', session('branch_id'))
             ->with('product')
             ->get()
+            ->filter(function($productBranch) {
+                return $productBranch->product !== null;
+            })
             ->map(function($productBranch) {
                 return [
                     'id' => $productBranch->product_id,
@@ -74,6 +83,178 @@ class SalesController extends Controller
             'products' => $products,
             'productsBranches' => $productsBranches,
         ]);
+    }
+
+    public function processSale(Request $request)
+    {
+        $request->validate([
+            'items' => 'required|array|min:1',
+            'items.*.pId' => 'required|integer|exists:products,id',
+            'items.*.qty' => 'required|numeric|min:0.000001',
+            'items.*.price' => 'required|numeric|min:0',
+            'items.*.note' => 'nullable|string',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $user = $request->user();
+            $branchId = session('branch_id');
+            $branch = Branch::findOrFail($branchId);
+
+            // Obtener tipos de movimiento y documento para ventas
+            $movementType = MovementType::where('description', 'like', '%venta%')
+                ->orWhere('description', 'like', '%sale%')
+                ->orWhere('description', 'like', '%Venta%')
+                ->first();
+            
+            if (!$movementType) {
+                // Si no existe, tomar el primero disponible
+                $movementType = MovementType::first();
+            }
+            
+            $documentType = DocumentType::where('name', 'like', '%boleta%')
+                ->orWhere('name', 'like', '%ticket%')
+                ->orWhere('name', 'like', '%Boleta%')
+                ->first();
+            
+            if (!$documentType) {
+                // Si no existe, tomar el primero disponible
+                $documentType = DocumentType::first();
+            }
+
+            if (!$movementType || !$documentType) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se encontraron los tipos de movimiento o documento necesarios. Por favor, configúralos en el sistema.'
+                ], 400);
+            }
+
+            // Calcular totales
+            $subtotal = 0;
+            $tax = 0;
+            foreach ($request->items as $item) {
+                $itemTotal = $item['qty'] * $item['price'];
+                $subtotal += $itemTotal;
+            }
+            $tax = $subtotal * 0.10; // 10% de impuesto
+            $total = $subtotal + $tax;
+
+            // Generar número de movimiento
+            $number = 'V-' . date('Ymd') . '-' . str_pad(Movement::whereDate('created_at', today())->count() + 1, 4, '0', STR_PAD_LEFT);
+
+            // Crear Movement
+            $movement = Movement::create([
+                'number' => $number,
+                'moved_at' => now(),
+                'user_id' => $user?->id,
+                'user_name' => $user?->name ?? 'Sistema',
+                'person_id' => null, // Público General
+                'person_name' => 'Público General',
+                'responsible_id' => $user?->id,
+                'responsible_name' => $user?->name ?? 'Sistema',
+                'comment' => 'Venta desde punto de venta',
+                'status' => 'A',
+                'movement_type_id' => $movementType->id,
+                'document_type_id' => $documentType->id,
+                'branch_id' => $branchId,
+                'parent_movement_id' => null,
+            ]);
+
+            // Crear SalesMovement
+            $salesMovement = SalesMovement::create([
+                'branch_snapshot' => [
+                    'id' => $branch->id,
+                    'legal_name' => $branch->legal_name,
+                ],
+                'series' => '001',
+                'year' => date('Y'),
+                'detail_type' => 'DETAILED',
+                'consumption' => 'N',
+                'payment_type' => 'CASH',
+                'status' => '',
+                'sale_type' => 'RETAIL',
+                'currency' => 'PEN',
+                'exchange_rate' => 1.000,
+                'subtotal' => $subtotal,
+                'tax' => $tax,
+                'total' => $total,
+                'movement_id' => $movement->id,
+                'branch_id' => $branchId,
+            ]);
+
+            // Crear SalesMovementDetails
+            foreach ($request->items as $item) {
+                $product = Product::with('baseUnit')->findOrFail($item['pId']);
+                $productBranch = ProductBranch::with('taxRate')
+                    ->where('product_id', $item['pId'])
+                    ->where('branch_id', $branchId)
+                    ->first();
+
+                if (!$productBranch) {
+                    throw new \Exception("Producto {$product->description} no disponible en esta sucursal");
+                }
+
+                $unit = $product->baseUnit;
+                if (!$unit) {
+                    throw new \Exception("El producto {$product->description} no tiene una unidad base configurada");
+                }
+
+                $taxRate = $productBranch->taxRate;
+                $taxRateValue = $taxRate ? ($taxRate->tax_rate / 100) : 0.10;
+
+                $itemSubtotal = $item['qty'] * $item['price'];
+                $itemTax = $itemSubtotal * $taxRateValue;
+
+                SalesMovementDetail::create([
+                    'detail_type' => 'DETALLADO',
+                    'sales_movement_id' => $salesMovement->id,
+                    'code' => $product->code,
+                    'description' => $product->description,
+                    'product_id' => $product->id,
+                    'product_snapshot' => [
+                        'id' => $product->id,
+                        'code' => $product->code,
+                        'description' => $product->description,
+                    ],
+                    'unit_id' => $unit->id,
+                    'tax_rate_id' => $taxRate?->id,
+                    'tax_rate_snapshot' => $taxRate ? [
+                        'id' => $taxRate->id,
+                        'description' => $taxRate->description,
+                        'tax_rate' => $taxRate->tax_rate,
+                    ] : null,
+                    'quantity' => $item['qty'],
+                    'amount' => $itemSubtotal + $itemTax,
+                    'discount_percentage' => 0.000000,
+                    'original_amount' => $itemSubtotal,
+                    'comment' => $item['note'] ?? null,
+                    'parent_detail_id' => null,
+                    'complements' => [],
+                    'status' => 'A',
+                    'branch_id' => $branchId,
+                ]);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Venta procesada correctamente',
+                'data' => [
+                    'movement_id' => $movement->id,
+                    'number' => $number,
+                    'total' => $total,
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al procesar la venta: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     public function store(Request $request)

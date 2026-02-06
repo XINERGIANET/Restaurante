@@ -4,6 +4,17 @@
 <x-common.component-card title="Listado de conceptos de pago" desc="Gestiona los conceptos de pago registrados en el sistema.">
     <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <form method="GET" class="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
+            <div class="w-29">
+                <select
+                    name="per_page"
+                    class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-3 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+                    onchange="this.form.submit()"
+                >
+                    @foreach ($allowedPerPage as $size)
+                        <option value="{{ $size }}" @selected($perPage == $size)>{{ $size }} / pagina</option>
+                    @endforeach
+                </select>
+            </div>
             <div class="relative flex-1">
                 <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"> <i class="ri-search-line"></i>
                 </span>
@@ -75,6 +86,20 @@
             </div>
         </div>
     @endif
+
+    <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div class="text-sm text-gray-500">
+            Mostrando
+            <span class="font-semibold text-gray-700 dark:text-gray-200">{{ $paymentConcepts->firstItem() ?? 0 }}</span>
+            -
+            <span class="font-semibold text-gray-700 dark:text-gray-200">{{ $paymentConcepts->lastItem() ?? 0 }}</span>
+            de
+            <span class="font-semibold text-gray-700 dark:text-gray-200">{{ $paymentConcepts->total() }}</span>
+        </div>
+        <div>
+            {{ $paymentConcepts->links() }}
+        </div>
+    </div>
 </x-common.component-card>
 
 <!--Modal de creacion de concepto de pago-->

@@ -396,7 +396,7 @@
                     </div>
                 @endif
 
-                <form method="POST" action="{{ route('admin.products.store') }}" class="space-y-6">
+                <form method="POST" action="{{ route('admin.products.store') }}" enctype="multipart/form-data" class="space-y-6">
                     @csrf
 
                     @include('products._form', ['product' => null])

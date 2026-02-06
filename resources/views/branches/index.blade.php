@@ -28,6 +28,9 @@
                     if (!str_starts_with($action, 'admin.')) {
                         $routeCandidates[] = 'admin.' . $action;
                     }
+                    if (str_starts_with($action, 'branches.')) {
+                        $routeCandidates[] = 'admin.companies.' . $action;
+                    }
                     $routeCandidates = array_merge(
                         $routeCandidates,
                         array_map(fn ($name) => $name . '.index', $routeCandidates)
