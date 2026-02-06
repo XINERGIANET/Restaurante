@@ -78,6 +78,11 @@
                     $url .= $separator . 'view_id=' . urlencode($targetViewId);
                 }
 
+                if ($viewId && $url !== '#' && $targetViewId && $targetViewId !== $viewId) {
+                    $separator = str_contains($url, '?') ? '&' : '?';
+                    $url .= $separator . 'branch_view_id=' . urlencode($viewId);
+                }
+
                 if ($companyViewId && $url !== '#' && !str_contains($url, 'company_view_id=')) {
                     $separator = str_contains($url, '?') ? '&' : '?';
                     $url .= $separator . 'company_view_id=' . urlencode($companyViewId);

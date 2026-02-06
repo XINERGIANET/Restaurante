@@ -36,7 +36,7 @@
                 </div>
             </form>
             
-            <x-ui.link-button
+            <x-ui.button
                 size="md"
                 variant="primary"
                 style=" background-color: #12f00e; color: #111827;"  
@@ -44,7 +44,7 @@
             >
                 <i class="ri-add-line"></i>
                 <span>Nuevo turno</span>
-            </x-ui.link-button>
+            </x-ui-button>
         </div>
 
         <div class="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
