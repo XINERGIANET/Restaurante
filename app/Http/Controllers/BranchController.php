@@ -227,7 +227,7 @@ class BranchController extends Controller
                         ->orWhere('abbreviation', 'like', "%{$search}%");
                 });
             })
-            ->orderBy('name')
+            ->orderBy('id')
             ->paginate($perPage)
             ->withQueryString();
 
