@@ -4,6 +4,7 @@ use App\Http\Controllers\AreaController;
 use App\Http\Controllers\DigitalWalletController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\BankController;
 use App\Http\Controllers\BranchController;
 use App\Http\Controllers\CardController;
 use App\Http\Controllers\CompanyController;
@@ -109,6 +110,8 @@ Route::middleware('auth')->group(function () {
         ->names('admin.sales')
         ->parameters(['ventas' => 'sale'])
         ->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
+    Route::post('/admin/ventas/process', [SalesController::class, 'processSale'])
+        ->name('admin.sales.process');
     Route::resource('/admin/herramientas/tipos-movimiento', MovementTypeController::class)
         ->names('admin.movement-types')
         ->parameters(['tipos-movimiento' => 'movementType'])
@@ -227,6 +230,11 @@ Route::middleware('auth')->group(function () {
         ->parameters(['vistas' => 'view']);
     Route::delete('/admin/herramientas/vistas/{view}', action: [ViewsController::class, 'destroy'])->name('admin.views.destroy');
 
+    //Bancos
+    Route::resource('/admin/herramientas/bancos', BankController::class)
+        ->names('admin.banks')
+        ->parameters(['bancos' => 'bank']);
+    //Operaciones de vistas
     Route::resource('admin/herramientas/vistas.operations', OperationsController::class)
         ->names('admin.views.operations')
         ->parameters(['vistas' => 'view', 'operations' => 'operation']);

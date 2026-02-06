@@ -8,6 +8,8 @@ use App\Models\Product;
 use App\Models\TaxRate;
 use App\Models\Unit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class ProductController extends Controller
 {
@@ -50,6 +52,36 @@ class ProductController extends Controller
     public function store(Request $request)
     {
         $data = $this->validateProduct($request);
+        
+        // Manejar la subida de imagen
+        if ($request->hasFile('image') && $request->file('image')->isValid()) {
+            $file = $request->file('image');
+            // Verificar que el archivo tiene contenido
+            if ($file->getSize() > 0) {
+                try {
+                    // Generar nombre único para el archivo
+                    $extension = $file->getClientOriginalExtension();
+                    $filename = uniqid() . '_' . time() . '.' . $extension;
+                    $path = 'products/' . $filename;
+                    
+                    // Guardar usando file_get_contents (workaround para Windows)
+                    $fileContents = file_get_contents($file->getPathname());
+                    Storage::disk('public')->put($path, $fileContents);
+                    
+                    $data['image'] = $path;
+                } catch (\Exception $e) {
+                    // Si hay error al guardar la imagen, continuar sin ella
+                    Log::warning('Error al guardar imagen del producto: ' . $e->getMessage());
+                    unset($data['image']);
+                }
+            } else {
+                unset($data['image']);
+            }
+        } else {
+            // Si no hay archivo válido, remover el campo image del array
+            unset($data['image']);
+        }
+        
         Product::create($data);
         
         return redirect()
@@ -72,7 +104,64 @@ class ProductController extends Controller
     public function update(Request $request, Product $product)
     {
         $data = $this->validateProduct($request);
+        
+        // DEBUG: Log para ver qué está pasando con la imagen
+        Log::info('=== UPDATE PRODUCT IMAGE DEBUG ===');
+        Log::info('Has file image: ' . ($request->hasFile('image') ? 'YES' : 'NO'));
+        
+        if ($request->hasFile('image')) {
+            $file = $request->file('image');
+            Log::info('File is valid: ' . ($file->isValid() ? 'YES' : 'NO'));
+            Log::info('File size: ' . $file->getSize() . ' bytes');
+            Log::info('File real path: ' . $file->getRealPath());
+            Log::info('File is readable: ' . (is_readable($file->getRealPath()) ? 'YES' : 'NO'));
+            Log::info('File original name: ' . $file->getClientOriginalName());
+            Log::info('File mime type: ' . $file->getMimeType());
+        }
+        
+        // Manejar la actualización de imagen
+        if ($request->hasFile('image') && $request->file('image')->isValid()) {
+            $file = $request->file('image');
+            // Verificar que el archivo tiene contenido
+            if ($file->getSize() > 0) {
+                try {
+                    // Eliminar la imagen anterior si existe
+                    if ($product->image && !empty($product->image) && Storage::disk('public')->exists($product->image)) {
+                        Log::info('Deleting old image: ' . $product->image);
+                        Storage::disk('public')->delete($product->image);
+                    }
+                    
+                    // Generar nombre único para el archivo
+                    $extension = $file->getClientOriginalExtension();
+                    $filename = uniqid() . '_' . time() . '.' . $extension;
+                    $path = 'products/' . $filename;
+                    
+                    // Guardar usando file_get_contents (workaround para Windows)
+                    $fileContents = file_get_contents($file->getPathname());
+                    Storage::disk('public')->put($path, $fileContents);
+                    
+                    Log::info('New image saved: ' . $path);
+                    $data['image'] = $path;
+                } catch (\Exception $e) {
+                    // Si hay error al guardar la imagen, continuar sin cambiar la imagen existente
+                    Log::warning('Error al actualizar imagen del producto: ' . $e->getMessage());
+                    Log::warning('Stack trace: ' . $e->getTraceAsString());
+                    unset($data['image']);
+                }
+            } else {
+                Log::warning('File validation failed - unset image (size is 0)');
+                unset($data['image']);
+            }
+        } else {
+            Log::info('No valid file - keeping current image');
+            // Si no hay nuevo archivo válido, mantener la imagen actual
+            unset($data['image']);
+        }
+        
         $product->update($data);
+        
+        Log::info('Product updated. Image in DB: ' . ($product->image ?? 'NULL'));
+        Log::info('=== END DEBUG ===');
 
         return redirect()
             ->route('admin.products.index')
@@ -81,6 +170,11 @@ class ProductController extends Controller
 
     public function destroy(Product $product)
     {
+        // Eliminar la imagen si existe
+        if ($product->image && !empty($product->image) && Storage::disk('public')->exists($product->image)) {
+            Storage::disk('public')->delete($product->image);
+        }
+        
         $product->delete();
 
         return redirect()
@@ -90,7 +184,8 @@ class ProductController extends Controller
 
     private function validateProduct(Request $request): array
     {
-        return $request->validate([
+        // Validar los campos
+        $validated = $request->validate([
             'code' => ['required', 'string', 'max:50'],
             'description' => ['required', 'string', 'max:255'],
             'abbreviation' => ['required', 'string', 'max:255'],
@@ -99,11 +194,18 @@ class ProductController extends Controller
             'base_unit_id' => ['required', 'integer', 'exists:units,id'],
             'kardex' => ['required', 'string', 'in:S,N'],
             'is_compound' => ['required', 'string', 'in:S,N'],
-            'image' => ['nullable', 'string'],
+            'image' => ['nullable', 'sometimes', 'image', 'mimes:jpeg,png,jpg,gif,webp', 'max:2048'], // Máximo 2MB
             'complement' => ['required', 'string', 'in:NO,HAS,IS'],
             'complement_mode' => ['nullable', 'string', 'max:255'],
             'classification' => ['required', 'string', 'in:GOOD,SERVICE'],
             'features' => ['nullable', 'string'],
         ]);
+        
+        // Eliminar el campo image si está vacío o es null
+        if (isset($validated['image']) && empty($validated['image'])) {
+            unset($validated['image']);
+        }
+        
+        return $validated;
     }
 }

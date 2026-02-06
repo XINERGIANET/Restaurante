@@ -54,4 +54,9 @@ class Movement extends Model
     {
         return $this->hasOne(CashMovements::class, 'movement_id');
     }
+
+    public function salesMovement()
+    {
+        return $this->hasOne(SalesMovement::class, 'movement_id');
+    }
 }

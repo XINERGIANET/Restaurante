@@ -232,6 +232,26 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
 <?php unset($__componentOriginal33757e58bef6aaec67779bf03774fc2d); ?>
 <?php endif; ?>
     
+    <?php if (isset($component)) { $__componentOriginalfbd41a2441aa05314db5f465fa5a44df = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalfbd41a2441aa05314db5f465fa5a44df = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.common.loading-overlay','data' => []] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('common.loading-overlay'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes([]); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginalfbd41a2441aa05314db5f465fa5a44df)): ?>
+<?php $attributes = $__attributesOriginalfbd41a2441aa05314db5f465fa5a44df; ?>
+<?php unset($__attributesOriginalfbd41a2441aa05314db5f465fa5a44df); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginalfbd41a2441aa05314db5f465fa5a44df)): ?>
+<?php $component = $__componentOriginalfbd41a2441aa05314db5f465fa5a44df; ?>
+<?php unset($__componentOriginalfbd41a2441aa05314db5f465fa5a44df); ?>
+<?php endif; ?>
 
     <div class="flex-1 xl:flex">
         <?php echo $__env->make('layouts.backdrop', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
@@ -354,6 +374,9 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
                 },
             }).then((result) => {
                 if (result.isConfirmed) {
+                    if (window.showLoadingModal) {
+                        window.showLoadingModal();
+                    }
                     form.dataset.swalBound = 'true';
                     form.submit();
                 }
@@ -373,8 +396,6 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
     <?php echo $__env->yieldPushContent('scripts'); ?>
 
 </html>
-
-
 
 
 

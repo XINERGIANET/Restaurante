@@ -140,15 +140,66 @@
         </select>
     </div>
 
-    <div class="lg:col-span-2">
+    <div class="lg:col-span-2" x-data="{ 
+        imagePreview: '{{ isset($product) && $product->image && !empty($product->image) ? asset('storage/' . $product->image) : '' }}',
+        fileName: '{{ isset($product) && $product->image && !empty($product->image) ? basename($product->image) : '' }}'
+    }">
         <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Imagen (opcional)</label>
+        
+        <!-- Vista previa de la imagen actual -->
+        <div x-show="imagePreview" class="mb-2 flex items-center gap-3 p-2 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
+            <img :src="imagePreview" alt="Vista previa" 
+                class="h-16 w-16 object-cover rounded border border-gray-300 dark:border-gray-600 shadow-sm">
+            <div class="flex-1 min-w-0">
+                <p class="text-xs font-medium text-gray-700 dark:text-gray-300 truncate" x-text="fileName || 'Imagen actual'"></p>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Vista previa</p>
+            </div>
+        </div>
+
         <input
-            type="text"
+            type="file"
             name="image"
-            value="{{ old('image', $product->image ?? '') }}"
-            placeholder="Ingrese la URL de la imagen"
-            class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
+            id="image-input"
+            accept="image/jpeg,image/png,image/jpg,image/gif,image/webp"
+            @change="
+                const file = $event.target.files[0];
+                if (file) {
+                    if (file.size === 0) {
+                        console.warn('Archivo vacío detectado');
+                        $event.target.value = '';
+                        alert('El archivo seleccionado está vacío. Por favor, elige otra imagen.');
+                        imagePreview = '{{ isset($product) && $product->image && !empty($product->image) ? asset('storage/' . $product->image) : '' }}';
+                        fileName = '{{ isset($product) && $product->image && !empty($product->image) ? basename($product->image) : '' }}';
+                    } else if (file.size > 2048 * 1024) {
+                        console.warn('Archivo demasiado grande');
+                        $event.target.value = '';
+                        alert('El archivo es demasiado grande. Máximo 2MB.');
+                        imagePreview = '{{ isset($product) && $product->image && !empty($product->image) ? asset('storage/' . $product->image) : '' }}';
+                        fileName = '{{ isset($product) && $product->image && !empty($product->image) ? basename($product->image) : '' }}';
+                    } else {
+                        fileName = file.name;
+                        const reader = new FileReader();
+                        reader.onload = (e) => { imagePreview = e.target.result; };
+                        reader.onerror = () => {
+                            console.error('Error al leer el archivo');
+                            $event.target.value = '';
+                            alert('Error al leer el archivo. Por favor, intenta con otra imagen.');
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                } else {
+                    imagePreview = '{{ isset($product) && $product->image && !empty($product->image) ? asset('storage/' . $product->image) : '' }}';
+                    fileName = '{{ isset($product) && $product->image && !empty($product->image) ? basename($product->image) : '' }}';
+                }
+            "
+            class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 file:mr-4 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900/50 dark:file:text-blue-300"
         />
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            JPG, PNG, GIF, WEBP • Máximo 2MB
+        </p>
+        @error('image')
+            <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
+        @enderror
     </div>
 
     <div class="lg:col-span-3">
