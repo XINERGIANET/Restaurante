@@ -82,6 +82,24 @@
     x-init="init()"
 >
     <div>
+        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Tipo de persona</label>
+        <select
+            name="person_type"
+            required
+            class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+        >
+            <option value="">Seleccione tipo</option>
+            <option value="DNI" @selected(old('person_type', $person->person_type ?? '') === 'DNI')>DNI</option>
+            <option value="RUC" @selected(old('person_type', $person->person_type ?? '') === 'RUC')>RUC</option>
+            <option value="CARNET DE EXTRANGERIA" @selected(old('person_type', $person->person_type ?? '') === 'CARNET DE EXTRANGERIA')>CARNET DE EXTRANGERIA</option>
+            <option value="PASAPORTE" @selected(old('person_type', $person->person_type ?? '') === 'PASAPORTE')>PASAPORTE</option>
+        </select>
+        @error('person_type')
+            <p class="mt-1 text-xs text-error-500">{{ $message }}</p>
+        @enderror
+    </div>
+
+    <div>
         <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Documento</label>
         <input
             type="text"
@@ -157,23 +175,6 @@
         @enderror
     </div>
 
-    <div>
-        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Tipo de persona</label>
-        <select
-            name="person_type"
-            required
-            class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
-        >
-            <option value="">Seleccione tipo</option>
-            <option value="DNI" @selected(old('person_type', $person->person_type ?? '') === 'DNI')>DNI</option>
-            <option value="RUC" @selected(old('person_type', $person->person_type ?? '') === 'RUC')>RUC</option>
-            <option value="CARNET DE EXTRANGERIA" @selected(old('person_type', $person->person_type ?? '') === 'CARNET DE EXTRANGERIA')>CARNET DE EXTRANGERIA</option>
-            <option value="PASAPORTE" @selected(old('person_type', $person->person_type ?? '') === 'PASAPORTE')>PASAPORTE</option>
-        </select>
-        @error('person_type')
-            <p class="mt-1 text-xs text-error-500">{{ $message }}</p>
-        @enderror
-    </div>
 
 
 
@@ -293,7 +294,7 @@
         <div class="sm:col-span-2 lg:col-span-3 xl:col-span-4">
             <div class="rounded-2xl border border-brand-100 bg-brand-50/40 p-4 dark:border-brand-500/20 dark:bg-brand-500/5">
                
-                <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     <div>
                         <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Usuario</label>
                         <input
@@ -322,7 +323,7 @@
                             class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
                         />
                     </div>
-                    <div class="sm:col-span-2 lg:col-span-3">
+                    <div class="sm:col-span-2 lg:col-span-1">
                         <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Perfil</label>
                         <select
                             name="profile_id"
@@ -340,3 +341,4 @@
         </div>
     </template>
 </div>
+

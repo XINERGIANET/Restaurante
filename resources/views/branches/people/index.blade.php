@@ -3,6 +3,8 @@
 @section('content')
     <div x-data="{ openRow: null }">
         @php
+            use Illuminate\Support\Facades\Route;
+
             $viewId = request('view_id');
             $companyViewId = request('company_view_id');
             $branchViewId = request('branch_view_id') ?? session('branch_view_id');
@@ -11,6 +13,83 @@
             if (is_string($requestIcon) && preg_match('/^ri-[a-z0-9-]+$/', $requestIcon)) {
                 $pageIconHtml = '<i class="' . $requestIcon . '"></i>';
             }
+
+            $operacionesCollection = collect($operaciones ?? []);
+            $topOperations = $operacionesCollection->where('type', 'T');
+            $rowOperations = $operacionesCollection->where('type', 'R');
+
+            $resolveActionUrl = function ($action, array $routeParams = [], $operation = null) use ($viewId) {
+                if (!$action) {
+                    return '#';
+                }
+
+                if (str_starts_with($action, '/') || str_starts_with($action, 'http')) {
+                    $url = $action;
+                } else {
+                    $routeCandidates = [$action];
+                    if (!str_starts_with($action, 'admin.')) {
+                        $routeCandidates[] = 'admin.' . $action;
+                    }
+                    $routeCandidates = array_merge(
+                        $routeCandidates,
+                        array_map(fn ($name) => $name . '.index', $routeCandidates)
+                    );
+
+                    $routeName = null;
+                    foreach ($routeCandidates as $candidate) {
+                        if (Route::has($candidate)) {
+                            $routeName = $candidate;
+                            break;
+                        }
+                    }
+
+                    if ($routeName) {
+                        $attempts = [];
+                        if (!empty($routeParams)) {
+                            $attempts[] = $routeParams;
+                        }
+                        if (count($routeParams) > 1) {
+                            $attempts[] = array_slice($routeParams, 0, 2);
+                        }
+                        if (count($routeParams) > 0) {
+                            $attempts[] = array_slice($routeParams, 0, 1);
+                        }
+                        $attempts[] = [];
+
+                        $url = '#';
+                        foreach ($attempts as $params) {
+                            try {
+                                $url = empty($params) ? route($routeName) : route($routeName, $params);
+                                break;
+                            } catch (\Exception $e) {
+                                $url = '#';
+                            }
+                        }
+                    } else {
+                        $url = '#';
+                    }
+                }
+
+                $targetViewId = $viewId;
+                if ($operation && !empty($operation->view_id_action)) {
+                    $targetViewId = $operation->view_id_action;
+                }
+
+                if ($targetViewId && $url !== '#') {
+                    $separator = str_contains($url, '?') ? '&' : '?';
+                    $url .= $separator . 'view_id=' . urlencode($targetViewId);
+                }
+
+                return $url;
+            };
+
+            $resolveTextColor = function ($operation) {
+                $action = $operation->action ?? '';
+                if (str_contains($action, 'people.create')) {
+                    return '#111827';
+                }
+                return '#FFFFFF';
+            };
         @endphp
         <x-common.page-breadcrumb
             pageTitle="Personal"
@@ -75,16 +154,39 @@
                     </div>
                 </form>
 
-                <x-ui.button
-                    size="md"
-                    variant="primary"
-                    type="button"
-                    style=" background-color: #12f00e; color: #111827;"
-                    @click="$dispatch('open-person-modal')"
-                >
-                    <i class="ri-add-line"></i>
-                    <span>Nuevo personal</span>
-                </x-ui.button>
+                <div class="flex flex-wrap items-center gap-2">
+                    @foreach ($topOperations as $operation)
+                        @php
+                            $topTextColor = $resolveTextColor($operation);
+                            $topColor = $operation->color ?: '#3B82F6';
+                            $topStyle = "background-color: {$topColor}; color: {$topTextColor};";
+                            $topActionUrl = $resolveActionUrl($operation->action ?? '', [$company, $branch], $operation);
+                            $isCreate = str_contains($operation->action ?? '', 'people.create');
+                        @endphp
+                        @if ($isCreate)
+                            <x-ui.button
+                                size="md"
+                                variant="primary"
+                                type="button"
+                                style="{{ $topStyle }}"
+                                @click="$dispatch('open-person-modal')"
+                            >
+                                <i class="{{ $operation->icon }}"></i>
+                                <span>{{ $operation->name }}</span>
+                            </x-ui.button>
+                        @else
+                            <x-ui.link-button
+                                size="md"
+                                variant="primary"
+                                style="{{ $topStyle }}"
+                                href="{{ $topActionUrl }}"
+                            >
+                                <i class="{{ $operation->icon }}"></i>
+                                <span>{{ $operation->name }}</span>
+                            </x-ui.link-button>
+                        @endif
+                    @endforeach
+                </div>
             </div>
 
             <div class="mt-4 rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
@@ -143,68 +245,98 @@
                                                 'profile' => $user->profile?->name,
                                             ] : null;
                                         @endphp
-                                        <div class="relative group">
-                                            <button
-                                                type="button"
-                                                class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-brand-500 text-white shadow-theme-xs transition hover:bg-brand-600"
-                                                aria-label="Ver usuario"
-                                                @click="$dispatch('open-user-modal', { person: @js($person->first_name . ' ' . $person->last_name), user: @js($userPayload) })"
-                                            >
-                                                <i class="ri-user-3-line"></i>
-                                            </button>
-                                            <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">Ver usuario</span>
-                                        </div>
-                                        <div class="relative group">
-                                            <button
-                                                type="button"
-                                                class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-purple-500 text-white shadow-theme-xs transition hover:bg-purple-600"
-                                                aria-label="Restablecer contraseña"
-                                                style="border-radius: 100%; background-color: #7617ea; color: #ffffff;"
-
-                                                @click="$dispatch('open-reset-password', { action: '{{ route('admin.companies.branches.people.user.password', [$company, $branch, $person]) }}', person: @js($person->first_name . ' ' . $person->last_name) })"
-                                            >
-                                                <i class="ri-key-2-line"></i>
-                                            </button>
-                                            <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">Restablecer</span>
-                                        </div>
-                                        <div class="relative group">
-                                            <x-ui.link-button
-                                                size="icon"
-                                                variant="outline"
-                                                href="{{ route('admin.companies.branches.people.edit', [$company, $branch, $person]) }}"
-                                                className="bg-warning-500 text-white hover:bg-warning-600 ring-0 rounded-full"
-                                                style="border-radius: 100%; background-color: #FBBF24; color: #111827;"
-                                                aria-label="Editar"
-                                            >
-                                                <i class="ri-pencil-line"></i>
-                                            </x-ui.link-button>
-                                            <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">Editar</span>
-                                        </div>
-                                        <form
-                                            method="POST"
-                                            action="{{ route('admin.companies.branches.people.destroy', [$company, $branch, $person]) }}"
-                                            class="relative group js-swal-delete"
-                                            data-swal-title="Eliminar personal?"
-                                            data-swal-text="Se eliminara {{ $person->first_name }} {{ $person->last_name }}. Esta accion no se puede deshacer."
-                                            data-swal-confirm="Si, eliminar"
-                                            data-swal-cancel="Cancelar"
-                                            data-swal-confirm-color="#ef4444"
-                                            data-swal-cancel-color="#6b7280"
-                                        >
-                                            @csrf
-                                            @method('DELETE')
-                                            <x-ui.button
-                                                size="icon"
-                                                variant="eliminate"
-                                                type="submit"
-                                                className="bg-error-500 text-white hover:bg-error-600 ring-0 rounded-full"
-                                                style="border-radius: 100%; background-color: #EF4444; color: #FFFFFF;"
-                                                aria-label="Eliminar"
-                                            >
-                                                <i class="ri-delete-bin-line"></i>
-                                            </x-ui.button>
-                                            <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">Eliminar</span>
-                                        </form>
+                                        @foreach ($rowOperations as $operation)
+                                            @php
+                                                $action = $operation->action ?? '';
+                                                $isDelete = str_contains($action, 'destroy');
+                                                $opName = mb_strtolower($operation->name ?? '', 'UTF-8');
+                                                $isResetPassword = str_contains($action, 'people.user.password')
+                                                    || str_contains($opName, 'restablecer')
+                                                    || str_contains($opName, 'contraseña');
+                                                $isViewUser = (str_contains($action, 'people.user') && !$isResetPassword)
+                                                    || str_contains($opName, 'ver usuario')
+                                                    || (str_contains($opName, 'usuario') && !$isResetPassword);
+                                                $actionUrl = $resolveActionUrl($action, [$company, $branch, $person], $operation);
+                                                $textColor = $resolveTextColor($operation);
+                                                $buttonColor = $operation->color ?: '#3B82F6';
+                                                $buttonStyle = "background-color: {$buttonColor}; color: {$textColor};";
+                                                $variant = $isDelete ? 'eliminate' : (str_contains($action, 'edit') ? 'edit' : 'primary');
+                                            @endphp
+                                            @if ($isViewUser)
+                                                <div class="relative group">
+                                                    <button
+                                                        type="button"
+                                                        class="inline-flex h-10 w-10 items-center justify-center rounded-xl shadow-theme-xs transition hover:opacity-90"
+                                                        style="{{ $buttonStyle }}"
+                                                        aria-label="{{ $operation->name }}"
+                                                        @click="$dispatch('open-user-modal', { person: @js($person->first_name . ' ' . $person->last_name), user: @js($userPayload) })"
+                                                    >
+                                                        <i class="{{ $operation->icon }}"></i>
+                                                    </button>
+                                                    <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">{{ $operation->name }}</span>
+                                                </div>
+                                                @continue
+                                            @endif
+                                            @if ($isResetPassword)
+                                                <div class="relative group">
+                                                    <button
+                                                        type="button"
+                                                        class="inline-flex h-10 w-10 items-center justify-center rounded-xl shadow-theme-xs transition hover:opacity-90"
+                                                        style="{{ $buttonStyle }}"
+                                                        aria-label="{{ $operation->name }}"
+                                                        @click="$dispatch('open-reset-password', { action: '{{ route('admin.companies.branches.people.user.password', [$company, $branch, $person]) }}', person: @js($person->first_name . ' ' . $person->last_name) })"
+                                                    >
+                                                        <i class="{{ $operation->icon }}"></i>
+                                                    </button>
+                                                    <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">{{ $operation->name }}</span>
+                                                </div>
+                                                @continue
+                                            @endif
+                                            @if ($isDelete)
+                                                <form
+                                                    method="POST"
+                                                    action="{{ $actionUrl }}"
+                                                    class="relative group js-swal-delete"
+                                                    data-swal-title="Eliminar personal?"
+                                                    data-swal-text="Se eliminara {{ $person->first_name }} {{ $person->last_name }}. Esta accion no se puede deshacer."
+                                                    data-swal-confirm="Si, eliminar"
+                                                    data-swal-cancel="Cancelar"
+                                                    data-swal-confirm-color="#ef4444"
+                                                    data-swal-cancel-color="#6b7280"
+                                                >
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    @if ($viewId)
+                                                        <input type="hidden" name="view_id" value="{{ $viewId }}">
+                                                    @endif
+                                                    <x-ui.button
+                                                        size="icon"
+                                                        variant="{{ $variant }}"
+                                                        type="submit"
+                                                        className="bg-error-500 text-white hover:bg-error-600 ring-0 rounded-xl"
+                                                        style="{{ $buttonStyle }}"
+                                                        aria-label="{{ $operation->name }}"
+                                                    >
+                                                        <i class="{{ $operation->icon }}"></i>
+                                                    </x-ui.button>
+                                                    <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">{{ $operation->name }}</span>
+                                                </form>
+                                            @else
+                                                <div class="relative group">
+                                                    <x-ui.link-button
+                                                        size="icon"
+                                                        variant="{{ $variant }}"
+                                                        href="{{ $actionUrl }}"
+                                                        className="bg-warning-500 text-white hover:bg-warning-600 ring-0 rounded-xl"
+                                                        style="{{ $buttonStyle }}"
+                                                        aria-label="{{ $operation->name }}"
+                                                    >
+                                                        <i class="{{ $operation->icon }}"></i>
+                                                    </x-ui.link-button>
+                                                    <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">{{ $operation->name }}</span>
+                                                </div>
+                                            @endif
+                                        @endforeach
                                     </div>
                                 </td>
                             </tr>
