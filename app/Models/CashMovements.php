@@ -47,4 +47,9 @@ class CashMovements extends Model
     {
         return $this->belongsTo(Movement::class);
     }
+
+    public function details() 
+    {
+        return $this->hasMany(CashMovementDetail::class, 'cash_movement_id');
+    }
 }

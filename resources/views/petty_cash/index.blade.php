@@ -219,9 +219,13 @@
 
                                 <td class="px-5 py-4 sm:px-6">
                                     <div class="flex items-center justify-end gap-2">
-                                        <x-ui.button size="icon" variant="edit" href="#" style="border-radius: 100%; background-color: #FBBF24; color: #111827;">
+                                        <a href="{{ route('admin.petty-cash.edit', ['cash_register_id' => $selectedBoxId, 'movement' => $movement->id]) }}"
+                                        onclick="debugEditClick(event, '{{ $selectedBoxId }}', '{{ $movement->id }}')"
+                                        class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-warning-500 text-white hover:bg-warning-600 transition-colors shadow-sm"
+                                        style="background-color: #FBBF24; color: #111827;" 
+                                        title="Editar Registro">
                                             <i class="ri-pencil-line"></i>
-                                        </x-ui.button>
+                                        </a>
                                     </div>
                                 </td>
                             </tr>
