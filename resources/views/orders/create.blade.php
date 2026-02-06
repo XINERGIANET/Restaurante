@@ -135,56 +135,96 @@
 
     {{-- SCRIPTS (Sin cambios lógicos, solo visuales ya aplicados) --}}
     <script>
-        const productsDB = [
-            { id: 1, name: "Burger Clásica", price: 12.00, img: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400" },
-            { id: 2, name: "Pizza Pepperoni", price: 22.00, img: "https://images.unsplash.com/photo-1628840042765-356cda07504e?w=400" },
-            { id: 3, name: "Coca Cola", price: 3.50, img: "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=400" },
-            { id: 4, name: "Cheesecake", price: 8.00, img: "https://images.unsplash.com/photo-1524351199678-941a58a3df26?w=400" },
-            { id: 5, name: "Limonada", price: 5.00, img: "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=400" },
-            { id: 6, name: "Pasta Alfredo", price: 18.00, img: "https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?w=400" }
-        ];
-
-        const serverTable = @js([
-            'id' => $table->id,
-            'name' => $table->name ?? $table->id,
-            'area' => $table->area?->name ?? 'Salon',
-            'waiter' => 'Sin asignar',
-            'clientName' => 'Publico General',
-            'status' => $table->situation === 'ocupada' ? 'occupied' : 'free',
-            'items' => [],
-        ]);
+        @php
+            $serverTableData = [
+                'id' => $table->id,
+                'name' => $table->name ?? $table->id,
+                'area' => $table->area?->name ?? ($area?->name ?? 'Sin área'),
+                'waiter' => $user?->name ?? 'Sin asignar',
+                'clientName' => $person?->name ?? 'Sin cliente',
+                'status' => $table->situation ?? 'libre',
+                'items' => [],
+            ];
+        @endphp
+        const serverTable = @json($serverTableData);
         let db = JSON.parse(localStorage.getItem('restaurantDB'));
         if(!db) db = {};
         let activeKey = `table-{{ $table->id }}`;
         let currentTable = db[activeKey] || serverTable;
 function init() {
-            document.getElementById('pos-table-name').innerText = currentTable.name || "00";
-            document.getElementById('pos-table-area').innerText = currentTable.area || "Salon";
-            document.getElementById('pos-waiter-name').innerText = currentTable.waiter || "Sin asignar";
-            document.getElementById('pos-client-name').innerText = currentTable.clientName || "Público General";
+            document.getElementById('pos-table-name').innerText = currentTable.name || "{{ str_pad($table->name ?? $table->id, 2, '0', STR_PAD_LEFT) }}";
+                document.getElementById('pos-table-area').innerText = currentTable.area || "{{ $table->area?->name ?? ($area?->name ?? 'Sin área') }}";
+                document.getElementById('pos-waiter-name').innerText = currentTable.waiter || "{{ $user?->name ?? 'Sin asignar' }}";
+            document.getElementById('pos-client-name').innerText = currentTable.clientName || "{{ $person?->name ?? 'Sin cliente' }}";
             renderProducts();
             renderTicket();
         }
 
+        // Función para escapar HTML y prevenir XSS
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Datos de productos y productBranches desde el servidor
+        const serverProducts = @json($products);
+        const serverProductBranches = @json($productBranches);
+
         function renderProducts() {
             const grid = document.getElementById('products-grid');
             grid.innerHTML = '';
-            productsDB.forEach(prod => {
-                const el = document.createElement('div');
-                el.className = "bg-white p-3 rounded-xl shadow-sm border border-gray-100 cursor-pointer hover:shadow-md hover:border-blue-300 transition-all group";
-                el.onclick = () => addToCart(prod);
+            serverProducts.forEach(prod => {
+                const productBranch = serverProductBranches.find(p => p.product_id === prod.id || p.id === prod.id);
                 
-                // PRECIO COMO PILDORA FLOTANTE
+                // Si no hay productBranch (producto no está en esta sucursal), no mostrar
+                if (!productBranch) {
+                    return;
+                }
+                
+                // Debug: verificar URL de imagen
+                if (prod.id === 4) {
+                    console.log('Producto ID 4:', prod);
+                    console.log('URL de imagen:', prod.img);
+                }
+                
+                const el = document.createElement('div');
+                el.className = "group cursor-pointer transition-transform duration-200 hover:scale-105";
+                el.onclick = function(e) {
+                    addToCart(prod, productBranch, e);
+                };
+
+                const productName = escapeHtml(prod.name || 'Sin nombre');
+                const productCategory = escapeHtml(prod.category || 'Sin categoría');
+                const imageUrl = getImageUrl(prod.img);
+
                 el.innerHTML = `
-                    <div class="relative w-full rounded-lg overflow-hidden mb-2 bg-gray-100" style="height: 120px;">
-                        <img src="${prod.img}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110">
-                        <div class="absolute bottom-2 right-2 bg-white px-3 py-1 rounded-full text-xs font-bold text-slate-800 border border-gray-200 shadow-md">
-                            $${prod.price.toFixed(2)}
-                        </div>
-                    </div>
-                    <h4 class="font-bold text-slate-700 text-sm leading-tight line-clamp-2">${prod.name}</h4>
-                    <span class="text-[10px] text-gray-400">Plato principal</span>
-                `;
+            <div class="rounded-lg overflow-hidden p-3  dark:bg-slate-800/40 shadow-md hover:shadow-xl border border-gray-300 dark:border-slate-700/50 hover:border-blue-500 dark:hover:border-blue-500 hover:shadow-blue-500/10 transition-all duration-200 hover:-translate-y-1 backdrop-blur-sm">
+                <div class="relative aspect-square overflow-hidden  dark:bg-slate-700/30 rounded-lg border border-gray-300 dark:border-slate-600/30 shadow-sm">
+                    <img src="${imageUrl}" 
+                        alt="${productName}" 
+                        class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                        loading="lazy"
+                        onerror="this.onerror=null; this.src=getImageUrl(null)">
+                    
+                    <span class="absolute top-3 right-3 z-10">
+                        <span class="px-2.5 py-1 bg-blue-600 dark:bg-blue-500 rounded-lg text-sm font-bold shadow-lg shadow-blue-500/40 dark:shadow-blue-500/20 backdrop-blur-sm border border-blue-400/50 dark:border-blue-400/30 text-white">
+                            $${parseFloat(productBranch.price).toFixed(2)}
+                        </span>
+                    </span>
+                </div>
+                
+                <div class="mt-3 flex flex-col gap-1">
+                    <h4 class="font-semibold text-gray-900 dark:text-white text-sm line-clamp-2 leading-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                        ${productName}
+                    </h4>
+                    <h6 class="text-xs text-gray-600 dark:text-gray-400">
+                        ${productCategory}
+                    </h6>
+                </div>
+            </div>
+        `;
                 grid.appendChild(el);
             });
         }
@@ -225,19 +265,26 @@ function init() {
                     </div>`;
             } else {
                 currentTable.items.forEach((item, index) => {
-                    const prod = productsDB.find(p => p.id === item.pId);
+                    const prod = serverProducts.find(p => p.id === item.pId);
+                    if (!prod) return;
+                    
                     subtotal += item.price * item.qty;
                     const hasNote = item.note && item.note.trim() !== "";
 
                     const row = document.createElement('div');
                     row.className = "bg-white border border-gray-200 rounded-lg p-2.5 shadow-sm relative overflow-hidden group mb-2";
+                    
+                    const productName = escapeHtml(prod.name || 'Sin nombre');
+                    const productImage = getImageUrl(prod.img || null);
+                    const itemNote = escapeHtml(item.note || '');
+                    
                     row.innerHTML = `
                         <div class="absolute left-0 top-0 bottom-0 w-1 bg-blue-500"></div>
                         <div class="flex gap-3 pl-2">
-                            <img src="${prod.img}" class="h-10 w-10 rounded-md object-cover bg-gray-100">
+                            <img src="${productImage}" class="h-10 w-10 rounded-md object-cover bg-gray-100" alt="${productName}">
                             <div class="flex-1 min-w-0">
                                 <div class="flex justify-between items-start">
-                                    <span class="font-bold text-slate-700 text-xs truncate pr-1">${prod.name}</span>
+                                    <span class="font-bold text-slate-700 text-xs truncate pr-1">${productName}</span>
                                     <span class="font-bold text-slate-800 text-xs">$${(item.price * item.qty).toFixed(2)}</span>
                                 </div>
                                 <div class="flex justify-between items-center mt-2">
@@ -253,7 +300,7 @@ function init() {
                             </div>
                         </div>
                         <div id="note-box-${index}" class="${hasNote ? '' : 'hidden'} mt-2 animate-fadeIn pl-2">
-                            <input type="text" value="${item.note}" oninput="saveNote(${index}, this.value)" placeholder="Nota..." class="w-full text-[10px] bg-yellow-50 border border-yellow-200 rounded p-1.5 text-slate-700 focus:outline-none focus:border-yellow-400">
+                            <input type="text" value="${itemNote}" oninput="saveNote(${index}, this.value)" placeholder="Nota..." class="w-full text-[10px] bg-yellow-50 border border-yellow-200 rounded p-1.5 text-slate-700 focus:outline-none focus:border-yellow-400">
                         </div>
                     `;
                     container.appendChild(row);

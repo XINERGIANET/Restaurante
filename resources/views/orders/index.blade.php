@@ -8,7 +8,7 @@
         <div x-data="posSystem()" class="flex flex-col h-[calc(100vh-9rem)] w-full font-sans text-slate-800 dark:text-white" style="--brand:#3B82F6; --brand-soft:rgba(59,130,246,0.14);">
 
             <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4 shrink-0">
-                <div class="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-xl">
+                <div class="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-xl" x-show="areas && areas.length > 0">
                     <template x-for="area in areas" :key="area.id">
                         <button @click="switchArea(area)" 
                             :class="currentAreaId === area.id ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-800 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'" 
@@ -16,6 +16,9 @@
                             x-text="area.name">
                         </button>
                     </template>
+                </div>
+                <div x-show="!areas || areas.length === 0" class="text-gray-500 dark:text-gray-400 text-sm">
+                    No hay áreas disponibles
                 </div>
             </div>
 
@@ -133,7 +136,7 @@
         Alpine.data('posSystem', () => ({
             areas: @json($areas),
             tables: @json($tables),
-            currentAreaId: @json($areas->isNotEmpty() ? $areas->first()['id'] : null),
+            currentAreaId: @json(!empty($areas) && count($areas) > 0 ? $areas[0]['id'] : null),
             createUrl: @json(route('admin.orders.create')),
             
             init() {
@@ -141,9 +144,14 @@
                 if (this.currentAreaId) {
                     this.currentAreaId = Number(this.currentAreaId);
                 }
+                // Si no hay área seleccionada pero hay áreas disponibles, seleccionar la primera
+                if (!this.currentAreaId && this.areas && this.areas.length > 0) {
+                    this.currentAreaId = Number(this.areas[0].id);
+                }
                 console.log('Áreas cargadas:', this.areas);
                 console.log('Mesas cargadas:', this.tables);
                 console.log('Área actual:', this.currentAreaId);
+                console.log('Mesas filtradas:', this.filteredTables);
             },
             
             get filteredTables() {
@@ -157,7 +165,8 @@
             },
 
             switchArea(area) {
-                this.currentAreaId = area.id;
+                this.currentAreaId = Number(area.id);
+                console.log('Cambiando a área:', this.currentAreaId);
             },
 
             openTable(table) {
