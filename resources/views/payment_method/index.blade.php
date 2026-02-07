@@ -58,6 +58,9 @@
     };
 
     $resolveTextColor = function ($operation) {
+        if (($operation->type ?? null) === 'T') {
+            return '#111827';
+        }
         $action = $operation->action ?? '';
         if (str_contains($action, 'payment_methods.create') || str_contains($action, 'payment.methods.create')) {
             return '#111827';
@@ -105,12 +108,14 @@
                 @endphp
                 @if ($isCreate)
                     <x-ui.button size="md" variant="primary" type="button"
+                        className="rounded-xl"
                         style="{{ $topStyle }}" @click="$dispatch('open-create-payment-method-modal')">
                         <i class="{{ $operation->icon }}"></i>
                         <span>{{ $operation->name }}</span>
                     </x-ui.button>
                 @else
                     <x-ui.link-button size="md" variant="primary"
+                        className="rounded-xl"
                         style="{{ $topStyle }}" href="{{ $topActionUrl }}">
                         <i class="{{ $operation->icon }}"></i>
                         <span>{{ $operation->name }}</span>
@@ -298,6 +303,4 @@
 
 @include('payment_method.edit')
 @endsection
-
-
 

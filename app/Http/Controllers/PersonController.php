@@ -110,8 +110,10 @@ class PersonController extends Controller
             }
         });
 
+        $viewId = $request->input('view_id');
+
         return redirect()
-            ->route('admin.companies.branches.people.index', [$company, $branch])
+            ->route('admin.companies.branches.people.index', $viewId ? [$company, $branch, 'view_id' => $viewId] : [$company, $branch])
             ->with('status', 'Personal creado correctamente.');
     }
 
@@ -174,8 +176,10 @@ class PersonController extends Controller
             }
         });
 
+        $viewId = $request->input('view_id');
+
         return redirect()
-            ->route('admin.companies.branches.people.index', [$company, $branch])
+            ->route('admin.companies.branches.people.index', $viewId ? [$company, $branch, 'view_id' => $viewId] : [$company, $branch])
             ->with('status', 'Personal actualizado correctamente.');
     }
 
@@ -185,8 +189,10 @@ class PersonController extends Controller
         $person = $this->resolvePerson($branch, $person);
         $person->delete();
 
+        $viewId = request()->input('view_id');
+
         return redirect()
-            ->route('admin.companies.branches.people.index', [$company, $branch])
+            ->route('admin.companies.branches.people.index', $viewId ? [$company, $branch, 'view_id' => $viewId] : [$company, $branch])
             ->with('status', 'Personal eliminado correctamente.');
     }
 
@@ -201,8 +207,10 @@ class PersonController extends Controller
 
         $user = $person->user;
         if (!$user) {
+            $viewId = $request->input('view_id');
+
             return redirect()
-                ->route('admin.companies.branches.people.index', [$company, $branch])
+                ->route('admin.companies.branches.people.index', $viewId ? [$company, $branch, 'view_id' => $viewId] : [$company, $branch])
                 ->with('status', 'La persona no tiene usuario asociado.');
         }
 
@@ -210,8 +218,10 @@ class PersonController extends Controller
             'password' => Hash::make($data['password']),
         ]);
 
+        $viewId = $request->input('view_id');
+
         return redirect()
-            ->route('admin.companies.branches.people.index', [$company, $branch])
+            ->route('admin.companies.branches.people.index', $viewId ? [$company, $branch, 'view_id' => $viewId] : [$company, $branch])
             ->with('status', 'Contraseña actualizada correctamente.');
     }
 
@@ -328,3 +338,4 @@ class PersonController extends Controller
         ];
     }
 }
+
