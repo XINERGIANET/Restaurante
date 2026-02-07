@@ -307,9 +307,9 @@ Route::middleware('auth')->group(function () {
         ->parameters(['billeteras-digitales' => 'digitalWallet']);
     
     //Pasarelas de pago
-    Route::resource('/admin/herramientas/medios-pago', PaymentGatewaysController::class)
+    Route::resource('/admin/herramientas/pasarela-pagos', PaymentGatewaysController::class)
         ->names('admin.payment_gateways')
-        ->parameters(['medios-pago' => 'paymentGateway']);
+        ->parameters(['pasarela-pagos' => 'paymentGateway']);
     
     //Métodos de pago
     Route::resource('/admin/herramientas/metodos-pago', PaymentMethodController::class)
