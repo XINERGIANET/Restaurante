@@ -285,14 +285,39 @@ class PettyCashController extends Controller
     public function edit($cash_register_id, $id)
     {
         $movement = Movement::with(['cashMovement.details', 'cashMovement'])->findOrFail($id);
-        $shifts          = Shift::all();
-        $conceptsIngreso = PaymentConcept::where('type', 'I')
-            ->where('restricted', false)
-            ->get();
-        $conceptsEgreso = PaymentConcept::where('type', 'E')
-            ->where('restricted', false)
-            ->get();
+        
+        $currentConceptId = $movement->cashMovement->payment_concept_id;
+        $currentConcept   = PaymentConcept::find($currentConceptId);        
+        $desc = $currentConcept ? strtolower($currentConcept->description) : '';
+        $isSpecialEvent = str_contains($desc, 'apertura') || str_contains($desc, 'cierre');
 
+        if ($isSpecialEvent) {
+            if ($currentConcept->type == 'I') {
+                $conceptsIngreso = collect([$currentConcept]);
+                $conceptsEgreso  = collect([]); 
+            } else {
+                $conceptsIngreso = collect([]);
+                $conceptsEgreso  = collect([$currentConcept]);
+            }
+        } else {
+            $conceptsIngreso = PaymentConcept::where('type', 'I')
+                ->where('restricted', false)
+                ->get();
+
+            $conceptsEgreso = PaymentConcept::where('type', 'E')
+                ->where('restricted', false)
+                ->get();
+                
+            if ($currentConcept && $currentConcept->restricted && !$isSpecialEvent) {
+                if ($currentConcept->type == 'I') {
+                    $conceptsIngreso->push($currentConcept);
+                } else {
+                    $conceptsEgreso->push($currentConcept);
+                }
+            }
+        }
+
+        $shifts          = Shift::all();
         $cards           = Card::where('status', true)->orderBy('order_num', 'asc')->get();
         $banks           = Bank::where('status', true)->orderBy('order_num', 'asc')->get();
         $digitalWallets  = DigitalWallet::where('status', true)->orderBy('order_num', 'asc')->get();

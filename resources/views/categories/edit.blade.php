@@ -11,7 +11,7 @@
                 </div>
             @endif
 
-            <form method="POST" action="{{ route('admin.categories.update', $category) }}" class="space-y-6">
+            <form method="POST" action="{{ route('admin.categories.update', $category) }}" class="space-y-6" enctype="multipart/form-data">
                 @csrf
                 @method('PUT')
 
