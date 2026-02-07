@@ -31,9 +31,9 @@
                         />
                     </div>
                     <div class="flex flex-wrap gap-2">
-                        <x-ui.button size="sm" variant="primary" type="submit">
-                            <i class="ri-search-line"></i>
-                            <span>Buscar</span>
+                        <x-ui.button size="sm" variant="primary" type="submit" style="background-color: #63B7EC; border-color: #63B7EC;">
+                            <i class="ri-search-line text-gray-100"></i>
+                            <span class="text-gray-100">Buscar</span>
                         </x-ui.button>
                         <x-ui.link-button size="sm" variant="outline" href="{{ route('admin.tax_rates.index') }}">
                             <i class="ri-close-line"></i>
@@ -53,23 +53,23 @@
                 <table class="w-full min-w-[700px]">
                     <thead>
                         <tr class="border-b border-gray-100 dark:border-gray-800">
-                            <th style="background-color: #465fff;" class="px-3 py-3 text-left sm:px-6 first:rounded-tl-xl sticky left-0 z-20 w-24 max-w-[96px] sm:w-auto sm:max-w-none shadow-[2px_0_5px_rgba(0,0,0,0.1)]">
-                                <p class="font-semibold text-white text-theme-xs truncate">Codigo</p>
+                            <th style="background-color: #63B7EC;" class="px-3 py-3 text-left sm:px-6 first:rounded-tl-xl sticky left-0 z-20 w-24 max-w-[96px] sm:w-auto sm:max-w-none shadow-[2px_0_5px_rgba(0,0,0,0.1)]">
+                                <p class="font-semibold text-gray-100 text-theme-xs truncate">Codigo</p>
                             </th>
-                            <th class="px-5 py-3 text-left sm:px-6">
-                                <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Descripcion</p>
+                            <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6">
+                                <p class="font-semibold text-gray-100 text-theme-xs uppercase">Descripcion</p>
                             </th>
-                            <th class="px-5 py-3 text-left sm:px-6">
-                                <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Tasa de impuesto</p>
+                            <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6">
+                                <p class="font-semibold text-gray-100 text-theme-xs uppercase">Tasa de impuesto</p>
                             </th>
-                            <th class="px-5 py-3 text-left sm:px-6">
-                                <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Orden</p>
+                            <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6">
+                                <p class="font-semibold text-gray-100 text-theme-xs uppercase">Orden</p>
                             </th>
-                            <th class="px-5 py-3 text-left sm:px-6">
-                                <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Estado</p>
+                            <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6">
+                                <p class="font-semibold text-gray-100 text-theme-xs uppercase">Estado</p>
                             </th>
-                            <th class="px-5 py-3 text-right sm:px-6">
-                                <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Acciones</p>
+                            <th style="background-color: #63B7EC;" class="px-5 py-3 text-right sm:px-6 last:rounded-tr-xl">
+                                <p class="font-semibold text-gray-100 text-theme-xs uppercase">Acciones</p>
                             </th>
                         </tr>
                     </thead>

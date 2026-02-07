@@ -215,11 +215,11 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
     {{-- preloader end --}}
     <x-common.loading-overlay/>
 
-    <div class="flex-1 xl:flex">
+    <div class="flex-1 flex flex-col xl:flex-row min-h-screen">
         @include('layouts.backdrop')
         @include('layouts.sidebar')
 
-        <div class="flex-1 flex flex-col transition-all duration-300 ease-in-out"
+        <div class="flex-1 flex flex-col min-h-full transition-all duration-300 ease-in-out"
             :class="{
                 'xl:ml-[290px]': $store.sidebar.isExpanded || $store.sidebar.isHovered,
                 'xl:ml-[90px]': !$store.sidebar.isExpanded && !$store.sidebar.isHovered,
@@ -229,13 +229,25 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
             @include('layouts.app-header')
             <!-- app header end -->
             
-            <div class="flex-1 p-4 mx-auto w-full max-w-(--breakpoint-2xl) md:p-6">
-                @yield('content')
-            </div>
+            <main class="flex-1 p-4 mx-auto w-full max-w-(--breakpoint-2xl) md:p-6 flex flex-col">
+                <div class="flex-1">
+                    @yield('content')
+                </div>
+            </main>
 
-            {{-- <footer class="mt-auto border-t border-gray-200 bg-[#F4F6FA] px-6 py-4 text-center text-sm text-gray-500 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
-                © 2026 Pie por Xinergia.
-            </footer> --}}
+            <footer class="border-t border-gray-100 bg-white px-6 py-4 dark:border-gray-800 dark:bg-gray-900 shadow-sm transition-colors duration-300">
+                <div class="flex flex-col items-center justify-between gap-4 md:flex-row">
+                    <div class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                        <span class="font-medium">Copyright &copy; {{ date('Y') }}</span>
+                        <span class="font-bold tracking-tight text-[#63B7EC]">Xinergia</span>
+                        <span class="hidden sm:inline opacity-40">&bull;</span>
+                        <span class="hidden sm:inline">Todos los derechos reservados.</span>
+                    </div>
+                    <div class="flex items-center gap-6">
+                        <!-- Footer actions removed -->
+                    </div>
+                </div>
+            </footer>
         </div>
 
     </div>
