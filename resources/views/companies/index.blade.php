@@ -110,9 +110,9 @@
                         </div>
                     </div>
                     <div class="flex items-center gap-2 flex-none">
-                        <x-ui.button size="md" variant="primary" type="submit" class="flex-1 sm:flex-none h-11 px-4 shadow-sm hover:shadow-md transition-all duration-200 active:scale-95">
-                            <i class="ri-search-line"></i>
-                            <span class="font-medium">Buscar</span>
+                        <x-ui.button size="md" variant="primary" type="submit" class="flex-1 sm:flex-none h-11 px-4 shadow-sm hover:shadow-md transition-all duration-200 active:scale-95" style="background-color: #63B7EC; border-color: #63B7EC;">
+                            <i class="ri-search-line text-gray-100"></i>
+                            <span class="font-medium text-gray-100">Buscar</span>
                         </x-ui.button>
 
                         <x-ui.link-button size="md" variant="outline" href="{{ route('admin.companies.index', $viewId ? ['view_id' => $viewId] : []) }}" class="flex-1 sm:flex-none h-11 px-4 border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200">
@@ -157,24 +157,24 @@
                     <table class="w-full">
                         <thead>
                             <tr class="text-white">
-                                <th style="background-color: #465fff;" class="px-3 py-4 text-left whitespace-nowrap first:rounded-tl-xl sticky left-0 z-20 w-32 max-w-[128px] sm:w-auto sm:max-w-none">
-                                    <p class="font-bold text-white text-xs uppercase tracking-wider truncate">Razón social</p>
+                                <th style="background-color: #63B7EC;" class="px-3 py-4 text-left whitespace-nowrap first:rounded-tl-xl sticky left-0 z-20 w-32 max-w-[128px] sm:w-auto sm:max-w-none">
+                                    <p class="font-bold text-gray-100 text-xs uppercase tracking-wider truncate">Razón social</p>
                                 </th>
-                                <th style="background-color: #465fff;" class="px-5 py-4 text-center whitespace-nowrap">
-                                    <p class="font-bold text-white text-xs uppercase tracking-wider">RUC</p>
+                                <th style="background-color: #63B7EC;" class="px-5 py-4 text-center whitespace-nowrap">
+                                    <p class="font-bold text-gray-100 text-xs uppercase tracking-wider">RUC</p>
                                 </th>
-                                <th style="background-color: #465fff;" class="px-5 py-4 text-left whitespace-nowrap">
-                                    <p class="font-bold text-white text-xs uppercase tracking-wider">Dirección</p>
+                                <th style="background-color: #63B7EC;" class="px-5 py-4 text-left whitespace-nowrap">
+                                    <p class="font-bold text-gray-100 text-xs uppercase tracking-wider">Dirección</p>
                                 </th>
-                                <th style="background-color: #465fff;" class="px-5 py-4 text-center whitespace-nowrap last:rounded-tr-xl">
-                                    <p class="font-bold text-white text-xs uppercase tracking-wider">Acciones</p>
+                                <th style="background-color: #63B7EC;" class="px-5 py-4 text-center whitespace-nowrap last:rounded-tr-xl">
+                                    <p class="font-bold text-gray-100 text-xs uppercase tracking-wider">Acciones</p>
                                 </th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
                             @forelse ($companies as $company)
-                                <tr class="group transition hover:bg-gray-50/80 dark:hover:bg-white/5">
-                                    <td class="px-3 py-4 whitespace-nowrap sticky left-0 z-10 bg-white dark:bg-[#121212] group-hover:bg-gray-50 dark:group-hover:bg-gray-800 w-32 max-w-[128px] sm:w-auto sm:max-w-none">
+                                <tr class="group/row transition hover:bg-gray-50/80 dark:hover:bg-white/5">
+                                    <td class="px-3 py-4 whitespace-nowrap sticky left-0 z-10 bg-white dark:bg-[#121212] group-hover/row:bg-gray-50 dark:group-hover/row:bg-gray-800 w-32 max-w-[128px] sm:w-auto sm:max-w-none">
                                         <div class="flex items-center gap-2">
                                             <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/10 shrink-0">
                                                 <i class="ri-building-line text-xs"></i>
@@ -273,21 +273,23 @@
                     </table>
                 </div>
 
-            <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div class="text-sm text-gray-500">
-                    Mostrando
-                    <span class="font-semibold text-gray-700 dark:text-gray-200">{{ $companies->firstItem() ?? 0 }}</span>
-                    -
-                    <span class="font-semibold text-gray-700 dark:text-gray-200">{{ $companies->lastItem() ?? 0 }}</span>
-                    de
-                    <span class="font-semibold text-gray-700 dark:text-gray-200">{{ $companies->total() }}</span>
-                </div>
-                <div>
-                    {{ $companies->links() }}
-                </div>
 
-            </div>
         </x-common.component-card>
+
+        <div class="mt-5 mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between px-4 sm:px-6">
+            <div class="text-sm text-gray-500 dark:text-gray-400">
+                Mostrando
+                <span class="font-semibold text-gray-700 dark:text-gray-200">{{ $companies->firstItem() ?? 0 }}</span>
+                -
+                <span class="font-semibold text-gray-700 dark:text-gray-200">{{ $companies->lastItem() ?? 0 }}</span>
+                de
+                <span class="font-semibold text-gray-700 dark:text-gray-200">{{ $companies->total() }}</span>
+            </div>
+            <div class="flex-none pagination-simple">
+                {{ $companies->links() }}
+            </div>
+        </div>
+
 
         <x-ui.modal x-data="{ open: false }" @open-company-modal.window="open = true"
             @close-company-modal.window="open = false" :isOpen="false" :showCloseButton="false" class="max-w-3xl">

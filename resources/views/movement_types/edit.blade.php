@@ -1,6 +1,9 @@
 @extends('layouts.app')
 
 @section('content')
+    @php
+        $viewId = request('view_id');
+    @endphp
     <x-common.page-breadcrumb pageTitle="Tipos de movimiento" />
 
     <x-ui.modal
@@ -8,9 +11,9 @@
             open: true,
             close() {
                 if (window.Turbo && typeof window.Turbo.visit === 'function') {
-                    window.Turbo.visit('{{ route('admin.movement-types.index') }}', { action: 'replace' });
+                    window.Turbo.visit('{{ $viewId ? route('admin.movement-types.index', ['view_id' => $viewId]) : route('admin.movement-types.index') }}', { action: 'replace' });
                 } else {
-                    window.location.href = '{{ route('admin.movement-types.index') }}';
+                    window.location.href = '{{ $viewId ? route('admin.movement-types.index', ['view_id' => $viewId]) : route('admin.movement-types.index') }}';
                 }
             }
         }"
@@ -30,8 +33,8 @@
                     </div>
                 </div>
                 <a
-                    href="{{ route('admin.movement-types.index') }}"
-                    onclick="if (window.Turbo && typeof window.Turbo.visit === 'function') { window.Turbo.visit('{{ route('admin.movement-types.index') }}', { action: 'replace' }); return false; }"
+                    href="{{ $viewId ? route('admin.movement-types.index', ['view_id' => $viewId]) : route('admin.movement-types.index') }}"
+                    onclick="if (window.Turbo && typeof window.Turbo.visit === 'function') { window.Turbo.visit('{{ $viewId ? route('admin.movement-types.index', ['view_id' => $viewId]) : route('admin.movement-types.index') }}', { action: 'replace' }); return false; }"
                     class="flex h-11 w-11 items-center justify-center rounded-full bg-gray-100 text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
                     aria-label="Cerrar"
                 >
@@ -45,9 +48,12 @@
                 </div>
             @endif
 
-            <form method="POST" action="{{ route('admin.movement-types.update', $movementType) }}" class="space-y-6">
+            <form method="POST" action="{{ $viewId ? route('admin.movement-types.update', $movementType) . '?view_id=' . $viewId : route('admin.movement-types.update', $movementType) }}" class="space-y-6">
                 @csrf
                 @method('PUT')
+                @if ($viewId)
+                    <input type="hidden" name="view_id" value="{{ $viewId }}">
+                @endif
 
                 @include('movement_types._form', ['movementType' => $movementType])
 
@@ -59,8 +65,8 @@
                     <x-ui.link-button
                         size="md"
                         variant="outline"
-                        href="{{ route('admin.movement-types.index') }}"
-                        onclick="if (window.Turbo && typeof window.Turbo.visit === 'function') { window.Turbo.visit('{{ route('admin.movement-types.index') }}', { action: 'replace' }); return false; }"
+                        href="{{ $viewId ? route('admin.movement-types.index', ['view_id' => $viewId]) : route('admin.movement-types.index') }}"
+                        onclick="if (window.Turbo && typeof window.Turbo.visit === 'function') { window.Turbo.visit('{{ $viewId ? route('admin.movement-types.index', ['view_id' => $viewId]) : route('admin.movement-types.index') }}', { action: 'replace' }); return false; }"
                     >
                         <i class="ri-close-line"></i>
                         <span>Cancelar</span>

@@ -99,7 +99,7 @@
                     />
                 </div>
                 <div class="flex flex-wrap gap-2">
-                    <x-ui.button size="sm" variant="primary" type="submit" :startIcon="$SearchIcon">Buscar</x-ui.button>
+                    <x-ui.button size="sm" variant="primary" type="submit" :startIcon="$SearchIcon" style="background-color: #63B7EC; border-color: #63B7EC; color: #f3f4f6;">Buscar</x-ui.button>
                     <x-ui.link-button size="sm" variant="outline" href="{{ route('admin.modules.index', $viewId ? ['view_id' => $viewId] : []) }}" :startIcon="$ClearIcon">Limpiar</x-ui.link-button>
                 </div>
             </form>
@@ -152,19 +152,19 @@
                 <table class="w-full min-w-[880px]">
                     <thead>
                         <tr class="text-white">
-                            <th style="background-color: #465fff;" class="px-3 py-3 text-left sm:px-6 first:rounded-tl-xl sticky left-0 z-20 w-16 max-w-[64px] sm:w-auto sm:max-w-none shadow-[2px_0_5px_rgba(0,0,0,0.1)]">
-                                <p class="font-semibold text-white text-theme-xs truncate">Orden</p>
+                            <th style="background-color: #63B7EC;" class="px-3 py-3 text-left sm:px-6 first:rounded-tl-xl sticky left-0 z-20 w-16 max-w-[64px] sm:w-auto sm:max-w-none shadow-[2px_0_5px_rgba(0,0,0,0.1)]">
+                                <p class="font-semibold text-gray-100 text-theme-xs truncate">Orden</p>
                             </th>
-                            <th style="background-color: #465fff;" class="px-5 py-3 text-left sm:px-6"><p class="font-semibold text-white text-theme-xs">Nombre</p></th>
-                            <th style="background-color: #465fff;" class="px-5 py-3 text-left sm:px-6"><p class="font-semibold text-white text-theme-xs">Icono</p></th>
-                            <th style="background-color: #465fff;" class="px-5 py-3 text-left sm:px-6"><p class="font-semibold text-white text-theme-xs">Estado</p></th>
-                            <th style="background-color: #465fff;" class="px-5 py-3 text-right sm:px-6 last:rounded-tr-xl"><p class="font-semibold text-white text-theme-xs">Acciones</p></th>
+                            <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6"><p class="font-semibold text-gray-100 text-theme-xs uppercase">Nombre</p></th>
+                            <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6"><p class="font-semibold text-gray-100 text-theme-xs uppercase">Icono</p></th>
+                            <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6"><p class="font-semibold text-gray-100 text-theme-xs uppercase">Estado</p></th>
+                            <th style="background-color: #63B7EC;" class="px-5 py-3 text-right sm:px-6 last:rounded-tr-xl"><p class="font-semibold text-gray-100 text-theme-xs uppercase">Acciones</p></th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse ($modules as $module)
-                            <tr class="group border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-white/5">
-                                <td class="px-3 py-4 sm:px-6 sticky left-0 z-10 bg-white dark:bg-[#121212] group-hover:bg-gray-50 dark:group-hover:bg-gray-800 shadow-[2px_0_5px_rgba(0,0,0,0.05)] w-16 max-w-[64px] sm:w-auto sm:max-w-none text-center">
+                            <tr class="group/row border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-white/5">
+                                <td class="px-3 py-4 sm:px-6 sticky left-0 z-10 bg-white dark:bg-[#121212] group-hover/row:bg-gray-50 dark:group-hover/row:bg-gray-800 shadow-[2px_0_5px_rgba(0,0,0,0.05)] w-16 max-w-[64px] sm:w-auto sm:max-w-none text-center">
                                     <span class="font-bold text-gray-700 dark:text-gray-200 text-xs text-center block">#{{ $module->order_num }}</span>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">

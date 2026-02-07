@@ -1,11 +1,85 @@
 @extends('layouts.app')
 @section('content')
+@php
+    use Illuminate\Support\Facades\Route;
+
+    $viewId = request('view_id');
+    $operacionesCollection = collect($operaciones ?? []);
+    $topOperations = $operacionesCollection->where('type', 'T');
+    $rowOperations = $operacionesCollection->where('type', 'R');
+
+    $resolveActionUrl = function ($action, $model = null, $operation = null) use ($viewId) {
+        if (!$action) {
+            return '#';
+        }
+
+        if (str_starts_with($action, '/') || str_starts_with($action, 'http')) {
+            $url = $action;
+        } else {
+            $routeCandidates = [$action];
+            if (!str_starts_with($action, 'admin.')) {
+                $routeCandidates[] = 'admin.' . $action;
+            }
+            $routeCandidates = array_merge(
+                $routeCandidates,
+                array_map(fn ($name) => $name . '.index', $routeCandidates)
+            );
+
+            $routeName = null;
+            foreach ($routeCandidates as $candidate) {
+                if (Route::has($candidate)) {
+                    $routeName = $candidate;
+                    break;
+                }
+            }
+
+            if ($routeName) {
+                try {
+                    $url = $model ? route($routeName, $model) : route($routeName);
+                } catch (\Exception $e) {
+                    $url = '#';
+                }
+            } else {
+                $url = '#';
+            }
+        }
+
+        $targetViewId = $viewId;
+        if ($operation && !empty($operation->view_id_action)) {
+            $targetViewId = $operation->view_id_action;
+        }
+
+        if ($targetViewId && $url !== '#') {
+            $separator = str_contains($url, '?') ? '&' : '?';
+            $url .= $separator . 'view_id=' . urlencode($targetViewId);
+        }
+
+        return $url;
+    };
+
+    $resolveTextColor = function ($operation) {
+        $action = $operation->action ?? '';
+        if (str_contains($action, 'units.create')) {
+            return '#111827';
+        }
+        return '#FFFFFF';
+    };
+
+    $isCreateOp = fn ($operation) => str_contains($operation->action ?? '', 'units.create')
+        || str_contains($operation->action ?? '', 'units.store')
+        || str_contains($operation->action ?? '', 'open-unit-modal');
+    $isEditOp = fn ($operation) => str_contains($operation->action ?? '', 'units.edit')
+        || str_contains($operation->action ?? '', 'units.update');
+@endphp
 <div x-data="{}">
     <x-common.page-breadcrumb pageTitle="Unidades" />
 
     <x-common.component-card title="Unidades" desc="Gestiona las unidades.">
         <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
             <form method="GET" class="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
+                @if ($viewId)
+                    <input type="hidden" name="view_id" value="{{ $viewId }}">
+                @endif
                 <div class="w-29">
                     <select
                         name="per_page"
@@ -34,18 +108,37 @@
                         <i class="ri-search-line"></i>
                         <span>Buscar</span>
                     </x-ui.button>
-                    <x-ui.link-button size="sm" variant="outline" href="{{ route('admin.units.index') }}">
+                    <x-ui.link-button size="sm" variant="outline" href="{{ $viewId ? route('admin.units.index', ['view_id' => $viewId]) : route('admin.units.index') }}">
                         <i class="ri-close-line"></i>
                         <span>Limpiar</span>
                     </x-ui.link-button>
                 </div>
             </form>
 
-            <x-ui.button size="md" variant="primary" type="button"
-                style=" background-color: #12f00e; color: #111827;" @click="$dispatch('open-unit-modal')">
-                <i class="ri-add-line"></i>
-                <span>Nueva unidad</span>
-            </x-ui.button>
+            <div class="flex flex-wrap items-center gap-2">
+                @foreach ($topOperations as $operation)
+                    @php
+                        $topTextColor = $resolveTextColor($operation);
+                        $topColor = $operation->color ?: '#3B82F6';
+                        $topStyle = "background-color: {$topColor}; color: {$topTextColor};";
+                        $topActionUrl = $resolveActionUrl($operation->action ?? '', null, $operation);
+                        $isCreate = $isCreateOp($operation);
+                    @endphp
+                    @if ($isCreate)
+                        <x-ui.button size="md" variant="primary" type="button"
+                            style="{{ $topStyle }}" @click="$dispatch('open-unit-modal')">
+                            <i class="{{ $operation->icon }}"></i>
+                            <span>{{ $operation->name }}</span>
+                        </x-ui.button>
+                    @else
+                        <x-ui.link-button size="md" variant="primary"
+                            style="{{ $topStyle }}" href="{{ $topActionUrl }}">
+                            <i class="{{ $operation->icon }}"></i>
+                            <span>{{ $operation->name }}</span>
+                        </x-ui.link-button>
+                    @endif
+                @endforeach
+            </div>
         </div>
 
         <div class="mt-4 rounded-xl border border-gray-200 bg-white overflow-visible dark:border-gray-800 dark:bg-white/[0.03]">
@@ -87,44 +180,64 @@
                             </td>
                             <td class="px-5 py-4 sm:px-6">
                                 <div class="flex items-center justify-center gap-2">
-                                    <div class="relative group">
-                                        <x-ui.link-button
-                                            size="icon"
-                                            variant="edit"
-                                            href="{{ route('admin.units.edit', $unit) }}"
-                                            className="bg-warning-500 text-white hover:bg-warning-600 ring-0 rounded-full"
-                                            style="border-radius: 100%; background-color: #FBBF24; color: #111827;"
-                                            aria-label="Editar"
-                                        >
-                                            <i class="ri-pencil-line"></i>
-                                        </x-ui.link-button>
-                                        <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">Editar</span>
-                                    </div>
-                                    <form
-                                        method="POST"
-                                        action="{{ route('admin.units.destroy', $unit) }}"
-                                        class="relative group js-swal-delete"
-                                        data-swal-title="Eliminar unidad?"
-                                        data-swal-text="Se eliminara {{ $unit->description }}. Esta accion no se puede deshacer."
-                                        data-swal-confirm="Si, eliminar"
-                                        data-swal-cancel="Cancelar"
-                                        data-swal-confirm-color="#ef4444"
-                                        data-swal-cancel-color="#6b7280"
-                                    >
-                                        @csrf
-                                        @method('DELETE')
-                                        <x-ui.button
-                                            size="icon"
-                                            variant="eliminate"
-                                            type="submit"
-                                            className="bg-error-500 text-white hover:bg-error-600 ring-0 rounded-full"
-                                            style="border-radius: 100%; background-color: #EF4444; color: #FFFFFF;"
-                                            aria-label="Eliminar"
-                                        >
-                                            <i class="ri-delete-bin-line"></i>
-                                        </x-ui.button>
-                                        <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">Eliminar</span>
-                                    </form>
+                                    @foreach ($rowOperations as $operation)
+                                        @php
+                                            $action = $operation->action ?? '';
+                                            $isDelete = str_contains($action, 'destroy');
+                                            $isEdit = $isEditOp($operation);
+                                            $actionUrl = $resolveActionUrl($action, $unit, $operation);
+                                            $textColor = $resolveTextColor($operation);
+                                            $buttonColor = $operation->color ?: '#3B82F6';
+                                            $buttonStyle = "background-color: {$buttonColor}; color: {$textColor};";
+                                            $variant = $isDelete ? 'eliminate' : (str_contains($action, 'edit') ? 'edit' : 'primary');
+                                        @endphp
+                                        @if ($isDelete)
+                                            <form method="POST" action="{{ $actionUrl }}"
+                                                class="relative group js-swal-delete"
+                                                data-swal-title="Eliminar unidad?"
+                                                data-swal-text="Se eliminara {{ $unit->description }}. Esta accion no se puede deshacer."
+                                                data-swal-confirm="Si, eliminar"
+                                                data-swal-cancel="Cancelar"
+                                                data-swal-confirm-color="#ef4444"
+                                                data-swal-cancel-color="#6b7280"
+                                            >
+                                                @csrf
+                                                @method('DELETE')
+                                                @if ($viewId)
+                                                    <input type="hidden" name="view_id" value="{{ $viewId }}">
+                                                @endif
+                                                <x-ui.button size="icon" variant="{{ $variant }}" type="submit"
+                                                    className="bg-error-500 text-white hover:bg-error-600 ring-0 rounded-xl"
+                                                    style="{{ $buttonStyle }}"
+                                                    aria-label="{{ $operation->name }}">
+                                                    <i class="{{ $operation->icon }}"></i>
+                                                </x-ui.button>
+                                                <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">{{ $operation->name }}</span>
+                                            </form>
+                                        @elseif ($isEdit)
+                                            <div class="relative group">
+                                                <x-ui.link-button size="icon" variant="{{ $variant }}"
+                                                    href="{{ $actionUrl }}"
+                                                    className="rounded-xl"
+                                                    style="{{ $buttonStyle }}"
+                                                    aria-label="{{ $operation->name }}">
+                                                    <i class="{{ $operation->icon }}"></i>
+                                                </x-ui.link-button>
+                                                <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">{{ $operation->name }}</span>
+                                            </div>
+                                        @else
+                                            <div class="relative group">
+                                                <x-ui.link-button size="icon" variant="{{ $variant }}"
+                                                    href="{{ $actionUrl }}"
+                                                    className="rounded-xl"
+                                                    style="{{ $buttonStyle }}"
+                                                    aria-label="{{ $operation->name }}">
+                                                    <i class="{{ $operation->icon }}"></i>
+                                                </x-ui.link-button>
+                                                <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">{{ $operation->name }}</span>
+                                            </div>
+                                        @endif
+                                    @endforeach
                                 </div>
                             </td>
                         </tr>
@@ -160,6 +273,23 @@
             </div>
             <div>
                 {{ $units->links() }}
+            </div>
+            <div>
+                <form method="GET" action="{{ route('admin.units.index') }}">
+                    @if ($viewId)
+                        <input type="hidden" name="view_id" value="{{ $viewId }}">
+                    @endif
+                    <input type="hidden" name="search" value="{{ $search }}">
+                    <select
+                        name="per_page"
+                        onchange="this.form.submit()"
+                        class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-3 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
+                    >
+                        @foreach ([10, 20, 50, 100] as $size)
+                            <option value="{{ $size }}" @selected($perPage == $size)>{{ $size }} / pagina</option>
+                        @endforeach
+                    </select>
+                </form>
             </div>
         </div>
     </x-common.component-card>
@@ -199,8 +329,11 @@
                 </div>
             @endif
 
-            <form method="POST" action="{{ route('admin.units.store') }}" class="space-y-6">
+            <form method="POST" action="{{ $viewId ? route('admin.units.store') . '?view_id=' . $viewId : route('admin.units.store') }}" class="space-y-6">
                 @csrf
+                @if ($viewId)
+                    <input type="hidden" name="view_id" value="{{ $viewId }}">
+                @endif
 
                 @include('Units._form', ['unit' => null])
 

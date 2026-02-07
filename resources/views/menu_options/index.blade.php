@@ -35,8 +35,8 @@
                         />
                     </div>
                     <div class="flex flex-wrap gap-2">
-                        <x-ui.button size="sm" variant="primary" type="submit">
-                            <i class="ri-search-line"></i> Buscar
+                        <x-ui.button size="sm" variant="primary" type="submit" style="background-color: #63B7EC; border-color: #63B7EC;">
+                            <i class="ri-search-line text-gray-100"></i> <span class="text-gray-100">Buscar</span>
                         </x-ui.button>
                         <x-ui.link-button size="sm" variant="outline" href="{{ route('admin.modules.menu_options.index', $module) }}">
                             <i class="ri-close-line"></i> Limpiar
@@ -76,12 +76,12 @@
                     <table class="w-full min-w-[880px]">
                         <thead>
                             <tr class="text-white">
-                                <th style="background-color: #465fff;" class="px-5 py-3 text-left sm:px-6 first:rounded-tl-xl"><p class="font-semibold text-white text-theme-xs">Orden (ID)</p></th>
-                                <th style="background-color: #465fff;" class="px-5 py-3 text-left sm:px-6"><p class="font-semibold text-white text-theme-xs">Icono</p></th>
-                                <th style="background-color: #465fff;" class="px-5 py-3 text-left sm:px-6"><p class="font-semibold text-white text-theme-xs">Nombre</p></th>
-                                <th style="background-color: #465fff;" class="px-5 py-3 text-left sm:px-6"><p class="font-semibold text-white text-theme-xs">Ruta / Acción</p></th>
-                                <th style="background-color: #465fff;" class="px-5 py-3 text-left sm:px-6"><p class="font-semibold text-white text-theme-xs">Estado</p></th>
-                                <th style="background-color: #465fff;" class="px-5 py-3 text-right sm:px-6 last:rounded-tr-xl"><p class="font-semibold text-white text-theme-xs">Acciones</p></th>
+                                <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6 first:rounded-tl-xl"><p class="font-semibold text-gray-100 text-theme-xs uppercase">Orden (ID)</p></th>
+                                <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6"><p class="font-semibold text-gray-100 text-theme-xs uppercase">Icono</p></th>
+                                <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6"><p class="font-semibold text-gray-100 text-theme-xs uppercase">Nombre</p></th>
+                                <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6"><p class="font-semibold text-gray-100 text-theme-xs uppercase">Ruta / Acción</p></th>
+                                <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6"><p class="font-semibold text-gray-100 text-theme-xs uppercase">Estado</p></th>
+                                <th style="background-color: #63B7EC;" class="px-5 py-3 text-right sm:px-6 last:rounded-tr-xl"><p class="font-semibold text-gray-100 text-theme-xs uppercase">Acciones</p></th>
                             </tr>
                         </thead>
                         <tbody>
