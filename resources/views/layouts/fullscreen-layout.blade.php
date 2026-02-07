@@ -20,13 +20,12 @@
         document.addEventListener('alpine:init', () => {
             Alpine.store('theme', {
                 init() {
+                    const forceLight = @json($forceLightMode ?? false);
                     const savedTheme = localStorage.getItem('theme');
-                    const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' :
-                        'light';
-                    this.theme = savedTheme || systemTheme;
+                    const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                    this.theme = forceLight ? 'light' : (savedTheme || systemTheme);
                     this.updateTheme();
                 },
-                theme: 'light',
                 toggle() {
                     this.theme = this.theme === 'light' ? 'dark' : 'light';
                     localStorage.setItem('theme', this.theme);
@@ -79,9 +78,10 @@
     <!-- Apply dark mode immediately to prevent flash -->
     <script>
         (function() {
+            const forceLight = @json($forceLightMode ?? false);
             const savedTheme = localStorage.getItem('theme');
             const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-            const theme = savedTheme || systemTheme;
+            const theme = forceLight ? 'light' : (savedTheme || systemTheme);
             const root = document.documentElement;
             const applyBody = () => {
                 const body = document.body;

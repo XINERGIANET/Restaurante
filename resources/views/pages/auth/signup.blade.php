@@ -1,3 +1,4 @@
+@php $forceLightMode = true; @endphp
 @extends('layouts.fullscreen-layout')
 
 @section('content')
