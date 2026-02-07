@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\TaxRate;
+use App\Models\Operation;
 use Illuminate\Http\Request;
 
 class TaxRateController extends Controller
@@ -11,6 +12,33 @@ class TaxRateController extends Controller
         $search = $request->input('search');
         $perPage = (int) $request->input('per_page', 10);
         $allowedPerPage = [10, 20, 50, 100];
+        $viewId = $request->input('view_id');
+        $branchId = $request->session()->get('branch_id');
+        $profileId = $request->session()->get('profile_id') ?? $request->user()?->profile_id;
+        $operaciones = collect();
+        if ($viewId && $branchId && $profileId) {
+            $operaciones = Operation::query()
+                ->select('operations.*')
+                ->join('branch_operation', function ($join) use ($branchId) {
+                    $join->on('branch_operation.operation_id', '=', 'operations.id')
+                        ->where('branch_operation.branch_id', $branchId)
+                        ->where('branch_operation.status', 1)
+                        ->whereNull('branch_operation.deleted_at');
+                })
+                ->join('operation_profile_branch', function ($join) use ($branchId, $profileId) {
+                    $join->on('operation_profile_branch.operation_id', '=', 'operations.id')
+                        ->where('operation_profile_branch.branch_id', $branchId)
+                        ->where('operation_profile_branch.profile_id', $profileId)
+                        ->where('operation_profile_branch.status', 1)
+                        ->whereNull('operation_profile_branch.deleted_at');
+                })
+                ->where('operations.status', 1)
+                ->where('operations.view_id', $viewId)
+                ->whereNull('operations.deleted_at')
+                ->orderBy('operations.id')
+                ->distinct()
+                ->get();
+        }
         if (!in_array($perPage, $allowedPerPage, true)) {
             $perPage = 10;
         }
@@ -21,7 +49,7 @@ class TaxRateController extends Controller
             ->orderBy('order_num')
             ->paginate($perPage)
             ->withQueryString();
-        return view('tax_rates.index', compact('taxRates', 'search', 'perPage', 'allowedPerPage'));
+        return view('tax_rates.index', compact('taxRates', 'search', 'perPage', 'allowedPerPage', 'operaciones'));
     }
     public function store(Request $request)
     {
@@ -35,8 +63,12 @@ class TaxRateController extends Controller
 
         $data['status'] = $request->has('status') ? (bool) $request->input('status') : false;
 
-        TaxRate::create($data);
-        return redirect()->route('admin.tax_rates.index')->with('status', 'Tasa de impuesto creada correctamente.');
+        $taxRate = TaxRate::create($data);
+        $viewId = $request->input('view_id');
+
+        return redirect()
+            ->route('admin.tax_rates.index', $viewId ? ['view_id' => $viewId] : [])
+            ->with('status', 'Tasa de impuesto creada correctamente.');
     }
 
     public function edit(TaxRate $taxRate)
@@ -58,12 +90,20 @@ class TaxRateController extends Controller
         $data['status'] = $request->has('status') ? (bool) $request->input('status') : false;
 
         $taxRate->update($data);
-        return redirect()->route('admin.tax_rates.index')->with('status', 'Tasa de impuesto actualizada correctamente.');
+        $viewId = $request->input('view_id');
+
+        return redirect()
+            ->route('admin.tax_rates.index', $viewId ? ['view_id' => $viewId] : [])
+            ->with('status', 'Tasa de impuesto actualizada correctamente.');
     }
 
-    public function destroy(TaxRate $taxRate)
+    public function destroy(Request $request, TaxRate $taxRate)
     {
         $taxRate->delete();
-        return redirect()->route('admin.tax_rates.index')->with('status', 'Tasa de impuesto eliminada correctamente.');
+        $viewId = $request->input('view_id');
+
+        return redirect()
+            ->route('admin.tax_rates.index', $viewId ? ['view_id' => $viewId] : [])
+            ->with('status', 'Tasa de impuesto eliminada correctamente.');
     }
 }

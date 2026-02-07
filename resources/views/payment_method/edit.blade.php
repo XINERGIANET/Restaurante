@@ -1,3 +1,6 @@
+@php
+    $viewId = request('view_id');
+@endphp
 <!--Modal de edicion de método de pago-->
 <x-ui.modal x-data="{ open: false, paymentMethodId: null, description: '', orderNum: null, status: '1' }"
     @open-edit-payment-method-modal.window="open = true; paymentMethodId = $event.detail.id; description = $event.detail.description; orderNum = $event.detail.order_num || ''; status = $event.detail.status.toString()"
@@ -10,10 +13,13 @@
             </div>
         @endif
         <form id="edit-payment-method-form" class="space-y-4"
-            x-bind:action="paymentMethodId ? '{{ url('/admin/herramientas/metodos-pago') }}/' + paymentMethodId : '#'"
+            x-bind:action="paymentMethodId ? '{{ url('/admin/herramientas/metodos-pago') }}/' + paymentMethodId + '{{ $viewId ? '?view_id=' . $viewId : '' }}' : '#'"
             method="POST">
             @csrf
             @method('PUT')
+            @if ($viewId)
+                <input type="hidden" name="view_id" value="{{ $viewId }}">
+            @endif
             <div class="grid gap-5">
                 <div>
                     <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Descripcion</label>
@@ -78,3 +84,5 @@
         </form>
     </div>
 </x-ui.modal>
+
+

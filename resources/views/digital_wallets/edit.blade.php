@@ -10,10 +10,13 @@
             </div>
         @endif
         <form id="edit-digital-wallet-form" class="space-y-4"
-            x-bind:action="digitalWalletId ? '{{ url('/admin/herramientas/billeteras-digitales') }}/' + digitalWalletId : '#'"
+            x-bind:action="digitalWalletId ? '{{ url('/admin/herramientas/billeteras-digitales') }}/' + digitalWalletId + '{{ request('view_id') ? '?view_id=' . request('view_id') : '' }}' : '#'"
             method="POST">
             @csrf
             @method('PUT')
+            @if (request('view_id'))
+                <input type="hidden" name="view_id" value="{{ request('view_id') }}">
+            @endif
             <div class="grid gap-5">
                 <div>
                     <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Descripcion</label>

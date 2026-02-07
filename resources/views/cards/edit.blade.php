@@ -1,7 +1,7 @@
 <!--Modal de edicion de tarjeta-->
-<x-ui.modal x-data="{ open: false, cardId: null, description: '', type: '', orderNum: null, icon: '', status: '1' }"
-    @open-edit-card-modal.window="open = true; cardId = $event.detail.id; description = $event.detail.description; type = $event.detail.type; orderNum = $event.detail.order_num; icon = $event.detail.icon || ''; status = $event.detail.status.toString()"
-    @close-edit-card-modal.window="open = false" :isOpen="false" class="max-w-md">
+    <x-ui.modal x-data="{ open: false, cardId: null, description: '', type: '', orderNum: null, icon: '', status: '1' }"
+        @open-edit-card-modal.window="open = true; cardId = $event.detail.id; description = $event.detail.description; type = $event.detail.type; orderNum = $event.detail.order_num; icon = $event.detail.icon || ''; status = $event.detail.status.toString()"
+        @close-edit-card-modal.window="open = false" :isOpen="false" class="max-w-md">
     <div class="p-6 space-y-4">
         <h3 class="mb-6 text-lg font-semibold text-gray-800 dark:text-white/90">Editar Tarjeta</h3>
         @if ($errors->any())
@@ -10,10 +10,13 @@
             </div>
         @endif
         <form id="edit-card-form" class="space-y-4"
-            x-bind:action="cardId ? '{{ url('/admin/herramientas/tarjetas') }}/' + cardId : '#'" method="POST"
+            x-bind:action="cardId ? '{{ url('/admin/herramientas/tarjetas') }}/' + cardId + '{{ request('view_id') ? '?view_id=' . request('view_id') : '' }}' : '#'" method="POST"
             enctype="multipart/form-data">
             @csrf
             @method('PUT')
+            @if (request('view_id'))
+                <input type="hidden" name="view_id" value="{{ request('view_id') }}">
+            @endif
             <div class="grid gap-5">
                 <div>
                     <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Descripcion</label>
