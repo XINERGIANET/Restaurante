@@ -123,10 +123,10 @@
                     </div>
                     <div class="grid grid-cols-2 gap-3">
                         <button onclick="goBack()"
-                            class="py-2.5 rounded-lg border border-gray-300 dark:border-slate-700 dark:bg-slate-800 text-gray-700 dark:text-white text-sm font-bold hover:bg-gray-50 dark:hover:bg-slate-700 shadow-sm transition-all">
+                            class="hidden py-2.5 rounded-lg border border-gray-300 dark:border-slate-700 dark:bg-slate-800 text-gray-700 dark:text-white text-sm font-bold hover:bg-gray-50 dark:hover:bg-slate-700 shadow-sm transition-all">
                             Guardar
                         </button>
-                        <button type="button" id="checkout-button" onclick="openChargeModal()"
+                        <button type="button" id="checkout-button" onclick="goToChargeView()"
                             class="py-2.5 rounded-lg bg-blue-600 text-white text-sm font-bold shadow-lg shadow-blue-500/30 dark:shadow-blue-500/20 hover:bg-blue-700 dark:hover:bg-blue-600 active:scale-95 transition-all flex justify-center items-center gap-2">
                             <span>Cobrar</span> <i class="fas fa-cash-register text-xs"></i>
                         </button>
@@ -245,10 +245,17 @@
             status: 'in_progress',
             items: [],
         };
+        const ACTIVE_SALE_KEY_STORAGE = 'restaurantActiveSaleKey';
         let db = JSON.parse(localStorage.getItem('restaurantDB'));
         if (!db) db = {};
-        let activeKey = `sale-${Date.now()}`;
+        let activeKey = localStorage.getItem(ACTIVE_SALE_KEY_STORAGE);
+        if (!activeKey || !db[activeKey] || db[activeKey]?.status === 'completed') {
+            activeKey = `sale-${Date.now()}`;
+            localStorage.setItem(ACTIVE_SALE_KEY_STORAGE, activeKey);
+        }
         let currentSale = db[activeKey] || serverSale;
+        db[activeKey] = currentSale;
+        localStorage.setItem('restaurantDB', JSON.stringify(db));
         let notificationTimeout;
 
         // Función helper para obtener la URL de la imagen o placeholder
@@ -345,6 +352,7 @@
             } else {
                 currentSale.items.push({
                     pId: prod.id,
+                    name: prod.name || '', // Guardar el nombre del producto
                     qty: 1,
                     price: parseFloat(productBranch.price) || 0,
                     note: ""
@@ -586,9 +594,69 @@
             }
         }
 
-        function goBack() {
+        function goToChargeView() {
+            if (!currentSale.items || currentSale.items.length === 0) {
+                showEmptyCartNotification();
+                return;
+            }
             saveDB();
-            window.location.href = "{{ route('admin.sales.index') }}";
+            window.location.href = "{{ route('admin.sales.charge') }}";
+        }
+
+        function goBack() {
+            if (!currentSale.items || currentSale.items.length === 0) {
+                // Si no hay items, limpiar y salir sin guardar
+                currentSale.items = [];
+                currentSale.total = 0;
+                saveDB();
+                localStorage.removeItem(ACTIVE_SALE_KEY_STORAGE);
+                window.location.href = "{{ route('admin.sales.index') }}";
+                return;
+            }
+
+            // Guardar como borrador en el servidor solo si hay productos
+            const saleData = {
+                items: currentSale.items.map(item => ({
+                    pId: item.pId,
+                    qty: parseFloat(item.qty),
+                    price: parseFloat(item.price),
+                    note: item.note || ''
+                })),
+                notes: 'Venta guardada como borrador - pendiente de pago'
+            };
+
+            fetch('{{ route("admin.sales.draft") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                },
+                body: JSON.stringify(saleData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Limpiar carrito local
+                    currentSale.status = 'draft';
+                    currentSale.items = [];
+                    currentSale.total = 0;
+                    saveDB();
+                    localStorage.removeItem(ACTIVE_SALE_KEY_STORAGE);
+                    
+                    // Redirigir
+                    window.location.href = "{{ route('admin.sales.index') }}";
+                } else {
+                    // Si falla, solo guardar en localStorage
+                    saveDB();
+                    window.location.href = "{{ route('admin.sales.index') }}";
+                }
+            })
+            .catch(error => {
+                console.error('Error al guardar borrador:', error);
+                // Si falla, solo guardar en localStorage
+                saveDB();
+                window.location.href = "{{ route('admin.sales.index') }}";
+            });
         }
 
         function sendOrder() {
@@ -649,6 +717,7 @@
                     currentSale.items = [];
                     currentSale.total = 0;
                     saveDB();
+                    localStorage.removeItem(ACTIVE_SALE_KEY_STORAGE);
                     
                     // Redirigir después de 2 segundos
                     setTimeout(() => {
@@ -692,139 +761,8 @@
             }, 3000);
         }
 
-        function openChargeModal() {
-            if (!currentSale.items || currentSale.items.length === 0) {
-                showEmptyCartNotification();
-                return;
-            }
-
-            // Actualizar cliente
-            const modalClientName = document.getElementById('modal-client-name');
-            if (modalClientName) {
-                modalClientName.textContent = currentSale.clientName || 'Público General';
-            }
-            // Actualizar items
-            const container = document.getElementById('modal-items-list');
-            if (container) {
-                container.innerHTML = '';
-                
-                currentSale.items.forEach(item => {
-                    const prod = productsDB.find(p => p.id === item.pId);
-                    if (!prod) return;
-                    const productBranch = productsBranches.find(p => p.id === item.pId);
-                    if (!productBranch) return;
-                    
-                    const itemPrice = parseFloat(productBranch.price) || 0;
-                    const itemTotal = itemPrice * item.qty;
-
-                    const itemDiv = document.createElement('div');
-                    itemDiv.className = 'flex justify-between items-center p-2 rounded-lg bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700';
-                    itemDiv.innerHTML = `
-                        <div class="flex items-center gap-2 flex-1 min-w-0">
-                            <span class="flex items-center justify-center w-6 h-6 text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 rounded-full shrink-0">
-                                ${item.qty}x
-                            </span>
-                            <div class="flex-1 min-w-0">
-                                <p class="text-xs font-semibold text-gray-900 dark:text-white truncate">${prod.name}</p>
-                                <p class="text-[10px] text-gray-500 dark:text-gray-400">$${itemPrice.toFixed(2)} c/u</p>
-                            </div>
-                        </div>
-                        <span class="text-xs font-bold text-gray-900 dark:text-white">$${itemTotal.toFixed(2)}</span>
-                    `;
-                    container.appendChild(itemDiv);
-                });
-            }
-
-            // Actualizar totales
-            const subtotalEl = document.getElementById('ticket-subtotal');
-            const taxEl = document.getElementById('ticket-tax');
-            const totalEl = document.getElementById('ticket-total');
-            
-            if (subtotalEl && taxEl && totalEl) {
-                const subtotal = parseFloat(subtotalEl.innerText.replace('$', ''));
-                const tax = parseFloat(taxEl.innerText.replace('$', ''));
-                const total = parseFloat(totalEl.innerText.replace('$', ''));
-
-                const modalSubtotal = document.getElementById('modal-subtotal');
-                const modalTax = document.getElementById('modal-tax');
-                const modalTotal = document.getElementById('modal-total');
-
-                if (modalSubtotal) modalSubtotal.textContent = `$${subtotal.toFixed(2)}`;
-                if (modalTax) modalTax.textContent = `$${tax.toFixed(2)}`;
-                if (modalTotal) modalTotal.textContent = `$${total.toFixed(2)}`;
-            }
-
-            // Mostrar modal
-            const modal = document.getElementById('charge-modal');
-            if (modal) {
-                modal.style.display = 'block';
-                document.body.style.overflow = 'hidden';
-            }
-        }
-
-        function closeChargeModal() {
-            const modal = document.getElementById('charge-modal');
-            if (modal) {
-                modal.style.display = 'none';
-                document.body.style.overflow = 'auto';
-            }
-        }
-
         init();
 
-        // Configurar eventos del modal después de que todo cargue
-        document.addEventListener('DOMContentLoaded', function() {
-            // Botón X de cerrar
-            const closeBtn = document.getElementById('modal-close-btn');
-            if (closeBtn) {
-                closeBtn.onclick = function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    closeChargeModal();
-                };
-            }
-
-            // Botón Cancelar
-            const cancelBtn = document.getElementById('modal-cancel-btn');
-            if (cancelBtn) {
-                cancelBtn.onclick = function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    closeChargeModal();
-                };
-            }
-
-            // Botón Confirmar Pago
-            const confirmBtn = document.getElementById('modal-confirm-btn');
-            if (confirmBtn) {
-                confirmBtn.onclick = function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    closeChargeModal();
-                    sendOrder();
-                };
-            }
-
-            // Cerrar al hacer clic en el backdrop
-            const backdrop = document.getElementById('modal-backdrop');
-            if (backdrop) {
-                backdrop.onclick = function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    closeChargeModal();
-                };
-            }
-
-            // Prevenir cierre al hacer clic dentro del modal
-            const modalContent = document.querySelector('#charge-modal > div > div');
-            if (modalContent) {
-                modalContent.onclick = function(e) {
-                    e.stopPropagation();
-                };
-            }
-        });
+        // Nota: el cobro ahora es una vista (admin.sales.charge), ya no modal.
     </script>
-
-    {{-- Incluir modal de cobro --}}
-    @include('sales.charge')
 @endsection

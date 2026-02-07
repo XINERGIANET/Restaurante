@@ -1,6 +1,6 @@
 <header
-    style="background-color: #244BB3 !important;"
-    class="sticky top-0 flex w-full bg-[#244BB3] border-[#1c3a8c] z-99999 dark:border-gray-800 dark:bg-gray-900 xl:border-b shadow-md"
+    style="background: linear-gradient(150deg, #4BB4ED 0%, #234bbb 100%) !important;"
+    class="sticky top-0 flex w-full border-[#1c3a8c] z-99999 dark:border-gray-800 dark:bg-gray-900 xl:border-b shadow-md"
     x-data="{
         isApplicationMenuOpen: false,
         toggleApplicationMenu() {
@@ -82,8 +82,8 @@
 
         <!-- Application Menu (mobile) and Right Side Actions (desktop) -->
         <div :class="isApplicationMenuOpen ? 'flex' : 'hidden'"
-            style="background-color: #244BB3 !important;"
-            class="items-center justify-between w-full gap-4 px-5 py-4 xl:flex shadow-theme-md xl:justify-end xl:px-0 xl:shadow-none bg-[#244BB3] border-t border-white/5 xl:border-0">
+            
+            class="items-center justify-between w-full gap-4 px-5 py-4 xl:flex shadow-theme-md xl:justify-end xl:px-0 xl:shadow-none border-t border-white/5 xl:border-0">
             <div class="flex items-center gap-2 2xsm:gap-3">
                 @if (!empty($quickOptions) && $quickOptions->count())
                     <div class="hidden xl:flex items-center gap-2">

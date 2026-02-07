@@ -233,9 +233,9 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
                 @yield('content')
             </div>
 
-            <footer class="mt-auto border-t border-gray-200 bg-[#F4F6FA] px-6 py-4 text-center text-sm text-gray-500 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
+            {{-- <footer class="mt-auto border-t border-gray-200 bg-[#F4F6FA] px-6 py-4 text-center text-sm text-gray-500 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
                 © 2026 Pie por Xinergia.
-            </footer>
+            </footer> --}}
         </div>
 
     </div>

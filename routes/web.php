@@ -110,8 +110,19 @@ Route::middleware('auth')->group(function () {
         ->names('admin.sales')
         ->parameters(['ventas' => 'sale'])
         ->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
-    Route::post('/admin/ventas/process', [SalesController::class, 'processSale'])
+
+    // POS: vista de cobro (antes era modal)
+    Route::get('/admin/ventas/cobrar', [SalesController::class, 'charge'])
+        ->name('admin.sales.charge');
+
+    // POS: procesar venta (usado por resources/views/sales/create.blade.php)
+    Route::post('/admin/ventas/procesar', [SalesController::class, 'processSale'])
         ->name('admin.sales.process');
+    
+    // POS: guardar venta como borrador/pendiente
+    Route::post('/admin/ventas/borrador', [SalesController::class, 'saveDraft'])
+        ->name('admin.sales.draft');
+
     Route::resource('/admin/herramientas/tipos-movimiento', MovementTypeController::class)
         ->names('admin.movement-types')
         ->parameters(['tipos-movimiento' => 'movementType'])
@@ -317,6 +328,7 @@ Route::middleware('auth')->group(function () {
     Route::group(['prefix' => 'caja/caja-chica/{cash_register_id}', 'as' => 'admin.petty-cash.'], function () {     
         Route::get('/', [PettyCashController::class, 'index'])->name('index');
         Route::post('/', [PettyCashController::class, 'store'])->name('store');
+        Route::get('/{movement}/edit', [PettyCashController::class, 'edit'])->name('edit');
         Route::put('/{movement}', [PettyCashController::class, 'update'])->name('update');
         Route::delete('/{movement}', [PettyCashController::class, 'destroy'])->name('destroy');
     });

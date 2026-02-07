@@ -12,7 +12,8 @@
 @endphp
 
 <aside id="sidebar"
-    class="fixed flex flex-col mt-0 top-0 bottom-0 px-5 left-0 bg-[#F4F6FA] dark:bg-gray-900 dark:border-gray-800 text-gray-900 transition-all duration-300 ease-in-out z-99999 border-r border-gray-200"
+    style="background: #ffffff"
+class="fixed flex flex-col mt-0 top-0 px-5 left-0 dark:bg-gray-900 dark:border-gray-800 text-gray-900 h-screen transition-all duration-300 ease-in-out z-99999 border-r border-gray-200"
     x-data="{
         openSubmenus: {},
         init() {

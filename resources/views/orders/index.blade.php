@@ -8,7 +8,7 @@
         <div x-data="posSystem()" class="flex flex-col h-[calc(100vh-9rem)] w-full font-sans text-slate-800 dark:text-white" style="--brand:#3B82F6; --brand-soft:rgba(59,130,246,0.14);">
 
             <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4 shrink-0">
-                <div class="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-xl">
+                <div class="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-xl" x-show="areas && areas.length > 0">
                     <template x-for="area in areas" :key="area.id">
                         <button @click="switchArea(area)" 
                             :class="currentAreaId === area.id ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-800 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'" 
@@ -17,15 +17,18 @@
                         </button>
                     </template>
                 </div>
+                <div x-show="!areas || areas.length === 0" class="text-gray-500 dark:text-gray-400 text-sm">
+                    No hay áreas disponibles
+                </div>
             </div>
 
             {{-- 2. GRID DE MESAS - FORZADO A 4 COLUMNAS --}}
-            <div class="flex-1 overflow-y-auto pb-10">                
-                    <div
-                        class="grid gap-5"
-                        style="grid-template-columns: repeat(4, minmax(0, 1fr));"
-                        x-show="filteredTables.length > 0"
-                    >
+            <div class="flex-1 overflow-y-auto pb-10">
+                <div
+                    class="grid gap-5"
+                    style="grid-template-columns: repeat(4, minmax(0, 1fr));"
+                    x-show="filteredTables.length > 0"
+                >
                     <template x-for="table in filteredTables" :key="table.id">
                         
                         {{-- TARJETA EXACTA XINERGIA --}}
@@ -116,6 +119,13 @@
                         </div>
                     </template>
                 </div>
+                
+                {{-- Mensaje cuando no hay mesas --}}
+                <div x-show="filteredTables.length === 0" class="flex items-center justify-center h-full">
+                    <div class="text-center">
+                        <p class="text-gray-500 dark:text-gray-400 text-lg">No hay mesas disponibles en esta área</p>
+                    </div>
+                </div>
             </div>
 
         </div>
@@ -124,20 +134,39 @@
 <script>
     document.addEventListener('alpine:init', () => {
         Alpine.data('posSystem', () => ({
-            areas: @js($areas),
-            tables: @js($tables),
-            currentAreaId: @json(optional($areas->first())->id),
+            areas: @json($areas),
+            tables: @json($tables),
+            currentAreaId: @json(!empty($areas) && count($areas) > 0 ? $areas[0]['id'] : null),
             createUrl: @json(route('admin.orders.create')),
-
+            
+            init() {
+                // Asegurar que currentAreaId sea un número
+                if (this.currentAreaId) {
+                    this.currentAreaId = Number(this.currentAreaId);
+                }
+                // Si no hay área seleccionada pero hay áreas disponibles, seleccionar la primera
+                if (!this.currentAreaId && this.areas && this.areas.length > 0) {
+                    this.currentAreaId = Number(this.areas[0].id);
+                }
+                console.log('Áreas cargadas:', this.areas);
+                console.log('Mesas cargadas:', this.tables);
+                console.log('Área actual:', this.currentAreaId);
+                console.log('Mesas filtradas:', this.filteredTables);
+            },
+            
             get filteredTables() {
                 if (!this.currentAreaId) {
                     return [];
                 }
-                return this.tables.filter(t => t.area_id === this.currentAreaId);
+                const areaId = Number(this.currentAreaId);
+                const filtered = this.tables.filter(t => Number(t.area_id) === areaId);
+                console.log('Mesas filtradas para área', areaId, ':', filtered);
+                return filtered;
             },
 
             switchArea(area) {
-                this.currentAreaId = area.id;
+                this.currentAreaId = Number(area.id);
+                console.log('Cambiando a área:', this.currentAreaId);
             },
 
             openTable(table) {

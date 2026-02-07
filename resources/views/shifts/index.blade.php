@@ -31,20 +31,23 @@
                     />
                 </div>
                 <div class="flex flex-wrap gap-2">
-                    <x-ui.link-button size="sm" variant="primary" type="submit" href="{{ route('shifts.index') }}" :startIcon="$SearchIcon">Buscar</x-ui.link-button>
-                    <x-ui.link-button  size="sm" variant="outline" href="{{ route('shifts.index') }}" :startIcon="$ClearIcon">Limpiar</x-ui.link-button>
+                    <x-ui.button size="sm" variant="primary" type="submit" href="{{ route('shifts.index') }}" :startIcon="$SearchIcon">Buscar</x-ui.link-button>
+                    <x-ui.button  size="sm" variant="outline" href="{{ route('shifts.index') }}" :startIcon="$ClearIcon">Limpiar</x-ui.link-button>
                 </div>
             </form>
             
-            <x-ui.link-button
+            <x-ui.button
+            <x-ui.button
+            <x-ui.button
                 size="md"
                 variant="primary"
+                type="button"
                 style=" background-color: #12f00e; color: #111827;"  
                 @click="$dispatch('open-shift-modal')"
             >
                 <i class="ri-add-line"></i>
                 <span>Nuevo turno</span>
-            </x-ui.link-button>
+            </x-ui.button>
         </div>
 
         <div class="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -91,13 +94,13 @@
                                 </td>
                                 <td class="px-5 py-4">
                                     <div class="flex items-center justify-end gap-2">
-                                        <x-ui.link-button
+                                        <x-ui.button
                                             size="icon" variant="edit" href="{{ route('shifts.edit', $shift) }}"
                                             style="border-radius: 100%; background-color: #FBBF24; color: #111827;"
                                             title="Editar"
                                         >
                                             <i class="ri-pencil-line"></i>
-                                        </x-ui.link-button>
+                                        </x-ui.button>
 
                                         <form method="POST" action="{{ route('shifts.destroy', $shift) }}" 
                                               class="js-delete-shift" data-shift-name="{{ $shift->name }}">
@@ -183,45 +186,51 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
-    const bindDeleteSweetAlert = () => {
-        document.querySelectorAll('.js-delete-shift').forEach((form) => {
-            
-            if (form.dataset.swalBound === 'true') return;
-            form.dataset.swalBound = 'true';
-
-            form.addEventListener('submit', (event) => {
-                event.preventDefault(); 
+    (function() {
+        // Evitar redeclaración usando IIFE
+        if (window.shiftsBindDeleteSweetAlert) return;
+        window.shiftsBindDeleteSweetAlert = true;
+        
+        const bindDeleteSweetAlert = () => {
+            document.querySelectorAll('.js-delete-shift').forEach((form) => {
                 
-                const name = form.dataset.shiftName || 'este turno';
+                if (form.dataset.swalBound === 'true') return;
+                form.dataset.swalBound = 'true';
 
-                if (!window.Swal) {
-                    console.warn('SweetAlert2 no está cargado. Enviando formulario sin confirmación.');
-                    form.submit();
-                    return;
-                }
+                form.addEventListener('submit', (event) => {
+                    event.preventDefault(); 
+                    
+                    const name = form.dataset.shiftName || 'este turno';
 
-                Swal.fire({
-                    title: '¿Eliminar turno?',
-                    text: `Se eliminará "${name}". Esta acción no se puede deshacer.`,
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonText: 'Sí, eliminar',
-                    cancelButtonText: 'Cancelar',
-                    confirmButtonColor: '#ef4444', 
-                    cancelButtonColor: '#6b7280', 
-                    reverseButtons: true, 
-                    focusCancel: true 
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        form.submit(); 
+                    if (!window.Swal) {
+                        console.warn('SweetAlert2 no está cargado. Enviando formulario sin confirmación.');
+                        form.submit();
+                        return;
                     }
+
+                    Swal.fire({
+                        title: '¿Eliminar turno?',
+                        text: `Se eliminará "${name}". Esta acción no se puede deshacer.`,
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonText: 'Sí, eliminar',
+                        cancelButtonText: 'Cancelar',
+                        confirmButtonColor: '#ef4444', 
+                        cancelButtonColor: '#6b7280', 
+                        reverseButtons: true, 
+                        focusCancel: true 
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            form.submit(); 
+                        }
+                    });
                 });
             });
-        });
-    };
+        };
 
-    document.addEventListener('DOMContentLoaded', bindDeleteSweetAlert);
-    document.addEventListener('turbo:load', bindDeleteSweetAlert);
+        document.addEventListener('DOMContentLoaded', bindDeleteSweetAlert);
+        document.addEventListener('turbo:load', bindDeleteSweetAlert);
+    })();
 </script>
 @endpush
 @endsection

@@ -2,12 +2,19 @@
 
 @section('content')
     <div x-data="{}">
+        @php
+            $viewId = request('view_id');
+            $companyViewId = request('company_view_id');
+            $branchViewId = request('branch_view_id') ?? session('branch_view_id');
+            $profileViewId = request('profile_view_id') ?? session('profile_view_id');
+            $requestIcon = request('icon');
+        @endphp
         <x-common.page-breadcrumb
             pageTitle="Operaciones"
             :crumbs="[
-                ['label' => 'Empresas', 'url' => route('admin.companies.index')],
-                ['label' => $company->legal_name . ' | Sucursales', 'url' => route('admin.companies.branches.index', $company)],
-                ['label' => $branch->legal_name . ' | Perfiles', 'url' => route('admin.companies.branches.profiles.index', [$company, $branch])],
+                ['label' => 'Empresas', 'url' => route('admin.companies.index', $companyViewId ? ['view_id' => $companyViewId] : [])],
+                ['label' => $company->legal_name . ' | Sucursales', 'url' => route('admin.companies.branches.index', array_merge([$company], array_filter(['view_id' => $branchViewId ?: $viewId, 'company_view_id' => $companyViewId, 'icon' => $requestIcon])))],
+                ['label' => $branch->legal_name . ' | Perfiles', 'url' => route('admin.companies.branches.profiles.index', array_merge([$company, $branch], array_filter(['view_id' => $profileViewId ?: $viewId, 'company_view_id' => $companyViewId, 'branch_view_id' => $branchViewId, 'icon' => $requestIcon])))],
                 ['label' => $profile->name . ' | Operaciones']
             ]"
         />
@@ -18,6 +25,21 @@
         >
             <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                 <form method="GET" class="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
+                    @if ($viewId)
+                        <input type="hidden" name="view_id" value="{{ $viewId }}">
+                    @endif
+                    @if ($companyViewId)
+                        <input type="hidden" name="company_view_id" value="{{ $companyViewId }}">
+                    @endif
+                    @if ($branchViewId)
+                        <input type="hidden" name="branch_view_id" value="{{ $branchViewId }}">
+                    @endif
+                    @if ($profileViewId)
+                        <input type="hidden" name="profile_view_id" value="{{ $profileViewId }}">
+                    @endif
+                    @if ($requestIcon)
+                        <input type="hidden" name="icon" value="{{ $requestIcon }}">
+                    @endif
                     <div class="w-29">
                         <select
                             name="per_page"
@@ -46,14 +68,14 @@
                             <i class="ri-search-line"></i>
                             <span>Buscar</span>
                         </x-ui.button>
-                        <x-ui.link-button size="sm" variant="outline" href="{{ route('admin.companies.branches.profiles.operations.index', [$company, $branch, $profile]) }}">
+                        <x-ui.link-button size="sm" variant="outline" href="{{ route('admin.companies.branches.profiles.operations.index', array_merge([$company, $branch, $profile], array_filter(['view_id' => $viewId, 'company_view_id' => $companyViewId, 'branch_view_id' => $branchViewId, 'profile_view_id' => $profileViewId, 'icon' => $requestIcon]))) }}">
                             <i class="ri-close-line"></i>
                             <span>Limpiar</span>
                         </x-ui.link-button>
                     </div>
                 </form>
                 <div class="flex flex-wrap gap-2">
-                    <x-ui.link-button size="md" variant="outline" href="{{ route('admin.companies.branches.profiles.index', [$company, $branch]) }}">
+                    <x-ui.link-button size="md" variant="outline" href="{{ route('admin.companies.branches.profiles.index', array_merge([$company, $branch], array_filter(['view_id' => $profileViewId ?: $viewId, 'company_view_id' => $companyViewId, 'branch_view_id' => $branchViewId, 'icon' => $requestIcon]))) }}">
                         <i class="ri-arrow-left-line"></i>
                         <span>Volver a perfiles</span>
                     </x-ui.link-button>

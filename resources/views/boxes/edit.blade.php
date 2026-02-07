@@ -7,7 +7,7 @@
         x-data="{ 
             open: true,
             redirectToIndex() {
-                window.location.href = '{{ route('admin.boxes.index') }}';
+                window.location.href = '{{ route('boxes.index') }}';
             }
         }"
         x-init="$watch('open', value => {
@@ -48,7 +48,7 @@
                 </div>
             @endif
 
-            <form method="POST" action="{{ route('admin.boxes.update', $box->id) }}" class="space-y-6">
+            <form method="POST" action="{{ route('boxes.update', $box->id) }}" class="space-y-6">
                 @csrf
                 @method('PUT')
 
