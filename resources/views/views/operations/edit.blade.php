@@ -57,6 +57,9 @@
             <form method="POST" action="{{ $viewId ? route('admin.views.operations.update', [$view->id, $operation->id]) . '?view_id=' . $viewId : route('admin.views.operations.update', [$view->id, $operation->id]) }}" class="space-y-6">
                 @csrf
                 @method('PUT')
+                @if ($viewId)
+                    <input type="hidden" name="view_id" value="{{ $viewId }}">
+                @endif
 
                 <div class="grid gap-5">
                     <div>

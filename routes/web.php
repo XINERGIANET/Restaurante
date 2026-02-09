@@ -82,6 +82,8 @@ Route::middleware('auth')->group(function () {
         ->name('admin.companies.branches.profiles.operations.index');
     Route::post('/admin/herramientas/empresas/{company}/sucursales/{branch}/perfiles/{profile}/operaciones/asignar', [BranchController::class, 'assignProfileOperations'])
         ->name('admin.companies.branches.profiles.operations.assign');
+    Route::patch('/admin/herramientas/empresas/{company}/sucursales/{branch}/perfiles/{profile}/operaciones/{operation}/toggle', [BranchController::class, 'toggleProfileOperation'])
+        ->name('admin.companies.branches.profiles.operations.toggle');
     Route::get('/admin/herramientas/empresas/{company}/sucursales/{branch}/vistas', [BranchController::class, 'viewsIndex'])
         ->name('admin.companies.branches.views.index');
     Route::post('/admin/herramientas/empresas/{company}/sucursales/{branch}/vistas', [BranchController::class, 'updateViews'])

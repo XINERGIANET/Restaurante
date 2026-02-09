@@ -100,6 +100,9 @@
                             <th class="px-5 py-3 text-left sm:px-6">
                                 <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Estado</p>
                             </th>
+                            <th class="px-5 py-3 text-center sm:px-6">
+                                <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Acciones</p>
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
@@ -122,10 +125,50 @@
                                         {{ $operation->status ? 'Activo' : 'Inactivo' }}
                                     </x-ui.badge>
                                 </td>
+                                <td class="px-5 py-4 sm:px-6 text-center">
+                                    <div class="flex items-center justify-center">
+                                        <form
+                                            method="POST"
+                                            action="{{ route('admin.companies.branches.profiles.operations.toggle', [$company, $branch, $profile, $operation->id]) }}"
+                                            class="relative group"
+                                        >
+                                            @csrf
+                                            @method('PATCH')
+                                            @if ($viewId)
+                                                <input type="hidden" name="view_id" value="{{ $viewId }}">
+                                            @endif
+                                            @if ($companyViewId)
+                                                <input type="hidden" name="company_view_id" value="{{ $companyViewId }}">
+                                            @endif
+                                            @if ($branchViewId)
+                                                <input type="hidden" name="branch_view_id" value="{{ $branchViewId }}">
+                                            @endif
+                                            @if ($profileViewId)
+                                                <input type="hidden" name="profile_view_id" value="{{ $profileViewId }}">
+                                            @endif
+                                            @if ($requestIcon)
+                                                <input type="hidden" name="icon" value="{{ $requestIcon }}">
+                                            @endif
+                                            <x-ui.button
+                                                size="icon"
+                                                variant="primary"
+                                                type="submit"
+                                                className="{{ $operation->status ? 'bg-brand-500 text-white hover:bg-brand-600' : 'bg-gray-500 text-white hover:bg-gray-600' }} ring-0 rounded-full"
+                                                style="border-radius: 100%;"
+                                                aria-label="{{ $operation->status ? 'Desactivar' : 'Activar' }}"
+                                            >
+                                                <i class="{{ $operation->status ? 'ri-eye-line' : 'ri-eye-off-line' }}"></i>
+                                            </x-ui.button>
+                                            <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">
+                                                {{ $operation->status ? 'Desactivar' : 'Activar' }}
+                                            </span>
+                                        </form>
+                                    </div>
+                                </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="3" class="px-6 py-12">
+                                <td colspan="4" class="px-6 py-12">
                                     <div class="flex flex-col items-center gap-3 text-center text-sm text-gray-500">
                                         <div class="rounded-full bg-gray-100 p-3 text-gray-400 dark:bg-gray-800 dark:text-gray-300">
                                             <i class="ri-list-check-2"></i>

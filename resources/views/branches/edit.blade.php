@@ -1,6 +1,10 @@
 @extends('layouts.app')
 
 @section('content')
+    @php
+        $viewId = request('view_id');
+        $indexUrl = route('admin.companies.branches.index', $viewId ? [$company, 'view_id' => $viewId] : $company);
+    @endphp
     <x-common.page-breadcrumb pageTitle="Sucursales" />
 
     <x-ui.modal
@@ -8,9 +12,9 @@
             open: true,
             close() {
                 if (window.Turbo && typeof window.Turbo.visit === 'function') {
-                    window.Turbo.visit('{{ route('admin.companies.branches.index', $company) }}', { action: 'replace' });
+                    window.Turbo.visit('{{ $indexUrl }}', { action: 'replace' });
                 } else {
-                    window.location.href = '{{ route('admin.companies.branches.index', $company) }}';
+                    window.location.href = '{{ $indexUrl }}';
                 }
             }
         }"
@@ -30,8 +34,8 @@
                     </div>
                 </div>
                 <a
-                    href="{{ route('admin.companies.branches.index', $company) }}"
-                    onclick="if (window.Turbo && typeof window.Turbo.visit === 'function') { window.Turbo.visit('{{ route('admin.companies.branches.index', $company) }}', { action: 'replace' }); return false; }"
+                    href="{{ $indexUrl }}"
+                    onclick="if (window.Turbo && typeof window.Turbo.visit === 'function') { window.Turbo.visit('{{ $indexUrl }}', { action: 'replace' }); return false; }"
                     class="flex h-11 w-11 items-center justify-center rounded-full bg-gray-100 text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
                     aria-label="Cerrar"
                 >
@@ -45,9 +49,12 @@
                 </div>
             @endif
 
-            <form method="POST" action="{{ route('admin.companies.branches.update', [$company, $branch]) }}" class="space-y-6" enctype="multipart/form-data">
+            <form method="POST" action="{{ $viewId ? route('admin.companies.branches.update', [$company, $branch]) . '?view_id=' . $viewId : route('admin.companies.branches.update', [$company, $branch]) }}" class="space-y-6" enctype="multipart/form-data">
                 @csrf
                 @method('PUT')
+                @if ($viewId)
+                    <input type="hidden" name="view_id" value="{{ $viewId }}">
+                @endif
 
                 @include('branches._form', ['branch' => $branch])
 
@@ -59,8 +66,8 @@
                     <x-ui.link-button
                         size="md"
                         variant="outline"
-                        href="{{ route('admin.companies.branches.index', $company) }}"
-                        onclick="if (window.Turbo && typeof window.Turbo.visit === 'function') { window.Turbo.visit('{{ route('admin.companies.branches.index', $company) }}', { action: 'replace' }); return false; }"
+                        href="{{ $indexUrl }}"
+                        onclick="if (window.Turbo && typeof window.Turbo.visit === 'function') { window.Turbo.visit('{{ $indexUrl }}', { action: 'replace' }); return false; }"
                     >
                         <i class="ri-close-line"></i>
                         <span>Cancelar</span>
