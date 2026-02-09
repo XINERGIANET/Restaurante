@@ -284,7 +284,7 @@
                                                         class="inline-flex h-10 w-10 items-center justify-center rounded-xl shadow-theme-xs transition hover:opacity-90"
                                                         style="{{ $buttonStyle }}"
                                                         aria-label="{{ $operation->name }}"
-                                                        @click="$dispatch('open-reset-password', { action: '{{ route('admin.companies.branches.people.user.password', [$company, $branch, $person]) }}', person: @js($person->first_name . ' ' . $person->last_name) })"
+                                                @click="$dispatch('open-reset-password', { action: '{{ $viewId ? route('admin.companies.branches.people.user.password', [$company, $branch, $person]) . '?view_id=' . $viewId : route('admin.companies.branches.people.user.password', [$company, $branch, $person]) }}', person: @js($person->first_name . ' ' . $person->last_name) })"
                                                     >
                                                         <i class="{{ $operation->icon }}"></i>
                                                     </button>
@@ -483,6 +483,9 @@
                 <form method="POST" :action="data?.action" class="space-y-5">
                     @csrf
                     @method('PATCH')
+                    @if ($viewId)
+                        <input type="hidden" name="view_id" value="{{ $viewId }}">
+                    @endif
                     <div>
                         <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Nueva contraseña</label>
                         <input
