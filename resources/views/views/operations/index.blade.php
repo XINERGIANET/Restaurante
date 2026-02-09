@@ -82,6 +82,9 @@
             };
 
             $resolveTextColor = function ($operation) {
+                if (($operation->type ?? null) === 'T') {
+                    return '#111827';
+                }
                 $action = $operation->action ?? '';
                 if (str_contains($action, 'views.operations.store') || str_contains($action, 'views.operations.create')) {
                     return '#111827';
@@ -139,8 +142,10 @@
                             $topColor = $operation->color ?: '#3B82F6';
                             $topStyle = "background-color: {$topColor}; color: {$topTextColor};";
                             $topActionUrl = $resolveActionUrl($operation->action ?? '', [$view], $operation);
-                            $isCreate = str_contains($operation->action ?? '', 'views.operations.store')
-                                || str_contains($operation->action ?? '', 'views.operations.create');
+                            $isCreate = ($operation->type ?? null) === 'T'
+                                || str_contains($operation->action ?? '', 'views.operations.store')
+                                || str_contains($operation->action ?? '', 'views.operations.create')
+                                || str_contains($operation->action ?? '', 'open-create-modal');
                         @endphp
                         @if ($isCreate)
                             <x-ui.button

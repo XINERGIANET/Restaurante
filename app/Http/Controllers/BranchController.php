@@ -23,6 +23,87 @@ class BranchController extends Controller
         $branchId = $request->session()->get('branch_id');
         $profileId = $request->session()->get('profile_id') ?? $request->user()?->profile_id;
         $operaciones = collect();
+        if ($viewId && $branchId && $profileId) {
+            $operaciones = Operation::query()
+                ->select('operations.*')
+                ->join('branch_operation', function ($join) use ($branchId) {
+                    $join->on('branch_operation.operation_id', '=', 'operations.id')
+                        ->where('branch_operation.branch_id', $branchId)
+                        ->where('branch_operation.status', 1)
+                        ->whereNull('branch_operation.deleted_at');
+                })
+                ->join('operation_profile_branch', function ($join) use ($branchId, $profileId) {
+                    $join->on('operation_profile_branch.operation_id', '=', 'operations.id')
+                        ->where('operation_profile_branch.branch_id', $branchId)
+                        ->where('operation_profile_branch.profile_id', $profileId)
+                        ->where('operation_profile_branch.status', 1)
+                        ->whereNull('operation_profile_branch.deleted_at');
+                })
+                ->where('operations.status', 1)
+                ->where('operations.view_id', $viewId)
+                ->whereNull('operations.deleted_at')
+                ->orderBy('operations.id')
+                ->distinct()
+                ->get();
+        }
+        $viewId = $request->input('view_id');
+        $branchId = $request->session()->get('branch_id');
+        $profileId = $request->session()->get('profile_id') ?? $request->user()?->profile_id;
+        $operaciones = collect();
+        if ($viewId && $branchId && $profileId) {
+            $operaciones = Operation::query()
+                ->select('operations.*')
+                ->join('branch_operation', function ($join) use ($branchId) {
+                    $join->on('branch_operation.operation_id', '=', 'operations.id')
+                        ->where('branch_operation.branch_id', $branchId)
+                        ->where('branch_operation.status', 1)
+                        ->whereNull('branch_operation.deleted_at');
+                })
+                ->join('operation_profile_branch', function ($join) use ($branchId, $profileId) {
+                    $join->on('operation_profile_branch.operation_id', '=', 'operations.id')
+                        ->where('operation_profile_branch.branch_id', $branchId)
+                        ->where('operation_profile_branch.profile_id', $profileId)
+                        ->where('operation_profile_branch.status', 1)
+                        ->whereNull('operation_profile_branch.deleted_at');
+                })
+                ->where('operations.status', 1)
+                ->where('operations.view_id', $viewId)
+                ->whereNull('operations.deleted_at')
+                ->orderBy('operations.id')
+                ->distinct()
+                ->get();
+        }
+        $viewId = $request->input('view_id');
+        $branchId = $request->session()->get('branch_id');
+        $profileId = $request->session()->get('profile_id') ?? $request->user()?->profile_id;
+        $operaciones = collect();
+        if ($viewId && $branchId && $profileId) {
+            $operaciones = Operation::query()
+                ->select('operations.*')
+                ->join('branch_operation', function ($join) use ($branchId) {
+                    $join->on('branch_operation.operation_id', '=', 'operations.id')
+                        ->where('branch_operation.branch_id', $branchId)
+                        ->where('branch_operation.status', 1)
+                        ->whereNull('branch_operation.deleted_at');
+                })
+                ->join('operation_profile_branch', function ($join) use ($branchId, $profileId) {
+                    $join->on('operation_profile_branch.operation_id', '=', 'operations.id')
+                        ->where('operation_profile_branch.branch_id', $branchId)
+                        ->where('operation_profile_branch.profile_id', $profileId)
+                        ->where('operation_profile_branch.status', 1)
+                        ->whereNull('operation_profile_branch.deleted_at');
+                })
+                ->where('operations.status', 1)
+                ->where('operations.view_id', $viewId)
+                ->whereNull('operations.deleted_at')
+                ->orderBy('operations.id')
+                ->distinct()
+                ->get();
+        }
+        $viewId = $request->input('view_id');
+        $branchId = $request->session()->get('branch_id');
+        $profileId = $request->session()->get('profile_id') ?? $request->user()?->profile_id;
+        $operaciones = collect();
         if ($viewId) {
             $request->session()->put('branch_view_id', $viewId);
         }
@@ -243,6 +324,7 @@ class BranchController extends Controller
             'assignedViewIds' => $assignedViewIds,
             'search' => $search,
             'perPage' => $perPage,
+            'operaciones' => $operaciones,
         ]);
     }
 
@@ -288,12 +370,25 @@ class BranchController extends Controller
             }
         });
 
+        $viewId = $request->input('view_id');
+        $companyViewId = $request->input('company_view_id');
+        $branchViewId = $request->input('branch_view_id');
+        $icon = $request->input('icon');
+
         return redirect()
-            ->route('admin.companies.branches.views.index', [$company, $branch])
+            ->route('admin.companies.branches.views.index', array_merge(
+                [$company, $branch],
+                array_filter([
+                    'view_id' => $viewId,
+                    'company_view_id' => $companyViewId,
+                    'branch_view_id' => $branchViewId,
+                    'icon' => $icon,
+                ])
+            ))
             ->with('status', 'Vistas asignadas correctamente.');
     }
 
-    public function removeViewAssignment(Company $company, Branch $branch, View $view)
+    public function removeViewAssignment(Request $request, Company $company, Branch $branch, View $view)
     {
         $branch = $this->resolveBranch($company, $branch);
         $this->ensureViewAssignedToBranch($view->id, $branch->id);
@@ -310,8 +405,21 @@ class BranchController extends Controller
             ->whereNull('deleted_at')
             ->update(['deleted_at' => now(), 'updated_at' => now()]);
 
+        $viewId = $request->input('view_id');
+        $companyViewId = $request->input('company_view_id');
+        $branchViewId = $request->input('branch_view_id');
+        $icon = $request->input('icon');
+
         return redirect()
-            ->route('admin.companies.branches.views.index', [$company, $branch])
+            ->route('admin.companies.branches.views.index', array_merge(
+                [$company, $branch],
+                array_filter([
+                    'view_id' => $viewId,
+                    'company_view_id' => $companyViewId,
+                    'branch_view_id' => $branchViewId,
+                    'icon' => $icon,
+                ])
+            ))
             ->with('status', 'Vista desasignada correctamente.')
             ->with('viewBranch', $viewBranch);
     }
