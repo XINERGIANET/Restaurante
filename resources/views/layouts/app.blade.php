@@ -256,6 +256,7 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
 
 @if (session('status'))
 <script>
+(function() {
     const showStatusToast = () => {
         const message = @json(session('status'));
         const key = 'toast:status';
@@ -279,11 +280,13 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
     };
     document.addEventListener('DOMContentLoaded', showStatusToast, { once: true });
     document.addEventListener('turbo:load', showStatusToast);
+})();
 </script>
 @endif
 
 @if (session('error'))
 <script>
+(function() {
     const showErrorToast = () => {
         const message = @json(session('error'));
         const key = 'toast:error';
@@ -307,6 +310,7 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
     };
     document.addEventListener('DOMContentLoaded', showErrorToast, { once: true });
     document.addEventListener('turbo:load', showErrorToast);
+})();
 </script>
 @endif
 <script>

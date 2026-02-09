@@ -984,13 +984,27 @@
             
             let sale = null;
             
+            // Filtrar ítems válidos: pId y qty > 0, y que el producto exista en la BD (productsMap)
+            function validItems(items) {
+                if (!Array.isArray(items)) return [];
+                return items.filter(it => {
+                    const id = it.pId ?? it.id;
+                    const qty = Number(it.qty) || 0;
+                    if (id == null || id === '' || Number.isNaN(Number(id)) || qty <= 0) return false;
+                    // Excluir productos que no existen en la BD (evita "Producto #5" fantasma)
+                    const idStr = String(id);
+                    const exists = productsMap && (Object.prototype.hasOwnProperty.call(productsMap, idStr) || Object.prototype.hasOwnProperty.call(productsMap, Number(id)));
+                    return !!exists;
+                });
+            }
+
             // Si hay un borrador del servidor, usarlo
             if (draftSaleFromServer && draftSaleFromServer.items && draftSaleFromServer.items.length > 0) {
                 sale = {
                     id: draftSaleFromServer.id,
                     number: draftSaleFromServer.number,
                     clientName: draftSaleFromServer.clientName || 'Público General',
-                    items: draftSaleFromServer.items,
+                    items: validItems(draftSaleFromServer.items),
                     status: 'draft',
                     notes: draftSaleFromServer.notes || '',
                     pendingAmount: draftSaleFromServer.pendingAmount || 0
@@ -999,7 +1013,17 @@
                 // Si no, intentar cargar desde localStorage
                 const db = JSON.parse(localStorage.getItem('restaurantDB') || '{}');
                 const activeKey = localStorage.getItem(ACTIVE_SALE_KEY_STORAGE);
-                sale = activeKey ? db[activeKey] : null;
+                const fromStorage = activeKey ? db[activeKey] : null;
+                if (fromStorage && Array.isArray(fromStorage.items)) {
+                    sale = { ...fromStorage, items: validItems(fromStorage.items) };
+                    // Actualizar localStorage con ítems filtrados para no volver a cargar fantasmas
+                    if (sale.items.length !== fromStorage.items.length && activeKey) {
+                        db[activeKey] = sale;
+                        localStorage.setItem('restaurantDB', JSON.stringify(db));
+                    }
+                } else {
+                    sale = fromStorage;
+                }
             }
 
             function fmtMoney(n) {
@@ -1168,7 +1192,7 @@
 
                 const payload = {
                     items: sale.items.map(it => ({
-                        pId: it.id,
+                        pId: it.pId ?? it.id,
                         name: it.name,
                         qty: Number(it.qty) || 0,
                         price: Number(it.price) || 0,

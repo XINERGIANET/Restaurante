@@ -235,6 +235,7 @@
     </style>
 
     <script>
+        (function() {
         const productsDBRaw = @json($products);
         const productsBranchesRaw = @json($productsBranches);
         const productsDB = Array.isArray(productsDBRaw) ? productsDBRaw : Object.values(productsDBRaw || {});
@@ -338,10 +339,13 @@
             const existing = currentSale.items.find(i => i.pId === prod.id);
             
             // Efecto visual en el producto clickeado
-            if (event && event.currentTarget) {
-                event.currentTarget.classList.add('product-click-effect');
+            const clickedEl = event && event.currentTarget;
+            if (clickedEl) {
+                clickedEl.classList.add('product-click-effect');
                 setTimeout(() => {
-                    event.currentTarget.classList.remove('product-click-effect');
+                    if (clickedEl && clickedEl.classList) {
+                        clickedEl.classList.remove('product-click-effect');
+                    }
                 }, 300);
             }
 
@@ -369,7 +373,10 @@
                 if (cartHeader) {
                     cartHeader.classList.add('shake-animation');
                     setTimeout(() => {
-                        cartHeader.classList.remove('shake-animation');
+                        const header = document.querySelector('aside h3');
+                        if (header && header.classList) {
+                            header.classList.remove('shake-animation');
+                        }
                     }, 500);
                 }
             } catch (error) {
@@ -564,7 +571,10 @@
                     if (newProductId) {
                         cartCountBadge.classList.add('qty-badge-pop');
                         setTimeout(() => {
-                            cartCountBadge.classList.remove('qty-badge-pop');
+                            const badge = document.getElementById('cart-count-badge');
+                            if (badge && badge.classList) {
+                                badge.classList.remove('qty-badge-pop');
+                            }
                         }, 300);
                     }
                 }
@@ -763,6 +773,13 @@
 
         init();
 
+        window.goBack = goBack;
+        window.getImageUrl = getImageUrl;
+        window.updateQty = updateQty;
+        window.toggleNoteInput = toggleNoteInput;
+        window.goToChargeView = goToChargeView;
+        window.hideNotification = hideNotification;
+        })();
         // Nota: el cobro ahora es una vista (admin.sales.charge), ya no modal.
     </script>
 @endsection
