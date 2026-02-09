@@ -131,25 +131,25 @@
                     <table class="w-full min-w-[880px]">
                         <thead class="text-left text-theme-xs dark:text-gray-400">
                             <tr class="border-b border-gray-100 dark:border-gray-800">
-                                <th class="px-5 py-3 text-center sm:px-6">
+                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-center sm:px-6">
                                     ID
                                 </th>
-                                <th class="px-5 py-3 text-center sm:px-6">
+                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-center sm:px-6">
                                     Descripcion
                                 </th>
-                                <th class="px-5 py-3 text-center sm:px-6">
+                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-center sm:px-6">
                                     Valor
                                 </th>
-                                <th class="px-5 py-3 text-center sm:px-6">
+                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-center sm:px-6">
                                     Categoria
                                 </th>
-                                <th class="px-5 py-3 text-center sm:px-6">
+                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-center sm:px-6">
                                     Estado
                                 </th>
-                                <th class="px-5 py-3 text-center sm:px-6">
+                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-center sm:px-6">
                                     Fecha de creacion
                                 </th>
-                                <th class="px-5 py-3 text-center sm:px-6">
+                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-center sm:px-6">
                                     Acciones
                                 </th>
                             </tr>

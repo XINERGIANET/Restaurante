@@ -35,7 +35,7 @@
                         />
                     </div>
                     <div class="flex flex-wrap gap-2">
-                        <x-ui.button size="sm" variant="primary" type="submit" style="background-color: #63B7EC; border-color: #63B7EC;">
+                        <x-ui.button size="sm" variant="primary" type="submit" style="background-color: #244BB3; border-color: #244BB3;">
                             <i class="ri-search-line text-gray-100"></i> <span class="text-gray-100">Buscar</span>
                         </x-ui.button>
                         <x-ui.link-button size="sm" variant="outline" href="{{ route('admin.modules.menu_options.index', $module) }}">

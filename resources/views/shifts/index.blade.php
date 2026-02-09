@@ -63,10 +63,10 @@
                 <table class="w-full min-w-[880px]">
                     <thead>
                         <tr class="border-b border-gray-100 dark:border-gray-800 text-left">
-                            <th class="px-5 py-3 font-medium text-gray-500 text-theme-xs dark:text-gray-400">Nombre / Abr.</th>
-                            <th class="px-5 py-3 font-medium text-gray-500 text-theme-xs dark:text-gray-400">Sucursal</th>
-                            <th class="px-5 py-3 font-medium text-gray-500 text-theme-xs dark:text-gray-400">Horario</th>
-                            <th class="px-5 py-3 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-right">Acciones</th>
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 font-medium text-theme-xs">Nombre / Abr.</th>
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 font-medium text-theme-xs">Sucursal</th>
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 font-medium text-theme-xs">Horario</th>
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 font-medium text-theme-xs text-right">Acciones</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100 dark:divide-gray-800">

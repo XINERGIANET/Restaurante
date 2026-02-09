@@ -99,7 +99,7 @@
                     />
                 </div>
                 <div class="flex flex-wrap gap-2">
-                    <x-ui.button size="sm" variant="primary" type="submit" :startIcon="$SearchIcon" style="background-color: #63B7EC; border-color: #63B7EC; color: #f3f4f6;">Buscar</x-ui.button>
+                    <x-ui.button size="sm" variant="primary" type="submit" :startIcon="$SearchIcon" style="background-color: #244BB3; border-color: #244BB3; color: #f3f4f6;">Buscar</x-ui.button>
                     <x-ui.link-button size="sm" variant="outline" href="{{ route('admin.modules.index', $viewId ? ['view_id' => $viewId] : []) }}" :startIcon="$ClearIcon">Limpiar</x-ui.link-button>
                 </div>
             </form>

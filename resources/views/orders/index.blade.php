@@ -264,26 +264,21 @@
                     }
                 },
 
-                switchArea(area) {
-                    this.currentAreaId = Number(area.id);
-                    this.updateFilteredTables();
-                    console.log('Cambiando a área:', this.currentAreaId);
-                },
+            switchArea(area) {
+                this.currentAreaId = Number(area.id);
+                console.log('Cambiando a área:', this.currentAreaId);
+            },
 
-                openTable(table) {
-                    const target = new URL(this.createUrl, window.location.origin);
-                    target.searchParams.set('table_id', table.id);
-                    if (window.Turbo && typeof window.Turbo.visit === 'function') {
-                        window.Turbo.visit(target.toString(), { action: 'advance' });
-                    } else {
-                        window.location.href = target.toString();
-                    }
+            openTable(table) {
+                const target = new URL(this.createUrl, window.location.origin);
+                target.searchParams.set('table_id', table.id);
+                if (window.Turbo && typeof window.Turbo.visit === 'function') {
+                    window.Turbo.visit(target.toString(), { action: 'advance' });
+                } else {
+                    window.location.href = target.toString();
                 }
-            };
-            
-            // Retornar el objeto después de asegurarnos de que filteredTables existe
-            return componentData;
-        });
+            }
+        }));
     });
 </script>
 @endsection

@@ -103,7 +103,7 @@
                         </div>
                     </div>
                     <div class="flex items-center gap-2 flex-none">
-                        <x-ui.button size="md" variant="primary" type="submit" class="flex-1 sm:flex-none h-11 px-4 shadow-sm hover:shadow-md transition-all duration-200 active:scale-95" style="background-color: #63B7EC; border-color: #63B7EC;">
+                        <x-ui.button size="md" variant="primary" type="submit" class="flex-1 sm:flex-none h-11 px-4 shadow-sm hover:shadow-md transition-all duration-200 active:scale-95" style="background-color: #244BB3; border-color: #244BB3;">
                             <i class="ri-search-line text-gray-100"></i>
                             <span class="font-medium text-gray-100">Buscar</span>
                         </x-ui.button>
@@ -153,14 +153,14 @@
                 <table class="w-full min-w-[600px]">
                     <thead>
                         <tr class="text-white">
-                            <th style="background-color: #63B7EC;" class="px-3 py-3 text-center sm:px-6 first:rounded-tl-xl sticky left-0 z-20 w-24 max-w-[96px] sm:w-auto sm:max-w-none shadow-[2px_0_5px_rgba(0,0,0,0.1)]">
-                                <p class="font-semibold text-gray-100 text-theme-xs truncate">Nombre</p>
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-3 py-3 text-center sm:px-6 first:rounded-tl-xl sticky left-0 z-20 w-24 max-w-[96px] sm:w-auto sm:max-w-none shadow-[2px_0_5px_rgba(0,0,0,0.1)]">
+                                <p class="font-semibold text-white text-theme-xs truncate">Nombre</p>
                             </th>
-                            <th style="background-color: #63B7EC;" class="px-5 py-3 text-center sm:px-6">
-                                <p class="font-semibold text-gray-100 text-theme-xs">Descripción</p>
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-center sm:px-6">
+                                <p class="font-semibold text-white text-theme-xs">Descripción</p>
                             </th>
-                            <th style="background-color: #63B7EC;" class="px-5 py-3 text-center sm:px-6">
-                                <p class="font-semibold text-gray-100 text-theme-xs">Acciones</p>
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-center sm:px-6">
+                                <p class="font-semibold text-white text-theme-xs">Acciones</p>
                             </th>
                         </tr>
                     </thead>

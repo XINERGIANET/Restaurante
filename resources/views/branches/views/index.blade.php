@@ -195,17 +195,17 @@
                 <table class="w-full">
                     <thead>
                         <tr class="border-b border-gray-100 dark:border-gray-800">
-                            <th class="px-5 py-3 text-left sm:px-6">
+                            <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6">
                                 <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Nombre</p>
                             </th>
-                            <th class="px-5 py-3 text-left sm:px-6">
-                                <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Abreviatura</p>
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                                <p class="font-medium text-white text-theme-xs dark:text-white">Abreviatura</p>
                             </th>
-                            <th class="px-5 py-3 text-left sm:px-6">
-                                <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Estado</p>
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                                <p class="font-medium text-white text-theme-xs dark:text-white">Estado</p>
                             </th>
-                            <th class="px-5 py-3 text-right sm:px-6">
-                                <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Acciones</p>
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-right sm:px-6">
+                                <p class="font-medium text-white text-theme-xs dark:text-white">Acciones</p>
                             </th>
                         </tr>
                     </thead>
