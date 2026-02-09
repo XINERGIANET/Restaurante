@@ -1,4 +1,4 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 
 @section('title', 'Punto de Venta')
 
@@ -22,7 +22,7 @@
                 </li>
                 <li>
                     <a class="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400" href="{{ route('admin.orders.index') }}">
-                        Salones de Pedidos
+                        crear orden
                         <svg class="stroke-current" width="17" height="16" viewBox="0 0 17 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M6.0765 12.667L10.2432 8.50033L6.0765 4.33366" stroke="" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"></path>
                         </svg>
@@ -54,18 +54,18 @@
                     <div>
                         <div class="flex items-center gap-2">
                             <h2 class="text-xl font-bold text-slate-800">
-                                Mesa <span id="pos-table-name" class="text-blue-600">--</span>
+                                Mesa <span id="pos-table-name" class="text-blue-600">{{ $table->name ?? $table->id }}</span>
                             </h2>
                             <span id="pos-table-area" class="text-[10px] font-bold px-2 py-0.5 bg-gray-100 text-gray-500 rounded uppercase tracking-wider border border-gray-200">--</span>
                         </div>
                         <div class="flex flex-col text-xs mt-0.5 text-gray-500 font-medium">
                             <div class="flex items-center">
                                 <span class="inline-block w-14 text-gray-400">Mozo:</span>
-                                <span id="pos-waiter-name" class="text-slate-700 font-semibold truncate max-w-[150px]">--</span>
+                                <span id="pos-waiter-name" class="text-slate-700 font-semibold truncate max-w-[150px]">{{ $user?->name ?? 'Sin asignar' }}</span>
                             </div>
                             <div class="flex items-center">
                                 <span class="inline-block w-14 text-gray-400">Cliente:</span>
-                                <span id="pos-client-name" class="text-slate-700 font-semibold truncate max-w-[150px]">--</span>
+                                <span id="pos-client-name" class="text-slate-700 font-semibold truncate max-w-[150px]">{{ $person?->name ?? 'Sin cliente' }}</span>
                             </div>
                         </div>
                     </div>
@@ -147,17 +147,32 @@
             ];
         @endphp
         const serverTable = @json($serverTableData);
+        console.log('Datos de la mesa desde el servidor:', serverTable);
+        
         let db = JSON.parse(localStorage.getItem('restaurantDB'));
         if(!db) db = {};
         let activeKey = `table-{{ $table->id }}`;
         let currentTable = db[activeKey] || serverTable;
-function init() {
-            document.getElementById('pos-table-name').innerText = currentTable.name || "{{ str_pad($table->name ?? $table->id, 2, '0', STR_PAD_LEFT) }}";
+        
+        console.log('Mesa actual cargada:', currentTable);
+        console.log('Clave activa:', activeKey);
+        function init() {
+            // Inicializar datos de la mesa
+            if (document.getElementById('pos-table-name')) {
+                document.getElementById('pos-table-name').innerText = currentTable.name || "{{ str_pad($table->name ?? $table->id, 2, '0', STR_PAD_LEFT) }}";
+            }
+            if (document.getElementById('pos-table-area')) {
                 document.getElementById('pos-table-area').innerText = currentTable.area || "{{ $table->area?->name ?? ($area?->name ?? 'Sin área') }}";
+            }
+            if (document.getElementById('pos-waiter-name')) {
                 document.getElementById('pos-waiter-name').innerText = currentTable.waiter || "{{ $user?->name ?? 'Sin asignar' }}";
-            document.getElementById('pos-client-name').innerText = currentTable.clientName || "{{ $person?->name ?? 'Sin cliente' }}";
+            }
+            if (document.getElementById('pos-client-name')) {
+                document.getElementById('pos-client-name').innerText = currentTable.clientName || "{{ $person?->name ?? 'Sin cliente' }}";
+            }
             renderProducts();
             renderTicket();
+            console.log('Inicialización completada correctamente');
         }
 
         // Función para escapar HTML y prevenir XSS
@@ -168,18 +183,53 @@ function init() {
             return div.innerHTML;
         }
 
+        // Función para obtener la URL de la imagen
+        function getImageUrl(imagePath) {
+            if (!imagePath || imagePath === 'null' || imagePath === null || imagePath === '') {
+                // Retornar una imagen placeholder o una imagen por defecto
+                return 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23e5e7eb" width="200" height="200"/%3E%3Ctext fill="%239ca3af" font-family="sans-serif" font-size="14" dy="10.5" font-weight="bold" x="50%25" y="50%25" text-anchor="middle"%3ESin imagen%3C/text%3E%3C/svg%3E';
+            }
+            // Si ya es una URL completa, retornarla
+            if (imagePath.startsWith('http://') || imagePath.startsWith('https://') || imagePath.startsWith('data:')) {
+                return imagePath;
+            }
+            // Si es una ruta relativa que empieza con /, retornarla tal cual
+            if (imagePath.startsWith('/')) {
+                return imagePath;
+            }
+            // Si es una ruta de storage, ya viene con asset() desde el servidor
+            return imagePath;
+        }
+
         // Datos de productos y productBranches desde el servidor
-        const serverProducts = @json($products);
-        const serverProductBranches = @json($productBranches);
+        const serverProducts = @json($products ?? []);
+        const serverProductBranches = @json($productBranches ?? []);
+        
+        console.log('Productos cargados:', serverProducts.length);
+        console.log('ProductBranches cargados:', serverProductBranches.length);
+        console.log('Primeros productos:', serverProducts.slice(0, 3));
+        console.log('Primeros productBranches:', serverProductBranches.slice(0, 3));
 
         function renderProducts() {
             const grid = document.getElementById('products-grid');
+            if (!grid) {
+                console.error('No se encontró el elemento products-grid');
+                return;
+            }
             grid.innerHTML = '';
+            
+            if (!serverProducts || serverProducts.length === 0) {
+                grid.innerHTML = '<div class="col-span-full text-center text-gray-500 py-8">No hay productos disponibles</div>';
+                return;
+            }
+            
+            let productsRendered = 0;
             serverProducts.forEach(prod => {
                 const productBranch = serverProductBranches.find(p => p.product_id === prod.id || p.id === prod.id);
                 
                 // Si no hay productBranch (producto no está en esta sucursal), no mostrar
-                if (!productBranch) {
+                if (!productBranch || !productBranch.price) {
+                    console.warn('Producto sin productBranch o sin precio:', prod.id);
                     return;
                 }
                 
@@ -191,8 +241,26 @@ function init() {
                 
                 const el = document.createElement('div');
                 el.className = "group cursor-pointer transition-transform duration-200 hover:scale-105";
+                
+                // Prevenir múltiples clics rápidos
+                let isAdding = false;
                 el.onclick = function(e) {
-                    addToCart(prod, productBranch, e);
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    // Prevenir agregar si ya se está procesando
+                    if (isAdding) {
+                        console.log('Ya se está agregando este producto, ignorando clic...');
+                        return;
+                    }
+                    
+                    isAdding = true;
+                    addToCart(prod, productBranch);
+                    
+                    // Permitir agregar de nuevo después de un breve delay
+                    setTimeout(() => {
+                        isAdding = false;
+                    }, 500);
                 };
 
                 const productName = escapeHtml(prod.name || 'Sin nombre');
@@ -226,16 +294,87 @@ function init() {
             </div>
         `;
                 grid.appendChild(el);
+                productsRendered++;
             });
+            
+            if (productsRendered === 0) {
+                grid.innerHTML = '<div class="col-span-full text-center text-gray-500 py-8">No hay productos disponibles para esta sucursal</div>';
+            }
+            
+            console.log(`Productos renderizados: ${productsRendered} de ${serverProducts.length}`);
         }
 
-        function addToCart(prod) {
+        function addToCart(prod, productBranch) {
             if(!currentTable.items) currentTable.items = [];
-            const existing = currentTable.items.find(i => i.pId === prod.id);
-            if(existing) { existing.qty++; } else {
-                currentTable.items.push({ pId: prod.id, qty: 1, price: prod.price, note: "" });
+            
+            if (!productBranch || !productBranch.price) {
+                console.error('No se puede agregar producto sin precio:', prod);
+                alert('Error: El producto no tiene precio configurado');
+                return;
             }
-            saveDB(); renderTicket();
+            
+            const price = parseFloat(productBranch.price);
+            if (isNaN(price) || price <= 0) {
+                console.error('Precio inválido:', productBranch.price);
+                alert('Error: El precio del producto no es válido');
+                return;
+            }
+            
+            // Asegurar que el ID del producto sea un número entero para la comparación
+            const productId = parseInt(prod.id, 10);
+            if (isNaN(productId) || productId <= 0) {
+                console.error('ID de producto inválido:', prod.id);
+                alert('Error: El producto no tiene un ID válido');
+                return;
+            }
+            
+            // Limpiar items inválidos antes de buscar
+            currentTable.items = currentTable.items.filter(i => {
+                const itemPId = parseInt(i.pId, 10);
+                return !isNaN(itemPId) && itemPId > 0;
+            });
+            
+            // Buscar si el producto ya existe en el carrito
+            const existing = currentTable.items.find(i => {
+                const itemPId = parseInt(i.pId, 10);
+                return !isNaN(itemPId) && itemPId === productId;
+            });
+            
+            console.log('Buscando producto existente:', {
+                productId: productId,
+                itemsActuales: currentTable.items.map(i => ({ pId: i.pId, name: i.name, qty: i.qty })),
+                encontrado: existing ? 'Sí' : 'No'
+            });
+            
+            if(existing) { 
+                // Si existe, solo aumentar la cantidad
+                existing.qty++; 
+                console.log('Producto agregado al carrito (cantidad aumentada):', {
+                    name: prod.name,
+                    price: price,
+                    pId: productId,
+                    cantidadAnterior: existing.qty - 1,
+                    cantidadNueva: existing.qty
+                });
+            } else {
+                // Si no existe, agregarlo como nuevo item
+                
+                currentTable.items.push({ 
+                    pId: productId, // Guardar como número entero
+                    name: prod.name || 'Sin nombre',
+                    qty: 1, 
+                    price: price, 
+                    note: "" 
+                });
+                console.log('Producto agregado al carrito:', {
+                    name: prod.name,
+                    price: price,
+                    pId: productId,
+                    pIdType: typeof productId
+                });
+            }
+            saveDB(); 
+            renderTicket();
         }
 
         function updateQty(index, change) {
@@ -254,6 +393,10 @@ function init() {
 
         function renderTicket() {
             const container = document.getElementById('cart-container');
+            if (!container) {
+                console.error('No se encontró el elemento cart-container');
+                return;
+            }
             container.innerHTML = '';
             let subtotal = 0;
 
@@ -266,9 +409,14 @@ function init() {
             } else {
                 currentTable.items.forEach((item, index) => {
                     const prod = serverProducts.find(p => p.id === item.pId);
-                    if (!prod) return;
+                    if (!prod) {
+                        console.warn('Producto no encontrado para item:', item.pId);
+                        return;
+                    }
                     
-                    subtotal += item.price * item.qty;
+                    const itemPrice = parseFloat(item.price) || 0;
+                    const itemQty = parseInt(item.qty) || 0;
+                    subtotal += itemPrice * itemQty;
                     const hasNote = item.note && item.note.trim() !== "";
 
                     const row = document.createElement('div');
@@ -307,25 +455,81 @@ function init() {
                 });
             }
             const tax = subtotal * 0.10;
-            document.getElementById('ticket-subtotal').innerText = `$${subtotal.toFixed(2)}`;
-            document.getElementById('ticket-tax').innerText = `$${tax.toFixed(2)}`;
-            document.getElementById('ticket-total').innerText = `$${(subtotal + tax).toFixed(2)}`;
+            const total = subtotal + tax;
+            
+            const subtotalEl = document.getElementById('ticket-subtotal');
+            const taxEl = document.getElementById('ticket-tax');
+            const totalEl = document.getElementById('ticket-total');
+            
+            if (subtotalEl) subtotalEl.innerText = `$${subtotal.toFixed(2)}`;
+            if (taxEl) taxEl.innerText = `$${tax.toFixed(2)}`;
+            if (totalEl) totalEl.innerText = `$${total.toFixed(2)}`;
+            
+            console.log('Ticket actualizado - Subtotal:', subtotal, 'Impuesto:', tax, 'Total:', total);
         }
 
         function saveDB() {
             if(db && currentTable) {
+                // Agregar timestamp para saber cuándo se guardó
+                currentTable.lastUpdated = new Date().toISOString();
+                currentTable.isActive = true;
                 db[activeKey] = currentTable;
                 localStorage.setItem('restaurantDB', JSON.stringify(db));
             }
         }
-        function goBack() { saveDB(); alert("Volviendo..."); }
-        function sendOrder() {
-            if(confirm("¿Cobrar?")) {
-                currentTable.status = 'free'; currentTable.items = []; currentTable.total = 0;
-                saveDB(); alert("Cobrado"); renderTicket();
-            }
+        function goBack() { 
+            saveDB(); 
+            window.location.href = "{{ route('admin.orders.index') }}";
         }
-        init();
+        
+        function sendOrder() {
+            if (!currentTable.items || currentTable.items.length === 0) {
+                alert("No hay productos en la orden");
+                return;
+            }
+            
+            // Validar que todos los items tengan pId válido
+            const itemsValidos = currentTable.items.filter(item => {
+                const pId = parseInt(item.pId, 10);
+                return !isNaN(pId) && pId > 0;
+            });
+            
+            if (itemsValidos.length === 0) {
+                alert("No hay productos válidos en la orden");
+                return;
+            }
+            
+            // Actualizar los items con solo los válidos
+            currentTable.items = itemsValidos;
+            
+            // Guardar la orden activa en localStorage con la clave correcta
+            const ACTIVE_ORDER_KEY_STORAGE = 'restaurantActiveOrderKey';
+            
+            // Marcar la orden como activa y agregar timestamp
+            currentTable.isActive = true;
+            currentTable.activatedAt = new Date().toISOString();
+            saveDB();
+            
+            // Guardar la clave activa SOLO cuando se va a cobrar
+            localStorage.setItem(ACTIVE_ORDER_KEY_STORAGE, activeKey);
+            
+            console.log('Orden guardada antes de redirigir:', {
+                activeKey: activeKey,
+                items: currentTable.items,
+                itemsCount: currentTable.items.length,
+                activatedAt: currentTable.activatedAt
+            });
+            
+            // Redirigir a la página de cobro
+            window.location.href = "{{ route('admin.orders.charge') }}";
+        }
+        
+        // Inicializar cuando el DOM esté listo
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
     </script>
 @endsection
 
