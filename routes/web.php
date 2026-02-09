@@ -33,7 +33,7 @@ use App\Http\Controllers\TaxRateController;
 use App\Http\Controllers\PettyCashController;
 use App\Http\Controllers\BoxController;
 use App\Http\Controllers\UnitController;
-
+use App\Http\Controllers\WarehouseMovementController;
 
 Route::prefix('restaurante')->name('restaurant.')->group(function () {
     Route::view('/', 'restaurant.home', ['title' => 'Xinergia Restaurante'])->name('home');
@@ -118,7 +118,7 @@ Route::middleware('auth')->group(function () {
     // POS: procesar venta (usado por resources/views/sales/create.blade.php)
     Route::post('/admin/ventas/procesar', [SalesController::class, 'processSale'])
         ->name('admin.sales.process');
-    
+
     // POS: guardar venta como borrador/pendiente
     Route::post('/admin/ventas/borrador', [SalesController::class, 'saveDraft'])
         ->name('admin.sales.draft');
@@ -139,7 +139,7 @@ Route::middleware('auth')->group(function () {
         ->names('admin.products')
         ->parameters(['productos' => 'product'])
         ->only(['index', 'store', 'edit', 'update', 'destroy']);
-    
+
     Route::get('/admin/herramientas/productos/{product}/product-branches/create', [ProductBranchController::class, 'create'])
         ->name('admin.products.product_branches.create');
     Route::post('/admin/herramientas/productos/{product}/product-branches', [ProductBranchController::class, 'store'])
@@ -148,10 +148,18 @@ Route::middleware('auth')->group(function () {
         ->name('admin.product_branches.store_generic');
     Route::put('/admin/herramientas/product-branches/{productBranch}', [ProductBranchController::class, 'update'])
         ->name('admin.product_branches.update');
-    Route::get('/admin/pedidos/salones', [OrderController::class, 'index'])
-        ->name('admin.orders.index');
-    Route::get('/admin/pedidos/nuevo', [OrderController::class, 'create'])
-        ->name('admin.orders.create');
+    Route::resource('/Pedidos', OrderController::class)
+        ->names('admin.orders')
+        ->parameters(['orders' => 'order'])
+        ->only(['index', 'create']); // Solo incluir los métodos que existen
+
+    // Ruta para cobrar pedido
+    Route::get('/Pedidos/cobrar', [OrderController::class, 'charge'])
+        ->name('admin.orders.charge');
+
+    // Ruta para procesar pedido
+    Route::post('/Pedidos/procesar', [OrderController::class, 'processOrder'])
+        ->name('admin.orders.process');
 
     // dashboard pages
     Route::get('/', function () {
@@ -254,7 +262,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('admin/herramientas/conceptos-pago', PaymentConceptController::class)
         ->names('admin.payment_concepts')
         ->parameters(['conceptos-pago' => 'paymentConcept']);
-    
+
     //Categorias de parametros
     Route::get('/admin/herramientas/parametros/categorias', [ParameterCategoriesController::class, 'index'])->name('admin.parameters.categories.index');
     Route::post('/admin/herramientas/parametros/categorias', [ParameterCategoriesController::class, 'store'])->name('admin.parameters.categories.store');
@@ -282,7 +290,7 @@ Route::middleware('auth')->group(function () {
         ->names('areas')
         ->parameters(['areas' => 'area'])
         ->only(['index', 'store', 'edit', 'update', 'destroy']);
-    
+
     // Mesas
     Route::resource('/areas/{area}/mesas', TableController::class)
         ->names('areas.tables')
@@ -300,17 +308,17 @@ Route::middleware('auth')->group(function () {
     Route::resource('/admin/herramientas/tarjetas', CardController::class)
         ->names('admin.cards')
         ->parameters(['tarjetas' => 'card']);
-    
+
     //Billeteras digitales
     Route::resource('/admin/herramientas/billeteras-digitales', DigitalWalletController::class)
         ->names('admin.digital_wallets')
         ->parameters(['billeteras-digitales' => 'digitalWallet']);
-    
+
     //Pasarelas de pago
     Route::resource('/admin/herramientas/pasarela-pagos', PaymentGatewaysController::class)
         ->names('admin.payment_gateways')
         ->parameters(['pasarela-pagos' => 'paymentGateway']);
-    
+
     //Métodos de pago
     Route::resource('/admin/herramientas/metodos-pago', PaymentMethodController::class)
         ->names('admin.payment_methods')
@@ -325,7 +333,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/caja/caja-chica', [PettyCashController::class, 'redirectBase'])
         ->name('admin.petty-cash.base');
 
-    Route::group(['prefix' => 'caja/caja-chica/{cash_register_id}', 'as' => 'admin.petty-cash.'], function () {     
+    Route::group(['prefix' => 'caja/caja-chica/{cash_register_id}', 'as' => 'admin.petty-cash.'], function () {
         Route::get('/', [PettyCashController::class, 'index'])->name('index');
         Route::post('/', [PettyCashController::class, 'store'])->name('store');
         Route::get('/{movement}/edit', [PettyCashController::class, 'edit'])->name('edit');
@@ -338,8 +346,22 @@ Route::middleware('auth')->group(function () {
         ->names('boxes')
         ->parameters(['cajas' => 'box']);
 
-    //tax_rate
+    //tasa de impuesto
     Route::resource('/admin/herramientas/tasas-impuesto', TaxRateController::class)
         ->names('admin.tax_rates')
         ->parameters(['tasas-impuesto' => 'taxRate']);
+
+    //Movimientos de almacen
+    Route::resource('/admin/herramientas/movimientos-almacen', WarehouseMovementController::class)
+        ->names('warehouse_movements')
+        ->parameters(['movimientos-almacen' => 'warehouseMovement'])
+        ->only(['index', 'store']); // Solo incluir los métodos que existen
+
+    Route::get('/admin/herramientas/movimientos-almacen/entrada', [WarehouseMovementController::class, 'input'])
+        ->name('warehouse_movements.input');
+
+    Route::get('/admin/herramientas/movimientos-almacen/salida', [WarehouseMovementController::class, 'output'])
+        ->name('warehouse_movements.output');
+    Route::post('/admin/herramientas/movimientos-almacen/salida', [WarehouseMovementController::class, 'outputStore'])
+        ->name('warehouse_movements.output.store');
 });

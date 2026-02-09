@@ -51,13 +51,97 @@ class ProductController extends Controller
 
     public function store(Request $request)
     {
-        $data = $this->validateProduct($request);
+        Log::info('=== PRODUCT STORE DEBUG START ===');
+        Log::info('Request has file image: ' . ($request->hasFile('image') ? 'YES' : 'NO'));
+        Log::info('Request all keys: ' . json_encode(array_keys($request->all())));
         
+        // Guardar el archivo ANTES de validar, porque la validación puede afectar el archivo
+        $imagePath = null;
         if ($request->hasFile('image')) {
-    
-            $path = $request->file('image')->store('product', 'public');
-            $data['image'] = $path;
+            $file = $request->file('image');
+            Log::info('File object received: ' . get_class($file));
+            Log::info('File isValid: ' . ($file->isValid() ? 'YES' : 'NO'));
+            Log::info('File getRealPath: ' . ($file->getRealPath() ?? 'NULL'));
+            Log::info('File getPathname: ' . ($file->getPathname() ?? 'NULL'));
+            Log::info('File getClientOriginalName: ' . ($file->getClientOriginalName() ?? 'NULL'));
+            Log::info('File getSize: ' . ($file->getSize() ?? 'NULL'));
+            Log::info('File getMimeType: ' . ($file->getMimeType() ?? 'NULL'));
+            
+            if ($file->getRealPath()) {
+                Log::info('File isReadable: ' . (is_readable($file->getRealPath()) ? 'YES' : 'NO'));
+            }
+            
+            // Verificar configuración del disco
+            try {
+                $diskRoot = Storage::disk('public')->path('');
+                Log::info('Storage disk public root: ' . $diskRoot);
+                Log::info('Storage disk public exists: ' . (Storage::disk('public')->exists('.') ? 'YES' : 'NO'));
+            } catch (\Exception $e) {
+                Log::error('Error checking storage disk: ' . $e->getMessage());
+            }
+            
+            if ($file->isValid() && $file->getRealPath() && is_readable($file->getRealPath())) {
+                try {
+                    // Asegurar que el directorio existe
+                    $directory = storage_path('app/public/product');
+                    Log::info('Directory path: ' . $directory);
+                    Log::info('Directory exists: ' . (is_dir($directory) ? 'YES' : 'NO'));
+                    
+                    if (!is_dir($directory)) {
+                        $created = @mkdir($directory, 0755, true);
+                        Log::info('Directory created: ' . ($created ? 'YES' : 'NO'));
+                        if (!$created) {
+                            Log::error('Failed to create directory: ' . $directory);
+                        }
+                    }
+                    
+                    // Verificar permisos del directorio
+                    if (is_dir($directory)) {
+                        Log::info('Directory is writable: ' . (is_writable($directory) ? 'YES' : 'NO'));
+                    }
+                    
+                    Log::info('Attempting to store file...');
+                    Log::info('File real path before store: ' . $file->getRealPath());
+                    Log::info('File exists before store: ' . (file_exists($file->getRealPath()) ? 'YES' : 'NO'));
+                    
+                    $path = $file->store('product', 'public');
+                    Log::info('Store returned path: ' . ($path ?? 'NULL'));
+                    
+                    if ($path && !empty($path)) {
+                        $imagePath = $path;
+                        Log::info('Image path saved: ' . $imagePath);
+                    } else {
+                        Log::warning('El path de la imagen está vacío después de guardar');
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Error al guardar imagen del producto: ' . $e->getMessage());
+                    Log::error('Exception class: ' . get_class($e));
+                    Log::error('Exception trace: ' . $e->getTraceAsString());
+                }
+            } else {
+                Log::warning('El archivo de imagen no es válido o no tiene path');
+                Log::warning('isValid: ' . ($file->isValid() ? 'YES' : 'NO'));
+                Log::warning('getRealPath: ' . ($file->getRealPath() ?? 'NULL'));
+                if ($file->getRealPath()) {
+                    Log::warning('isReadable: ' . (is_readable($file->getRealPath()) ? 'YES' : 'NO'));
+                }
+            }
+        } else {
+            Log::info('No image file in request');
         }
+        
+        // Ahora validar los datos (sin el campo image si ya lo procesamos)
+        $data = $this->validateProduct($request);
+        Log::info('Data after validation: ' . json_encode(array_keys($data)));
+        
+        // Agregar el path de la imagen si se guardó correctamente
+        if ($imagePath) {
+            $data['image'] = $imagePath;
+            Log::info('Image path added to data: ' . $imagePath);
+        }
+        
+        Log::info('Final data image: ' . ($data['image'] ?? 'NOT SET'));
+        Log::info('=== PRODUCT STORE DEBUG END ===');
         
         Product::create($data);
         
@@ -97,9 +181,38 @@ class ProductController extends Controller
         
         // Manejar la actualización de imagen
         if ($request->hasFile('image')) {
-    
-            $path = $request->file('image')->store('product', 'public');
-            $data['image'] = $path;
+            $file = $request->file('image');
+            
+            // Verificar que el archivo sea válido y tenga un path válido
+            if ($file->isValid() && $file->getRealPath()) {
+                try {
+                    // Eliminar la imagen anterior si existe
+                    if ($product->image && !empty($product->image) && Storage::disk('public')->exists($product->image)) {
+                        Storage::disk('public')->delete($product->image);
+                    }
+                    
+                    // Asegurar que el directorio existe
+                    $directory = storage_path('app/public/product');
+                    if (!is_dir($directory)) {
+                        mkdir($directory, 0755, true);
+                    }
+                    
+                    $path = $file->store('product', 'public');
+                    
+                    if ($path && !empty($path)) {
+                        $data['image'] = $path;
+                    } else {
+                        Log::warning('El path de la imagen está vacío después de guardar');
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Error al actualizar imagen del producto: ' . $e->getMessage());
+                    // Continuar sin actualizar imagen si hay error
+                    unset($data['image']);
+                }
+            } else {
+                Log::warning('El archivo de imagen no es válido o no tiene path');
+                unset($data['image']);
+            }
         }
         
         $product->update($data);

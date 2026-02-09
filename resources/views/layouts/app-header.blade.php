@@ -1,6 +1,6 @@
 <header
     style="background: linear-gradient(150deg, #4BB4ED 0%, #234bbb 100%) !important;"
-    class="sticky top-0 flex w-full border-[#1c3a8c] z-99999 dark:border-gray-800 dark:bg-gray-900 xl:border-b shadow-md"
+    class="sticky top-0 flex w-full z-99999 dark:border-gray-800 dark:bg-gray-900 xl:border-b shadow-md"
     x-data="{
         isApplicationMenuOpen: false,
         toggleApplicationMenu() {
