@@ -138,13 +138,13 @@
                 <table class="w-full min-w-[880px]">
                     <thead>
                         <tr class="border-b border-gray-100 dark:border-gray-800">
-                            <th class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Orden</p></th>
-                            <th class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Número</p></th>
-                            <th class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Tipo</p></th>
-                            <th class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Comentario</p></th>
-                            <th class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Monto</p></th>
-                            <th class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Fecha</p></th>
-                            <th class="px-5 py-3 text-right sm:px-6"><p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Acciones</p></th>
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-white text-theme-xs dark:text-white">Orden</p></th>
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-white text-theme-xs dark:text-white">Número</p></th>
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-white text-theme-xs dark:text-white">Tipo</p></th>
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-white text-theme-xs dark:text-white">Comentario</p></th>
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-white text-theme-xs dark:text-white">Monto</p></th>
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-white text-theme-xs dark:text-white">Fecha</p></th>
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-right sm:px-6"><p class="font-medium text-white text-theme-xs dark:text-white">Acciones</p></th>
                         </tr>
                     </thead>
                     <tbody>

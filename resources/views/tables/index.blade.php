@@ -53,26 +53,26 @@
                 <table class="w-full">
                     <thead>
                         <tr class="border-b border-gray-100 dark:border-gray-800">
-                            <th class="px-5 py-3 text-left sm:px-6">
-                                <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Nombre</p>
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                                <p class="font-medium text-white text-theme-xs dark:text-white">Nombre</p>
                             </th>
-                            <th class="px-5 py-3 text-left sm:px-6">
-                                <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Capacidad</p>
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                                <p class="font-medium text-white text-theme-xs dark:text-white">Capacidad</p>
                             </th>
-                            <th class="px-5 py-3 text-left sm:px-6">
-                                <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Area</p>
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                                <p class="font-medium text-white text-theme-xs dark:text-white">Area</p>
                             </th>
-                            <th class="px-5 py-3 text-left sm:px-6">
-                                <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Sucursal</p>
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                                <p class="font-medium text-white text-theme-xs dark:text-white">Sucursal</p>
                             </th>
-                            <th class="px-5 py-3 text-left sm:px-6">
-                                <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Estado</p>
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                                <p class="font-medium text-white text-theme-xs dark:text-white">Estado</p>
                             </th>
-                            <th class="px-5 py-3 text-left sm:px-6">
-                                <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Situacion</p>
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                                <p class="font-medium text-white text-theme-xs dark:text-white">Situacion</p>
                             </th>
-                            <th class="px-5 py-3 text-right sm:px-6">
-                                <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Acciones</p>
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-right sm:px-6">
+                                <p class="font-medium text-white text-theme-xs dark:text-white">Acciones</p>
                             </th>
                         </tr>
                     </thead>

@@ -236,9 +236,9 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
             </main>
 
             <footer class="border-t border-gray-100 bg-white px-6 py-4 dark:border-gray-800 dark:bg-gray-900 shadow-sm transition-colors duration-300">
-                <div class="flex flex-col items-center justify-between gap-4 md:flex-row">
+                <div class="flex flex-col items-center justify-center gap-4 md:flex-row">
                     <div class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-                        <span class="font-medium">Copyright &copy; {{ date('Y') }}</span>
+                        <span class="font-medium">Derechos de autor &copy; {{ date('Y') }}</span>
                         <span class="font-bold tracking-tight text-[#63B7EC]">Xinergia</span>
                         <span class="hidden sm:inline opacity-40">&bull;</span>
                         <span class="hidden sm:inline">Todos los derechos reservados.</span>

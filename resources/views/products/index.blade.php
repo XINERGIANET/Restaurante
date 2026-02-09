@@ -63,7 +63,7 @@
                             class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 pl-12 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30" />
                     </div>
                     <div class="flex flex-wrap gap-2">
-                        <x-ui.button size="md" variant="primary" type="submit" class="flex-1 sm:flex-none h-11 px-6 shadow-sm hover:shadow-md transition-all duration-200 active:scale-95" style="background-color: #63B7EC; border-color: #63B7EC;">
+                        <x-ui.button size="md" variant="primary" type="submit" class="flex-1 sm:flex-none h-11 px-6 shadow-sm hover:shadow-md transition-all duration-200 active:scale-95" style="background-color: #244BB3; border-color: #244BB3;">
                             <i class="ri-search-line text-gray-100"></i>
                             <span class="font-medium text-gray-100">Buscar</span>
                         </x-ui.button>
@@ -86,24 +86,24 @@
                 <table class="w-full">
                     <thead>
                         <tr class="text-white">
-                            <th style="background-color: #63B7EC;" class="w-12 px-4 py-4 text-center first:rounded-tl-xl"></th>
-                            <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6">
-                                <p class="font-semibold text-gray-100 text-theme-xs uppercase">Código</p>
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="w-12 px-4 py-4 text-center first:rounded-tl-xl"></th>
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                                <p class="font-semibold text-white text-theme-xs uppercase">Código</p>
                             </th>
-                            <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6">
-                                <p class="font-semibold text-gray-100 text-theme-xs uppercase">Descripción</p>
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                                <p class="font-semibold text-white text-theme-xs uppercase">Descripción</p>
                             </th>
-                            <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6">
-                                <p class="font-semibold text-gray-100 text-theme-xs uppercase">Categoría</p>
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                                <p class="font-semibold text-white text-theme-xs uppercase">Categoría</p>
                             </th>
-                            <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6">
-                                <p class="font-semibold text-gray-100 text-theme-xs uppercase">Unidad base</p>
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                                <p class="font-semibold text-white text-theme-xs uppercase">Unidad base</p>
                             </th>
-                            <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6">
-                                <p class="font-semibold text-gray-100 text-theme-xs uppercase">Tipo</p>
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                                <p class="font-semibold text-white text-theme-xs uppercase">Tipo</p>
                             </th>
-                            <th style="background-color: #63B7EC;" class="px-5 py-3 text-right sm:px-6 last:rounded-tr-xl">
-                                <p class="font-semibold text-gray-100 text-theme-xs uppercase">Acciones</p>
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-right sm:px-6 last:rounded-tr-xl">
+                                <p class="font-semibold text-white text-theme-xs uppercase">Acciones</p>
                             </th>
                         </tr>
                     </thead>

@@ -194,14 +194,14 @@
                     <table class="w-full">
                         <thead class="bg-gray-50 text-[7px] uppercase tracking-wide text-gray-500 dark:bg-gray-800/60 dark:text-gray-400" style="font-size: 12px;">
                             <tr class="border-b border-gray-100 dark:border-gray-800">
-                                <th class="w-12 px-4 py-4 text-center sticky left-0 z-20 bg-gray-50 dark:bg-gray-800"></th>
-                                <th class="px-3 py-4 text-left sm:px-6 whitespace-nowrap sticky left-12 z-20 bg-gray-50 dark:bg-gray-800 border-r border-gray-100 dark:border-gray-700 w-32 max-w-[128px] sm:w-auto sm:max-w-none">Nombres</th>
-                                <th class="px-5 py-4 text-left sm:px-6 whitespace-nowrap">Tipo</th>
-                                <th class="px-5 py-4 text-left sm:px-6 whitespace-nowrap">Nro. Documento</th>
-                                <th class="px-5 py-4 text-left sm:px-6 whitespace-nowrap">Fecha nac.</th>
-                                <th class="px-5 py-4 text-left sm:px-6 whitespace-nowrap">Genero</th>
-                                <th class="px-5 py-4 text-left sm:px-6 whitespace-nowrap">Ubicacion</th>
-                                <th class="px-5 py-4 text-right sm:px-6 whitespace-nowrap">Acciones</th>
+                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="w-12 px-4 py-4 text-center sticky left-0 z-20"></th>
+                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-3 py-4 text-left sm:px-6 whitespace-nowrap sticky left-12 z-20 border-r border-gray-100 dark:border-gray-700 w-32 max-w-[128px] sm:w-auto sm:max-w-none">Nombres</th>
+                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-4 text-left sm:px-6 whitespace-nowrap">Tipo</th>
+                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-4 text-left sm:px-6 whitespace-nowrap">Nro. Documento</th>
+                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-4 text-left sm:px-6 whitespace-nowrap">Fecha nac.</th>
+                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-4 text-left sm:px-6 whitespace-nowrap">Genero</th>
+                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-4 text-left sm:px-6 whitespace-nowrap">Ubicacion</th>
+                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-4 text-right sm:px-6 whitespace-nowrap">Acciones</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100 dark:divide-gray-800">

@@ -130,10 +130,10 @@
                 <table class="w-full min-w-[880px]">
             <thead class="text-left text-theme-xs dark:text-gray-400">
                 <tr class="border-b border-gray-100 dark:border-gray-800">
-                    <th class="px-5 py-3 text-center sm:px-6">ID</th>
-                    <th class="px-5 py-3 text-center sm:px-6">Descripcion</th>
-                    <th class="px-5 py-3 text-center sm:px-6">Tipo</th>
-                    <th class="px-5 py-3 text-center sm:px-6">Acciones</th>
+                    <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-center sm:px-6">ID</th>
+                    <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-center sm:px-6">Descripcion</th>
+                    <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-center sm:px-6">Tipo</th>
+                    <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-center sm:px-6">Acciones</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-100 dark:divide-gray-800">

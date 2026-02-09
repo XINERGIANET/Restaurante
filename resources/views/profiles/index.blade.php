@@ -133,14 +133,14 @@
                 <table class="w-full min-w-[600px]">
                     <thead>
                         <tr class="border-b border-gray-100 dark:border-gray-800">
-                            <th class="px-3 py-3 text-center sm:px-6 sticky left-0 z-20 bg-gray-50 dark:bg-gray-800 shadow-[2px_0_5px_rgba(0,0,0,0.05)] w-24 max-w-[96px] sm:w-auto sm:max-w-none">
-                                <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400 truncate">Nombre</p>
+                             <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-3 py-3 text-center sm:px-6 sticky left-0 z-20 shadow-[2px_0_5px_rgba(0,0,0,0.05)] w-24 max-w-[96px] sm:w-auto sm:max-w-none">
+                                <p class="font-medium text-white text-theme-xs dark:text-white truncate">Nombre</p>
                             </th>
-                            <th class="px-5 py-3 text-center sm:px-6">
-                                <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Estado</p>
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-center sm:px-6">
+                                <p class="font-medium text-white text-theme-xs dark:text-white">Estado</p>
                             </th>
-                            <th class="px-5 py-3 text-center sm:px-6">
-                                <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Acciones</p>
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-center sm:px-6">
+                                <p class="font-medium text-white text-theme-xs dark:text-white">Acciones</p>
                             </th>
                         </tr>
                     </thead>
