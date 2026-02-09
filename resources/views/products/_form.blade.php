@@ -1,4 +1,4 @@
-<div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+<div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
     <div>
         <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Codigo</label>
         <input
@@ -140,19 +140,66 @@
         </select>
     </div>
 
+    <div class="hidden lg:block"></div>
+
     <div class="lg:col-span-2" x-data="{ 
-        imagePreview: '{{ isset($product) && $product->image && !empty($product->image) ? asset('storage/' . $product->image) : '' }}',
-        fileName: '{{ isset($product) && $product->image && !empty($product->image) ? basename($product->image) : '' }}'
-    }">
-        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Imagen (opcional)</label>
+            imagePreview: '{{ isset($product) && $product->image ? asset('storage/' . $product->image) : '' }}',
+            fileName: '{{ isset($product) && $product->image ? basename($product->image) : '' }}',
+            defaultPlaceholder: 'https://placehold.co/100x100?text=Sin+Imagen', // URL de imagen por defecto
+            
+            showPreview(event) {
+                const file = event.target.files[0];
+                if (!file) {
+                    this.imagePreview = '{{ isset($product) && $product->image ? asset('storage/' . $product->image) : '' }}';
+                    this.fileName = '{{ isset($product) && $product->image ? basename($product->image) : '' }}';
+                    return;
+                }
+
+                if (file.size > 2048 * 1024) {
+                    alert('El archivo es demasiado grande. Máximo 2MB.');
+                    event.target.value = '';
+                    return;
+                }
+
+                this.fileName = file.name;
+                const reader = new FileReader();
+                reader.onload = (e) => { 
+                    this.imagePreview = e.target.result; 
+                };
+                reader.readAsDataURL(file);
+            },
+
+            removeImage() {
+                this.imagePreview = '';
+                this.fileName = '';
+                document.getElementById('image-input').value = '';
+            }
+        }">
+    
+        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
+            Imagen (opcional)
+        </label>
         
-        <!-- Vista previa de la imagen actual -->
-        <div x-show="imagePreview" class="mb-2 flex items-center gap-3 p-2 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
-            <img :src="imagePreview" alt="Vista previa" 
-                class="h-16 w-16 object-cover rounded border border-gray-300 dark:border-gray-600 shadow-sm">
+        <div class="mb-3 flex items-center gap-3 p-2 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
+            
+            <img :src="imagePreview || defaultPlaceholder" alt="Vista previa" 
+                class="h-16 w-16 object-cover rounded border border-gray-300 dark:border-gray-600 shadow-sm bg-gray-200 dark:bg-gray-700">
+            
             <div class="flex-1 min-w-0">
-                <p class="text-xs font-medium text-gray-700 dark:text-gray-300 truncate" x-text="fileName || 'Imagen actual'"></p>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Vista previa</p>
+                <p class="text-xs font-medium text-gray-700 dark:text-gray-300 truncate" 
+                x-text="fileName || 'Sin archivo seleccionado'">
+                </p>
+                
+                <template x-if="imagePreview">
+                    <button type="button" @click="removeImage()" 
+                        class="text-[10px] text-red-600 hover:text-red-800 font-semibold uppercase tracking-wider">
+                        Quitar archivo
+                    </button>
+                </template>
+                
+                <template x-if="!imagePreview">
+                    <span class="text-[10px] text-gray-400 uppercase tracking-wider">Esperando imagen...</span>
+                </template>
             </div>
         </div>
 
@@ -160,54 +207,26 @@
             type="file"
             name="image"
             id="image-input"
-            accept="image/jpeg,image/png,image/jpg,image/gif,image/webp"
-            @change="
-                const file = $event.target.files[0];
-                if (file) {
-                    if (file.size === 0) {
-                        console.warn('Archivo vacío detectado');
-                        $event.target.value = '';
-                        alert('El archivo seleccionado está vacío. Por favor, elige otra imagen.');
-                        imagePreview = '{{ isset($product) && $product->image && !empty($product->image) ? asset('storage/' . $product->image) : '' }}';
-                        fileName = '{{ isset($product) && $product->image && !empty($product->image) ? basename($product->image) : '' }}';
-                    } else if (file.size > 2048 * 1024) {
-                        console.warn('Archivo demasiado grande');
-                        $event.target.value = '';
-                        alert('El archivo es demasiado grande. Máximo 2MB.');
-                        imagePreview = '{{ isset($product) && $product->image && !empty($product->image) ? asset('storage/' . $product->image) : '' }}';
-                        fileName = '{{ isset($product) && $product->image && !empty($product->image) ? basename($product->image) : '' }}';
-                    } else {
-                        fileName = file.name;
-                        const reader = new FileReader();
-                        reader.onload = (e) => { imagePreview = e.target.result; };
-                        reader.onerror = () => {
-                            console.error('Error al leer el archivo');
-                            $event.target.value = '';
-                            alert('Error al leer el archivo. Por favor, intenta con otra imagen.');
-                        };
-                        reader.readAsDataURL(file);
-                    }
-                } else {
-                    imagePreview = '{{ isset($product) && $product->image && !empty($product->image) ? asset('storage/' . $product->image) : '' }}';
-                    fileName = '{{ isset($product) && $product->image && !empty($product->image) ? basename($product->image) : '' }}';
-                }
-            "
+            accept="image/*"
+            @change="showPreview($event)"
             class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 file:mr-4 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900/50 dark:file:text-blue-300"
         />
-        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+
+        <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
             JPG, PNG, GIF, WEBP • Máximo 2MB
         </p>
+
         @error('image')
             <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
         @enderror
     </div>
 
-    <div class="lg:col-span-3">
+    <div class="lg:col-span-2">
         <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Caracteristicas</label>
         <textarea
             name="features"
-            rows="3"
-            class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
+            rows="4"
+            class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
             placeholder="Ingrese las caracteristicas"
         >{{ old('features', $product->features ?? '') }}</textarea>
     </div>

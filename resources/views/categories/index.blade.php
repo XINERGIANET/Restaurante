@@ -53,31 +53,43 @@
                 <table class="w-full">
                     <thead>
                         <tr class="text-white">
-                            <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6 first:rounded-tl-xl transition-colors">
-                                <p class="font-semibold text-gray-100 text-theme-xs uppercase">Descripción</p>
+                            <th style="background-color: #465fff;" class="px-5 py-3 text-left sm:px-6">
+                                <p class="font-semibold text-white text-theme-xs">Imagen</p>
+                            </th>
+                            <th style="background-color: #465fff;" class="px-5 py-3 text-left sm:px-6 first:rounded-tl-xl transition-colors">
+                                <p class="font-semibold text-white text-theme-xs">Descripción</p>
                             </th>
                             <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6">
                                 <p class="font-semibold text-gray-100 text-theme-xs uppercase">Abreviatura</p>
                             </th>
-                            <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6">
-                                <p class="font-semibold text-gray-100 text-theme-xs uppercase">Imagen</p>
-                            </th>
-                            <th style="background-color: #63B7EC;" class="px-5 py-3 text-right sm:px-6 last:rounded-tr-xl transition-colors">
-                                <p class="font-semibold text-gray-100 text-theme-xs uppercase">Acciones</p>
+                            <th style="background-color: #465fff;" class="px-5 py-3 text-right sm:px-6 last:rounded-tr-xl transition-colors">
+                                <p class="font-semibold text-white text-theme-xs">Acciones</p>
                             </th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse ($categories as $category)
                             <tr class="border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-white/5">
+                                 <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex items-center">
+                                        @if($category->image)
+                                            <img class="h-12 w-12 object-cover rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm" 
+                                                src="{{ asset('storage/' . $category->image) }}" 
+                                                alt="{{ $category->description }}">
+                                        @else
+                                            <div class="h-12 w-12 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center border border-dashed border-gray-300 dark:border-gray-600">
+                                                <svg class="h-6 w-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                </svg>
+                                            </div>
+                                        @endif
+                                    </div>
+                                </td>
                                 <td class="px-5 py-4 sm:px-6">
                                     <p class="font-medium text-gray-800 text-theme-sm dark:text-white/90">{{ $category->description }}</p>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
                                     <p class="text-gray-500 text-theme-sm dark:text-gray-400">{{ $category->abbreviation }}</p>
-                                </td>
-                                <td class="px-5 py-4 sm:px-6">
-                                    <p class="text-gray-500 text-theme-sm dark:text-gray-400">{{ $category->image ?? '-' }}</p>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
                                     <div class="flex items-center justify-end gap-2">
@@ -183,7 +195,7 @@
                     </div>
                 @endif
 
-                <form method="POST" action="{{ route('admin.categories.store') }}" class="space-y-6">
+                <form method="POST" action="{{ route('admin.categories.store') }}" class="space-y-6" enctype="multipart/form-data">
                     @csrf
 
                     @include('categories._form', ['category' => null])

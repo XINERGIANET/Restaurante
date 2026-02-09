@@ -53,33 +53,10 @@ class ProductController extends Controller
     {
         $data = $this->validateProduct($request);
         
-        // Manejar la subida de imagen
-        if ($request->hasFile('image') && $request->file('image')->isValid()) {
-            $file = $request->file('image');
-            // Verificar que el archivo tiene contenido
-            if ($file->getSize() > 0) {
-                try {
-                    // Generar nombre único para el archivo
-                    $extension = $file->getClientOriginalExtension();
-                    $filename = uniqid() . '_' . time() . '.' . $extension;
-                    $path = 'products/' . $filename;
-                    
-                    // Guardar usando file_get_contents (workaround para Windows)
-                    $fileContents = file_get_contents($file->getPathname());
-                    Storage::disk('public')->put($path, $fileContents);
-                    
-                    $data['image'] = $path;
-                } catch (\Exception $e) {
-                    // Si hay error al guardar la imagen, continuar sin ella
-                    Log::warning('Error al guardar imagen del producto: ' . $e->getMessage());
-                    unset($data['image']);
-                }
-            } else {
-                unset($data['image']);
-            }
-        } else {
-            // Si no hay archivo válido, remover el campo image del array
-            unset($data['image']);
+        if ($request->hasFile('image')) {
+    
+            $path = $request->file('image')->store('product', 'public');
+            $data['image'] = $path;
         }
         
         Product::create($data);
@@ -105,7 +82,6 @@ class ProductController extends Controller
     {
         $data = $this->validateProduct($request);
         
-        // DEBUG: Log para ver qué está pasando con la imagen
         Log::info('=== UPDATE PRODUCT IMAGE DEBUG ===');
         Log::info('Has file image: ' . ($request->hasFile('image') ? 'YES' : 'NO'));
         
@@ -120,42 +96,10 @@ class ProductController extends Controller
         }
         
         // Manejar la actualización de imagen
-        if ($request->hasFile('image') && $request->file('image')->isValid()) {
-            $file = $request->file('image');
-            // Verificar que el archivo tiene contenido
-            if ($file->getSize() > 0) {
-                try {
-                    // Eliminar la imagen anterior si existe
-                    if ($product->image && !empty($product->image) && Storage::disk('public')->exists($product->image)) {
-                        Log::info('Deleting old image: ' . $product->image);
-                        Storage::disk('public')->delete($product->image);
-                    }
-                    
-                    // Generar nombre único para el archivo
-                    $extension = $file->getClientOriginalExtension();
-                    $filename = uniqid() . '_' . time() . '.' . $extension;
-                    $path = 'products/' . $filename;
-                    
-                    // Guardar usando file_get_contents (workaround para Windows)
-                    $fileContents = file_get_contents($file->getPathname());
-                    Storage::disk('public')->put($path, $fileContents);
-                    
-                    Log::info('New image saved: ' . $path);
-                    $data['image'] = $path;
-                } catch (\Exception $e) {
-                    // Si hay error al guardar la imagen, continuar sin cambiar la imagen existente
-                    Log::warning('Error al actualizar imagen del producto: ' . $e->getMessage());
-                    Log::warning('Stack trace: ' . $e->getTraceAsString());
-                    unset($data['image']);
-                }
-            } else {
-                Log::warning('File validation failed - unset image (size is 0)');
-                unset($data['image']);
-            }
-        } else {
-            Log::info('No valid file - keeping current image');
-            // Si no hay nuevo archivo válido, mantener la imagen actual
-            unset($data['image']);
+        if ($request->hasFile('image')) {
+    
+            $path = $request->file('image')->store('product', 'public');
+            $data['image'] = $path;
         }
         
         $product->update($data);
@@ -184,7 +128,6 @@ class ProductController extends Controller
 
     private function validateProduct(Request $request): array
     {
-        // Validar los campos
         $validated = $request->validate([
             'code' => ['required', 'string', 'max:50'],
             'description' => ['required', 'string', 'max:255'],
