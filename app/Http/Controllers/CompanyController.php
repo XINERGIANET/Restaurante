@@ -101,9 +101,9 @@ class CompanyController extends Controller
 
         $company->update($data);
 
-        $redirectParams = $request->filled('view_id') ? ['view_id' => $request->input('view_id')] : [];
+        $viewId = $request->input('view_id');
 
-        return redirect()->route('admin.companies.index', $redirectParams)
+        return redirect()->route('admin.companies.index', $viewId ? ['view_id' => $viewId] : [])
             ->with('status', 'Empresa actualizada correctamente.');
     }
 

@@ -55,21 +55,16 @@ class OperationsController extends Controller
     public function store(Request $request, View $view)
     {
         $data = $this->validateData($request);
-        
+
         $view->operations()->create($data);
 
         $viewId = $request->input('view_id');
 
-        $redirect = redirect()
-            ->route('admin.views.operations.index', $view)
+        return redirect()
+            ->route('admin.views.operations.index', $viewId ? [$view, 'view_id' => $viewId] : $view)
             ->with('status', 'Operación creada correctamente.');
-
-        if ($viewId) {
-            $redirect->with('view_id', $viewId);
-        }
-
-        return $redirect;
     }
+
 
     public function edit(View $view, Operation $operation)
     {
@@ -110,11 +105,9 @@ class OperationsController extends Controller
         if ($viewId) {
             $redirect->with('view_id', $viewId);
         }
-
-        return $redirect;
     }
 
-    // --- Validaciones y Helpers ---
+
 
     private function validateData(Request $request): array
     {
@@ -142,6 +135,7 @@ class OperationsController extends Controller
         return $operation;
     }
 }
+
 
 
 
