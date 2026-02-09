@@ -132,54 +132,64 @@
     </div>    
 {{-- SCRIPT LÃ“GICA --}}
 <script>
-    document.addEventListener('alpine:init', () => {
-        Alpine.data('posSystem', () => ({
-            areas: @json($areas),
-            tables: @json($tables),
-            currentAreaId: @json(!empty($areas) && count($areas) > 0 ? $areas[0]['id'] : null),
-            createUrl: @json(route('admin.orders.create')),
-            
-            init() {
-                // Asegurar que currentAreaId sea un número
-                if (this.currentAreaId) {
-                    this.currentAreaId = Number(this.currentAreaId);
-                }
-                // Si no hay área seleccionada pero hay áreas disponibles, seleccionar la primera
-                if (!this.currentAreaId && this.areas && this.areas.length > 0) {
-                    this.currentAreaId = Number(this.areas[0].id);
-                }
-                console.log('Áreas cargadas:', this.areas);
-                console.log('Mesas cargadas:', this.tables);
-                console.log('Área actual:', this.currentAreaId);
-                console.log('Mesas filtradas:', this.filteredTables);
-            },
-            
-            get filteredTables() {
-                if (!this.currentAreaId) {
-                    return [];
-                }
-                const areaId = Number(this.currentAreaId);
-                const filtered = this.tables.filter(t => Number(t.area_id) === areaId);
-                console.log('Mesas filtradas para área', areaId, ':', filtered);
-                return filtered;
-            },
+    (function() {
+        const initPosSystem = () => {
+            if (window.Alpine) {
+                Alpine.data('posSystem', () => ({
+                    areas: @json($areas),
+                    tables: @json($tables),
+                    currentAreaId: @json(!empty($areas) && count($areas) > 0 ? $areas[0]['id'] : null),
+                    createUrl: @json(route('admin.orders.create')),
+                    
+                    init() {
+                        // Asegurar que currentAreaId sea un número
+                        if (this.currentAreaId) {
+                            this.currentAreaId = Number(this.currentAreaId);
+                        }
+                        // Si no hay área seleccionada pero hay áreas disponibles, seleccionar la primera
+                        if (!this.currentAreaId && this.areas && this.areas.length > 0) {
+                            this.currentAreaId = Number(this.areas[0].id);
+                        }
+                        console.log('Áreas cargadas:', this.areas);
+                        console.log('Mesas cargadas:', this.tables);
+                        console.log('Área actual:', this.currentAreaId);
+                        console.log('Mesas filtradas:', this.filteredTables);
+                    },
+                    
+                    get filteredTables() {
+                        if (!this.currentAreaId) {
+                            return [];
+                        }
+                        const areaId = Number(this.currentAreaId);
+                        const filtered = this.tables.filter(t => Number(t.area_id) === areaId);
+                        console.log('Mesas filtradas para área', areaId, ':', filtered);
+                        return filtered;
+                    },
 
-            switchArea(area) {
-                this.currentAreaId = Number(area.id);
-                console.log('Cambiando a área:', this.currentAreaId);
-            },
+                    switchArea(area) {
+                        this.currentAreaId = Number(area.id);
+                        console.log('Cambiando a área:', this.currentAreaId);
+                    },
 
-            openTable(table) {
-                const target = new URL(this.createUrl, window.location.origin);
-                target.searchParams.set('table_id', table.id);
-                if (window.Turbo && typeof window.Turbo.visit === 'function') {
-                    window.Turbo.visit(target.toString(), { action: 'advance' });
-                } else {
-                    window.location.href = target.toString();
-                }
+                    openTable(table) {
+                        const target = new URL(this.createUrl, window.location.origin);
+                        target.searchParams.set('table_id', table.id);
+                        if (window.Turbo && typeof window.Turbo.visit === 'function') {
+                            window.Turbo.visit(target.toString(), { action: 'advance' });
+                        } else {
+                            window.location.href = target.toString();
+                        }
+                    }
+                }));
             }
-        }));
-    });
+        };
+
+        if (window.Alpine) {
+            initPosSystem();
+        } else {
+            document.addEventListener('alpine:init', initPosSystem);
+        }
+    })();
 </script>
 @endsection
 
