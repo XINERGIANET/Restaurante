@@ -138,45 +138,34 @@
     </div>    
 {{-- SCRIPT LÃ“GICA --}}
 <script>
-    // Asegurar que Alpine esté completamente cargado antes de inicializar
-    if (typeof Alpine === 'undefined') {
-        console.error('Alpine.js no está cargado');
-    }
-    
-    // Inicializar cuando Alpine esté listo
-    document.addEventListener('alpine:init', () => {
-        @php
-            $areasData = $areas ?? [];
-            $tablesData = $tables ?? [];
-            $firstAreaId = !empty($areasData) && count($areasData) > 0 ? $areasData[0]['id'] : null;
-        @endphp
-        
+    @php
+        $areasData = $areas ?? [];
+        $tablesData = $tables ?? [];
+        $firstAreaId = !empty($areasData) && count($areasData) > 0 ? $areasData[0]['id'] : null;
+    @endphp
+
+    const registerPosSystem = () => {
+        if (!window.Alpine) {
+            return;
+        }
+
         Alpine.data('posSystem', () => {
-            // Inicializar con valores por defecto seguros
             const areasData = @json($areasData);
             const tablesData = @json($tablesData);
             const firstAreaId = @json($firstAreaId);
-            
-            // Calcular filteredTables inicial ANTES de crear el objeto
+
             const calculateInitialFilteredTables = () => {
                 try {
                     const areas = Array.isArray(areasData) ? areasData : [];
                     const tables = Array.isArray(tablesData) ? tablesData : [];
                     const areaId = firstAreaId ? Number(firstAreaId) : null;
-                    
-                    if (!tables || tables.length === 0) {
-                        return [];
-                    }
-                    if (!areas || areas.length === 0) {
-                        return tables;
-                    }
-                    if (!areaId || isNaN(areaId)) {
-                        return tables;
-                    }
+
+                    if (!tables || tables.length === 0) return [];
+                    if (!areas || areas.length === 0) return tables;
+                    if (!areaId || isNaN(areaId)) return tables;
+
                     return tables.filter(t => {
-                        if (!t || typeof t.area_id === 'undefined') {
-                            return false;
-                        }
+                        if (!t || typeof t.area_id === 'undefined') return false;
                         const tableAreaId = Number(t.area_id);
                         return !isNaN(tableAreaId) && tableAreaId === areaId;
                     });
@@ -185,75 +174,51 @@
                     return [];
                 }
             };
-            
+
             const initialFilteredTables = calculateInitialFilteredTables();
-            
-            // Asegurar que initialFilteredTables sea siempre un array
             const safeFilteredTables = Array.isArray(initialFilteredTables) ? initialFilteredTables : [];
-            
-            // Crear el objeto con filteredTables inicializado ANTES de retornarlo
+
             const componentData = {
                 areas: Array.isArray(areasData) ? areasData : [],
                 tables: Array.isArray(tablesData) ? tablesData : [],
                 currentAreaId: firstAreaId ? Number(firstAreaId) : null,
                 createUrl: @json(route('admin.orders.create')),
-                
-                // Inicializar filteredTables con el valor calculado para que siempre exista desde el inicio
                 filteredTables: safeFilteredTables,
-                
+
                 init() {
-                    // Asegurar que currentAreaId sea un número
                     if (this.currentAreaId) {
                         this.currentAreaId = Number(this.currentAreaId);
                     }
-                    // Si no hay área seleccionada pero hay áreas disponibles, seleccionar la primera
                     if (!this.currentAreaId && this.areas && this.areas.length > 0) {
                         this.currentAreaId = Number(this.areas[0].id);
                     }
-                    
-                    // Inicializar filteredTables
                     this.updateFilteredTables();
-                    
-                    // Observar cambios en currentAreaId para actualizar filteredTables reactivamente
                     this.$watch('currentAreaId', () => {
                         this.updateFilteredTables();
                     });
-                    
-                    console.log('Áreas cargadas:', this.areas);
-                    console.log('Mesas cargadas:', this.tables);
-                    console.log('Área actual:', this.currentAreaId);
-                    console.log('Mesas filtradas:', this.filteredTables);
                 },
-                
+
                 updateFilteredTables() {
                     try {
-                        // Asegurar que siempre retornemos un array válido
                         if (!this.tables || !Array.isArray(this.tables)) {
                             this.filteredTables = [];
                             return;
                         }
-                        
-                        // Si no hay áreas o no hay área seleccionada, mostrar todas las mesas
                         if (!this.areas || !Array.isArray(this.areas) || this.areas.length === 0) {
                             this.filteredTables = [...this.tables];
                             return;
                         }
-                        
                         if (!this.currentAreaId) {
                             this.filteredTables = [...this.tables];
                             return;
                         }
-                        
                         const areaId = Number(this.currentAreaId);
                         if (isNaN(areaId)) {
                             this.filteredTables = [...this.tables];
                             return;
                         }
-                        
                         this.filteredTables = this.tables.filter(t => {
-                            if (!t || typeof t.area_id === 'undefined') {
-                                return false;
-                            }
+                            if (!t || typeof t.area_id === 'undefined') return false;
                             const tableAreaId = Number(t.area_id);
                             return !isNaN(tableAreaId) && tableAreaId === areaId;
                         });
@@ -263,25 +228,27 @@
                     }
                 },
 
-            switchArea(area) {
-                this.currentAreaId = Number(area.id);
-                console.log('Cambiando a área:', this.currentAreaId);
-            },
+                switchArea(area) {
+                    this.currentAreaId = Number(area.id);
+                },
 
-            openTable(table) {
-                const target = new URL(this.createUrl, window.location.origin);
-                target.searchParams.set('table_id', table.id);
-                if (window.Turbo && typeof window.Turbo.visit === 'function') {
-                    window.Turbo.visit(target.toString(), { action: 'advance' });
-                } else {
-                    window.location.href = target.toString();
-                }
-            }
+                openTable(table) {
+                    const target = new URL(this.createUrl, window.location.origin);
+                    target.searchParams.set('table_id', table.id);
+                    if (window.Turbo && typeof window.Turbo.visit === 'function') {
+                        window.Turbo.visit(target.toString(), { action: 'advance' });
+                    } else {
+                        window.location.href = target.toString();
+                    }
+                },
             };
 
             return componentData;
         });
-    });
+    };
+
+    document.addEventListener('alpine:init', registerPosSystem);
+    document.addEventListener('turbo:load', registerPosSystem);
+    registerPosSystem();
 </script>
 @endsection
-

@@ -25,6 +25,21 @@
         >
             <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                 <form method="GET" class="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
+                    @if ($viewId)
+                        <input type="hidden" name="view_id" value="{{ $viewId }}">
+                    @endif
+                    @if ($companyViewId)
+                        <input type="hidden" name="company_view_id" value="{{ $companyViewId }}">
+                    @endif
+                    @if ($branchViewId)
+                        <input type="hidden" name="branch_view_id" value="{{ $branchViewId }}">
+                    @endif
+                    @if ($viewsViewId)
+                        <input type="hidden" name="views_view_id" value="{{ $viewsViewId }}">
+                    @endif
+                    @if ($requestIcon)
+                        <input type="hidden" name="icon" value="{{ $requestIcon }}">
+                    @endif
                     <div class="w-29">
                         <select
                             name="per_page"
@@ -53,14 +68,14 @@
                             <i class="ri-search-line"></i>
                             <span>Buscar</span>
                         </x-ui.button>
-                        <x-ui.link-button size="sm" variant="outline" href="{{ route('admin.companies.branches.views.operations.index', [$company, $branch, $view]) }}">
+                        <x-ui.link-button size="sm" variant="outline" href="{{ route('admin.companies.branches.views.operations.index', array_merge([$company, $branch, $view], array_filter(['view_id' => $viewId, 'company_view_id' => $companyViewId, 'branch_view_id' => $branchViewId, 'views_view_id' => $viewsViewId, 'icon' => $requestIcon]))) }}">
                             <i class="ri-close-line"></i>
                             <span>Limpiar</span>
                         </x-ui.link-button>
                     </div>
                 </form>
                 <div class="flex flex-wrap gap-2">
-                    <x-ui.link-button size="md" variant="outline" href="{{ route('admin.companies.branches.views.index', [$company, $branch]) }}">
+                    <x-ui.link-button size="md" variant="outline" href="{{ route('admin.companies.branches.views.index', array_merge([$company, $branch], array_filter(['view_id' => $viewsViewId ?: $viewId, 'company_view_id' => $companyViewId, 'branch_view_id' => $branchViewId, 'icon' => $requestIcon]))) }}">
                         <i class="ri-arrow-left-line"></i>
                         <span>Volver</span>
                     </x-ui.link-button>
@@ -202,6 +217,21 @@
                     data-select-scope
                 >
                     @csrf
+                    @if ($viewId)
+                        <input type="hidden" name="view_id" value="{{ $viewId }}">
+                    @endif
+                    @if ($companyViewId)
+                        <input type="hidden" name="company_view_id" value="{{ $companyViewId }}">
+                    @endif
+                    @if ($branchViewId)
+                        <input type="hidden" name="branch_view_id" value="{{ $branchViewId }}">
+                    @endif
+                    @if ($viewsViewId)
+                        <input type="hidden" name="views_view_id" value="{{ $viewsViewId }}">
+                    @endif
+                    @if ($requestIcon)
+                        <input type="hidden" name="icon" value="{{ $requestIcon }}">
+                    @endif
 
                     <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
                         <input

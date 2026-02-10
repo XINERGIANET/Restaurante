@@ -127,9 +127,13 @@
                             @php
                                 $topColor = $operation->color ?: '#12f00e';
                                 $topStyle = "background-color: {$topColor}; color: #111827;";
-                                $isCreate = str_contains($operation->action ?? '', 'menu_options.create')
-                                    || str_contains($operation->action ?? '', 'menu_options.store')
-                                    || str_contains($operation->action ?? '', 'open-create-modal');
+                                $actionValue = $operation->action ?? '';
+                                $isCreate = ($operation->type ?? '') === 'T'
+                                    || str_contains($actionValue, 'menu_options.create')
+                                    || str_contains($actionValue, 'menu_options.store')
+                                    || str_contains($actionValue, 'create')
+                                    || str_contains($actionValue, 'open-create-modal')
+                                    || str_contains(strtolower($operation->name ?? ''), 'nuevo');
                                 $topActionUrl = $resolveActionUrl($operation->action ?? '', [$module], $operation);
                             @endphp
                             @if ($isCreate)
