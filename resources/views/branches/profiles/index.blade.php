@@ -214,15 +214,15 @@
             <div class="mt-4 rounded-xl border border-gray-200 bg-white overflow-visible dark:border-gray-800 dark:bg-white/[0.03]">
                 <table class="w-full">
                     <thead>
-                        <tr class="border-b border-gray-100 dark:border-gray-800">
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-center sm:px-6">
-                                <p class="font-medium text-white text-theme-xs dark:text-white">Nombre</p>
+                        <tr class="text-white">
+                            <th style="background-color: #63B7EC;" class="px-5 py-3 text-center sm:px-6 first:rounded-tl-xl">
+                                <p class="font-semibold text-gray-100 text-theme-xs uppercase">Nombre</p>
                             </th>
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-center sm:px-6">
-                                <p class="font-medium text-white text-theme-xs dark:text-white">Estado</p>
+                            <th style="background-color: #63B7EC;" class="px-5 py-3 text-center sm:px-6">
+                                <p class="font-semibold text-gray-100 text-theme-xs uppercase">Estado</p>
                             </th>
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-center sm:px-6">
-                                <p class="font-medium text-white text-theme-xs dark:text-white">Acciones</p>
+                            <th style="background-color: #63B7EC;" class="px-5 py-3 text-center sm:px-6 last:rounded-tr-xl">
+                                <p class="font-semibold text-gray-100 text-theme-xs uppercase">Acciones</p>
                             </th>
                         </tr>
                     </thead>

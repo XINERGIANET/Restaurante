@@ -13,7 +13,6 @@ use App\Models\WarehouseMovementDetail;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 class WarehouseMovementController extends Controller
 {
@@ -26,10 +25,6 @@ class WarehouseMovementController extends Controller
             abort(403, 'No se ha seleccionado una sucursal');
         }
 
-        // Debug: Verificar cuántos productos hay en total
-        $totalProducts = Product::count();
-        $productsWithType = Product::where('type', 'PRODUCT')->count();
-        
         // Cargar productos igual que OrderController - todos los productos de tipo PRODUCT
         $products = Product::where('type', 'PRODUCT')
             ->with(['category', 'baseUnit'])
@@ -42,9 +37,7 @@ class WarehouseMovementController extends Controller
                 ->orderBy('description')
                 ->get();
         }
-        
-        // Debug: Log para verificar
-        Log::info("WarehouseMovementController::input - Total productos: {$totalProducts}, Con type PRODUCT: {$productsWithType}, Cargados: {$products->count()}");
+
 
         // Cargar productBranches del branch para tener información de stock y precio
         $productBranches = ProductBranch::where('branch_id', $branchId)
@@ -118,7 +111,7 @@ class WarehouseMovementController extends Controller
                 'currentStock' => $productBranch ? (int) ($productBranch->stock ?? 0) : 0,
                 'price' => $productBranch ? (float) ($productBranch->price ?? 0) : 0,
             ];
-        })->filter(fn ($p) => !empty($p['name']))->values();
+        })->filter(fn($p) => !empty($p['name']))->values();
 
         return view('warehouse_movements.output', [
             'products' => $products,
@@ -347,7 +340,7 @@ class WarehouseMovementController extends Controller
             DB::beginTransaction();
 
             // Buscar MovementType para almacén (asumiendo que existe uno con descripción relacionada)
-            $movementType = MovementType::where(function($query) {
+            $movementType = MovementType::where(function ($query) {
                 $query->where('description', 'like', '%Almacén%')
                     ->orWhere('description', 'like', '%Warehouse%')
                     ->orWhere('description', 'like', '%Inventario%');
@@ -364,15 +357,15 @@ class WarehouseMovementController extends Controller
             // Buscar DocumentType para entrada (ID 7 según la base de datos)
             // Primero intentar buscar por ID 7 directamente
             $documentType = DocumentType::find(7);
-            
+
             // Si no existe el ID 7, buscar por nombre "Entrada" sin filtrar por movement_type_id
             if (!$documentType) {
-                $documentType = DocumentType::where(function($query) {
+                $documentType = DocumentType::where(function ($query) {
                     $query->where('name', 'like', '%Entrada%')
                         ->orWhere('name', 'like', '%entry%');
                 })->first();
             }
-            
+
             // Si aún no se encuentra, usar el primero del movement_type encontrado
             if (!$documentType) {
                 $documentType = DocumentType::where('movement_type_id', $movementType->id)->first();
@@ -460,7 +453,6 @@ class WarehouseMovementController extends Controller
                 'message' => 'Entrada de productos guardada correctamente',
                 'movement_id' => $movement->id,
             ]);
-
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
@@ -468,5 +460,47 @@ class WarehouseMovementController extends Controller
                 'message' => 'Error al guardar la entrada: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    public function show($warehouseMovement)
+    {
+        $warehouseMovement = WarehouseMovement::with([
+            'movement.movementType',
+            'movement.documentType',
+            'movement.branch',
+            'branch',
+            'details.unit',
+            'details.product',
+        ])->findOrFail($warehouseMovement->id ?? $warehouseMovement);
+        return view('warehouse_movements.show', [
+            'warehouseMovement' => $warehouseMovement,
+            'title' => 'Ver Movimiento de Almacén',
+        ]);
+    }
+    public function edit($warehouseMovement)
+    {
+        $branchId = session('branch_id');
+        $warehouseMovement = WarehouseMovement::with([
+            'movement.movementType',
+            'movement.documentType',
+            'movement.branch',
+            'branch',
+            'details.unit',
+            'details.product',
+        ])->findOrFail($warehouseMovement->id ?? $warehouseMovement);
+        return view('warehouse_movements.edit', [
+            'warehouseMovement' => $warehouseMovement,
+            'branchId' => $branchId,
+            'title' => 'Editar Movimiento de Almacén',
+        ]);
+    }
+    public function update($warehouseMovement, Request $request)
+    {
+        $request->validate([
+            'status' => 'required|string|in:A,C',
+        ]);
+        $warehouseMovement = WarehouseMovement::with(['movement.movementType', 'movement.documentType', 'branch'])->findOrFail($warehouseMovement->id);
+        $warehouseMovement->update($request->all());
+        return redirect()->route('warehouse_movements.show', ['warehouseMovement' => $warehouseMovement->id])->with('success', 'Movimiento de Almacén actualizado correctamente');
     }
 }

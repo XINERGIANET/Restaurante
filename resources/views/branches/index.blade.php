@@ -128,15 +128,17 @@
                     @if ($requestIcon)
                         <input type="hidden" name="icon" value="{{ $requestIcon }}">
                     @endif
-                    <div class="w-full sm:w-24">
-                            <select name="per_page"
-                                class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-3 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
-                                onchange="this.form.submit()">
-                                @foreach ([10, 20, 50, 100] as $size)
-                                    <option value="{{ $size }}" @selected($perPage == $size)>{{ $size }} / pagina</option>
-                                @endforeach
-                            </select>
-                        </div>
+                        <div class="w-auto flex-none">
+                        <label class="mb-1.5 block text-xs font-medium text-gray-500 sm:hidden">Por página</label>
+                        <select name="per_page"
+                            class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-3 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+                            onchange="this.form.submit()">
+                            @foreach ([10, 20, 50, 100] as $size)
+                                <option value="{{ $size }}" @selected($perPage == $size)>{{ $size }} /
+                                    página</option>
+                            @endforeach
+                        </select>
+                    </div>
                     <div class="relative flex-1">
                         <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
                             <i class="ri-search-line"></i>
@@ -186,9 +188,9 @@
                 @endforeach
             </div>
 
-            <div class="mt-4 rounded-xl border border-gray-200 bg-white overflow-visible dark:border-gray-800 dark:bg-white/[0.03]">
-                <table class="w-full">
-                    <thead>
+                <div class="mt-4 rounded-xl border border-gray-200 bg-white overflow-visible dark:border-gray-800 dark:bg-white/[0.03]" style="overflow: visible; max-height: none;">
+                    <table class="w-full">
+                        <thead>
                         <tr class="text-white">
                             <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6 first:rounded-tl-xl">
                                 <p class="font-semibold text-gray-100 text-theme-xs uppercase">Logo</p>
@@ -250,7 +252,7 @@
                                                 $actionUrl = $resolveActionUrl($action, [$company, $branch], $operation);
                                                 $textColor = $resolveTextColor($operation);
                                                 $buttonColor = $operation->color ?: '#3B82F6';
-                                                $buttonStyle = "border-radius: 100%; background-color: {$buttonColor}; color: {$textColor};";
+                                                        $buttonStyle = "border-radius: 0.75rem; background-color: {$buttonColor}; color: {$textColor};";
                                                 $variant = $isDelete ? 'eliminate' : (str_contains($action, 'edit') ? 'edit' : 'primary');
                                             @endphp
                                             @if ($isDelete)
@@ -275,7 +277,7 @@
                                                     @endif
                                                     <x-ui.button
                                                         size="icon" variant="{{ $variant }}" type="submit"
-                                                        className="bg-error-500 text-white hover:bg-error-600 ring-0 rounded-full"
+                                                        className="bg-error-500 text-white hover:bg-error-600 ring-0 rounded-xl"
                                                         style="{{ $buttonStyle }}"
                                                         aria-label="{{ $operation->name }}"
                                                     >
@@ -289,7 +291,7 @@
                                                         size="icon"
                                                         variant="{{ $variant }}"
                                                         href="{{ $actionUrl }}"
-                                                        className="bg-brand-500 text-white hover:bg-brand-600 ring-0 rounded-full"
+                                                        className="bg-brand-500 text-white hover:bg-brand-600 ring-0 rounded-xl"
                                                         style="{{ $buttonStyle }}"
                                                         aria-label="{{ $operation->name }}"
                                                     >

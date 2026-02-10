@@ -95,6 +95,8 @@ Route::middleware('auth')->group(function () {
         ->name('admin.companies.branches.views.operations.index');
     Route::post('/admin/herramientas/empresas/{company}/sucursales/{branch}/vistas/{view}/operaciones/asignar', [BranchController::class, 'assignViewOperations'])
         ->name('admin.companies.branches.views.operations.assign');
+    Route::patch('/admin/herramientas/empresas/{company}/sucursales/{branch}/vistas/{view}/operaciones/{branchOperation}/toggle', [BranchController::class, 'toggleViewOperation'])
+        ->name('admin.companies.branches.views.operations.toggle');
     Route::get('/admin/herramientas/empresas/{company}/sucursales/{branch}/perfiles/{profile}/permisos', [BranchController::class, 'profilePermissions'])
         ->name('admin.companies.branches.profiles.permissions.index');
     Route::post('/admin/herramientas/empresas/{company}/sucursales/{branch}/perfiles/{profile}/permisos/asignar', [BranchController::class, 'assignProfilePermissions'])
@@ -303,9 +305,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/mesas/{table}/edit', [TableController::class, 'editGeneral'])->name('tables.edit');
     Route::put('/mesas/{table}', [TableController::class, 'updateGeneral'])->name('tables.update');
     Route::delete('/mesas/{table}', [TableController::class, 'destroyGeneral'])->name('tables.destroy');
-    Route::view('/admin/configuracion/parametros', 'pages.blank', ['title' => 'Parametros']);
-    Route::view('/admin/configuracion/menu', 'pages.blank', ['title' => 'Menu y recetas']);
-    Route::view('/admin/configuracion/impuestos', 'pages.blank', ['title' => 'Impuestos']);
 
     //Tarjetas
     Route::resource('/admin/herramientas/tarjetas', CardController::class)
@@ -335,7 +334,7 @@ Route::middleware('auth')->group(function () {
     //Caja chica
     Route::get('/caja/caja-chica', [PettyCashController::class, 'redirectBase'])
         ->name('admin.petty-cash.base');
-
+    Route::get('/caja/caja-chica/{cash_register_id}/{movement}', [PettyCashController::class, 'show'])->name('admin.petty-cash.show');
     Route::group(['prefix' => 'caja/caja-chica/{cash_register_id}', 'as' => 'admin.petty-cash.'], function () {
         Route::get('/', [PettyCashController::class, 'index'])->name('index');
         Route::post('/', [PettyCashController::class, 'store'])->name('store');
@@ -355,10 +354,10 @@ Route::middleware('auth')->group(function () {
         ->parameters(['tasas-impuesto' => 'taxRate']);
 
     //Movimientos de almacen
-    Route::resource('/admin/herramientas/movimientos-almacen', WarehouseMovementController::class)
+    Route::resource('/admin/herramientas/movimientos_almacen', WarehouseMovementController::class)
         ->names('warehouse_movements')
-        ->parameters(['movimientos-almacen' => 'warehouseMovement'])
-        ->only(['index', 'store']); // Solo incluir los métodos que existen
+        ->parameters(['movimientos_almacen' => 'warehouseMovement'])
+        ->only(['index', 'store', 'show', 'edit', 'update']); // Solo incluir los métodos que existen
 
     Route::get('/admin/herramientas/movimientos-almacen/entrada', [WarehouseMovementController::class, 'input'])
         ->name('warehouse_movements.input');
@@ -367,6 +366,12 @@ Route::middleware('auth')->group(function () {
         ->name('warehouse_movements.output');
     Route::post('/admin/herramientas/movimientos-almacen/salida', [WarehouseMovementController::class, 'outputStore'])
         ->name('warehouse_movements.output.store');
+    Route::get('/admin/herramientas/movimientos-almacen/{warehouseMovement}/show', [WarehouseMovementController::class, 'show'])
+        ->name('warehouse_movements.show');
+    Route::get('/admin/herramientas/movimientos-almacen/{warehouseMovement}/edit', [WarehouseMovementController::class, 'edit'])
+        ->name('warehouse_movements.edit');
+    Route::put('/admin/herramientas/movimientos-almacen/{warehouseMovement}', [WarehouseMovementController::class, 'update'])
+        ->name('warehouse_movements.update');
 
     //Recetario
     Route::resource('/cocina/recetario', RecipeBookController::class)

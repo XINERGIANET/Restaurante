@@ -8,6 +8,7 @@
     $currentPath = '/' . trim(request()->path(), '/');
     $currentRouteName = optional(request()->route())->getName();
     $breadcrumbViewId = request()->query('view_id');
+    $branchViewId = request()->query('branch_view_id') ?? session('branch_view_id');
     $crumbList = $crumbs
         ?? $breadcrumbs
         ?? $attributes->get('crumbs')
@@ -64,12 +65,50 @@
         return $menuOption?->view_id;
     };
 
-    $appendViewId = function ($url) use ($breadcrumbViewId, $resolveViewIdForUrl) {
-        if (!$breadcrumbViewId || !$url) {
+    $replaceViewId = function ($url, $viewId) {
+        if (!$url || $url === '#' || $viewId === null || $viewId === '') {
+            return $url;
+        }
+
+        $parts = parse_url($url);
+        if ($parts === false) {
+            return $url;
+        }
+
+        $query = [];
+        if (!empty($parts['query'])) {
+            parse_str($parts['query'], $query);
+        }
+
+        $query['view_id'] = $viewId;
+        $queryString = http_build_query($query);
+
+        $schemeHost = '';
+        if (!empty($parts['scheme'])) {
+            $schemeHost = $parts['scheme'] . '://' . ($parts['host'] ?? '');
+            if (!empty($parts['port'])) {
+                $schemeHost .= ':' . $parts['port'];
+            }
+        }
+
+        $pathPart = $parts['path'] ?? '';
+        $fragment = isset($parts['fragment']) ? '#' . $parts['fragment'] : '';
+
+        return $schemeHost . $pathPart . ($queryString ? '?' . $queryString : '') . $fragment;
+    };
+
+    $appendViewId = function ($url) use ($breadcrumbViewId, $branchViewId, $resolveViewIdForUrl, $replaceViewId) {
+        if ((!$breadcrumbViewId && !$branchViewId) || !$url) {
             return $url;
         }
         $viewIdForUrl = $resolveViewIdForUrl($url) ?: $breadcrumbViewId;
-        return MenuHelper::appendViewIdToPath($url, $viewIdForUrl);
+        if ($branchViewId) {
+            $path = parse_url($url, PHP_URL_PATH) ?? '';
+            if ($path && preg_match('#/sucursales$#', $path)) {
+                $viewIdForUrl = $branchViewId;
+            }
+        }
+        return $replaceViewId($url, $viewIdForUrl);
     };
 
     $menuOption = MenuOption::query()

@@ -2,12 +2,19 @@
 
 @section('content')
     <div x-data="{}">
+        @php
+            $branchViewId = request('branch_view_id') ?? session('branch_view_id');
+            $viewsViewId = request('views_view_id') ?? session('branch_views_view_id');
+            $viewId = request('view_id');
+            $companyViewId = request('company_view_id');
+            $requestIcon = request('icon');
+        @endphp
         <x-common.page-breadcrumb
             pageTitle="Operaciones"
             :crumbs="[
                 ['label' => 'Empresas', 'url' => route('admin.companies.index')],
-                ['label' => $company->legal_name . ' | Sucursales', 'url' => route('admin.companies.branches.index', $company)],
-                ['label' => $branch->legal_name . ' | Vistas', 'url' => route('admin.companies.branches.views.index', [$company, $branch])],
+                ['label' => $company->legal_name . ' | Sucursales', 'url' => route('admin.companies.branches.index', array_merge([$company], array_filter(['view_id' => $branchViewId])))],
+                ['label' => $branch->legal_name . ' | Vistas', 'url' => route('admin.companies.branches.views.index', array_merge([$company, $branch], array_filter(['view_id' => $viewsViewId, 'branch_view_id' => $branchViewId])))],
                 ['label' => $view->name . ' | Operaciones']
             ]"
         />
@@ -18,6 +25,21 @@
         >
             <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                 <form method="GET" class="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
+                    @if ($viewId)
+                        <input type="hidden" name="view_id" value="{{ $viewId }}">
+                    @endif
+                    @if ($companyViewId)
+                        <input type="hidden" name="company_view_id" value="{{ $companyViewId }}">
+                    @endif
+                    @if ($branchViewId)
+                        <input type="hidden" name="branch_view_id" value="{{ $branchViewId }}">
+                    @endif
+                    @if ($viewsViewId)
+                        <input type="hidden" name="views_view_id" value="{{ $viewsViewId }}">
+                    @endif
+                    @if ($requestIcon)
+                        <input type="hidden" name="icon" value="{{ $requestIcon }}">
+                    @endif
                     <div class="w-29">
                         <select
                             name="per_page"
@@ -46,14 +68,14 @@
                             <i class="ri-search-line"></i>
                             <span>Buscar</span>
                         </x-ui.button>
-                        <x-ui.link-button size="sm" variant="outline" href="{{ route('admin.companies.branches.views.operations.index', [$company, $branch, $view]) }}">
+                        <x-ui.link-button size="sm" variant="outline" href="{{ route('admin.companies.branches.views.operations.index', array_merge([$company, $branch, $view], array_filter(['view_id' => $viewId, 'company_view_id' => $companyViewId, 'branch_view_id' => $branchViewId, 'views_view_id' => $viewsViewId, 'icon' => $requestIcon]))) }}">
                             <i class="ri-close-line"></i>
                             <span>Limpiar</span>
                         </x-ui.link-button>
                     </div>
                 </form>
                 <div class="flex flex-wrap gap-2">
-                    <x-ui.link-button size="md" variant="outline" href="{{ route('admin.companies.branches.views.index', [$company, $branch]) }}">
+                    <x-ui.link-button size="md" variant="outline" href="{{ route('admin.companies.branches.views.index', array_merge([$company, $branch], array_filter(['view_id' => $viewsViewId ?: $viewId, 'company_view_id' => $companyViewId, 'branch_view_id' => $branchViewId, 'icon' => $requestIcon]))) }}">
                         <i class="ri-arrow-left-line"></i>
                         <span>Volver</span>
                     </x-ui.link-button>
@@ -78,6 +100,9 @@
                             <th class="px-5 py-3 text-left sm:px-6">
                                 <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Estado</p>
                             </th>
+                            <th class="px-5 py-3 text-right sm:px-6">
+                                <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Acciones</p>
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
@@ -100,10 +125,44 @@
                                         {{ $operation->status ? 'Activo' : 'Inactivo' }}
                                     </x-ui.badge>
                                 </td>
+                                <td class="px-5 py-4 sm:px-6 text-right">
+                                    @php
+                                        $toggleParams = array_filter([
+                                            'view_id' => $viewId,
+                                            'company_view_id' => $companyViewId,
+                                            'branch_view_id' => $branchViewId,
+                                            'views_view_id' => $viewsViewId,
+                                            'icon' => $requestIcon,
+                                        ]);
+                                        $toggleUrl = route('admin.companies.branches.views.operations.toggle', [$company, $branch, $view, $operation->id]);
+                                        if (!empty($toggleParams)) {
+                                            $toggleUrl .= '?' . http_build_query($toggleParams);
+                                        }
+                                    @endphp
+                                    <div class="flex items-center justify-end">
+                                        <form method="POST" action="{{ $toggleUrl }}" class="relative group">
+                                            @csrf
+                                            @method('PATCH')
+                                            <x-ui.button
+                                                size="icon"
+                                                variant="primary"
+                                                type="submit"
+                                                className="{{ $operation->status ? 'bg-brand-500 text-white hover:bg-brand-600' : 'bg-gray-500 text-white hover:bg-gray-600' }} ring-0 rounded-full"
+                                                style="border-radius: 100%;"
+                                                aria-label="{{ $operation->status ? 'Desactivar' : 'Activar' }}"
+                                            >
+                                                <i class="{{ $operation->status ? 'ri-eye-line' : 'ri-eye-off-line' }}"></i>
+                                            </x-ui.button>
+                                            <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">
+                                                {{ $operation->status ? 'Desactivar' : 'Activar' }}
+                                            </span>
+                                        </form>
+                                    </div>
+                                </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="3" class="px-6 py-12">
+                                <td colspan="4" class="px-6 py-12">
                                     <div class="flex flex-col items-center gap-3 text-center text-sm text-gray-500">
                                         <div class="rounded-full bg-gray-100 p-3 text-gray-400 dark:bg-gray-800 dark:text-gray-300">
                                             <i class="ri-list-check-2"></i>
@@ -158,6 +217,21 @@
                     data-select-scope
                 >
                     @csrf
+                    @if ($viewId)
+                        <input type="hidden" name="view_id" value="{{ $viewId }}">
+                    @endif
+                    @if ($companyViewId)
+                        <input type="hidden" name="company_view_id" value="{{ $companyViewId }}">
+                    @endif
+                    @if ($branchViewId)
+                        <input type="hidden" name="branch_view_id" value="{{ $branchViewId }}">
+                    @endif
+                    @if ($viewsViewId)
+                        <input type="hidden" name="views_view_id" value="{{ $viewsViewId }}">
+                    @endif
+                    @if ($requestIcon)
+                        <input type="hidden" name="icon" value="{{ $requestIcon }}">
+                    @endif
 
                     <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
                         <input

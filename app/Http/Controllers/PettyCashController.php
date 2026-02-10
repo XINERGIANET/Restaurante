@@ -47,46 +47,46 @@ class PettyCashController extends Controller
             ->whereHas('cashMovementStart', function ($query) use ($selectedBoxId) {
                 $query->where('cash_register_id', $selectedBoxId);
             })
-            ->latest('id') 
+            ->latest('id')
             ->first();
 
         $hasOpening = $lastShiftRelation && $lastShiftRelation->status == '1';
 
         $documentTypes = DocumentType::where('movement_type_id', 4)->get();
-        
-        $docIngreso = $documentTypes->firstWhere('name', 'Ingreso'); 
+
+        $docIngreso = $documentTypes->firstWhere('name', 'Ingreso');
         $ingresoDocId = $docIngreso ? $docIngreso->id : '';
         $docEgreso = $documentTypes->firstWhere('name', 'Egreso');
         $egresoDocId = $docEgreso ? $docEgreso->id : '';
 
         $conceptsIngreso = PaymentConcept::where('type', 'I')
-            ->where(function($query) {
+            ->where(function ($query) {
                 $query->where('restricted', false)
-                    ->orWhere('description', 'like', '%Apertura%'); 
+                    ->orWhere('description', 'like', '%Apertura%');
             })
             ->get();
-            
+
         $conceptsEgreso = PaymentConcept::where('type', 'E')
-            ->where(function($query) {
+            ->where(function ($query) {
                 $query->where('restricted', false)
-                    ->orWhere('description', 'like', '%Cierre%'); 
+                    ->orWhere('description', 'like', '%Cierre%');
             })
             ->get();
-                                    
-       $movements = Movement::query()
-            ->with('documentType') 
+
+        $movements = Movement::query()
+            ->with('documentType')
             ->whereHas('cashMovement', function ($query) use ($selectedBoxId) {
                 $query->where('cash_register_id', $selectedBoxId);
             })
             ->when($search, function ($query, $search) {
-                $query->where(function($q) use ($search) {
+                $query->where(function ($q) use ($search) {
                     $q->where('person_name', 'like', "%{$search}%")
-                    ->orWhere('number', 'like', "%{$search}%");
+                        ->orWhere('number', 'like', "%{$search}%");
                 });
             })
             ->orderBy('moved_at', 'desc')
             ->paginate(10);
-        
+
         $shifts = Shift::where('branch_id', session('branch_id'))->get();
 
         $paymentMethods = PaymentMethod::where('status', true)->orderBy('order_num', 'asc')->get();
@@ -102,14 +102,14 @@ class PettyCashController extends Controller
         return view('petty_cash.index', [
             'title'           => 'Caja Chica',
             'movements'       => $movements,
-            'documentTypes'   => $documentTypes,            
-            'hasOpening'      => $hasOpening,  
-            'ingresoDocId'    => $ingresoDocId, 
+            'documentTypes'   => $documentTypes,
+            'hasOpening'      => $hasOpening,
+            'ingresoDocId'    => $ingresoDocId,
             'egresoDocId'     => $egresoDocId,
             'cashRegisters'   => $cashRegisters,
             'conceptsIngreso' => $conceptsIngreso,
-            'conceptsEgreso'  => $conceptsEgreso,            
-            'selectedBoxId'   => $selectedBoxId, 
+            'conceptsEgreso'  => $conceptsEgreso,
+            'selectedBoxId'   => $selectedBoxId,
             'shifts'          => $shifts,
 
             'paymentMethods'  => $paymentMethods,
@@ -118,6 +118,17 @@ class PettyCashController extends Controller
             'digitalWallets'  => $digitalWallets,
             'cards'           => $cards,
         ]);
+    }
+
+    public function show($cash_register_id, $movement_id)
+    {
+        $movement = Movement::with([
+            'documentType',
+            'cashMovement.details',
+            'cashMovement.shift',
+            'cashMovement.paymentConcept',
+        ])->findOrFail($movement_id);
+        return view('petty_cash.show', compact('cash_register_id', 'movement'));
     }
 
     public function store(Request $request, $cash_register_id)
@@ -131,7 +142,7 @@ class PettyCashController extends Controller
             'shift_id'           => 'required|exists:shifts,id',
 
             'payments'           => 'required|array|min:1',
-            'payments.*.amount'  => 'required|numeric|min:0.01',
+            'payments.*.amount'  => 'required|numeric|min:0.00',
             'payments.*.payment_method_id' => 'required|exists:payment_methods,id',
             'payments.*.number'  => 'nullable|string|max:100',
         ]);
@@ -146,7 +157,7 @@ class PettyCashController extends Controller
                 ];
                 $shiftSnapshotJson = json_encode($shiftSnapshotData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
-                $typeId = 4; 
+                $typeId = 4;
                 $lastRecord = Movement::select('movements.*')
                     ->join('cash_movements', 'movements.id', '=', 'cash_movements.movement_id')
                     ->where('movements.movement_type_id', $typeId)
@@ -161,12 +172,12 @@ class PettyCashController extends Controller
                 $totalAmount = collect($request->payments)->sum('amount');
 
                 $movement = Movement::create([
-                    'number'             => $generatedNumber, 
+                    'number'             => $generatedNumber,
                     'moved_at'           => now(),
                     'user_id'            => session('user_id'),
                     'user_name'          => session('user_name'),
                     'person_id'          => session('person_id'),
-                    'person_name'        => session('person_fullname'),                    
+                    'person_name'        => session('person_fullname'),
                     'responsible_id'     => session('person_id'),
                     'responsible_name'   => session('person_fullname'),
                     'comment'            => $validated['comment'],
@@ -184,58 +195,58 @@ class PettyCashController extends Controller
                 $cashMovement = CashMovements::create([
                     'payment_concept_id' => $validated['payment_concept_id'],
                     'currency'           => 'PEN',
-                    'exchange_rate'      => 3.71, 
-                    'total'              => $totalAmount, 
+                    'exchange_rate'      => 3.71,
+                    'total'              => $totalAmount,
                     'cash_register_id'   => $cash_register_id,
                     'cash_register'      => $boxName,
                     'shift_id'           => $selectedShift->id,
-                    'shift_snapshot'     => $shiftSnapshotJson, 
-                    'movement_id'        => $movement->id, 
+                    'shift_snapshot'     => $shiftSnapshotJson,
+                    'movement_id'        => $movement->id,
                     'branch_id'          => session('branch_id'),
                 ]);
 
                 foreach ($request->payments as $paymentData) {
-                    
-                    $cardName = !empty($paymentData['card_id']) 
-                        ? Card::find($paymentData['card_id'])?->description 
+
+                    $cardName = !empty($paymentData['card_id'])
+                        ? Card::find($paymentData['card_id'])?->description
                         : null;
 
-                    $bankName = !empty($paymentData['bank_id']) 
-                        ? Bank::find($paymentData['bank_id'])?->description 
+                    $bankName = !empty($paymentData['bank_id'])
+                        ? Bank::find($paymentData['bank_id'])?->description
                         : null;
 
-                    $walletName = !empty($paymentData['digital_wallet_id']) 
-                        ? DigitalWallet::find($paymentData['digital_wallet_id'])?->description 
+                    $walletName = !empty($paymentData['digital_wallet_id'])
+                        ? DigitalWallet::find($paymentData['digital_wallet_id'])?->description
                         : null;
 
-                    $gatewayName = !empty($paymentData['payment_gateway_id']) 
-                        ? PaymentGateways::find($paymentData['payment_gateway_id'])?->description 
+                    $gatewayName = !empty($paymentData['payment_gateway_id'])
+                        ? PaymentGateways::find($paymentData['payment_gateway_id'])?->description
                         : null;
 
-                    $individualComment = ($paymentData['payment_method_id'] != 1 && !empty($paymentData['number'])) 
-                        ? $paymentData['number'] 
+                    $individualComment = ($paymentData['payment_method_id'] != 1 && !empty($paymentData['number']))
+                        ? $paymentData['number']
                         : $validated['comment'];
 
                     CashMovementDetail::create([
                         'cash_movement_id'   => $cashMovement->id,
                         'branch_id'          => session('branch_id'),
-                        
-                        'type'               => 'PAGADO', 
-                        'status'             => 'A',      
+
+                        'type'               => 'PAGADO',
+                        'status'             => 'A',
                         'paid_at'            => now(),
-                        
+
                         'amount'             => $paymentData['amount'],
                         'payment_method_id'  => $paymentData['payment_method_id'],
                         'payment_method'     => $paymentData['payment_method'] ?? 'Desconocido',
                         'comment'            => $individualComment,
 
                         'number'             => $paymentData['number'] ?? null,
-                        
+
                         'card_id'            => $paymentData['card_id'] ?? null,
-                        'card'               => $cardName, 
-                        
+                        'card'               => $cardName,
+
                         'bank_id'            => $paymentData['bank_id'] ?? null,
-                        'bank'               => $bankName, 
+                        'bank'               => $bankName,
 
                         'digital_wallet_id'  => $paymentData['digital_wallet_id'] ?? null,
                         'digital_wallet'     => $walletName,
@@ -253,48 +264,46 @@ class PettyCashController extends Controller
                     CashShiftRelation::create([
                         'started_at'             => now(),
                         'status'                 => '1',
-                        'cash_movement_start_id' => $cashMovement->id, 
+                        'cash_movement_start_id' => $cashMovement->id,
                         'branch_id'              => session('branch_id'),
                     ]);
-
                 } elseif (str_contains($conceptName, 'cierre')) {
                     $openRelation = CashShiftRelation::where('branch_id', session('branch_id'))
-                                                     ->where('status', '1')
-                                                     ->latest('id')
-                                                     ->first();
+                        ->where('status', '1')
+                        ->latest('id')
+                        ->first();
 
                     if ($openRelation) {
                         $openRelation->update([
                             'ended_at'             => now(),
-                            'status'               => '0', 
+                            'status'               => '0',
                             'cash_movement_end_id' => $cashMovement->id,
                         ]);
                     }
                 }
-            }); 
+            });
 
             return redirect()->route('admin.petty-cash.index', ['cash_register_id' => $cash_register_id])
-                             ->with('success', 'Movimiento registrado correctamente.');
-
+                ->with('success', 'Movimiento registrado correctamente.');
         } catch (\Exception $e) {
             return back()->withErrors(['error' => 'Error al guardar: ' . $e->getMessage()])
-                         ->withInput();
+                ->withInput();
         }
     }
 
     public function edit($cash_register_id, $id)
     {
         $movement = Movement::with(['cashMovement.details', 'cashMovement'])->findOrFail($id);
-        
+
         $currentConceptId = $movement->cashMovement->payment_concept_id;
-        $currentConcept   = PaymentConcept::find($currentConceptId);        
+        $currentConcept   = PaymentConcept::find($currentConceptId);
         $desc = $currentConcept ? strtolower($currentConcept->description) : '';
         $isSpecialEvent = str_contains($desc, 'apertura') || str_contains($desc, 'cierre');
 
         if ($isSpecialEvent) {
             if ($currentConcept->type == 'I') {
                 $conceptsIngreso = collect([$currentConcept]);
-                $conceptsEgreso  = collect([]); 
+                $conceptsEgreso  = collect([]);
             } else {
                 $conceptsIngreso = collect([]);
                 $conceptsEgreso  = collect([$currentConcept]);
@@ -307,7 +316,7 @@ class PettyCashController extends Controller
             $conceptsEgreso = PaymentConcept::where('type', 'E')
                 ->where('restricted', false)
                 ->get();
-                
+
             if ($currentConcept && $currentConcept->restricted && !$isSpecialEvent) {
                 if ($currentConcept->type == 'I') {
                     $conceptsIngreso->push($currentConcept);
@@ -324,11 +333,11 @@ class PettyCashController extends Controller
         $paymentGateways = PaymentGateways::where('status', true)->orderBy('order_num', 'asc')->get();
 
         return view('petty_cash.edit', compact(
-            'cash_register_id', 
+            'cash_register_id',
             'movement',
             'shifts',
             'conceptsIngreso',
-            'conceptsEgreso', 
+            'conceptsEgreso',
             'cards',
             'banks',
             'digitalWallets',
@@ -345,12 +354,12 @@ class PettyCashController extends Controller
             'payments'           => 'required|array|min:1',
             'payments.*.amount'  => 'required|numeric|min:0.01',
             'payments.*.payment_method_id' => 'required|exists:payment_methods,id',
-            'payments.*.number'  => 'nullable|string|max:100', 
+            'payments.*.number'  => 'nullable|string|max:100',
         ]);
 
         try {
             DB::transaction(function () use ($request, $validated, $id, $cash_register_id) {
-                
+
                 $movement = Movement::findOrFail($id);
                 $cashMovement = CashMovements::where('movement_id', $movement->id)->firstOrFail();
 
@@ -367,7 +376,7 @@ class PettyCashController extends Controller
                     'comment'        => $validated['comment'],
                     'shift_id'       => $selectedShift->id,
                     'shift_snapshot' => $shiftSnapshotJson,
-                    'document_type_id' => $request->document_type_id 
+                    'document_type_id' => $request->document_type_id
                 ]);
 
                 $cashMovement->update([
@@ -376,31 +385,31 @@ class PettyCashController extends Controller
                     'shift_id'           => $selectedShift->id,
                     'shift_snapshot'     => $shiftSnapshotJson,
                 ]);
-                
+
                 CashMovementDetail::where('cash_movement_id', $cashMovement->id)->delete();
 
                 foreach ($request->payments as $paymentData) {
-                    
+
                     $cardName = !empty($paymentData['card_id']) ? Card::find($paymentData['card_id'])?->description : null;
                     $bankName = !empty($paymentData['bank_id']) ? Bank::find($paymentData['bank_id'])?->description : null;
                     $walletName = !empty($paymentData['digital_wallet_id']) ? DigitalWallet::find($paymentData['digital_wallet_id'])?->description : null;
                     $gatewayName = !empty($paymentData['payment_gateway_id']) ? PaymentGateways::find($paymentData['payment_gateway_id'])?->description : null;
 
-                    $individualComment = ($paymentData['payment_method_id'] != 1 && !empty($paymentData['number'])) 
-                        ? $paymentData['number'] 
+                    $individualComment = ($paymentData['payment_method_id'] != 1 && !empty($paymentData['number']))
+                        ? $paymentData['number']
                         : $validated['comment'];
 
                     CashMovementDetail::create([
                         'cash_movement_id'   => $cashMovement->id,
                         'branch_id'          => session('branch_id'),
-                        'type'               => 'PAGADO', 
-                        'status'             => 'A',      
-                        'paid_at'            => $movement->moved_at, 
-                        
+                        'type'               => 'PAGADO',
+                        'status'             => 'A',
+                        'paid_at'            => $movement->moved_at,
+
                         'amount'             => $paymentData['amount'],
                         'payment_method_id'  => $paymentData['payment_method_id'],
                         'payment_method'     => $paymentData['payment_method'] ?? 'Desconocido',
-                        
+
                         'comment'            => $individualComment,
 
                         'number'             => $paymentData['number'] ?? null,
@@ -417,11 +426,10 @@ class PettyCashController extends Controller
             });
 
             return redirect()->route('admin.petty-cash.index', ['cash_register_id' => $cash_register_id])
-                            ->with('success', 'Movimiento actualizado correctamente.');
-
+                ->with('success', 'Movimiento actualizado correctamente.');
         } catch (\Exception $e) {
             return back()->withErrors(['error' => 'Error al actualizar: ' . $e->getMessage()])
-                        ->withInput();
+                ->withInput();
         }
     }
 }
