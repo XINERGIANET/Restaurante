@@ -51,21 +51,9 @@ class ProductController extends Controller
 
     public function store(Request $request)
     {
-        Log::info('=== PRODUCT STORE DEBUG START ===');
-        Log::info('Request has file image: ' . ($request->hasFile('image') ? 'YES' : 'NO'));
-        Log::info('Request all keys: ' . json_encode(array_keys($request->all())));
-        
-        // Guardar el archivo ANTES de validar, porque la validación puede afectar el archivo
         $imagePath = null;
         if ($request->hasFile('image')) {
             $file = $request->file('image');
-            Log::info('File object received: ' . get_class($file));
-            Log::info('File isValid: ' . ($file->isValid() ? 'YES' : 'NO'));
-            Log::info('File getRealPath: ' . ($file->getRealPath() ?? 'NULL'));
-            Log::info('File getPathname: ' . ($file->getPathname() ?? 'NULL'));
-            Log::info('File getClientOriginalName: ' . ($file->getClientOriginalName() ?? 'NULL'));
-            Log::info('File getSize: ' . ($file->getSize() ?? 'NULL'));
-            Log::info('File getMimeType: ' . ($file->getMimeType() ?? 'NULL'));
             
             if ($file->getRealPath()) {
                 Log::info('File isReadable: ' . (is_readable($file->getRealPath()) ? 'YES' : 'NO'));

@@ -1,4 +1,23 @@
-<div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+<div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-4" 
+     x-data="{
+        // Variable que controla si se muestran los campos (True si NO es ingrediente)
+        showComplements: '{{ old('type', $product->type ?? 'PRODUCT') }}'.trim() !== 'INGREDENT',
+
+        handleTypeChange(e) {
+            // Verificamos si el valor seleccionado es ingrediente
+            const isIngredient = e.target.value.trim() === 'INGREDENT';
+
+            // Si es ingrediente, ocultamos (false). Si no, mostramos (true).
+            this.showComplements = !isIngredient;
+
+            // Si se convierte en ingrediente, forzamos los valores a 'NO' y '' (vacío)
+            if (isIngredient) {
+                $refs.complementSelect.value = 'NO';
+                $refs.modeSelect.value = '';
+            }
+        }
+     }">
+
     <div>
         <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Codigo</label>
         <input
@@ -12,7 +31,7 @@
     </div>
 
     <div>
-        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Descripcion</label>
+        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Nombre</label>
         <input
             type="text"
             name="description"
@@ -40,10 +59,11 @@
         <select
             name="type"
             required
+            @change="handleTypeChange($event)"
             class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
         >
-            <option value="PRODUCT" @selected(old('type', $product->type ?? 'PRODUCT') === 'PRODUCT')>Producto</option>
-            <option value="COMPONENT" @selected(old('type', $product->type ?? 'PRODUCT') === 'COMPONENT')>Componente</option>
+            <option value="PRODUCT" @selected(old('type', $product->type ?? 'PRODUCT') === 'PRODUCT')>Producto final</option>
+            <option value="INGREDENT" @selected(old('type', $product->type ?? 'PRODUCT') === 'INGREDENT')>Ingrediente</option>
         </select>
     </div>
 
@@ -103,11 +123,12 @@
         </select>
     </div>
 
-    <div>
+    <div x-show="showComplements" x-transition>
         <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Complemento</label>
         <select
             name="complement"
             required
+            x-ref="complementSelect"
             class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
         >
             <option value="NO" @selected(old('complement', $product->complement ?? 'NO') === 'NO')>No</option>
@@ -116,10 +137,11 @@
         </select>
     </div>
 
-    <div>
+    <div x-show="showComplements" x-transition>
         <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Modo complemento</label>
         <select
             name="complement_mode"
+            x-ref="modeSelect"
             class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
         >
             <option value="" @selected(old('complement_mode', $product->complement_mode ?? '') === '')>Sin modo</option>
@@ -145,7 +167,7 @@
     <div class="lg:col-span-2" x-data="{ 
             imagePreview: '{{ isset($product) && $product->image ? asset('storage/' . $product->image) : '' }}',
             fileName: '{{ isset($product) && $product->image ? basename($product->image) : '' }}',
-            defaultPlaceholder: 'https://placehold.co/100x100?text=Sin+Imagen', // URL de imagen por defecto
+            defaultPlaceholder: 'https://placehold.co/100x100?text=Sin+Imagen',
             
             showPreview(event) {
                 const file = event.target.files[0];
