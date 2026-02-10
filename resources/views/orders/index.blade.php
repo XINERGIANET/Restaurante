@@ -5,7 +5,7 @@
 @section('content')
     <div>
         <x-common.page-breadcrumb pageTitle="Salones de Pedidos" />
-        <div x-data="posSystem()" x-cloak class="flex flex-col h-[calc(100vh-9rem)] w-full font-sans text-slate-800 dark:text-white" style="--brand:#3B82F6; --brand-soft:rgba(59,130,246,0.14);">
+        <div x-data="posSystem()" x-cloak class="flex flex-col min-h-[calc(100vh-9rem)] w-full font-sans text-slate-800 dark:text-white" style="--brand:#3B82F6; --brand-soft:rgba(59,130,246,0.14);">
 
             <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4 shrink-0">
                 <template x-if="areas && areas.length > 0">
@@ -27,7 +27,7 @@
             </div>
 
             {{-- 2. GRID DE MESAS - FORZADO A 4 COLUMNAS --}}
-            <div class="flex-1 overflow-y-auto pb-10">
+            <div class="flex-1 pb-10">
                 <template x-if="filteredTables.length > 0">
                     <div
                         class="grid gap-5"
