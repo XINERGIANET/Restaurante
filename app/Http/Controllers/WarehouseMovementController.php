@@ -13,7 +13,6 @@ use App\Models\WarehouseMovementDetail;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 class WarehouseMovementController extends Controller
 {
@@ -25,10 +24,6 @@ class WarehouseMovementController extends Controller
         if (!$branchId) {
             abort(403, 'No se ha seleccionado una sucursal');
         }
-
-        // Debug: Verificar cuántos productos hay en total
-        $totalProducts = Product::count();
-        $productsWithType = Product::where('type', 'PRODUCT')->count();
 
         // Cargar productos igual que OrderController - todos los productos de tipo PRODUCT
         $products = Product::where('type', 'PRODUCT')
@@ -43,8 +38,6 @@ class WarehouseMovementController extends Controller
                 ->get();
         }
 
-        // Debug: Log para verificar
-        Log::info("WarehouseMovementController::input - Total productos: {$totalProducts}, Con type PRODUCT: {$productsWithType}, Cargados: {$products->count()}");
 
         // Cargar productBranches del branch para tener información de stock y precio
         $productBranches = ProductBranch::where('branch_id', $branchId)

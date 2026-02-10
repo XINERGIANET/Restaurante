@@ -32,6 +32,7 @@ use App\Http\Controllers\ShiftController;
 use App\Http\Controllers\TaxRateController;
 use App\Http\Controllers\PettyCashController;
 use App\Http\Controllers\BoxController;
+use App\Http\Controllers\RecipeBookController;
 use App\Http\Controllers\UnitController;
 use App\Http\Controllers\WarehouseMovementController;
 
@@ -371,4 +372,8 @@ Route::middleware('auth')->group(function () {
         ->name('warehouse_movements.edit');
     Route::put('/admin/herramientas/movimientos-almacen/{warehouseMovement}', [WarehouseMovementController::class, 'update'])
         ->name('warehouse_movements.update');
+
+    //Recetario
+    Route::resource('/cocina/recetario', RecipeBookController::class)
+        ->names('recipe-book'); 
 });
