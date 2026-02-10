@@ -333,7 +333,7 @@ Route::middleware('auth')->group(function () {
     //Caja chica
     Route::get('/caja/caja-chica', [PettyCashController::class, 'redirectBase'])
         ->name('admin.petty-cash.base');
-
+    Route::get('/caja/caja-chica/{cash_register_id}/{movement}', [PettyCashController::class, 'show'])->name('admin.petty-cash.show');
     Route::group(['prefix' => 'caja/caja-chica/{cash_register_id}', 'as' => 'admin.petty-cash.'], function () {
         Route::get('/', [PettyCashController::class, 'index'])->name('index');
         Route::post('/', [PettyCashController::class, 'store'])->name('store');
@@ -353,10 +353,10 @@ Route::middleware('auth')->group(function () {
         ->parameters(['tasas-impuesto' => 'taxRate']);
 
     //Movimientos de almacen
-    Route::resource('/admin/herramientas/movimientos-almacen', WarehouseMovementController::class)
+    Route::resource('/admin/herramientas/movimientos_almacen', WarehouseMovementController::class)
         ->names('warehouse_movements')
-        ->parameters(['movimientos-almacen' => 'warehouseMovement'])
-        ->only(['index', 'store']); // Solo incluir los métodos que existen
+        ->parameters(['movimientos_almacen' => 'warehouseMovement'])
+        ->only(['index', 'store', 'show', 'edit', 'update']); // Solo incluir los métodos que existen
 
     Route::get('/admin/herramientas/movimientos-almacen/entrada', [WarehouseMovementController::class, 'input'])
         ->name('warehouse_movements.input');
@@ -365,4 +365,10 @@ Route::middleware('auth')->group(function () {
         ->name('warehouse_movements.output');
     Route::post('/admin/herramientas/movimientos-almacen/salida', [WarehouseMovementController::class, 'outputStore'])
         ->name('warehouse_movements.output.store');
+    Route::get('/admin/herramientas/movimientos-almacen/{warehouseMovement}/show', [WarehouseMovementController::class, 'show'])
+        ->name('warehouse_movements.show');
+    Route::get('/admin/herramientas/movimientos-almacen/{warehouseMovement}/edit', [WarehouseMovementController::class, 'edit'])
+        ->name('warehouse_movements.edit');
+    Route::put('/admin/herramientas/movimientos-almacen/{warehouseMovement}', [WarehouseMovementController::class, 'update'])
+        ->name('warehouse_movements.update');
 });
