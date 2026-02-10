@@ -85,6 +85,11 @@
                     $url .= $separator . 'branch_view_id=' . urlencode($branchViewId);
                 }
 
+                if ($viewId && $url !== '#' && str_contains($url, '/operaciones') && !str_contains($url, 'views_view_id=')) {
+                    $separator = str_contains($url, '?') ? '&' : '?';
+                    $url .= $separator . 'views_view_id=' . urlencode($viewId);
+                }
+
                 return $url;
             };
 
@@ -194,18 +199,18 @@
             <div class="mt-4 rounded-xl border border-gray-200 bg-white overflow-visible dark:border-gray-800 dark:bg-white/[0.03]">
                 <table class="w-full">
                     <thead>
-                        <tr class="border-b border-gray-100 dark:border-gray-800">
+                        <tr class="text-white">
+                            <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6 first:rounded-tl-xl">
+                                <p class="font-semibold text-gray-100 text-theme-xs uppercase">Nombre</p>
+                            </th>
                             <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6">
-                                <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Nombre</p>
+                                <p class="font-semibold text-gray-100 text-theme-xs uppercase">Abreviatura</p>
                             </th>
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
-                                <p class="font-medium text-white text-theme-xs dark:text-white">Abreviatura</p>
+                            <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6">
+                                <p class="font-semibold text-gray-100 text-theme-xs uppercase">Estado</p>
                             </th>
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
-                                <p class="font-medium text-white text-theme-xs dark:text-white">Estado</p>
-                            </th>
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-right sm:px-6">
-                                <p class="font-medium text-white text-theme-xs dark:text-white">Acciones</p>
+                            <th style="background-color: #63B7EC;" class="px-5 py-3 text-right sm:px-6 last:rounded-tr-xl">
+                                <p class="font-semibold text-gray-100 text-theme-xs uppercase">Acciones</p>
                             </th>
                         </tr>
                     </thead>
@@ -367,24 +372,24 @@
                         <input type="hidden" name="icon" value="{{ $requestIcon }}">
                     @endif
 
-                    <div class="flex-1 min-h-0 overflow-y-auto rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+                     <div class="mt-4 rounded-xl border border-gray-200 bg-white overflow-visible dark:border-gray-800 dark:bg-white/[0.03]" style="overflow: visible; max-height: none;">
                         <table class="w-full">
                             <thead>
-                                <tr class="border-b border-gray-100 dark:border-gray-800">
-                                    <th class="px-5 py-3 text-left sm:px-6">
-                                        <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Asignar</p>
-                                    </th>
-                                    <th class="px-5 py-3 text-left sm:px-6">
-                                        <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Nombre</p>
-                                    </th>
-                                    <th class="px-5 py-3 text-left sm:px-6">
-                                        <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Abreviatura</p>
-                                    </th>
-                                    <th class="px-5 py-3 text-left sm:px-6">
-                                        <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Estado</p>
-                                    </th>
-                                </tr>
-                            </thead>
+                                <tr class="text-white">
+                                        <th style="background-color: #63B7EC;" class="px-3 py-4 text-left whitespace-nowrap first:rounded-tl-xl sticky left-0 z-20 w-32 max-w-[128px] sm:w-auto sm:max-w-none">
+                                            <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Asignar</p>
+                                        </th>
+                                        <th style="background-color: #63B7EC;" class="px-3 py-4 text-left whitespace-nowrap first:rounded-tl-xl sticky left-0 z-20 w-32 max-w-[128px] sm:w-auto sm:max-w-none">
+                                            <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Nombre</p>
+                                        </th>
+                                        <th style="background-color: #63B7EC;" class="px-3 py-4 text-left whitespace-nowrap first:rounded-tl-xl sticky left-0 z-20 w-32 max-w-[128px] sm:w-auto sm:max-w-none">
+                                            <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Abreviatura</p>
+                                        </th>
+                                        <th style="background-color: #63B7EC;" class="px-3 py-4 text-left whitespace-nowrap first:rounded-tl-xl sticky left-0 z-20 w-32 max-w-[128px] sm:w-auto sm:max-w-none">
+                                            <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Estado</p>
+                                        </th>
+                                    </tr>
+                                </thead>
                             <tbody>
                                 @forelse ($allViews as $view)
                                     <tr class="border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-white/5">

@@ -20,6 +20,9 @@ class BranchController extends Controller
     {
         $search = $request->input('search');
         $viewId = $request->input('view_id');
+        if ($viewId) {
+            $request->session()->put('branch_view_id', $viewId);
+        }
         $branchId = $request->session()->get('branch_id');
         $profileId = $request->session()->get('profile_id') ?? $request->user()?->profile_id;
         $operaciones = collect();
@@ -206,6 +209,14 @@ class BranchController extends Controller
     {
         $branch = $this->resolveBranch($company, $branch);
         $search = $request->input('search');
+        $viewId = $request->input('view_id');
+        $branchViewId = $request->input('branch_view_id');
+        if ($branchViewId) {
+            $request->session()->put('branch_view_id', $branchViewId);
+        }
+        if ($viewId) {
+            $request->session()->put('branch_views_view_id', $viewId);
+        }
 
         $perPage = (int) $request->input('per_page', 10);
         $allowedPerPage = [10, 20, 50, 100];
@@ -491,6 +502,47 @@ class BranchController extends Controller
         return redirect()
             ->route('admin.companies.branches.views.operations.index', [$company, $branch, $view])
             ->with('status', 'Operaciones asignadas correctamente.');
+    }
+
+    public function toggleViewOperation(Request $request, Company $company, Branch $branch, View $view, $branchOperation)
+    {
+        $branch = $this->resolveBranch($company, $branch);
+        $this->ensureViewAssignedToBranch($view->id, $branch->id);
+
+        $operationRow = DB::table('branch_operation')
+            ->join('operations', 'operations.id', '=', 'branch_operation.operation_id')
+            ->where('branch_operation.id', $branchOperation)
+            ->where('branch_operation.branch_id', $branch->id)
+            ->whereNull('branch_operation.deleted_at')
+            ->whereNull('operations.deleted_at')
+            ->where('operations.view_id', $view->id)
+            ->select('branch_operation.status')
+            ->first();
+
+        if (!$operationRow) {
+            return back()->withErrors(['error' => 'No se encontró la operación en esta sucursal.']);
+        }
+
+        $newStatus = $operationRow->status ? 0 : 1;
+
+        DB::table('branch_operation')
+            ->where('id', $branchOperation)
+            ->update([
+                'status' => $newStatus,
+                'updated_at' => now(),
+            ]);
+
+        $params = array_filter([
+            'view_id' => $request->input('view_id'),
+            'company_view_id' => $request->input('company_view_id'),
+            'branch_view_id' => $request->input('branch_view_id'),
+            'views_view_id' => $request->input('views_view_id'),
+            'icon' => $request->input('icon'),
+        ]);
+
+        return redirect()
+            ->route('admin.companies.branches.views.operations.index', array_merge([$company, $branch, $view], $params))
+            ->with('status', $newStatus ? 'Operación activada.' : 'Operación desactivada.');
     }
 
     public function profileOperationsIndex(Request $request, Company $company, Branch $branch, Profile $profile)

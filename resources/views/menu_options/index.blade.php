@@ -6,6 +6,76 @@
 
 @section('content')
     <div x-data="{}">
+        @php
+            use Illuminate\Support\Facades\Route;
+
+            $viewId = request('view_id');
+            $operacionesCollection = collect($operaciones ?? []);
+            $topOperations = $operacionesCollection->where('type', 'T');
+            $rowOperations = $operacionesCollection->where('type', 'R');
+      
+            $resolveActionUrl = function ($action, array $routeParams = [], $operation = null) use ($viewId) {
+                if (!$action) {
+                    return '#';
+                }
+
+                if (str_starts_with($action, '/') || str_starts_with($action, 'http')) {
+                    $url = $action;
+                } else {
+                    $routeCandidates = [$action];
+                    if (!str_starts_with($action, 'admin.')) {
+                        $routeCandidates[] = 'admin.' . $action;
+                    }
+                    $routeCandidates = array_merge(
+                        $routeCandidates,
+                        array_map(fn ($name) => $name . '.index', $routeCandidates)
+                    );
+
+                    $routeName = null;
+                    foreach ($routeCandidates as $candidate) {
+                        if (Route::has($candidate)) {
+                            $routeName = $candidate;
+                            break;
+                        }
+                    }
+
+                    if ($routeName) {
+                        $attempts = [];
+                        if (!empty($routeParams)) {
+                            $attempts[] = $routeParams;
+                        }
+                        if (count($routeParams) > 1) {
+                            $attempts[] = array_slice($routeParams, 0, 2);
+                        }
+                        $attempts[] = [];
+
+                        $url = '#';
+                        foreach ($attempts as $params) {
+                            try {
+                                $url = empty($params) ? route($routeName) : route($routeName, $params);
+                                break;
+                            } catch (\Exception $e) {
+                                $url = '#';
+                            }
+                        }
+                    } else {
+                        $url = '#';
+                    }
+                }
+
+                $targetViewId = $viewId;
+                if ($operation && !empty($operation->view_id_action)) {
+                    $targetViewId = $operation->view_id_action;
+                }
+
+                if ($targetViewId && $url !== '#') {
+                    $separator = str_contains($url, '?') ? '&' : '?';
+                    $url .= $separator . 'view_id=' . urlencode($targetViewId);
+                }
+
+                return $url;
+            };
+        @endphp
         <x-common.page-breadcrumb
             pageTitle="Opciones de Menú"
             :breadcrumbs="[
@@ -22,6 +92,9 @@
             <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                 
                 <form method="GET" action="{{ route('admin.modules.menu_options.index', $module) }}" class="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
+                    @if ($viewId)
+                        <input type="hidden" name="view_id" value="{{ $viewId }}">
+                    @endif
                     <div class="relative flex-1">
                         <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
                            <i class="ri-search-line"></i>
@@ -38,27 +111,48 @@
                         <x-ui.button size="sm" variant="primary" type="submit" style="background-color: #244BB3; border-color: #244BB3;">
                             <i class="ri-search-line text-gray-100"></i> <span class="text-gray-100">Buscar</span>
                         </x-ui.button>
-                        <x-ui.link-button size="sm" variant="outline" href="{{ route('admin.modules.menu_options.index', $module) }}">
+                        <x-ui.link-button size="sm" variant="outline" href="{{ route('admin.modules.menu_options.index', $viewId ? [$module, 'view_id' => $viewId] : $module) }}">
                             <i class="ri-close-line"></i> Limpiar
                         </x-ui.link-button>
                     </div>
                 </form>
 
                 <div class="flex gap-2">
-                    <x-ui.link-button size="md" variant="outline" href="{{ route('admin.modules.index') }}">
+                    <x-ui.link-button size="md" variant="outline" href="{{ route('admin.modules.index', $viewId ? ['view_id' => $viewId] : []) }}">
                         <i class="ri-arrow-left-line"></i> Volver
                     </x-ui.link-button>
 
-                    <x-ui.button
-                        size="md"
-                        variant="primary"
-                        type="button"
-                        style="background-color: #12f00e; color: #111827;"
-                        @click="$dispatch('open-create-modal')"
-                    >
-                        <i class="ri-add-line"></i>
-                        <span>Nueva Opción</span>
-                    </x-ui.button>
+                    @if ($topOperations->isNotEmpty())
+                        @foreach ($topOperations as $operation)
+                            @php
+                                $topColor = $operation->color ?: '#12f00e';
+                                $topStyle = "background-color: {$topColor}; color: #111827;";
+                                $isCreate = str_contains($operation->action ?? '', 'menu_options.create')
+                                    || str_contains($operation->action ?? '', 'menu_options.store')
+                                    || str_contains($operation->action ?? '', 'open-create-modal');
+                                $topActionUrl = $resolveActionUrl($operation->action ?? '', [$module], $operation);
+                            @endphp
+                            @if ($isCreate)
+                                <x-ui.button
+                                    size="md"
+                                    variant="primary"
+                                    type="button"
+                                    style="{{ $topStyle }}"
+                                    @click="$dispatch('open-create-modal')"
+                                >
+                                    <i class="{{ $operation->icon }}"></i>
+                                    <span>{{ $operation->name }}</span>
+                                </x-ui.button>
+                            @else
+                                <x-ui.link-button size="md" variant="primary" style="{{ $topStyle }}" href="{{ $topActionUrl }}">
+                                    <i class="{{ $operation->icon }}"></i>
+                                    <span>{{ $operation->name }}</span>
+                                </x-ui.link-button>
+                            @endif
+                        @endforeach
+                 
+                     
+                    @endif
                 </div>
             </div>
 
@@ -117,42 +211,95 @@
                                     </td>
                                     <td class="px-5 py-4 sm:px-6">
                                         <div class="flex items-center justify-end gap-2">
-                                            {{-- Editar --}}
-                                            <div class="relative group">
-                                                <x-ui.link-button
-                                                    size="icon"
-                                                    variant="outline"
-                                                    href="{{ route('admin.modules.menu_options.edit', [$module, $option]) }}"
-                                                    className="bg-warning-500 text-white hover:bg-warning-600 ring-0 rounded-full"
-                                                    style="border-radius: 100%; background-color: #FBBF24; color: #111827;"
-                                                    aria-label="Editar"
-                                                >
-                                                    <i class="ri-pencil-line"></i>
-                                                </x-ui.link-button>
-                                                <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50">Editar</span>
-                                            </div>
+                                            @if ($rowOperations->isNotEmpty())
+                                                @foreach ($rowOperations as $operation)
+                                                    @php
+                                                        $action = $operation->action ?? '';
+                                                        $isDelete = str_contains($action, 'destroy');
+                                                        $actionUrl = $resolveActionUrl($action, [$module, $option], $operation);
+                                                        $textColor = '#FFFFFF';
+                                                        $buttonColor = $operation->color ?: '#3B82F6';
+                                                        $buttonStyle = "background-color: {$buttonColor}; color: {$textColor};";
+                                                        $variant = $isDelete ? 'eliminate' : (str_contains($action, 'edit') ? 'edit' : 'primary');
+                                                    @endphp
+                                                    @if ($isDelete)
+                                                        <form
+                                                            method="POST"
+                                                            action="{{ $actionUrl }}"
+                                                            class="relative group js-delete-item"
+                                                            data-name="{{ $option->name }}"
+                                                        >
+                                                            @csrf
+                                                            @method('DELETE')
+                                                            @if ($viewId)
+                                                                <input type="hidden" name="view_id" value="{{ $viewId }}">
+                                                            @endif
+                                                            <x-ui.button
+                                                                size="icon"
+                                                                variant="{{ $variant }}"
+                                                                className="bg-error-500 text-white hover:bg-error-600 ring-0 rounded-xl"
+                                                                style="{{ $buttonStyle }}"
+                                                                aria-label="{{ $operation->name }}"
+                                                                type="submit"
+                                                            >
+                                                                <i class="{{ $operation->icon }}"></i>
+                                                            </x-ui.button>
+                                                            <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">{{ $operation->name }}</span>
+                                                        </form>
+                                                    @else
+                                                        <div class="relative group">
+                                                            <x-ui.link-button
+                                                                size="icon"
+                                                                variant="{{ $variant }}"
+                                                                href="{{ $actionUrl }}"
+                                                                className="bg-warning-500 text-white hover:bg-warning-600 ring-0 rounded-xl"
+                                                                style="{{ $buttonStyle }}"
+                                                                aria-label="{{ $operation->name }}"
+                                                            >
+                                                                <i class="{{ $operation->icon }}"></i>
+                                                            </x-ui.link-button>
+                                                            <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">{{ $operation->name }}</span>
+                                                        </div>
+                                                    @endif
+                                                @endforeach
+                                            @else
+                                                {{-- Editar --}}
+                                                <div class="relative group">
+                                                    <x-ui.link-button
+                                                        size="icon"
+                                                        variant="outline"
+                                                        href="{{ route('admin.modules.menu_options.edit', [$module, $option, 'view_id' => $viewId]) }}"
+                                                        className="bg-warning-500 text-white hover:bg-warning-600 ring-0 rounded-full"
+                                                        style="border-radius: 100%; background-color: #FBBF24; color: #111827;"
+                                                        aria-label="Editar"
+                                                    >
+                                                        <i class="ri-pencil-line"></i>
+                                                    </x-ui.link-button>
+                                                    <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50">Editar</span>
+                                                </div>
 
-                                            {{-- Eliminar --}}
-                                            <form
-                                                method="POST"
-                                                action="{{ route('admin.modules.menu_options.destroy', [$module, $option]) }}"
-                                                class="relative group js-delete-item"
-                                                data-name="{{ $option->name }}"
-                                            >
-                                                @csrf
-                                                @method('DELETE')
-                                                <x-ui.button
-                                                    size="icon"
-                                                    variant="outline"
-                                                    className="bg-error-500 text-white hover:bg-error-600 ring-0 rounded-full"
-                                                    style="border-radius: 100%; background-color: #EF4444; color: #FFFFFF;"
-                                                    aria-label="Eliminar"
-                                                    type="submit"
+                                                {{-- Eliminar --}}
+                                                <form
+                                                    method="POST"
+                                                    action="{{ route('admin.modules.menu_options.destroy', [$module, $option, 'view_id' => $viewId]) }}"
+                                                    class="relative group js-delete-item"
+                                                    data-name="{{ $option->name }}"
                                                 >
-                                                    <i class="ri-delete-bin-line"></i>
-                                                </x-ui.button>
-                                                <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50">Eliminar</span>
-                                            </form>
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <x-ui.button
+                                                        size="icon"
+                                                        variant="outline"
+                                                        className="bg-error-500 text-white hover:bg-error-600 ring-0 rounded-full"
+                                                        style="border-radius: 100%; background-color: #EF4444; color: #FFFFFF;"
+                                                        aria-label="Eliminar"
+                                                        type="submit"
+                                                    >
+                                                        <i class="ri-delete-bin-line"></i>
+                                                    </x-ui.button>
+                                                    <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50">Eliminar</span>
+                                                </form>
+                                            @endif
                                         </div>
                                     </td>
                                 </tr>
@@ -209,6 +356,9 @@
 
                 <form method="POST" action="{{ route('admin.modules.menu_options.store', $module) }}" class="space-y-6">
                     @csrf
+                    @if ($viewId)
+                        <input type="hidden" name="view_id" value="{{ $viewId }}">
+                    @endif
                     @include('menu_options._form', ['menuOption' => null, 'views' => $views])
 
                     <div class="flex flex-wrap gap-3">

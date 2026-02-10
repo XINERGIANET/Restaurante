@@ -1,4 +1,4 @@
-@extends('layouts.app')
+﻿@extends('layouts.app')
 
 @section('title', 'Punto de Venta')
 
@@ -77,7 +77,6 @@
                                         </span>
                                     </div>
 
-                                    <h4 class="mt-1 text-2xl font-bold text-gray-800 dark:text-white/90" x-text="table.name || 'Mesa ' + table.id"></h4>
 
                                     <div class="flex items-center justify-between gap-2 text-sm font-medium text-gray-500 dark:text-gray-400">
                                         <div>
@@ -278,10 +277,11 @@
                     window.location.href = target.toString();
                 }
             }
-        }));
+            };
+
+            return componentData;
+        });
     });
 </script>
 @endsection
-
-
 

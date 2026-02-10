@@ -94,6 +94,8 @@ Route::middleware('auth')->group(function () {
         ->name('admin.companies.branches.views.operations.index');
     Route::post('/admin/herramientas/empresas/{company}/sucursales/{branch}/vistas/{view}/operaciones/asignar', [BranchController::class, 'assignViewOperations'])
         ->name('admin.companies.branches.views.operations.assign');
+    Route::patch('/admin/herramientas/empresas/{company}/sucursales/{branch}/vistas/{view}/operaciones/{branchOperation}/toggle', [BranchController::class, 'toggleViewOperation'])
+        ->name('admin.companies.branches.views.operations.toggle');
     Route::get('/admin/herramientas/empresas/{company}/sucursales/{branch}/perfiles/{profile}/permisos', [BranchController::class, 'profilePermissions'])
         ->name('admin.companies.branches.profiles.permissions.index');
     Route::post('/admin/herramientas/empresas/{company}/sucursales/{branch}/perfiles/{profile}/permisos/asignar', [BranchController::class, 'assignProfilePermissions'])
@@ -302,9 +304,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/mesas/{table}/edit', [TableController::class, 'editGeneral'])->name('tables.edit');
     Route::put('/mesas/{table}', [TableController::class, 'updateGeneral'])->name('tables.update');
     Route::delete('/mesas/{table}', [TableController::class, 'destroyGeneral'])->name('tables.destroy');
-    Route::view('/admin/configuracion/parametros', 'pages.blank', ['title' => 'Parametros']);
-    Route::view('/admin/configuracion/menu', 'pages.blank', ['title' => 'Menu y recetas']);
-    Route::view('/admin/configuracion/impuestos', 'pages.blank', ['title' => 'Impuestos']);
 
     //Tarjetas
     Route::resource('/admin/herramientas/tarjetas', CardController::class)

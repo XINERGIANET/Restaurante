@@ -189,25 +189,24 @@
                 </div>
             </div>
 
-            <div class="mt-4 rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-white/[0.03] overflow-x-auto">
-                <div class="min-w-max">
-                    <table class="w-full">
-                        <thead class="bg-gray-50 text-[7px] uppercase tracking-wide text-gray-500 dark:bg-gray-800/60 dark:text-gray-400" style="font-size: 12px;">
-                            <tr class="border-b border-gray-100 dark:border-gray-800">
-                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="w-12 px-4 py-4 text-center sticky left-0 z-20"></th>
-                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-3 py-4 text-left sm:px-6 whitespace-nowrap sticky left-12 z-20 border-r border-gray-100 dark:border-gray-700 w-32 max-w-[128px] sm:w-auto sm:max-w-none">Nombres</th>
-                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-4 text-left sm:px-6 whitespace-nowrap">Tipo</th>
-                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-4 text-left sm:px-6 whitespace-nowrap">Nro. Documento</th>
-                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-4 text-left sm:px-6 whitespace-nowrap">Fecha nac.</th>
-                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-4 text-left sm:px-6 whitespace-nowrap">Genero</th>
-                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-4 text-left sm:px-6 whitespace-nowrap">Ubicacion</th>
-                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-4 text-right sm:px-6 whitespace-nowrap">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+            <div class="mt-4 rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-white/[0.03] overflow-visible" style="overflow: visible; max-height: none;">
+                <table class="w-full border-separate border-spacing-0">
+                    <thead>
+                        <tr class="border-b border-gray-100 dark:border-gray-800 text-white">
+                            <th style="background-color: #63B7EC;" class="w-12 px-4 py-3 text-center first:rounded-tl-2xl"></th>
+                            <th style="background-color: #63B7EC;" class="px-3 py-3 text-left sm:px-6 whitespace-nowrap">Nombres</th>
+                            <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6 whitespace-nowrap">Tipo</th>
+                            <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6 whitespace-nowrap">Nro. Documento</th>
+                            <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6 whitespace-nowrap">Fecha nac.</th>
+                            <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6 whitespace-nowrap">Genero</th>
+                            <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6 whitespace-nowrap">Ubicacion</th>
+                            <th style="background-color: #63B7EC;" class="px-5 py-3 text-right sm:px-6 whitespace-nowrap last:rounded-tr-2xl">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
                         @forelse ($people as $person)
                             <tr class="group/row transition hover:bg-gray-50/80 dark:hover:bg-white/5">
-                                <td class="px-4 py-4 text-center sticky left-0 z-10 bg-white dark:bg-[#121212] group-hover/row:bg-gray-50 dark:group-hover/row:bg-gray-800">
+                                <td class="px-4 py-4 text-center">
                                     <button type="button"
                                         @click="openRow === {{ $person->id }} ? openRow = null : openRow = {{ $person->id }}"
                                         class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-500 text-white transition hover:bg-brand-600 dark:bg-brand-500 dark:text-white">
@@ -215,7 +214,7 @@
                                         <i class="ri-subtract-line" x-show="openRow === {{ $person->id }}"></i>
                                     </button>
                                 </td>
-                                <td class="px-3 py-4 sm:px-6 sticky left-12 z-10 bg-white dark:bg-[#121212] group-hover/row:bg-gray-50 dark:group-hover/row:bg-gray-800 border-r border-gray-100 dark:border-gray-700 w-32 max-w-[128px] sm:w-auto sm:max-w-none">
+                                <td class="px-3 py-4 sm:px-6">
                                     <p class="font-medium text-gray-800 text-theme-sm dark:text-white/90 truncate" title="{{ $person->first_name }} {{ $person->last_name }}">
                                         {{ $person->first_name }} {{ $person->last_name }}
                                     </p>
@@ -376,8 +375,7 @@
                             </tr>
                         @endforelse
                         </tbody>
-                    </table>
-                </div>
+                </table>
             </div>
 
             <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

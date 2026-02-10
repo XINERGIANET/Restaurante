@@ -152,9 +152,8 @@
 
 
             <div
-                class="rounded-xl border border-gray-200 bg-white overflow-hidden dark:border-gray-800 dark:bg-white/[0.03]">
-                <div class="overflow-x-auto">
-                    <table class="w-full">
+                class="rounded-xl border border-gray-200 bg-white overflow-visible dark:border-gray-800 dark:bg-white/[0.03]" style="overflow: visible; max-height: none;">
+                <table class="w-full">
                         <thead>
                             <tr class="text-white">
                                 <th style="background-color: #63B7EC;" class="px-3 py-4 text-left whitespace-nowrap first:rounded-tl-xl sticky left-0 z-20 w-32 max-w-[128px] sm:w-auto sm:max-w-none">
@@ -224,9 +223,8 @@
                                                             <i class="{{ $operation->icon }} text-lg"></i>
                                                         </x-ui.button>
                                                         <span
-                                                            class="invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-2 whitespace-nowrap rounded-lg bg-gray-900 px-2.5 py-1.5 text-[11px] font-medium text-white shadow-xl z-50">
+                                                            class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">
                                                             {{ $operation->name }}
-                                                            <span class="absolute top-full left-1/2 -ml-1 border-4 border-transparent border-t-gray-900"></span>
                                                         </span>
                                                     </form>
                                                 @else
@@ -238,11 +236,10 @@
                                                             aria-label="{{ $operation->name }}">
                                                             <i class="{{ $operation->icon }} text-lg"></i>
                                                         </x-ui.link-button>
-                                                        <span
-                                                            class="invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-2 whitespace-nowrap rounded-lg bg-gray-900 px-2.5 py-1.5 text-[11px] font-medium text-white shadow-xl z-50">
-                                                            {{ $operation->name }}
-                                                            <span class="absolute top-full left-1/2 -ml-1 border-4 border-transparent border-t-gray-900"></span>
-                                                        </span>
+                                                    <span
+                                                        class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">
+                                                        {{ $operation->name }}
+                                                    </span>
                                                     </div>
                                                 @endif
                                             @endforeach
@@ -270,8 +267,8 @@
                                 </tr>
                             @endforelse
                         </tbody>
-                    </table>
-                </div>
+                </table>
+            </div>
 
 
         </x-common.component-card>
