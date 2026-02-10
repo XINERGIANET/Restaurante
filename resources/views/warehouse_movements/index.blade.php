@@ -139,14 +139,14 @@
                     <x-ui.link-button size="md" variant="primary" 
                         href="{{ route('warehouse_movements.input', $viewId ? ['view_id' => $viewId] : []) }}"
                         class="w-full sm:w-auto h-11 px-6 shadow-sm" 
-                        style="background-color: #3B82F6; color: #FFFFFF;">
+                        style="background-color: #00A389; color: #FFFFFF;">
                         <i class="ri-archive-line text-lg"></i>
                         <span>Entrada</span>
                     </x-ui.link-button>
                     <x-ui.link-button size="md" variant="primary" 
                         href="{{ route('warehouse_movements.output', $viewId ? ['view_id' => $viewId] : []) }}"
                         class="w-full sm:w-auto h-11 px-6 shadow-sm" 
-                        style="background-color: #3B82F6; color: #FFFFFF;">
+                        style="background-color: #EF4444; color: #FFFFFF;">
                         <i class="ri-archive-line text-lg"></i>
                         <span>Salida</span>
                     </x-ui.link-button>
@@ -156,27 +156,27 @@
                 class="rounded-xl border border-gray-200 bg-white overflow-hidden dark:border-gray-800 dark:bg-white/[0.03]">
                 <div class="overflow-x-auto">
                     <table class="w-full">
-                        <thead>
-                            <tr class="text-white">
-                                <th style="background-color: #63B7EC;" class="px-3 py-4 text-left whitespace-nowrap first:rounded-tl-xl sticky left-0 z-20 w-32 max-w-[128px] sm:w-auto sm:max-w-none">
+                        <thead style="background-color: #63B7EC; color: #FFFFFF;">
+                            <tr>
+                                <th  class="px-3 py-4 text-center whitespace-nowrap first:rounded-tl-xl sticky left-0 z-20 w-32 max-w-[128px] sm:w-auto sm:max-w-none">
                                     <p class="font-bold text-gray-100 text-xs uppercase tracking-wider truncate">Número</p>
                                 </th>
-                                <th style="background-color: #63B7EC;" class="px-5 py-4 text-left whitespace-nowrap">
+                                <th class="px-5 py-4 text-center whitespace-nowrap">
                                     <p class="font-bold text-gray-100 text-xs uppercase tracking-wider">Tipo de Movimiento</p>
                                 </th>
-                                <th style="background-color: #63B7EC;" class="px-5 py-4 text-left whitespace-nowrap">
+                                    <th  class="px-5 py-4 text-center whitespace-nowrap">
                                     <p class="font-bold text-gray-100 text-xs uppercase tracking-wider">Persona</p>
                                 </th>
-                                <th style="background-color: #63B7EC;" class="px-5 py-4 text-left whitespace-nowrap">
+                                <th  class="px-5 py-4 text-center whitespace-nowrap">
                                     <p class="font-bold text-gray-100 text-xs uppercase tracking-wider">Comentario</p>
                                 </th>
-                                <th style="background-color: #63B7EC;" class="px-5 py-4 text-center whitespace-nowrap">
+                                <th  class="px-5 py-4 text-center whitespace-nowrap">
                                     <p class="font-bold text-gray-100 text-xs uppercase tracking-wider">Estado</p>
                                 </th>
-                                <th style="background-color: #63B7EC;" class="px-5 py-4 text-center whitespace-nowrap">
+                                <th  class="px-5 py-4 text-center whitespace-nowrap">
                                     <p class="font-bold text-gray-100 text-xs uppercase tracking-wider">Fecha</p>
                                 </th>
-                                <th style="background-color: #63B7EC;" class="px-5 py-4 text-center whitespace-nowrap last:rounded-tr-xl">
+                                <th  class="px-5 py-4 text-center whitespace-nowrap last:rounded-tr-xl">
                                     <p class="font-bold text-gray-100 text-xs uppercase tracking-wider">Acciones</p>
                                 </th>
                             </tr>
@@ -204,7 +204,7 @@
                                             </p>
                                         </div>
                                     </td>
-                                    <td class="px-5 py-4">
+                                    <td class="px-5 py-4 text-center">
                                         <x-ui.badge variant="light" color="info">
                                             {{ $movement->movementType->description ?? '-' }}
                                         </x-ui.badge>
@@ -231,56 +231,22 @@
                                     </td>
                                     <td class="px-5 py-4 whitespace-nowrap">
                                         <div class="flex items-center justify-center gap-2">
-                                            @foreach ($rowOperations as $operation)
-                                                @php
-                                                    $action = $operation->action ?? '';
-                                                    $isDelete = str_contains($action, 'destroy');
-                                                    $actionUrl = $resolveActionUrl($action, $warehouseMovement, $operation);
-                                                    $textColor = $resolveTextColor($operation);
-                                                    $buttonColor = $operation->color ?: '#3B82F6';
-                                                    $buttonStyle = "background-color: {$buttonColor}; color: {$textColor};";
-                                                    $variant = $isDelete ? 'eliminate' : (str_contains($action, 'edit') ? 'edit' : 'primary');
-                                                @endphp
-                                                @if ($isDelete)
-                                                    <form method="POST" action="{{ $actionUrl }}"
-                                                        class="relative group js-swal-delete" data-swal-title="Eliminar movimiento?"
-                                                        data-swal-text="Se eliminará el movimiento {{ $movement->number ?? '' }}. Esta acción no se puede deshacer."
-                                                        data-swal-confirm="Sí, eliminar" data-swal-cancel="Cancelar"
-                                                        data-swal-confirm-color="#ef4444" data-swal-cancel-color="#6b7280">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        @if ($viewId)
-                                                            <input type="hidden" name="view_id" value="{{ $viewId }}">
-                                                        @endif
-                                                        <x-ui.button size="icon" variant="{{ $variant }}" type="submit"
-                                                            className="h-9 w-9 rounded-xl shadow-sm transition-transform active:scale-95 group-hover:shadow-md"
-                                                            style="{{ $buttonStyle }}"
-                                                            aria-label="{{ $operation->name }}">
-                                                            <i class="{{ $operation->icon }} text-lg"></i>
-                                                        </x-ui.button>
-                                                        <span
-                                                            class="invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-2 whitespace-nowrap rounded-lg bg-gray-900 px-2.5 py-1.5 text-[11px] font-medium text-white shadow-xl z-50">
-                                                            {{ $operation->name }}
-                                                            <span class="absolute top-full left-1/2 -ml-1 border-4 border-transparent border-t-gray-900"></span>
-                                                        </span>
-                                                    </form>
-                                                @else
-                                                    <div class="relative group">
-                                                        <x-ui.link-button size="icon" variant="{{ $variant }}"
-                                                            href="{{ $actionUrl }}"
-                                                            className="h-9 w-9 rounded-xl shadow-sm transition-transform active:scale-95 group-hover:shadow-md"
-                                                            style="{{ $buttonStyle }}"
-                                                            aria-label="{{ $operation->name }}">
-                                                            <i class="{{ $operation->icon }} text-lg"></i>
-                                                        </x-ui.link-button>
-                                                        <span
-                                                            class="invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-2 whitespace-nowrap rounded-lg bg-gray-900 px-2.5 py-1.5 text-[11px] font-medium text-white shadow-xl z-50">
-                                                            {{ $operation->name }}
-                                                            <span class="absolute top-full left-1/2 -ml-1 border-4 border-transparent border-t-gray-900"></span>
-                                                        </span>
-                                                    </div>
-                                                @endif
-                                            @endforeach
+                                            <div class="relative group"> <a
+                                                    href="{{ route('warehouse_movements.show', ['warehouseMovement' => $warehouseMovement->id]) }}"
+                                                    class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-info-500 text-white hover:bg-info-600 transition-colors shadow-sm"
+                                                    style="background-color: #63B7EC; color: #FFFFFF;"
+                                                    aria-label="Ver Registro">
+                                                    <i class="ri-eye-line"></i>
+                                                </a>
+                                            </div>
+                                            <div class="relative group"> <a
+                                                    href="{{ route('warehouse_movements.edit', ['warehouseMovement' => $warehouseMovement->id]) }}"
+                                                    class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-warning-500 text-white hover:bg-warning-600 transition-colors shadow-sm"
+                                                    style="background-color: #FBBF24; color: #111827;"
+                                                    aria-label="Editar Registro">
+                                                    <i class="ri-pencil-line"></i>
+                                                </a>
+                                            </div>
                                         </div>
                                     </td>
                                 </tr>
