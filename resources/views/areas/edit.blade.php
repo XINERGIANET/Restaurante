@@ -1,37 +1,42 @@
 @extends('layouts.app')
 
 @section('content')
-    <x-common.page-breadcrumb pageTitle="Ventas" />
+    @php
+        $viewId = request('view_id');
+        $indexUrl = route('areas.index', $viewId ? ['view_id' => $viewId] : []);
+    @endphp
+
+    <x-common.page-breadcrumb pageTitle="Areas" />
 
     <x-ui.modal
         x-data="{
             open: true,
             close() {
                 if (window.Turbo && typeof window.Turbo.visit === 'function') {
-                    window.Turbo.visit('{{ route('admin.sales.index', request('view_id') ? ['view_id' => request('view_id')] : []) }}', { action: 'replace' });
+                    window.Turbo.visit('{{ $indexUrl }}', { action: 'replace' });
                 } else {
-                    window.location.href = '{{ route('admin.sales.index', request('view_id') ? ['view_id' => request('view_id')] : []) }}';
+                    window.location.href = '{{ $indexUrl }}';
                 }
             }
         }"
         :isOpen="true"
         :showCloseButton="false"
-        class="max-w-4xl"
+        class="max-w-3xl"
     >
         <div class="p-6 sm:p-8">
             <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div class="flex items-center gap-4">
                     <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-500 dark:bg-brand-500/10">
-                        <i class="ri-shopping-bag-3-line text-2xl"></i>
+                        <i class="ri-layout-grid-line text-2xl"></i>
                     </div>
                     <div>
-                        <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Editar venta</h3>
-                        <p class="mt-1 text-sm text-gray-500">Actualiza la informacion de la venta.</p>
+                        <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Editar area</h3>
+                        <p class="mt-1 text-sm text-gray-500">Actualiza la informacion del area.</p>
                     </div>
                 </div>
                 <a
-                    href="{{ route('admin.sales.index', request('view_id') ? ['view_id' => request('view_id')] : []) }}"
-                    onclick="if (window.Turbo && typeof window.Turbo.visit === 'function') { window.Turbo.visit('{{ route('admin.sales.index', request('view_id') ? ['view_id' => request('view_id')] : []) }}', { action: 'replace' }); return false; }"
+                    href="{{ $indexUrl }}"
+                    onclick="if (window.Turbo && typeof window.Turbo.visit === 'function') { window.Turbo.visit('{{ $indexUrl }}', { action: 'replace' }); return false; }"
                     class="flex h-11 w-11 items-center justify-center rounded-full bg-gray-100 text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
                     aria-label="Cerrar"
                 >
@@ -45,14 +50,14 @@
                 </div>
             @endif
 
-            <form method="POST" action="{{ route('admin.sales.update', $sale) }}" class="space-y-6">
+            <form method="POST" action="{{ route('areas.update', $area) }}" class="space-y-6">
                 @csrf
                 @method('PUT')
-                @if (request('view_id'))
-                    <input type="hidden" name="view_id" value="{{ request('view_id') }}">
+                @if ($viewId)
+                    <input type="hidden" name="view_id" value="{{ $viewId }}">
                 @endif
 
-                @include('sales._form', ['sale' => $sale])
+                @include('areas._form', ['area' => $area])
 
                 <div class="flex flex-wrap gap-3">
                     <x-ui.button type="submit" size="md" variant="primary">
@@ -62,8 +67,8 @@
                     <x-ui.link-button
                         size="md"
                         variant="outline"
-                        href="{{ route('admin.sales.index', request('view_id') ? ['view_id' => request('view_id')] : []) }}"
-                        onclick="if (window.Turbo && typeof window.Turbo.visit === 'function') { window.Turbo.visit('{{ route('admin.sales.index', request('view_id') ? ['view_id' => request('view_id')] : []) }}', { action: 'replace' }); return false; }"
+                        href="{{ $indexUrl }}"
+                        onclick="if (window.Turbo && typeof window.Turbo.visit === 'function') { window.Turbo.visit('{{ $indexUrl }}', { action: 'replace' }); return false; }"
                     >
                         <i class="ri-close-line"></i>
                         <span>Cancelar</span>

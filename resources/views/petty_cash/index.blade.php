@@ -3,6 +3,7 @@
 @php
     use Illuminate\Support\HtmlString;
     use Illuminate\Support\Js;
+    use Illuminate\Support\Facades\Route;
 
     // --- ICONOS ---
     $SearchIcon = new HtmlString(
@@ -11,6 +12,79 @@
     $ClearIcon = new HtmlString(
         '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /><path d="M6 6L18 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /></svg>',
     );
+
+    $viewId = request('view_id');
+    $operacionesCollection = collect($operaciones ?? []);
+    $topOperations = $operacionesCollection->where('type', 'T');
+    $rowOperations = $operacionesCollection->where('type', 'R');
+
+    $resolveActionUrl = function ($action, $movement = null, $operation = null) use ($viewId, $selectedBoxId) {
+        if (!$action) {
+            return '#';
+        }
+
+        if (str_starts_with($action, '/') || str_starts_with($action, 'http')) {
+            $url = $action;
+        } else {
+            $routeCandidates = [$action];
+            if (!str_starts_with($action, 'admin.')) {
+                $routeCandidates[] = 'admin.' . $action;
+            }
+            $routeCandidates = array_merge(
+                $routeCandidates,
+                array_map(fn($name) => $name . '.index', $routeCandidates)
+            );
+
+            $routeName = null;
+            foreach ($routeCandidates as $candidate) {
+                if (Route::has($candidate)) {
+                    $routeName = $candidate;
+                    break;
+                }
+            }
+
+            $url = '#';
+            if ($routeName) {
+                try {
+                    if ($movement) {
+                        $url = route($routeName, ['cash_register_id' => $selectedBoxId, 'movement' => $movement->id]);
+                    } else {
+                        $url = route($routeName, ['cash_register_id' => $selectedBoxId]);
+                    }
+                } catch (\Exception $e) {
+                    try {
+                        $url = route($routeName, ['cash_register_id' => $selectedBoxId]);
+                    } catch (\Exception $e2) {
+                        try {
+                            $url = $movement ? route($routeName, $movement) : route($routeName);
+                        } catch (\Exception $e3) {
+                            $url = '#';
+                        }
+                    }
+                }
+            }
+        }
+
+        $targetViewId = $viewId;
+        if ($operation && !empty($operation->view_id_action)) {
+            $targetViewId = $operation->view_id_action;
+        }
+
+        if ($targetViewId && $url !== '#') {
+            $separator = str_contains($url, '?') ? '&' : '?';
+            $url .= $separator . 'view_id=' . urlencode($targetViewId);
+        }
+
+        return $url;
+    };
+
+    $resolveTextColor = function ($operation) {
+        $action = $operation->action ?? '';
+        if (str_contains($action, 'create') || str_contains($action, 'store')) {
+            return '#111827';
+        }
+        return '#FFFFFF';
+    };
 @endphp
 
 @section('content')
@@ -81,6 +155,9 @@
             <div class="flex flex-col gap-5">
                 {{-- FILTROS --}}
                 <form method="GET" class="flex w-full flex-col gap-3 sm:flex-row sm:items-center">
+                    @if ($viewId)
+                        <input type="hidden" name="view_id" value="{{ $viewId }}">
+                    @endif
                     <div class="w-full flex-1 relative">
                         <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
                             {!! $SearchIcon !!}
@@ -92,7 +169,13 @@
 
                     <div class="relative flex w-full sm:w-auto min-w-[200px]">
                         <select name="cash_register_id"
-                            onchange="window.location.href = '{{ route('admin.petty-cash.base') }}/' + this.value"
+                            onchange="
+                                const nextUrl = new URL('{{ url('/caja/caja-chica') }}/' + this.value, window.location.origin);
+                                @if ($viewId)
+                                    nextUrl.searchParams.set('view_id', '{{ $viewId }}');
+                                @endif
+                                window.location.href = nextUrl.toString();
+                            "
                             class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90">
                             @if (isset($cashRegisters))
                                 @foreach ($cashRegisters as $register)
@@ -107,34 +190,77 @@
 
                     <div class="flex shrink-0 items-center gap-2">
                         <x-ui.button size="sm" variant="primary" type="submit" :startIcon="$SearchIcon">Buscar</x-ui.button>
-                        <x-ui.button size="sm" variant="outline" href="{{ route('admin.petty-cash.base') }}"
-                            :startIcon="$ClearIcon">Limpiar</x-ui.button>
+                        <x-ui.link-button size="sm" variant="outline"
+                            href="{{ route('admin.petty-cash.index', array_merge(['cash_register_id' => $selectedBoxId], $viewId ? ['view_id' => $viewId] : [])) }}"
+                            :startIcon="$ClearIcon">Limpiar</x-ui.link-button>
                     </div>
                 </form>
 
                 {{-- BOTONERA --}}
                 <div class="flex flex-wrap gap-3 border-t border-gray-100 pt-4 dark:border-gray-800">
-                    @if (!$hasOpening)
-                        <x-ui.button size="md" variant="primary" style="background-color: #3B82F6; color: #FFFFFF;"
-                            @click="$dispatch('open-movement-modal', { concept: 'Apertura de caja', docId: '{{ $ingresoDocId }}' })">
-                            <i class="ri-key-2-line"></i><span>Aperturar Caja</span>
-                        </x-ui.button>
+                    @if ($topOperations->isNotEmpty())
+                        @foreach ($topOperations as $operation)
+                            @php
+                                $topTextColor = $resolveTextColor($operation);
+                                $topColor = $operation->color ?: '#3B82F6';
+                                $topStyle = "background-color: {$topColor}; color: {$topTextColor};";
+                                $topAction = $operation->action ?? '';
+                                $topActionUrl = $resolveActionUrl($topAction, null, $operation);
+                                $topActionLower = mb_strtolower($topAction);
+                                $topNameLower = mb_strtolower($operation->name ?? '');
+
+                                $isCreateLike = str_contains($topAction, 'create') || str_contains($topAction, 'store');
+                                $isIncomeOp = str_contains($topActionLower, 'ingreso') || str_contains($topNameLower, 'ingreso');
+                                $isExpenseOp = str_contains($topActionLower, 'egreso') || str_contains($topNameLower, 'egreso');
+                                $isOpenOp = str_contains($topActionLower, 'apertura') || str_contains($topNameLower, 'apertura');
+                                $isCloseOp = str_contains($topActionLower, 'cierre')
+                                    || str_contains($topNameLower, 'cierre')
+                                    || str_contains($topActionLower, 'cerrar')
+                                    || str_contains($topNameLower, 'cerrar')
+                                    || str_contains($topActionLower, 'close')
+                                    || str_contains($topNameLower, 'close');
+
+                                // En caja chica estas operaciones deben abrir modal, no navegar.
+                                $isPettyCashModalOp = $isCreateLike || $isIncomeOp || $isExpenseOp || $isOpenOp || $isCloseOp;
+                                $modalDocId = ($isExpenseOp || $isCloseOp) ? $egresoDocId : $ingresoDocId;
+                                $modalConcept = $isOpenOp ? 'Apertura de caja' : ($isCloseOp ? 'Cierre de caja' : '');
+                            @endphp
+                            @if ($isPettyCashModalOp)
+                                <x-ui.button size="md" variant="primary" type="button" style="{{ $topStyle }}"
+                                    @click="$dispatch('open-movement-modal', { concept: '{{ $modalConcept }}', docId: '{{ $modalDocId }}' })">
+                                    <i class="{{ $operation->icon }}"></i>
+                                    <span>{{ $operation->name }}</span>
+                                </x-ui.button>
+                            @else
+                                <x-ui.link-button size="md" variant="primary" style="{{ $topStyle }}" href="{{ $topActionUrl }}">
+                                    <i class="{{ $operation->icon }}"></i>
+                                    <span>{{ $operation->name }}</span>
+                                </x-ui.link-button>
+                            @endif
+                        @endforeach
                     @else
-                        <x-ui.button size="md" variant="primary" style="background-color: #00A389; color: #FFFFFF;"
-                            @click="$dispatch('open-movement-modal', { concept: '', docId: '{{ $ingresoDocId }}' })">
-                            <i class="ri-add-line"></i><span>Ingreso</span>
-                        </x-ui.button>
+                        @if (!$hasOpening)
+                            <x-ui.button size="md" variant="primary" style="background-color: #3B82F6; color: #FFFFFF;"
+                                @click="$dispatch('open-movement-modal', { concept: 'Apertura de caja', docId: '{{ $ingresoDocId }}' })">
+                                <i class="ri-key-2-line"></i><span>Aperturar Caja</span>
+                            </x-ui.button>
+                        @else
+                            <x-ui.button size="md" variant="primary" style="background-color: #00A389; color: #FFFFFF;"
+                                @click="$dispatch('open-movement-modal', { concept: '', docId: '{{ $ingresoDocId }}' })">
+                                <i class="ri-add-line"></i><span>Ingreso</span>
+                            </x-ui.button>
 
-                        <x-ui.button size="md" variant="primary"
-                            style="background-color: #EF4444; color: #FFFFFF; border: none;"
-                            @click="$dispatch('open-movement-modal', { concept: '', docId: '{{ $egresoDocId }}' })">
-                            <i class="ri-subtract-line mr-1"></i><span>Egreso</span>
-                        </x-ui.button>
+                            <x-ui.button size="md" variant="primary"
+                                style="background-color: #EF4444; color: #FFFFFF; border: none;"
+                                @click="$dispatch('open-movement-modal', { concept: '', docId: '{{ $egresoDocId }}' })">
+                                <i class="ri-subtract-line mr-1"></i><span>Egreso</span>
+                            </x-ui.button>
 
-                        <x-ui.button size="md" style="background-color: #FACC15; color: #111827;"
-                            @click="$dispatch('open-movement-modal', { concept: 'Cierre de caja', docId: '{{ $egresoDocId }}' })">
-                            <i class="ri-lock-2-line"></i> Cerrar
-                        </x-ui.button>
+                            <x-ui.button size="md" style="background-color: #FACC15; color: #111827;"
+                                @click="$dispatch('open-movement-modal', { concept: 'Cierre de caja', docId: '{{ $egresoDocId }}' })">
+                                <i class="ri-lock-2-line"></i> Cerrar
+                            </x-ui.button>
+                        @endif
                     @endif
                 </div>
             </div>
@@ -253,23 +379,48 @@
 
                                     <td class="px-5 py-4 sm:px-6">
                                         <div class="flex items-center justify-end gap-2">
-                                            <div class="relative group"> <a
-                                                    href="{{ route('admin.petty-cash.show', ['cash_register_id' => $selectedBoxId, 'movement' => $movement->id]) }}"
-                                                    class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-info-500 text-white hover:bg-info-600 transition-colors shadow-sm"
-                                                    style="background-color: #63B7EC; color: #FFFFFF;"
-                                                    aria-label="Ver Registro">
-                                                    <i class="ri-eye-line"></i>
-                                                </a>
-                                            </div>
-                                            <div class="relative group">
-                                                <a href="{{ route('admin.petty-cash.edit', ['cash_register_id' => $selectedBoxId, 'movement' => $movement->id]) }}"
-                                                    onclick="debugEditClick(event, '{{ $selectedBoxId }}', '{{ $movement->id }}')"
-                                                    class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-warning-500 text-white hover:bg-warning-600 transition-colors shadow-sm"
-                                                    style="background-color: #FBBF24; color: #111827;"
-                                                    title="Editar Registro">
-                                                    <i class="ri-pencil-line"></i>
-                                                </a>
-                                            </div>
+                                            @if ($rowOperations->isNotEmpty())
+                                                @foreach ($rowOperations as $operation)
+                                                    @php
+                                                        $action = $operation->action ?? '';
+                                                        $isDelete = str_contains($action, 'destroy');
+                                                        $actionUrl = $resolveActionUrl($action, $movement, $operation);
+                                                        $textColor = $resolveTextColor($operation);
+                                                        $buttonColor = $operation->color ?: '#3B82F6';
+                                                        $buttonStyle = "background-color: {$buttonColor}; color: {$textColor};";
+                                                        $variant = $isDelete ? 'eliminate' : (str_contains($action, 'edit') ? 'edit' : 'primary');
+                                                    @endphp
+                                                    @if ($isDelete)
+                                                        <form method="POST" action="{{ $actionUrl }}" class="relative group js-swal-delete"
+                                                            data-swal-title="Eliminar movimiento?"
+                                                            data-swal-text="Se eliminara {{ $movement->number }}. Esta accion no se puede deshacer."
+                                                            data-swal-confirm="Si, eliminar"
+                                                            data-swal-cancel="Cancelar"
+                                                            data-swal-confirm-color="#ef4444"
+                                                            data-swal-cancel-color="#6b7280">
+                                                            @csrf
+                                                            @method('DELETE')
+                                                            @if ($viewId)
+                                                                <input type="hidden" name="view_id" value="{{ $viewId }}">
+                                                            @endif
+                                                            <x-ui.button size="icon" variant="{{ $variant }}" type="submit"
+                                                                className="rounded-xl" style="{{ $buttonStyle }}"
+                                                                aria-label="{{ $operation->name }}">
+                                                                <i class="{{ $operation->icon }}"></i>
+                                                            </x-ui.button>
+                                                        </form>
+                                                    @else
+                                                        <div class="relative group">
+                                                            <x-ui.link-button size="icon" variant="{{ $variant }}" href="{{ $actionUrl }}"
+                                                                className="rounded-xl" style="{{ $buttonStyle }}"
+                                                                aria-label="{{ $operation->name }}">
+                                                                <i class="{{ $operation->icon }}"></i>
+                                                            </x-ui.link-button>
+                                                        </div>
+                                                    @endif
+                                                @endforeach
+                                            
+                                            @endif
                                         </div>
                                     </td>
                                 </tr>
@@ -309,6 +460,9 @@
                     action="{{ route('admin.petty-cash.store', ['cash_register_id' => $selectedBoxId]) }}"
                     class="space-y-6">
                     @csrf
+                    @if ($viewId)
+                        <input type="hidden" name="view_id" value="{{ $viewId }}">
+                    @endif
                     <input type="hidden" name="document_type_id" x-model="formDocId">
                     <input type="hidden" name="cash_register_id" value="{{ $selectedBoxId }}">
 

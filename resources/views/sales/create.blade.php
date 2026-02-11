@@ -1,6 +1,11 @@
 @extends('layouts.app')
 
 @section('content')
+    @php
+        $viewId = request('view_id');
+        $salesIndexUrl = route('admin.sales.index', $viewId ? ['view_id' => $viewId] : []);
+        $salesChargeUrl = route('admin.sales.charge', $viewId ? ['view_id' => $viewId] : []);
+    @endphp
     {{-- Breadcrumb --}}
     <div class=" flex flex-wrap items-center justify-between gap-3 mb-4">
         <div class="flex items-center gap-2">
@@ -13,7 +18,7 @@
             <ol class="flex items-center gap-1.5">
                 <li>
                     <a class="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-                        href="{{ route('admin.sales.index') }}">
+                        href="{{ $salesIndexUrl }}">
                         Ventas
                         <svg class="stroke-current" width="17" height="16" viewBox="0 0 17 16" fill="none"
                             xmlns="http://www.w3.org/2000/svg">
@@ -610,7 +615,9 @@
                 return;
             }
             saveDB();
-            window.location.href = "{{ route('admin.sales.charge') }}";
+            if ("{{ $salesChargeUrl }}" !== "") {
+                window.location.href = "{{ $salesChargeUrl }}";
+            }
         }
 
         function goBack() {
@@ -620,7 +627,7 @@
                 currentSale.total = 0;
                 saveDB();
                 localStorage.removeItem(ACTIVE_SALE_KEY_STORAGE);
-                window.location.href = "{{ route('admin.sales.index') }}";
+                window.location.href = "{{ $salesIndexUrl }}";
                 return;
             }
 
@@ -654,18 +661,18 @@
                     localStorage.removeItem(ACTIVE_SALE_KEY_STORAGE);
                     
                     // Redirigir
-                    window.location.href = "{{ route('admin.sales.index') }}";
+                    window.location.href = "{{ $salesIndexUrl }}";
                 } else {
                     // Si falla, solo guardar en localStorage
                     saveDB();
-                    window.location.href = "{{ route('admin.sales.index') }}";
+                    window.location.href = "{{ $salesIndexUrl }}";
                 }
             })
             .catch(error => {
                 console.error('Error al guardar borrador:', error);
                 // Si falla, solo guardar en localStorage
                 saveDB();
-                window.location.href = "{{ route('admin.sales.index') }}";
+                window.location.href = "{{ $salesIndexUrl }}";
             });
         }
 
@@ -731,7 +738,7 @@
                     
                     // Redirigir después de 2 segundos
                     setTimeout(() => {
-                        window.location.href = "{{ route('admin.sales.index') }}";
+                        window.location.href = "{{ $salesIndexUrl }}";
                     }, 2000);
                 } else {
                     // Mostrar error

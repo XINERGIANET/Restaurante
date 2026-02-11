@@ -17,16 +17,21 @@ use App\Models\Bank;
 use App\Models\DigitalWallet;
 use App\Models\Card;
 use App\Models\CashMovementDetail;
+use App\Models\Operation;
 
 
 class PettyCashController extends Controller
 {
 
-    public function     redirectBase()
+    public function redirectBase(Request $request)
     {
         $firstBox = CashRegister::where('status', '1')->first();
         if ($firstBox) {
-            return redirect()->route('admin.petty-cash.index', ['cash_register_id' => $firstBox->id]);
+            $params = ['cash_register_id' => $firstBox->id];
+            if ($request->filled('view_id')) {
+                $params['view_id'] = $request->input('view_id');
+            }
+            return redirect()->route('admin.petty-cash.index', $params);
         }
         abort(404, 'No hay cajas registradas');
     }
@@ -34,7 +39,34 @@ class PettyCashController extends Controller
     public function index(Request $request, $cash_register_id = null)
     {
         $search = $request->input('search');
-
+        $viewId = $request->input('view_id');
+        $branchId = $request->session()->get('branch_id');
+        $profileId = $request->session()->get('profile_id') ?? $request->user()?->profile_id;
+        $operaciones = collect();
+        if ($viewId && $branchId && $profileId) {
+            $operaciones = Operation::query()
+                ->select('operations.*')
+                ->join('branch_operation', function ($join) use ($branchId) {
+                    $join->on('branch_operation.operation_id', '=', 'operations.id')
+                        ->where('branch_operation.branch_id', $branchId)
+                        ->where('branch_operation.status', 1)
+                        ->whereNull('branch_operation.deleted_at');
+                })
+                ->join('operation_profile_branch', function ($join) use ($branchId, $profileId) {
+                    $join->on('operation_profile_branch.operation_id', '=', 'operations.id')
+                        ->where('operation_profile_branch.branch_id', $branchId)
+                        ->where('operation_profile_branch.profile_id', $profileId)
+                        ->where('operation_profile_branch.status', 1)
+                        ->whereNull('operation_profile_branch.deleted_at');
+                })
+                ->where('operations.status', 1)
+                ->where('operations.view_id', $viewId)
+                ->whereNull('operations.deleted_at')
+                ->orderBy('operations.id')
+                ->distinct()
+                ->get();
+        }
+   // dd($viewId, $branchId, $profileId, $operaciones);
         $cashRegisters = CashRegister::where('status', '1')->orderBy('number', 'asc')->get();
         $selectedBoxId = $cash_register_id;
 
@@ -85,7 +117,8 @@ class PettyCashController extends Controller
                 });
             })
             ->orderBy('moved_at', 'desc')
-            ->paginate(10);
+            ->paginate(10)
+            ->withQueryString();
 
         $shifts = Shift::where('branch_id', session('branch_id'))->get();
 
@@ -117,10 +150,11 @@ class PettyCashController extends Controller
             'banks'           => $banks,
             'digitalWallets'  => $digitalWallets,
             'cards'           => $cards,
+            'operaciones'     => $operaciones,
         ]);
     }
 
-    public function show($cash_register_id, $movement_id)
+    public function show(Request $request, $cash_register_id, $movement_id)
     {
         $movement = Movement::with([
             'documentType',
@@ -128,7 +162,8 @@ class PettyCashController extends Controller
             'cashMovement.shift',
             'cashMovement.paymentConcept',
         ])->findOrFail($movement_id);
-        return view('petty_cash.show', compact('cash_register_id', 'movement'));
+        $viewId = $request->input('view_id');
+        return view('petty_cash.show', compact('cash_register_id', 'movement', 'viewId'));
     }
 
     public function store(Request $request, $cash_register_id)
@@ -283,7 +318,11 @@ class PettyCashController extends Controller
                 }
             });
 
-            return redirect()->route('admin.petty-cash.index', ['cash_register_id' => $cash_register_id])
+            $params = ['cash_register_id' => $cash_register_id];
+            if ($request->filled('view_id')) {
+                $params['view_id'] = $request->input('view_id');
+            }
+            return redirect()->route('admin.petty-cash.index', $params)
                 ->with('success', 'Movimiento registrado correctamente.');
         } catch (\Exception $e) {
             return back()->withErrors(['error' => 'Error al guardar: ' . $e->getMessage()])
@@ -291,7 +330,7 @@ class PettyCashController extends Controller
         }
     }
 
-    public function edit($cash_register_id, $id)
+    public function edit(Request $request, $cash_register_id, $id)
     {
         $movement = Movement::with(['cashMovement.details', 'cashMovement'])->findOrFail($id);
 
@@ -332,6 +371,8 @@ class PettyCashController extends Controller
         $digitalWallets  = DigitalWallet::where('status', true)->orderBy('order_num', 'asc')->get();
         $paymentGateways = PaymentGateways::where('status', true)->orderBy('order_num', 'asc')->get();
 
+        $viewId = $request->input('view_id');
+
         return view('petty_cash.edit', compact(
             'cash_register_id',
             'movement',
@@ -341,7 +382,8 @@ class PettyCashController extends Controller
             'cards',
             'banks',
             'digitalWallets',
-            'paymentGateways'
+            'paymentGateways',
+            'viewId'
         ));
     }
 
@@ -425,11 +467,41 @@ class PettyCashController extends Controller
                 }
             });
 
-            return redirect()->route('admin.petty-cash.index', ['cash_register_id' => $cash_register_id])
+            $params = ['cash_register_id' => $cash_register_id];
+            if ($request->filled('view_id')) {
+                $params['view_id'] = $request->input('view_id');
+            }
+            return redirect()->route('admin.petty-cash.index', $params)
                 ->with('success', 'Movimiento actualizado correctamente.');
         } catch (\Exception $e) {
             return back()->withErrors(['error' => 'Error al actualizar: ' . $e->getMessage()])
                 ->withInput();
+        }
+    }
+
+    public function destroy(Request $request, $cash_register_id, $id)
+    {
+        try {
+            DB::transaction(function () use ($id) {
+                $movement = Movement::with('cashMovement.details')->findOrFail($id);
+
+                if ($movement->cashMovement) {
+                    $movement->cashMovement->details()->delete();
+                    $movement->cashMovement()->delete();
+                }
+
+                $movement->delete();
+            });
+
+            $params = ['cash_register_id' => $cash_register_id];
+            if ($request->filled('view_id')) {
+                $params['view_id'] = $request->input('view_id');
+            }
+
+            return redirect()->route('admin.petty-cash.index', $params)
+                ->with('success', 'Movimiento eliminado correctamente.');
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => 'Error al eliminar: ' . $e->getMessage()]);
         }
     }
 }

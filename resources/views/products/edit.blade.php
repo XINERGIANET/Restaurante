@@ -14,6 +14,9 @@
             <form method="POST" action="{{ route('admin.products.update', $product) }}" enctype="multipart/form-data" class="space-y-6">
                 @csrf
                 @method('PUT')
+                @if (!empty($viewId))
+                    <input type="hidden" name="view_id" value="{{ $viewId }}">
+                @endif
 
                 @include('products._form', ['product' => $product])
 
@@ -22,7 +25,7 @@
                         <i class="ri-save-line"></i>
                         <span>Actualizar</span>
                     </x-ui.button>
-                    <x-ui.link-button size="md" variant="outline" href="{{ route('admin.products.index') }}">
+                    <x-ui.link-button size="md" variant="outline" href="{{ route('admin.products.index', !empty($viewId) ? ['view_id' => $viewId] : []) }}">
                         <i class="ri-close-line"></i>
                         <span>Cancelar</span>
                     </x-ui.link-button>
