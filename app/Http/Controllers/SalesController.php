@@ -20,6 +20,7 @@ use App\Models\SalesMovementDetail;
 use App\Models\Shift;
 use App\Models\TaxRate;
 use App\Models\Unit;
+use App\Models\Operation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -32,6 +33,34 @@ class SalesController extends Controller
     public function index(Request $request)
     {
         $search = $request->input('search');
+        $viewId = $request->input('view_id');
+        $branchId = $request->session()->get('branch_id');
+        $profileId = $request->session()->get('profile_id') ?? $request->user()?->profile_id;
+        $operaciones = collect();
+        if ($viewId && $branchId && $profileId) {
+            $operaciones = Operation::query()
+                ->select('operations.*')
+                ->join('branch_operation', function ($join) use ($branchId) {
+                    $join->on('branch_operation.operation_id', '=', 'operations.id')
+                        ->where('branch_operation.branch_id', $branchId)
+                        ->where('branch_operation.status', 1)
+                        ->whereNull('branch_operation.deleted_at');
+                })
+                ->join('operation_profile_branch', function ($join) use ($branchId, $profileId) {
+                    $join->on('operation_profile_branch.operation_id', '=', 'operations.id')
+                        ->where('operation_profile_branch.branch_id', $branchId)
+                        ->where('operation_profile_branch.profile_id', $profileId)
+                        ->where('operation_profile_branch.status', 1)
+                        ->whereNull('operation_profile_branch.deleted_at');
+                })
+                ->where('operations.status', 1)
+                ->where('operations.view_id', $viewId)
+                ->whereNull('operations.deleted_at')
+                ->orderBy('operations.id')
+                ->distinct()
+                ->get();
+        }
+
         $perPage = (int) $request->input('per_page', 10);
         $allowedPerPage = [10, 20, 50, 100];
         if (!in_array($perPage, $allowedPerPage, true)) {
@@ -56,6 +85,7 @@ class SalesController extends Controller
             'sales' => $sales,
             'search' => $search,
             'perPage' => $perPage,
+            'operaciones' => $operaciones,
         ] + $this->getFormData());
     }
 
@@ -73,6 +103,7 @@ class SalesController extends Controller
                     'name' => $product->description,
                     'price' => 0.00,
                     'img' => $imageUrl,
+                    'note' =>  $product->note ?? null,
                     'category' => $product->category ? $product->category->description : 'Sin categoría'
                 ];
             });
@@ -88,6 +119,7 @@ class SalesController extends Controller
                     'name' => $productBranch->product->description,
                     'price' => $productBranch->price,
                     'image' => $productBranch->product->image,
+                    'note' => $productBranch->product->note ?? null,
                 ];
             });
         return view('sales.create', [
@@ -148,11 +180,13 @@ class SalesController extends Controller
                             'qty' => (float) $detail->quantity,
                             'price' => (float) $detail->original_amount / (float) $detail->quantity,
                             'note' => $detail->comment ?? '',
+                            'product_note' => $detail->product->note ?? null,
                         ];
                     })->toArray(),
                     'clientName' => $movement->person_name ?? 'Público General',
                     'notes' => $movement->comment ?? '',
                     'pendingAmount' => $pendingAmount,
+                    'product_notes' => $movement->salesMovement->details->pluck('product.note')->toArray(),
                 ];
             }
         }
@@ -179,7 +213,9 @@ class SalesController extends Controller
                 'items.*.pId' => 'required|integer|exists:products,id',
                 'items.*.qty' => 'required|numeric|min:0.000001',
                 'items.*.price' => 'required|numeric|min:0',
-                'items.*.note' => 'nullable|string',
+                'items.*.note' => 'nullable|string|max:65535',
+                // Compatibilidad: algunos flujos pueden enviar `comment` en lugar de `note`
+                'items.*.comment' => 'nullable|string|max:65535',
                 'document_type_id' => 'required|integer|exists:document_types,id',
                 'payment_methods' => 'required|array|min:1',
                 'payment_methods.*.payment_method_id' => 'required|integer|exists:payment_methods,id',
@@ -383,8 +419,8 @@ class SalesController extends Controller
                 ]);
             }
 
-            // Crear SalesMovementDetails y actualizar stock
-            foreach ($request->items as $item) {
+            // Crear SalesMovementDetails y actualizar stock (nota por producto en comment)
+            foreach ($validated['items'] as $item) {
                 $product = Product::with('baseUnit')->findOrFail($item['pId']);
                 
                 // Bloquear el registro para evitar condiciones de carrera
@@ -420,6 +456,10 @@ class SalesController extends Controller
                 $itemSubtotal = $item['qty'] * $item['price'];
                 $itemTax = $itemSubtotal * $taxRateValue;
 
+                // Nota por producto (compatibilidad note/comment) y normalización
+                $detailNoteRaw = data_get($item, 'note', data_get($item, 'comment'));
+                $detailNote = $detailNoteRaw === null ? null : trim((string) $detailNoteRaw);
+                $detailNote = ($detailNote !== '') ? $detailNote : null;
                 SalesMovementDetail::create([
                     'detail_type' => 'DETAILED',
                     'sales_movement_id' => $salesMovement->id,
@@ -442,7 +482,7 @@ class SalesController extends Controller
                     'amount' => $itemSubtotal + $itemTax,
                     'discount_percentage' => 0.000000,
                     'original_amount' => $itemSubtotal,
-                    'comment' => $item['note'] ?? null,
+                    'comment' => $detailNote,
                     'parent_detail_id' => null,
                     'complements' => [],
                     'status' => 'A',
@@ -566,7 +606,9 @@ class SalesController extends Controller
                 'items.*.pId' => 'required|integer|exists:products,id',
                 'items.*.qty' => 'required|numeric|min:0.000001',
                 'items.*.price' => 'required|numeric|min:0',
-                'items.*.note' => 'nullable|string',
+                'items.*.note' => 'nullable|string|max:65535',
+                // Compatibilidad: algunos flujos pueden enviar `comment` en lugar de `note`
+                'items.*.comment' => 'nullable|string|max:65535',
                 'document_type_id' => 'nullable|integer|exists:document_types,id',
                 'notes' => 'nullable|string',
             ]);
@@ -685,8 +727,8 @@ class SalesController extends Controller
                 'branch_id' => $branchId,
             ]);
 
-            // Crear SalesMovementDetails (sin restar stock porque es borrador)
-            foreach ($request->items as $item) {
+            // Crear SalesMovementDetails (sin restar stock porque es borrador; nota por producto en comment)
+            foreach ($validated['items'] as $item) {
                 $product = Product::with('baseUnit')->findOrFail($item['pId']);
                 $productBranch = ProductBranch::with('taxRate')
                     ->where('product_id', $item['pId'])
@@ -707,6 +749,11 @@ class SalesController extends Controller
 
                 $itemSubtotal = $item['qty'] * $item['price'];
                 $itemTax = $itemSubtotal * $taxRateValue;
+
+                // Nota por producto (compatibilidad note/comment) y normalización
+                $detailNoteRaw = data_get($item, 'note', data_get($item, 'comment'));
+                $detailNote = $detailNoteRaw === null ? null : trim((string) $detailNoteRaw);
+                $detailNote = ($detailNote !== '') ? $detailNote : null;
 
                 SalesMovementDetail::create([
                     'detail_type' => 'DETAILED',
@@ -730,7 +777,7 @@ class SalesController extends Controller
                     'amount' => $itemSubtotal + $itemTax,
                     'discount_percentage' => 0.000000,
                     'original_amount' => $itemSubtotal,
-                    'comment' => $item['note'] ?? null,
+                    'comment' => $detailNote,
                     'parent_detail_id' => null,
                     'complements' => [],
                     'status' => 'A',
@@ -789,7 +836,7 @@ class SalesController extends Controller
         ]);
 
         return redirect()
-            ->route('admin.sales.index')
+            ->route('admin.sales.index', $request->filled('view_id') ? ['view_id' => $request->input('view_id')] : [])
             ->with('status', 'Venta creada correctamente.');
     }
 
@@ -824,7 +871,7 @@ class SalesController extends Controller
         ]);
 
         return redirect()
-            ->route('admin.sales.index')
+            ->route('admin.sales.index', $request->filled('view_id') ? ['view_id' => $request->input('view_id')] : [])
             ->with('status', 'Venta actualizada correctamente.');
     }
 
@@ -833,7 +880,7 @@ class SalesController extends Controller
         $sale->delete();
 
         return redirect()
-            ->route('admin.sales.index')
+            ->route('admin.sales.index', request()->filled('view_id') ? ['view_id' => request()->input('view_id')] : [])
             ->with('status', 'Venta eliminada correctamente.');
     }
 

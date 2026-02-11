@@ -193,6 +193,14 @@
                             </x-ui.link-button>
                         @endif
                     @endforeach
+                    <x-ui.button size="md" variant="primary" type="button"
+                        className="rounded-xl"
+                        style="background-color: #12f00e; color: #111827;"
+                        @click="$dispatch('open-assign-views')"
+                    >
+                        <i class="ri-add-line"></i>
+                        <span>Asignar vistas</span>
+                    </x-ui.button>
                 </div>
             </div>
 
@@ -357,7 +365,7 @@
                     </button>
                 </div>
 
-                <form method="POST" action="{{ $viewId ? route('admin.companies.branches.views.update', [$company, $branch]) . '?view_id=' . $viewId : route('admin.companies.branches.views.update', [$company, $branch]) }}" class="flex min-h-0 flex-col gap-6">
+                <form method="POST" action="{{ $viewId ? route('admin.companies.branches.views.update', [$company, $branch]) . '?view_id=' . $viewId : route('admin.companies.branches.views.update', [$company, $branch]) }}" class="flex min-h-0 flex-1 flex-col gap-6 overflow-hidden">
                     @csrf
                     @if ($viewId)
                         <input type="hidden" name="view_id" value="{{ $viewId }}">
@@ -372,7 +380,7 @@
                         <input type="hidden" name="icon" value="{{ $requestIcon }}">
                     @endif
 
-                     <div class="mt-4 rounded-xl border border-gray-200 bg-white overflow-visible dark:border-gray-800 dark:bg-white/[0.03]" style="overflow: visible; max-height: none;">
+                     <div class="mt-4 min-h-0 flex-1 overflow-y-auto rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
                         <table class="w-full">
                             <thead>
                                 <tr class="text-white">

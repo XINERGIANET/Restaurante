@@ -153,19 +153,28 @@ Route::middleware('auth')->group(function () {
         ->name('admin.product_branches.store_generic');
     Route::put('/admin/herramientas/product-branches/{productBranch}', [ProductBranchController::class, 'update'])
         ->name('admin.product_branches.update');
+
+    //Rutas de ordenes
     Route::resource('/Pedidos', OrderController::class)
         ->names('admin.orders')
         ->parameters(['orders' => 'order'])
         ->only(['index', 'create']); // Solo incluir los métodos que existen
 
-    // Ruta para cobrar pedido
+    Route::get('/Pedidos/listado', [OrderController::class, 'list'])
+        ->name('admin.orders.list');
+
+  
     Route::get('/Pedidos/cobrar', [OrderController::class, 'charge'])
         ->name('admin.orders.charge');
 
-    // Ruta para procesar pedido
     Route::post('/Pedidos/procesar', [OrderController::class, 'processOrder'])
         ->name('admin.orders.process');
 
+    Route::post('/Pedidos/procesar-pago', [OrderController::class, 'processOrderPayment'])
+        ->name('admin.orders.processOrderPayment');
+
+    Route::post('/Pedidos/cancelar', [OrderController::class, 'cancelOrder'])
+        ->name('admin.orders.cancelOrder');
     // dashboard pages
     Route::get('/', function () {
         return view('pages.dashboard.ecommerce', ['title' => 'E-commerce Dashboard']);
@@ -377,3 +386,4 @@ Route::middleware('auth')->group(function () {
     Route::resource('/cocina/recetario', RecipeBookController::class)
         ->names('recipe-book'); 
 });
+

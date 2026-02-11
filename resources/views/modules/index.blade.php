@@ -147,9 +147,8 @@
         </div>
 
         {{-- TABLA --}}
-        <div class="mt-4 overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
-            <div class="max-w-full overflow-x-auto custom-scrollbar">
-                <table class="w-full min-w-[880px]">
+        <div class="mt-4 rounded-xl border border-gray-200 bg-white overflow-visible dark:border-gray-800 dark:bg-white/[0.03]">
+                <table class="w-full">
                     <thead>
                         <tr class="text-white">
                             <th style="background-color: #63B7EC;" class="px-3 py-3 text-left sm:px-6 first:rounded-tl-xl sticky left-0 z-20 w-16 max-w-[64px] sm:w-auto sm:max-w-none shadow-[2px_0_5px_rgba(0,0,0,0.1)]">
@@ -236,7 +235,6 @@
                         @endforelse
                     </tbody>
                 </table>
-            </div>
         </div>
 
         <div class="mt-4">
@@ -334,4 +332,3 @@
 </script>
 @endpush
 @endsection
-

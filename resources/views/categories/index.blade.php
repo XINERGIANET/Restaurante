@@ -2,11 +2,79 @@
 
 @section('content')
     <div x-data="{}">
+        @php
+            use Illuminate\Support\Facades\Route;
+
+            $viewId = request('view_id');
+            $operacionesCollection = collect($operaciones ?? []);
+            $topOperations = $operacionesCollection->where('type', 'T');
+            $rowOperations = $operacionesCollection->where('type', 'R');
+
+            $resolveActionUrl = function ($action, $category = null, $operation = null) use ($viewId) {
+                if (!$action) {
+                    return '#';
+                }
+
+                if (str_starts_with($action, '/') || str_starts_with($action, 'http')) {
+                    $url = $action;
+                } else {
+                    $routeCandidates = [$action];
+                    if (!str_starts_with($action, 'admin.')) {
+                        $routeCandidates[] = 'admin.' . $action;
+                    }
+                    $routeCandidates = array_merge(
+                        $routeCandidates,
+                        array_map(fn ($name) => $name . '.index', $routeCandidates)
+                    );
+
+                    $routeName = null;
+                    foreach ($routeCandidates as $candidate) {
+                        if (Route::has($candidate)) {
+                            $routeName = $candidate;
+                            break;
+                        }
+                    }
+
+                    if ($routeName) {
+                        try {
+                            $url = $category ? route($routeName, $category) : route($routeName);
+                        } catch (\Exception $e) {
+                            $url = '#';
+                        }
+                    } else {
+                        $url = '#';
+                    }
+                }
+
+                $targetViewId = $viewId;
+                if ($operation && !empty($operation->view_id_action)) {
+                    $targetViewId = $operation->view_id_action;
+                }
+
+                if ($targetViewId && $url !== '#') {
+                    $separator = str_contains($url, '?') ? '&' : '?';
+                    $url .= $separator . 'view_id=' . urlencode($targetViewId);
+                }
+
+                return $url;
+            };
+
+            $resolveTextColor = function ($operation) {
+                $action = $operation->action ?? '';
+                if (str_contains($action, 'categories.create')) {
+                    return '#111827';
+                }
+                return '#FFFFFF';
+            };
+        @endphp
         <x-common.page-breadcrumb pageTitle="Categorias" />
 
         <x-common.component-card title="Categorias" desc="Gestiona las categorias de productos.">
             <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                 <form method="GET" class="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
+                    @if ($viewId)
+                        <input type="hidden" name="view_id" value="{{ $viewId }}">
+                    @endif
                     <div class="w-full sm:w-24">
                         <select
                             name="per_page"
@@ -35,28 +103,52 @@
                             <i class="ri-search-line text-gray-100"></i>
                             <span class="font-medium text-gray-100">Buscar</span>
                         </x-ui.button>
-                        <x-ui.link-button size="md" variant="outline" href="{{ route('admin.categories.index') }}" class="flex-1 sm:flex-none h-11 px-6 border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200">
+                        <x-ui.link-button size="md" variant="outline" href="{{ route('admin.categories.index', $viewId ? ['view_id' => $viewId] : []) }}" class="flex-1 sm:flex-none h-11 px-6 border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200">
                             <i class="ri-refresh-line"></i>
                             <span class="font-medium">Limpiar</span>
                         </x-ui.link-button>
                     </div>
                 </form>
 
-                <x-ui.button size="md" variant="primary" type="button"
-                    style=" background-color: #12f00e; color: #111827;" @click="$dispatch('open-category-modal')">
-                    <i class="ri-add-line"></i>
-                    <span>Nueva categoria</span>
-                </x-ui.button>
+                <div class="flex items-center gap-2">
+                    @foreach ($topOperations as $operation)
+                        @php
+                            $topTextColor = $resolveTextColor($operation);
+                            $topColor = $operation->color ?: '#3B82F6';
+                            $topStyle = "background-color: {$topColor}; color: {$topTextColor};";
+                            $topActionUrl = $resolveActionUrl($operation->action ?? '', null, $operation);
+                            $isCreate = str_contains($operation->action ?? '', 'categories.create');
+                        @endphp
+                        @if ($isCreate)
+                            <x-ui.button size="md" variant="primary" type="button" style="{{ $topStyle }}" @click="$dispatch('open-category-modal')">
+                                <i class="{{ $operation->icon }}"></i>
+                                <span>{{ $operation->name }}</span>
+                            </x-ui.button>
+                        @else
+                            <x-ui.link-button size="md" variant="primary" style="{{ $topStyle }}" href="{{ $topActionUrl }}">
+                                <i class="{{ $operation->icon }}"></i>
+                                <span>{{ $operation->name }}</span>
+                            </x-ui.link-button>
+                        @endif
+                    @endforeach
+                    @if ($topOperations->isEmpty())
+                        <x-ui.button size="md" variant="primary" type="button"
+                            style=" background-color: #12f00e; color: #111827;" @click="$dispatch('open-category-modal')">
+                            <i class="ri-add-line"></i>
+                            <span>Nueva categoria</span>
+                        </x-ui.button>
+                    @endif
+                </div>
             </div>
 
             <div class="mt-4 rounded-xl border border-gray-200 bg-white overflow-visible dark:border-gray-800 dark:bg-white/[0.03]">
                 <table class="w-full">
                     <thead>
                         <tr class="text-white">
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6 first:rounded-tl-xl transition-colors">
                                 <p class="font-semibold text-white text-theme-xs">Imagen</p>
                             </th>
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6 first:rounded-tl-xl transition-colors">
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
                                 <p class="font-semibold text-white text-theme-xs">Descripción</p>
                             </th>
                             <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
@@ -93,44 +185,105 @@
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
                                     <div class="flex items-center justify-end gap-2">
-                                        <div class="relative group">
-                                            <x-ui.link-button
-                                                size="icon"
-                                                variant="edit"
-                                                href="{{ route('admin.categories.edit', $category) }}"
-                                                className="bg-warning-500 text-white hover:bg-warning-600 ring-0 rounded-full"
-                                                style="border-radius: 100%; background-color: #FBBF24; color: #111827;"
-                                                aria-label="Editar"
+                                        @if ($rowOperations->isNotEmpty())
+                                            @foreach ($rowOperations as $operation)
+                                                @php
+                                                    $action = $operation->action ?? '';
+                                                    $isDelete = str_contains($action, 'destroy');
+                                                    $actionUrl = $resolveActionUrl($action, $category, $operation);
+                                                    $textColor = $resolveTextColor($operation);
+                                                    $buttonColor = $operation->color ?: '#3B82F6';
+                                                    $buttonStyle = "background-color: {$buttonColor}; color: {$textColor};";
+                                                    $variant = $isDelete ? 'eliminate' : (str_contains($action, 'edit') ? 'edit' : 'primary');
+                                                @endphp
+                                                @if ($isDelete)
+                                                    <form
+                                                        method="POST"
+                                                        action="{{ $actionUrl }}"
+                                                        class="relative group js-swal-delete"
+                                                        data-swal-title="Eliminar categoria?"
+                                                        data-swal-text="Se eliminara {{ $category->description }}. Esta accion no se puede deshacer."
+                                                        data-swal-confirm="Si, eliminar"
+                                                        data-swal-cancel="Cancelar"
+                                                        data-swal-confirm-color="#ef4444"
+                                                        data-swal-cancel-color="#6b7280"
+                                                    >
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        @if ($viewId)
+                                                            <input type="hidden" name="view_id" value="{{ $viewId }}">
+                                                        @endif
+                                                        <x-ui.button
+                                                            size="icon"
+                                                            variant="{{ $variant }}"
+                                                            type="submit"
+                                                            className="rounded-xl"
+                                                            style="{{ $buttonStyle }}"
+                                                            aria-label="{{ $operation->name }}"
+                                                        >
+                                                            <i class="{{ $operation->icon }}"></i>
+                                                        </x-ui.button>
+                                                        <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">{{ $operation->name }}</span>
+                                                    </form>
+                                                @else
+                                                    <div class="relative group">
+                                                        <x-ui.link-button
+                                                            size="icon"
+                                                            variant="{{ $variant }}"
+                                                            href="{{ $actionUrl }}"
+                                                            className="rounded-xl"
+                                                            style="{{ $buttonStyle }}"
+                                                            aria-label="{{ $operation->name }}"
+                                                        >
+                                                            <i class="{{ $operation->icon }}"></i>
+                                                        </x-ui.link-button>
+                                                        <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">{{ $operation->name }}</span>
+                                                    </div>
+                                                @endif
+                                            @endforeach
+                                        @else
+                                            <div class="relative group">
+                                                <x-ui.link-button
+                                                    size="icon"
+                                                    variant="edit"
+                                                    href="{{ route('admin.categories.edit', array_merge([$category], $viewId ? ['view_id' => $viewId] : [])) }}"
+                                                    className="bg-warning-500 text-white hover:bg-warning-600 ring-0 rounded-xl"
+                                                    style="background-color: #FBBF24; color: #111827;"
+                                                    aria-label="Editar"
+                                                >
+                                                    <i class="ri-pencil-line"></i>
+                                                </x-ui.link-button>
+                                                <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">Editar</span>
+                                            </div>
+                                            <form
+                                                method="POST"
+                                                action="{{ route('admin.categories.destroy', array_merge([$category], $viewId ? ['view_id' => $viewId] : [])) }}"
+                                                class="relative group js-swal-delete"
+                                                data-swal-title="Eliminar categoria?"
+                                                data-swal-text="Se eliminara {{ $category->description }}. Esta accion no se puede deshacer."
+                                                data-swal-confirm="Si, eliminar"
+                                                data-swal-cancel="Cancelar"
+                                                data-swal-confirm-color="#ef4444"
+                                                data-swal-cancel-color="#6b7280"
                                             >
-                                                <i class="ri-pencil-line"></i>
-                                            </x-ui.link-button>
-                                            <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">Editar</span>
-                                        </div>
-                                        <form
-                                            method="POST"
-                                            action="{{ route('admin.categories.destroy', $category) }}"
-                                            class="relative group js-swal-delete"
-                                            data-swal-title="Eliminar categoria?"
-                                            data-swal-text="Se eliminara {{ $category->description }}. Esta accion no se puede deshacer."
-                                            data-swal-confirm="Si, eliminar"
-                                            data-swal-cancel="Cancelar"
-                                            data-swal-confirm-color="#ef4444"
-                                            data-swal-cancel-color="#6b7280"
-                                        >
-                                            @csrf
-                                            @method('DELETE')
-                                            <x-ui.button
-                                                size="icon"
-                                                variant="eliminate"
-                                                type="submit"
-                                                className="bg-error-500 text-white hover:bg-error-600 ring-0 rounded-full"
-                                                style="border-radius: 100%; background-color: #EF4444; color: #FFFFFF;"
-                                                aria-label="Eliminar"
-                                            >
-                                                <i class="ri-delete-bin-line"></i>
-                                            </x-ui.button>
-                                            <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">Eliminar</span>
-                                        </form>
+                                                @csrf
+                                                @method('DELETE')
+                                                @if ($viewId)
+                                                    <input type="hidden" name="view_id" value="{{ $viewId }}">
+                                                @endif
+                                                <x-ui.button
+                                                    size="icon"
+                                                    variant="eliminate"
+                                                    type="submit"
+                                                    className="bg-error-500 text-white hover:bg-error-600 ring-0 rounded-xl"
+                                                    style="background-color: #EF4444; color: #FFFFFF;"
+                                                    aria-label="Eliminar"
+                                                >
+                                                    <i class="ri-delete-bin-line"></i>
+                                                </x-ui.button>
+                                                <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">Eliminar</span>
+                                            </form>
+                                        @endif
                                     </div>
                                 </td>
                             </tr>
@@ -197,6 +350,9 @@
 
                 <form method="POST" action="{{ route('admin.categories.store') }}" class="space-y-6" enctype="multipart/form-data">
                     @csrf
+                    @if ($viewId)
+                        <input type="hidden" name="view_id" value="{{ $viewId }}">
+                    @endif
 
                     @include('categories._form', ['category' => null])
 
@@ -215,3 +371,5 @@
         </x-ui.modal>
     </div>
 @endsection
+
+

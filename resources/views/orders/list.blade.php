@@ -60,9 +60,9 @@
             };
         @endphp
 
-        <x-common.page-breadcrumb pageTitle="Ventas" />
+        <x-common.page-breadcrumb pageTitle="Pedidos" />
 
-        <x-common.component-card title="Listado de ventas" desc="Gestiona las ventas registradas.">
+        <x-common.component-card title="Listado de pedidos" desc="Gestiona los pedidos registrados.">
             <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                 <form method="GET" class="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
                     @if ($viewId)
@@ -96,7 +96,7 @@
                             <i class="ri-search-line text-gray-100"></i>
                             <span class="font-medium text-gray-100">Buscar</span>
                         </x-ui.button>
-                        <x-ui.link-button size="md" variant="outline" href="{{ route('admin.sales.index', $viewId ? ['view_id' => $viewId] : []) }}" class="flex-1 sm:flex-none h-11 px-6 border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200">
+                        <x-ui.link-button size="md" variant="outline" href="{{ route('admin.orders.list', $viewId ? ['view_id' => $viewId] : []) }}" class="flex-1 sm:flex-none h-11 px-6 border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200">
                             <i class="ri-refresh-line"></i>
                             <span class="font-medium">Limpiar</span>
                         </x-ui.link-button>
@@ -108,7 +108,7 @@
                         @foreach ($topOperations as $operation)
                             @php
                                 $topColor = $operation->color ?: '#3B82F6';
-                                $topTextColor = str_contains($operation->action ?? '', 'sales.create') ? '#111827' : '#FFFFFF';
+                                $topTextColor = '#FFFFFF';
                                 $topStyle = "background-color: {$topColor}; color: {$topTextColor};";
                                 $topActionUrl = $resolveActionUrl($operation->action ?? '', null, $operation);
                             @endphp
@@ -118,9 +118,9 @@
                             </x-ui.link-button>
                         @endforeach
                     @else
-                        <x-ui.link-button size="md" variant="primary" style="background-color: #12f00e; color: #111827;" href="{{ route('admin.sales.create', $viewId ? ['view_id' => $viewId] : []) }}">
-                            <i class="ri-add-line"></i>
-                            <span>Nueva venta</span>
+                        <x-ui.link-button size="md" variant="primary" style="background-color: #12f00e; color: #111827;" href="{{ route('admin.orders.index', $viewId ? ['view_id' => $viewId] : []) }}">
+                            <i class="ri-restaurant-line"></i>
+                            <span>Salones de pedidos</span>
                         </x-ui.link-button>
                     @endif
                 </div>
@@ -154,26 +154,26 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse ($sales as $sale)
+                        @forelse ($orders as $order)
                             <tr class="border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-white/5">
                                 <td class="px-5 py-4 sm:px-6">
-                                    <p class="font-medium text-gray-800 text-theme-sm dark:text-white/90">{{ $sale->number }}</p>
+                                    <p class="font-medium text-gray-800 text-theme-sm dark:text-white/90">{{ $order->number }}</p>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
-                                    <p class="text-gray-500 text-theme-sm dark:text-gray-400">{{ $sale->moved_at?->format('d/m/Y H:i') }}</p>
+                                    <p class="text-gray-500 text-theme-sm dark:text-gray-400">{{ $order->moved_at?->format('d/m/Y H:i') }}</p>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
-                                    <p class="text-gray-500 text-theme-sm dark:text-gray-400">{{ $sale->branch?->legal_name ?? '-' }}</p>
+                                    <p class="text-gray-500 text-theme-sm dark:text-gray-400">{{ $order->branch?->legal_name ?? '-' }}</p>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
-                                    <p class="text-gray-500 text-theme-sm dark:text-gray-400">{{ $sale->movementType?->description ?? '-' }}</p>
+                                    <p class="text-gray-500 text-theme-sm dark:text-gray-400">{{ $order->movementType?->description ?? '-' }}</p>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
-                                    <p class="text-gray-500 text-theme-sm dark:text-gray-400">{{ $sale->documentType?->name ?? '-' }}</p>
+                                    <p class="text-gray-500 text-theme-sm dark:text-gray-400">{{ $order->documentType?->name ?? '-' }}</p>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
                                     @php
-                                        $status = $sale->status ?? 'A';
+                                        $status = $order->status ?? 'A';
                                         $badgeColor = 'success';
                                         $badgeText = 'Activo';
                                         if ($status === 'P') {
@@ -196,14 +196,18 @@
                                                     $action = $operation->action ?? '';
                                                     $isDelete = str_contains($action, 'destroy');
                                                     $isCharge = str_contains($action, 'charge');
-                                                    if ($isCharge && ($sale->status ?? 'A') !== 'P') {
+                                                    if ($isCharge && ($order->status ?? 'A') !== 'P') {
                                                         continue;
                                                     }
 
-                                                    $actionUrl = $resolveActionUrl($action, $sale, $operation);
+                                                    $actionUrl = $resolveActionUrl($action, $order, $operation);
                                                     if ($isCharge && $actionUrl !== '#') {
                                                         $separator = str_contains($actionUrl, '?') ? '&' : '?';
-                                                        $actionUrl .= $separator . 'movement_id=' . urlencode($sale->id);
+                                                        $actionUrl .= $separator . 'movement_id=' . urlencode($order->id);
+                                                    }
+
+                                                    if ($actionUrl === '#') {
+                                                        continue;
                                                     }
 
                                                     $buttonColor = $operation->color ?: '#3B82F6';
@@ -217,8 +221,8 @@
                                                         method="POST"
                                                         action="{{ $actionUrl }}"
                                                         class="relative group js-swal-delete"
-                                                        data-swal-title="Eliminar venta?"
-                                                        data-swal-text="Se eliminara la venta {{ $sale->number }}. Esta accion no se puede deshacer."
+                                                        data-swal-title="Eliminar pedido?"
+                                                        data-swal-text="Se eliminara el pedido {{ $order->number }}. Esta accion no se puede deshacer."
                                                         data-swal-confirm="Si, eliminar"
                                                         data-swal-cancel="Cancelar"
                                                         data-swal-confirm-color="#ef4444"
@@ -244,14 +248,14 @@
                                                 @endif
                                             @endforeach
                                         @else
-                                            @if(($sale->status ?? 'A') === 'P')
+                                            @if(($order->status ?? 'A') === 'P')
                                                 <div class="relative group">
                                                     <x-ui.link-button
                                                         size="icon"
                                                         variant="primary"
-                                                        href="{{ route('admin.sales.charge', array_merge(['movement_id' => $sale->id], $viewId ? ['view_id' => $viewId] : [])) }}"
-                                                        className="bg-success-500 text-white hover:bg-success-600 ring-0 rounded-full"
-                                                        style="border-radius: 100%; background-color: #10B981; color: #FFFFFF;"
+                                                        href="{{ route('admin.orders.charge', array_merge(['movement_id' => $order->id], $viewId ? ['view_id' => $viewId] : [])) }}"
+                                                        className="rounded-xl"
+                                                        style="background-color: #10B981; color: #FFFFFF;"
                                                         aria-label="Cobrar"
                                                     >
                                                         <i class="ri-money-dollar-circle-line"></i>
@@ -259,47 +263,6 @@
                                                     <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">Cobrar</span>
                                                 </div>
                                             @endif
-                                            <div class="relative group">
-                                                <x-ui.link-button
-                                                    size="icon"
-                                                    variant="edit"
-                                                    href="{{ route('admin.sales.edit', array_merge([$sale], $viewId ? ['view_id' => $viewId] : [])) }}"
-                                                    className="bg-warning-500 text-white hover:bg-warning-600 ring-0 rounded-full"
-                                                    style="border-radius: 100%; background-color: #FBBF24; color: #111827;"
-                                                    aria-label="Editar"
-                                                >
-                                                    <i class="ri-pencil-line"></i>
-                                                </x-ui.link-button>
-                                                <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">Editar</span>
-                                            </div>
-                                            <form
-                                                method="POST"
-                                                action="{{ route('admin.sales.destroy', array_merge([$sale], $viewId ? ['view_id' => $viewId] : [])) }}"
-                                                class="relative group js-swal-delete"
-                                                data-swal-title="Eliminar venta?"
-                                                data-swal-text="Se eliminara la venta {{ $sale->number }}. Esta accion no se puede deshacer."
-                                                data-swal-confirm="Si, eliminar"
-                                                data-swal-cancel="Cancelar"
-                                                data-swal-confirm-color="#ef4444"
-                                                data-swal-cancel-color="#6b7280"
-                                            >
-                                                @csrf
-                                                @method('DELETE')
-                                                @if ($viewId)
-                                                    <input type="hidden" name="view_id" value="{{ $viewId }}">
-                                                @endif
-                                                <x-ui.button
-                                                    size="icon"
-                                                    variant="eliminate"
-                                                    type="submit"
-                                                    className="bg-error-500 text-white hover:bg-error-600 ring-0 rounded-full"
-                                                    style="border-radius: 100%; background-color: #EF4444; color: #FFFFFF;"
-                                                    aria-label="Eliminar"
-                                                >
-                                                    <i class="ri-delete-bin-line"></i>
-                                                </x-ui.button>
-                                                <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">Eliminar</span>
-                                            </form>
                                         @endif
                                     </div>
                                 </td>
@@ -309,13 +272,13 @@
                                 <td colspan="7" class="px-6 py-12">
                                     <div class="flex flex-col items-center gap-3 text-center text-sm text-gray-500">
                                         <div class="rounded-full bg-gray-100 p-3 text-gray-400 dark:bg-gray-800 dark:text-gray-300">
-                                            <i class="ri-shopping-bag-3-line"></i>
+                                            <i class="ri-restaurant-2-line"></i>
                                         </div>
-                                        <p class="text-base font-semibold text-gray-700 dark:text-gray-200">No hay ventas registradas.</p>
-                                        <p class="text-gray-500">Crea la primera venta para comenzar.</p>
-                                        <x-ui.link-button size="sm" variant="primary" href="{{ route('admin.sales.create', $viewId ? ['view_id' => $viewId] : []) }}">
+                                        <p class="text-base font-semibold text-gray-700 dark:text-gray-200">No hay pedidos registrados.</p>
+                                        <p class="text-gray-500">Crea el primer pedido desde Salones de pedidos.</p>
+                                        <x-ui.link-button size="sm" variant="primary" href="{{ route('admin.orders.index', $viewId ? ['view_id' => $viewId] : []) }}">
                                             <i class="ri-add-line"></i>
-                                            <span>Registrar venta</span>
+                                            <span>Ir a salones</span>
                                         </x-ui.link-button>
                                     </div>
                                 </td>
@@ -328,14 +291,14 @@
             <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div class="text-sm text-gray-500">
                     Mostrando
-                    <span class="font-semibold text-gray-700 dark:text-gray-200">{{ $sales->firstItem() ?? 0 }}</span>
+                    <span class="font-semibold text-gray-700 dark:text-gray-200">{{ $orders->firstItem() ?? 0 }}</span>
                     -
-                    <span class="font-semibold text-gray-700 dark:text-gray-200">{{ $sales->lastItem() ?? 0 }}</span>
+                    <span class="font-semibold text-gray-700 dark:text-gray-200">{{ $orders->lastItem() ?? 0 }}</span>
                     de
-                    <span class="font-semibold text-gray-700 dark:text-gray-200">{{ $sales->total() }}</span>
+                    <span class="font-semibold text-gray-700 dark:text-gray-200">{{ $orders->total() }}</span>
                 </div>
                 <div>
-                    {{ $sales->links() }}
+                    {{ $orders->links() }}
                 </div>
             </div>
         </x-common.component-card>

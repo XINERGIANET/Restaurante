@@ -23,6 +23,10 @@
                     $url = $action;
                 } else {
                     $routeCandidates = [$action];
+                    if (str_starts_with($action, 'menu_options.')) {
+                        $routeCandidates[] = 'modules.' . $action;
+                        $routeCandidates[] = 'admin.modules.' . $action;
+                    }
                     if (!str_starts_with($action, 'admin.')) {
                         $routeCandidates[] = 'admin.' . $action;
                     }
@@ -169,9 +173,8 @@
             </div>
 
             {{-- TABLA DE RESULTADOS --}}
-            <div class="mt-4 overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
-                <div class="max-w-full overflow-x-auto custom-scrollbar">
-                    <table class="w-full min-w-[880px]">
+            <div class="mt-4 rounded-xl border border-gray-200 bg-white overflow-visible dark:border-gray-800 dark:bg-white/[0.03]">
+                    <table class="w-full">
                         <thead>
                             <tr class="text-white">
                                 <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6 first:rounded-tl-xl"><p class="font-semibold text-gray-100 text-theme-xs uppercase">Orden (ID)</p></th>
@@ -221,6 +224,12 @@
                                                         $action = $operation->action ?? '';
                                                         $isDelete = str_contains($action, 'destroy');
                                                         $actionUrl = $resolveActionUrl($action, [$module, $option], $operation);
+                                                        if ($actionUrl === '#' && str_contains($action, 'edit')) {
+                                                            $actionUrl = route('admin.modules.menu_options.edit', [$module, $option, 'view_id' => $viewId]);
+                                                        }
+                                                        if ($actionUrl === '#' && str_contains($action, 'destroy')) {
+                                                            $actionUrl = route('admin.modules.menu_options.destroy', [$module, $option, 'view_id' => $viewId]);
+                                                        }
                                                         $textColor = '#FFFFFF';
                                                         $buttonColor = $operation->color ?: '#3B82F6';
                                                         $buttonStyle = "background-color: {$buttonColor}; color: {$textColor};";
@@ -322,7 +331,6 @@
                             @endforelse
                         </tbody>
                     </table>
-                </div>
             </div>
 
             <div class="mt-4">

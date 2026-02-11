@@ -2,6 +2,7 @@
 
 @section('content')
     <div x-data="{}">
+        @php($viewId = $viewId ?? request('view_id'))
         <x-common.page-breadcrumb pageTitle="Editar mesa" />
 
         <x-common.component-card title="Editar mesa" desc="Actualiza la informacion de la mesa.">
@@ -14,6 +15,9 @@
             <form method="POST" action="{{ route('tables.update', $table) }}" class="space-y-6">
                 @csrf
                 @method('PUT')
+                @if ($viewId)
+                    <input type="hidden" name="view_id" value="{{ $viewId }}">
+                @endif
 
                 @include('tables._form', ['table' => $table, 'areas' => $areas])
 
@@ -22,7 +26,7 @@
                         <i class="ri-save-line"></i>
                         <span>Actualizar</span>
                     </x-ui.button>
-                    <x-ui.link-button size="md" variant="outline" href="{{ route('tables.index') }}">
+                    <x-ui.link-button size="md" variant="outline" href="{{ route('tables.index', $viewId ? ['view_id' => $viewId] : []) }}">
                         <i class="ri-close-line"></i>
                         <span>Cancelar</span>
                     </x-ui.link-button>

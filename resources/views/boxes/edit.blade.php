@@ -7,7 +7,7 @@
         x-data="{ 
             open: true,
             redirectToIndex() {
-                window.location.href = '{{ route('boxes.index') }}';
+                window.location.href = '{{ !empty($viewId) ? route('boxes.index', ['view_id' => $viewId]) : route('boxes.index') }}';
             }
         }"
         x-init="$watch('open', value => {
@@ -51,6 +51,9 @@
             <form method="POST" action="{{ route('boxes.update', $box->id) }}" class="space-y-6">
                 @csrf
                 @method('PUT')
+                @if (!empty($viewId))
+                    <input type="hidden" name="view_id" value="{{ $viewId }}">
+                @endif
 
                 <div class="grid gap-5">
                     

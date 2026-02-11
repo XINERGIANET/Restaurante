@@ -1052,11 +1052,13 @@
                     const price = Number(it.price) || 0;
                     const lineTotal = qty * price;
                     subtotal += lineTotal;
+                    const safeNote = (it.note ?? it.comment ?? '') || '';
                     return `
                 <div class="flex items-center justify-between rounded-lg border border-gray-200 p-2 dark:border-gray-700 dark:bg-gray-700">
                     <div class="min-w-0 flex-1">
                         <p class="text-sm font-semibold text-gray-900 dark:text-white truncate">${description}</p>
                         <p class="text-xs text-gray-500 dark:text-gray-400">${qty} x ${fmtMoney(price)}</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">${safeNote}</p>
                     </div>
                     <p class="ml-2 text-sm font-bold text-gray-900 dark:text-white whitespace-nowrap">${fmtMoney(lineTotal)}</p>
                 </div>
@@ -1074,7 +1076,6 @@
 
                 // Inicializar el primer método de pago con el total
                 if (paymentMethodsData.length === 0) {
-                    console.log('Agregando primer método de pago...');
                     addPaymentMethod();
                 }
                 updatePaymentSummary();
@@ -1185,7 +1186,7 @@
                 if (!sale || !Array.isArray(sale.items) || sale.items.length === 0) {
                     showNotification('Error', 'No hay una orden activa', 'error');
                     setTimeout(() => {
-                        window.location.href = "{{ route('admin.sales.create') }}";
+                        window.location.href = "{{ route('admin.sales.index') }}";
                     }, 2000);
                     return;
                 }
@@ -1196,7 +1197,7 @@
                         name: it.name,
                         qty: Number(it.qty) || 0,
                         price: Number(it.price) || 0,
-                        note: it.note || '',
+                        note: String(it.note ?? it.comment ?? '').trim(),
                     })),
                     document_type_id: parseInt(docTypeId),
                     payment_methods: paymentMethodsData.map(pm => ({
@@ -1217,7 +1218,7 @@
                 const originalText = this.textContent;
                 this.textContent = 'Procesando...';
 
-                fetch('{{ route('admin.sales.process') }}', {
+                fetch('{{ route('admin.sales.processSalePayment') }}', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -1240,7 +1241,6 @@
                                         errorMessage = data.error.message;
                                     }
                                     if (data.error.file && data.error.line) {
-                                        console.error('Error en:', data.error.file, 'línea', data.error.line);
                                     }
                                 }
                                 if (data.errors && typeof data.errors === 'object') {
@@ -1277,9 +1277,7 @@
 
                         window.location.href = "{{ route('admin.sales.index') }}";
                     })
-                    .catch(err => {
-                        console.error('Error completo:', err);
-                        console.error('Stack trace:', err.stack);
+                    .catch(err => {   
                         const errorMessage = err.message || 'Error al procesar la venta';
                         showNotification('Error', errorMessage, 'error');
                         this.disabled = false;

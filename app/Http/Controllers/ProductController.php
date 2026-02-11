@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Branch;
 use App\Models\Category;
+use App\Models\Operation;
 use App\Models\Product;
 use App\Models\TaxRate;
 use App\Models\Unit;
@@ -18,6 +19,33 @@ class ProductController extends Controller
         $search = $request->input('search');
         $perPage = (int) $request->input('per_page', 10);
         $allowedPerPage = [10, 20, 50, 100];
+        $viewId = $request->input('view_id');
+        $branchId = $request->session()->get('branch_id');
+        $profileId = $request->session()->get('profile_id') ?? $request->user()?->profile_id;
+        $operaciones = collect();
+        if ($viewId && $branchId && $profileId) {
+            $operaciones = Operation::query()
+                ->select('operations.*')
+                ->join('branch_operation', function ($join) use ($branchId) {
+                    $join->on('branch_operation.operation_id', '=', 'operations.id')
+                        ->where('branch_operation.branch_id', $branchId)
+                        ->where('branch_operation.status', 1)
+                        ->whereNull('branch_operation.deleted_at');
+                })
+                ->join('operation_profile_branch', function ($join) use ($branchId, $profileId) {
+                    $join->on('operation_profile_branch.operation_id', '=', 'operations.id')
+                        ->where('operation_profile_branch.branch_id', $branchId)
+                        ->where('operation_profile_branch.profile_id', $profileId)
+                        ->where('operation_profile_branch.status', 1)
+                        ->whereNull('operation_profile_branch.deleted_at');
+                })
+                ->where('operations.status', 1)
+                ->where('operations.view_id', $viewId)
+                ->whereNull('operations.deleted_at')
+                ->orderBy('operations.id')
+                ->distinct()
+                ->get();
+        }
         if (!in_array($perPage, $allowedPerPage, true)) {
             $perPage = 10;
         }
@@ -46,6 +74,7 @@ class ProductController extends Controller
             'currentBranch' => $currentBranch,
             'search' => $search,
             'perPage' => $perPage,
+            'operaciones' => $operaciones,
         ]);
     }
 
@@ -97,13 +126,14 @@ class ProductController extends Controller
         }
         
         $product = Product::create($data);
+        $viewId = $request->input('view_id');
         
         return redirect()
-            ->route('admin.products.index')
+            ->route('admin.products.index', $viewId ? ['view_id' => $viewId] : [])
             ->with('status', 'Producto creado correctamente.');
     }
 
-    public function edit(Product $product)
+    public function edit(Request $request, Product $product)
     {
         $categories = Category::query()->orderBy('description')->get();
         $units = Unit::query()->orderBy('description')->get();
@@ -112,6 +142,7 @@ class ProductController extends Controller
             'product' => $product,
             'categories' => $categories,
             'units' => $units,
+            'viewId' => $request->input('view_id'),
         ]);
     }
 
@@ -147,13 +178,14 @@ class ProductController extends Controller
         }
         
         $product->update($data);
+        $viewId = $request->input('view_id');
         
         return redirect()
-            ->route('admin.products.index')
+            ->route('admin.products.index', $viewId ? ['view_id' => $viewId] : [])
             ->with('status', 'Producto actualizado correctamente.');
     }
 
-    public function destroy(Product $product)
+    public function destroy(Request $request, Product $product)
     {
         // Eliminar la imagen si existe
         if ($product->image && !empty($product->image) && Storage::disk('public')->exists($product->image)) {
@@ -161,9 +193,10 @@ class ProductController extends Controller
         }
         
         $product->delete();
+        $viewId = $request->input('view_id');
 
         return redirect()
-            ->route('admin.products.index')
+            ->route('admin.products.index', $viewId ? ['view_id' => $viewId] : [])
             ->with('status', 'Producto eliminado correctamente.');
     }
 
