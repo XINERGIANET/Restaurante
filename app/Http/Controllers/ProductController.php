@@ -51,19 +51,10 @@ class ProductController extends Controller
 
     public function store(Request $request)
     {
-        // Guardar el archivo ANTES de validar, porque la validación puede afectar el archivo
         $imagePath = null;
         if ($request->hasFile('image')) {
             $file = $request->file('image');
-            
-            
-            // Verificar configuración del disco
-            try {
-                $diskRoot = Storage::disk('public')->path('');
-                } catch (\Exception $e) {
-                Log::error(message: 'Error checking storage disk: ' . $e->getMessage());
-            }
-            
+
             if ($file->isValid() && $file->getRealPath() && is_readable($file->getRealPath())) {
                 try {
                     // Asegurar que el directorio existe
@@ -186,7 +177,6 @@ class ProductController extends Controller
             'category_id' => ['required', 'integer', 'exists:categories,id'],
             'base_unit_id' => ['required', 'integer', 'exists:units,id'],
             'kardex' => ['required', 'string', 'in:S,N'],
-            'is_compound' => ['required', 'string', 'in:S,N'],
             'image' => ['nullable', 'sometimes', 'image', 'mimes:jpeg,png,jpg,gif,webp', 'max:2048'], // Máximo 2MB
             'complement' => ['required', 'string', 'in:NO,HAS,IS'],
             'complement_mode' => ['nullable', 'string', 'max:255'],
