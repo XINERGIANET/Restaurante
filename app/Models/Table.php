@@ -17,7 +17,7 @@ class Table extends Model
         'opened_at',
         'area_id',
         'branch_id',
-    ];
+        ];
 
     public function area()
     {
