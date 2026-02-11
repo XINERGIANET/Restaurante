@@ -158,6 +158,9 @@ Route::middleware('auth')->group(function () {
         ->parameters(['orders' => 'order'])
         ->only(['index', 'create']); // Solo incluir los métodos que existen
 
+    Route::get('/Pedidos/listado', [OrderController::class, 'list'])
+        ->name('admin.orders.list');
+
     // Ruta para cobrar pedido
     Route::get('/Pedidos/cobrar', [OrderController::class, 'charge'])
         ->name('admin.orders.charge');
@@ -377,3 +380,4 @@ Route::middleware('auth')->group(function () {
     Route::resource('/cocina/recetario', RecipeBookController::class)
         ->names('recipe-book'); 
 });
+
