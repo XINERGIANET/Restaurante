@@ -37,7 +37,7 @@
         rows: {{ $existingPayments->count() > 0 ? Js::from($existingPayments) : '[{ id: Date.now(), methodId: \'\', methodName: \'\', amount: \'\' }]' }},
 
         redirectToIndex() {
-            window.location.href = '{{ route('admin.petty-cash.index', ['cash_register_id' => $cash_register_id]) }}';
+            window.location.href = '{{ route('admin.petty-cash.index', array_merge(['cash_register_id' => $cash_register_id], !empty($viewId) ? ['view_id' => $viewId] : [])) }}';
         },
         addNewRow() {
             this.rows.push({ id: Date.now(), methodId: '', methodName: '', amount: '' });
@@ -92,6 +92,9 @@
         <form method="POST" action="{{ route('admin.petty-cash.update', ['cash_register_id' => $cash_register_id, 'movement' => $movement->id]) }}" class="space-y-8">
             @csrf
             @method('PUT')
+            @if (!empty($viewId))
+                <input type="hidden" name="view_id" value="{{ $viewId }}">
+            @endif
 
             <input type="hidden" name="document_type_id" value="{{ old('document_type_id', $movement->document_type_id) }}">
 

@@ -1,6 +1,11 @@
 @extends('layouts.app')
 
 @section('content')
+    @php
+        $viewId = request('view_id');
+        $salesIndexUrl = route('admin.sales.index', $viewId ? ['view_id' => $viewId] : []);
+        $salesChargeUrl = route('admin.sales.charge', $viewId ? ['view_id' => $viewId] : []);
+    @endphp
     {{-- Breadcrumb --}}
     <div class=" flex flex-wrap items-center justify-between gap-3 mb-4">
         <div class="flex items-center gap-2">
@@ -13,7 +18,7 @@
             <ol class="flex items-center gap-1.5">
                 <li>
                     <a class="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-                        href="{{ route('admin.sales.index') }}">
+                        href="{{ $salesIndexUrl }}">
                         Ventas
                         <svg class="stroke-current" width="17" height="16" viewBox="0 0 17 16" fill="none"
                             xmlns="http://www.w3.org/2000/svg">
@@ -612,6 +617,162 @@
             </div>
         </div>
 `;
+    container.appendChild(row);
+});
+            }
+            const tax = subtotal * 0.10;
+            document.getElementById('ticket-subtotal').innerText = `$${subtotal.toFixed(2)}`;
+            document.getElementById('ticket-tax').innerText = `$${tax.toFixed(2)}`;
+            document.getElementById('ticket-total').innerText = `$${(subtotal + tax).toFixed(2)}`;
+            
+            // Actualizar badge de cantidad
+            const cartCountBadge = document.getElementById('cart-count-badge');
+            const totalItems = currentSale.items ? currentSale.items.reduce((sum, item) => sum + item.qty, 0) : 0;
+            const checkoutButton = document.getElementById('checkout-button');
+            
+            if (totalItems > 0) {
+                if (cartCountBadge) {
+                    cartCountBadge.textContent = totalItems;
+                    cartCountBadge.classList.remove('hidden');
+                    
+                    if (newProductId) {
+                        cartCountBadge.classList.add('qty-badge-pop');
+                        setTimeout(() => {
+                            const badge = document.getElementById('cart-count-badge');
+                            if (badge && badge.classList) {
+                                badge.classList.remove('qty-badge-pop');
+                            }
+                        }, 300);
+                    }
+                }
+                
+                if (checkoutButton) {
+                    checkoutButton.classList.add('pulse-button');
+                    checkoutButton.disabled = false;
+                    checkoutButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+            } else {
+                if (cartCountBadge) {
+                    cartCountBadge.classList.add('hidden');
+                }
+                
+                if (checkoutButton) {
+                    checkoutButton.classList.remove('pulse-button');
+                    checkoutButton.disabled = true;
+                    checkoutButton.classList.add('opacity-50', 'cursor-not-allowed');
+                }
+            }
+        }
+
+        function saveDB() {
+            if (db && currentSale) {
+                db[activeKey] = currentSale;
+                localStorage.setItem('restaurantDB', JSON.stringify(db));
+            }
+        }
+
+        function goToChargeView() {
+            if (!currentSale.items || currentSale.items.length === 0) {
+                showEmptyCartNotification();
+                return;
+            }
+            saveDB();
+            if ("{{ $salesChargeUrl }}" !== "") {
+                window.location.href = "{{ $salesChargeUrl }}";
+            }
+        }
+
+        function goBack() {
+            if (!currentSale.items || currentSale.items.length === 0) {
+                // Si no hay items, limpiar y salir sin guardar
+                currentSale.items = [];
+                currentSale.total = 0;
+                saveDB();
+                localStorage.removeItem(ACTIVE_SALE_KEY_STORAGE);
+                window.location.href = "{{ $salesIndexUrl }}";
+                return;
+            }
+
+            // Guardar como borrador en el servidor solo si hay productos
+            const saleData = {
+                items: currentSale.items.map(item => ({
+                    pId: item.pId,
+                    qty: parseFloat(item.qty),
+                    price: parseFloat(item.price),
+                    note: item.note || ''
+                })),
+                notes: 'Venta guardada como borrador - pendiente de pago'
+            };
+
+            fetch('{{ route("admin.sales.draft") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                },
+                body: JSON.stringify(saleData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Limpiar carrito local
+                    currentSale.status = 'draft';
+                    currentSale.items = [];
+                    currentSale.total = 0;
+                    saveDB();
+                    localStorage.removeItem(ACTIVE_SALE_KEY_STORAGE);
+                    
+                    // Redirigir
+                    window.location.href = "{{ $salesIndexUrl }}";
+                } else {
+                    // Si falla, solo guardar en localStorage
+                    saveDB();
+                    window.location.href = "{{ $salesIndexUrl }}";
+                }
+            })
+            .catch(error => {
+                console.error('Error al guardar borrador:', error);
+                // Si falla, solo guardar en localStorage
+                saveDB();
+                window.location.href = "{{ $salesIndexUrl }}";
+            });
+        }
+
+        function sendOrder() {
+            if (!currentSale.items || currentSale.items.length === 0) {
+                showEmptyCartNotification();
+                return;
+            }
+
+            // Deshabilitar botón durante el proceso
+            const checkoutButton = document.getElementById('checkout-button');
+            const originalText = checkoutButton.innerHTML;
+            checkoutButton.disabled = true;
+            checkoutButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Procesando...</span>';
+
+            // Preparar datos para enviar
+            const saleData = {
+                items: currentSale.items.map(item => ({
+                    pId: item.pId,
+                    qty: parseFloat(item.qty),
+                    price: parseFloat(item.price),
+                    note: item.note || ''
+                }))
+            };
+
+            // Enviar al servidor
+            fetch('{{ route("admin.sales.process") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                },
+                body: JSON.stringify(saleData)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => {
+                        throw new Error(err.message || 'Error en el servidor');
                         // Guardar nota sin "hardcode" inline (oninput)
                         const noteInput = row.querySelector('input[data-sales-movement-detail-note]');
                         if (noteInput) {
@@ -692,6 +853,16 @@
                     currentSale.total = 0;
                     saveDB();
                     localStorage.removeItem(ACTIVE_SALE_KEY_STORAGE);
+                    
+                    // Redirigir después de 2 segundos
+                    setTimeout(() => {
+                        window.location.href = "{{ $salesIndexUrl }}";
+                    }, 2000);
+                } else {
+                    // Mostrar error
+                    alert('Error: ' + (data.message || 'Error desconocido'));
+                    checkoutButton.disabled = false;
+                    checkoutButton.innerHTML = originalText;
                     window.location.href = "{{ route('admin.sales.index') }}";
                     return;
                 }

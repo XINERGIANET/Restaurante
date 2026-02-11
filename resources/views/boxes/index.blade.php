@@ -2,10 +2,72 @@
 
 @php
     use Illuminate\Support\HtmlString;
-    
-    // --- ICONOS ---
+    use Illuminate\Support\Facades\Route;
+
     $SearchIcon = new HtmlString('<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8" /><path d="M20 20L16.5 16.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /></svg>');
     $ClearIcon = new HtmlString('<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /><path d="M6 6L18 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /></svg>');
+
+    $viewId = request('view_id');
+    $operacionesCollection = collect($operaciones ?? []);
+    $topOperations = $operacionesCollection->where('type', 'T');
+    $rowOperations = $operacionesCollection->where('type', 'R');
+
+    $resolveActionUrl = function ($action, $box = null, $operation = null) use ($viewId) {
+        if (!$action) {
+            return '#';
+        }
+
+        if (str_starts_with($action, '/') || str_starts_with($action, 'http')) {
+            $url = $action;
+        } else {
+            $routeCandidates = [$action];
+            if (!str_starts_with($action, 'admin.')) {
+                $routeCandidates[] = 'admin.' . $action;
+            }
+            $routeCandidates = array_merge(
+                $routeCandidates,
+                array_map(fn ($name) => $name . '.index', $routeCandidates)
+            );
+
+            $routeName = null;
+            foreach ($routeCandidates as $candidate) {
+                if (Route::has($candidate)) {
+                    $routeName = $candidate;
+                    break;
+                }
+            }
+
+            if ($routeName) {
+                try {
+                    $url = $box ? route($routeName, $box) : route($routeName);
+                } catch (\Exception $e) {
+                    $url = '#';
+                }
+            } else {
+                $url = '#';
+            }
+        }
+
+        $targetViewId = $viewId;
+        if ($operation && !empty($operation->view_id_action)) {
+            $targetViewId = $operation->view_id_action;
+        }
+
+        if ($targetViewId && $url !== '#') {
+            $separator = str_contains($url, '?') ? '&' : '?';
+            $url .= $separator . 'view_id=' . urlencode($targetViewId);
+        }
+
+        return $url;
+    };
+
+    $resolveTextColor = function ($operation) {
+        $action = $operation->action ?? '';
+        if (str_contains($action, 'boxes.create')) {
+            return '#111827';
+        }
+        return '#FFFFFF';
+    };
 @endphp
 
 @section('content')
@@ -13,11 +75,23 @@
     
     <x-common.page-breadcrumb pageTitle="Cajas" />
 
-    <x-common.component-card title="Gestión de Cajas" desc="Administra las cajas del sistema.">
-        
-        {{-- BARRA DE BÚSQUEDA Y ACCIONES --}}
+    <x-common.component-card title="Gestion de Cajas" desc="Administra las cajas del sistema.">
         <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
             <form method="GET" class="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
+                @if ($viewId)
+                    <input type="hidden" name="view_id" value="{{ $viewId }}">
+                @endif
+                <div class="w-full sm:w-24">
+                    <select
+                        name="per_page"
+                        class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-3 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+                        onchange="this.form.submit()"
+                    >
+                        @foreach ([10, 20, 50, 100] as $size)
+                            <option value="{{ $size }}" @selected(($perPage ?? 10) == $size)>{{ $size }} / pagina</option>
+                        @endforeach
+                    </select>
+                </div>
                 <div class="relative flex-1">
                     <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
                         {!! $SearchIcon !!}
@@ -25,26 +99,51 @@
                     <input
                         type="text"
                         name="search"
-                        value="{{ request('search') }}"
+                        value="{{ $search ?? request('search') }}"
                         placeholder=" Buscar caja..."
                         class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 pl-10 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
                     />
                 </div>
                 <div class="flex flex-wrap gap-2">
                     <x-ui.button size="sm" variant="primary" type="submit" :startIcon="$SearchIcon">Buscar</x-ui.button>
-                    <x-ui.link-button size="sm" variant="outline" href="{{ route('boxes.index') }}" :startIcon="$ClearIcon">Limpiar</x-ui.link-button>
+                    <x-ui.link-button size="sm" variant="outline" href="{{ route('boxes.index', $viewId ? ['view_id' => $viewId] : []) }}" :startIcon="$ClearIcon">Limpiar</x-ui.link-button>
                 </div>
             </form>
             
-            <x-ui.button
-                size="md"
-                variant="primary"
-                type="button"  style=" background-color: #12f00e; color: #111827;"  
-                @click="$dispatch('open-box-modal')"
-            >
-                <i class="ri-add-line"></i>
-                <span>Nueva caja</span>
-            </x-ui.button>
+            <div class="flex items-center gap-2">
+                @foreach ($topOperations as $operation)
+                    @php
+                        $topTextColor = $resolveTextColor($operation);
+                        $topColor = $operation->color ?: '#3B82F6';
+                        $topStyle = "background-color: {$topColor}; color: {$topTextColor};";
+                        $topActionUrl = $resolveActionUrl($operation->action ?? '', null, $operation);
+                        $isCreate = str_contains($operation->action ?? '', 'boxes.create');
+                    @endphp
+                    @if ($isCreate)
+                        <x-ui.button size="md" variant="primary" type="button" style="{{ $topStyle }}" @click="$dispatch('open-box-modal')">
+                            <i class="{{ $operation->icon }}"></i>
+                            <span>{{ $operation->name }}</span>
+                        </x-ui.button>
+                    @else
+                        <x-ui.link-button size="md" variant="primary" style="{{ $topStyle }}" href="{{ $topActionUrl }}">
+                            <i class="{{ $operation->icon }}"></i>
+                            <span>{{ $operation->name }}</span>
+                        </x-ui.link-button>
+                    @endif
+                @endforeach
+
+                @if ($topOperations->isEmpty())
+                    <x-ui.button
+                        size="md"
+                        variant="primary"
+                        type="button" style=" background-color: #12f00e; color: #111827;"  
+                        @click="$dispatch('open-box-modal')"
+                    >
+                        <i class="ri-add-line"></i>
+                        <span>Nueva caja</span>
+                    </x-ui.button>
+                @endif
+            </div>
         </div>
 
         <div class="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -54,14 +153,13 @@
             </div>
         </div>
 
-        {{-- TABLA DE DATOS --}}
         <div class="mt-4 overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
             <div class="max-w-full overflow-x-auto custom-scrollbar">
                 <table class="w-full min-w-[880px]">
                     <thead>
                         <tr class="border-b border-gray-100 dark:border-gray-800">
                             <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-white text-theme-xs dark:text-white">ID</p></th>
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-white text-theme-xs dark:text-white">Número</p></th>
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-white text-theme-xs dark:text-white">Numero</p></th>
                             <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-white text-theme-xs dark:text-white">Serie</p></th>
                             <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-white text-theme-xs dark:text-white">Estado</p></th>
                             <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-right sm:px-6"><p class="font-medium text-white text-theme-xs dark:text-white">Acciones</p></th>
@@ -84,20 +182,40 @@
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
                                     <div class="flex items-center justify-end gap-2">
-                                        {{-- Botones de Acción --}}
-                                        <div class="relative group">
-                                            <x-ui.link-button size="icon" variant="outline" href="{{ route('boxes.edit', $box) }}" className="bg-warning-500 text-white hover:bg-warning-600 ring-0 rounded-full" style="border-radius: 100%; background-color: #FBBF24; color: #111827;" aria-label="Editar">
-                                                <i class="ri-pencil-line"></i>
-                                            </x-ui.link-button>
-                                            <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50">Editar</span>
-                                        </div>
-                                        <form method="POST" action="{{ route('boxes.destroy', $box) }}" class="relative group js-swal-delete" data-swal-title="Eliminar caja?" data-swal-text="Se eliminara {{ $box->number }}. Esta accion no se puede deshacer.">
-                                            @csrf @method('DELETE')
-                                            <x-ui.button size="icon" variant="outline" className="bg-error-500 text-white hover:bg-error-600 ring-0 rounded-full" style="border-radius: 100%; background-color: #EF4444; color: #FFFFFF;" aria-label="Eliminar" type="submit">
-                                                <i class="ri-delete-bin-line"></i>
-                                            </x-ui.button>
-                                            <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50">Eliminar</span>
-                                        </form>
+                                        @if ($rowOperations->isNotEmpty())
+                                            @foreach ($rowOperations as $operation)
+                                                @php
+                                                    $action = $operation->action ?? '';
+                                                    $isDelete = str_contains($action, 'destroy');
+                                                    $actionUrl = $resolveActionUrl($action, $box, $operation);
+                                                    $textColor = $resolveTextColor($operation);
+                                                    $buttonColor = $operation->color ?: '#3B82F6';
+                                                    $buttonStyle = "background-color: {$buttonColor}; color: {$textColor};";
+                                                    $variant = $isDelete ? 'eliminate' : (str_contains($action, 'edit') ? 'edit' : 'primary');
+                                                @endphp
+                                                @if ($isDelete)
+                                                    <form method="POST" action="{{ $actionUrl }}" class="relative group js-swal-delete" data-swal-title="Eliminar caja?" data-swal-text="Se eliminara {{ $box->number }}. Esta accion no se puede deshacer.">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        @if ($viewId)
+                                                            <input type="hidden" name="view_id" value="{{ $viewId }}">
+                                                        @endif
+                                                        <x-ui.button size="icon" variant="{{ $variant }}" className="rounded-xl" style="{{ $buttonStyle }}" aria-label="{{ $operation->name }}" type="submit">
+                                                            <i class="{{ $operation->icon }}"></i>
+                                                        </x-ui.button>
+                                                        <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50">{{ $operation->name }}</span>
+                                                    </form>
+                                                @else
+                                                    <div class="relative group">
+                                                        <x-ui.link-button size="icon" variant="{{ $variant }}" href="{{ $actionUrl }}" className="rounded-xl" style="{{ $buttonStyle }}" aria-label="{{ $operation->name }}">
+                                                            <i class="{{ $operation->icon }}"></i>
+                                                        </x-ui.link-button>
+                                                        <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50">{{ $operation->name }}</span>
+                                                    </div>
+                                                @endif
+                                            @endforeach
+                                     
+                                        @endif
                                     </div>
                                 </td>
                             </tr>
@@ -130,7 +248,7 @@
                 <div>
                     <p class="text-xs uppercase tracking-[0.3em] text-gray-400">Sistema</p>
                     <h3 class="mt-2 text-lg font-semibold text-gray-800 dark:text-white/90">Registrar caja</h3>
-                    <p class="mt-1 text-sm text-gray-500">Ingresa la información principal de la caja.</p>
+                    <p class="mt-1 text-sm text-gray-500">Ingresa la informacion principal de la caja.</p>
                 </div>
                 <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-500 dark:bg-brand-500/10">
                     <i class="ri-eye-line"></i>
@@ -141,8 +259,8 @@
                 <div class="mb-5">
                     <x-ui.alert 
                         variant="error" 
-                        title="Atención" 
-                        message="{{ $errors->first('error') ?: 'Existen errores de validación. Revisa los campos.' }}" 
+                        title="Atencion" 
+                        message="{{ $errors->first('error') ?: 'Existen errores de validacion. Revisa los campos.' }}" 
                     />                    
                     @if(!$errors->has('error'))
                         <ul class="mt-2 list-disc list-inside text-sm text-red-500">
@@ -156,6 +274,9 @@
 
             <form method="POST" action="{{ route('boxes.store') }}" class="space-y-6">
                 @csrf
+                @if ($viewId)
+                    <input type="hidden" name="view_id" value="{{ $viewId }}">
+                @endif
 
                 @include('boxes._form', ['box' => null])
 

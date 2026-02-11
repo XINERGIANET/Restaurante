@@ -14,6 +14,9 @@
             <form method="POST" action="{{ route('admin.categories.update', $category) }}" class="space-y-6" enctype="multipart/form-data">
                 @csrf
                 @method('PUT')
+                @if (!empty($viewId))
+                    <input type="hidden" name="view_id" value="{{ $viewId }}">
+                @endif
 
                 @include('categories._form', ['category' => $category])
 
@@ -22,7 +25,7 @@
                         <i class="ri-save-line"></i>
                         <span>Actualizar</span>
                     </x-ui.button>
-                    <x-ui.link-button size="md" variant="outline" href="{{ route('admin.categories.index') }}">
+                    <x-ui.link-button size="md" variant="outline" href="{{ route('admin.categories.index', !empty($viewId) ? ['view_id' => $viewId] : []) }}">
                         <i class="ri-close-line"></i>
                         <span>Cancelar</span>
                     </x-ui.link-button>
