@@ -45,7 +45,7 @@
         - Quitamos 'h-[calc...]' y 'overflow-hidden'.
         - Usamos 'min-h-screen' y 'items-start' para permitir scroll natural.
     --}}
-    <div class="flex items-start w-full bg-slate-100 fade-in min-h-screen" style="--brand:#3B82F6;">
+    <div class="flex items-stretch w-full bg-slate-100 fade-in h-full pb-10" style="--brand:#3B82F6;">
 
         {{-- ================= SECCIÓN IZQUIERDA: MENÚ (FLUJO NATURAL) ================= --}}
         {{-- CAMBIO 2: Quitamos 'h-full', 'overflow-y-auto' y 'relative' para que crezca con el contenido --}}
@@ -106,7 +106,12 @@
             - 'overflow-hidden': Para manejar su propio scroll interno si la lista de items es muy larga.
         --}}
         <aside
-            class="w-[400px] bg-white border-l border-gray-300 flex flex-col shadow-2xl z-20 shrink-1 sticky top-0 h-min-screen h-max-screen overflow-hidden">
+            class="w-[400px] max-w-[600px]
+            flex-none
+            h-full
+            bg-white border-l border-gray-300
+            flex flex-col shadow-2xl
+            overflow-hidden">
 
             {{-- Header Carrito --}}
             <div class="h-16 px-6 border-b border-gray-200 bg-white flex justify-between items-center shrink-0">
@@ -119,7 +124,7 @@
             <div id="cart-container" class="flex-1 overflow-y-auto p-5 space-y-3 bg-white"></div>
 
             {{-- Footer Totales --}}
-            <div class="p-6 bg-slate-100 border-t border-gray-300 shadow-[0_-5px_25px_rgba(0,0,0,0.05)] shrink-0 z-30">
+            <div class="p-6 bg-slate-100 border-t border-gray-300 shadow-[0_-5px_25px_rgba(0,0,0,0.05)] shrink-0">
                 <div class="space-y-3 mb-5 text-sm">
                     <div class="flex justify-between text-gray-500 font-medium">
                         <span>Subtotal</span>
@@ -431,7 +436,7 @@
 
             if (!currentTable.items || currentTable.items.length === 0) {
                 container.innerHTML = `
-                    <div class="flex flex-col items-center justify-center h-64 text-gray-300 opacity-60">
+                    <div class="flex flex-col items-center justify-center  text-gray-300 opacity-60">
                         <i class="fas fa-utensils text-3xl mb-2"></i>
                         <p class="font-medium text-sm">Sin productos</p>
                     </div>`;
@@ -495,7 +500,6 @@
             if (taxEl) taxEl.innerText = `$${tax.toFixed(2)}`;
             if (totalEl) totalEl.innerText = `$${total.toFixed(2)}`;
 
-            console.log('Ticket actualizado - Subtotal:', subtotal, 'Impuesto:', tax, 'Total:', total);
         }
 
         function saveDB() {
