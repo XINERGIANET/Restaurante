@@ -153,6 +153,8 @@ Route::middleware('auth')->group(function () {
         ->name('admin.product_branches.store_generic');
     Route::put('/admin/herramientas/product-branches/{productBranch}', [ProductBranchController::class, 'update'])
         ->name('admin.product_branches.update');
+
+    //Rutas de ordenes
     Route::resource('/Pedidos', OrderController::class)
         ->names('admin.orders')
         ->parameters(['orders' => 'order'])
@@ -161,14 +163,18 @@ Route::middleware('auth')->group(function () {
     Route::get('/Pedidos/listado', [OrderController::class, 'list'])
         ->name('admin.orders.list');
 
-    // Ruta para cobrar pedido
+  
     Route::get('/Pedidos/cobrar', [OrderController::class, 'charge'])
         ->name('admin.orders.charge');
 
-    // Ruta para procesar pedido
     Route::post('/Pedidos/procesar', [OrderController::class, 'processOrder'])
         ->name('admin.orders.process');
 
+    Route::post('/Pedidos/procesar-pago', [OrderController::class, 'processOrderPayment'])
+        ->name('admin.orders.processOrderPayment');
+
+    Route::post('/Pedidos/cancelar', [OrderController::class, 'cancelOrder'])
+        ->name('admin.orders.cancelOrder');
     // dashboard pages
     Route::get('/', function () {
         return view('pages.dashboard.ecommerce', ['title' => 'E-commerce Dashboard']);

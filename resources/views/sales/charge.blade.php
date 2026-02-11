@@ -1076,7 +1076,6 @@
 
                 // Inicializar el primer método de pago con el total
                 if (paymentMethodsData.length === 0) {
-                    console.log('Agregando primer método de pago...');
                     addPaymentMethod();
                 }
                 updatePaymentSummary();
@@ -1187,7 +1186,7 @@
                 if (!sale || !Array.isArray(sale.items) || sale.items.length === 0) {
                     showNotification('Error', 'No hay una orden activa', 'error');
                     setTimeout(() => {
-                        window.location.href = "{{ route('admin.sales.create') }}";
+                        window.location.href = "{{ route('admin.sales.index') }}";
                     }, 2000);
                     return;
                 }
@@ -1219,7 +1218,7 @@
                 const originalText = this.textContent;
                 this.textContent = 'Procesando...';
 
-                fetch('{{ route('admin.sales.process') }}', {
+                fetch('{{ route('admin.sales.processSalePayment') }}', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -1242,7 +1241,6 @@
                                         errorMessage = data.error.message;
                                     }
                                     if (data.error.file && data.error.line) {
-                                        console.error('Error en:', data.error.file, 'línea', data.error.line);
                                     }
                                 }
                                 if (data.errors && typeof data.errors === 'object') {
@@ -1279,9 +1277,7 @@
 
                         window.location.href = "{{ route('admin.sales.index') }}";
                     })
-                    .catch(err => {
-                        console.error('Error completo:', err);
-                        console.error('Stack trace:', err.stack);
+                    .catch(err => {   
                         const errorMessage = err.message || 'Error al procesar la venta';
                         showNotification('Error', errorMessage, 'error');
                         this.disabled = false;

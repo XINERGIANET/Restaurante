@@ -405,7 +405,6 @@
             const productsMap = @json($products ?? []); // Mapa de ID => descripción
             
             // Debug: verificar que los métodos de pago se carguen
-            console.log('Métodos de pago cargados:', paymentMethods);
 
             const docButtons = document.querySelectorAll('.doc-type-btn');
             const totalElement = document.getElementById('total');
@@ -668,12 +667,10 @@
                             // Si es tarjeta, siempre abrir modal de pasarela/tarjeta
                             // Guardar el índice antes de cerrar el modal
                             const savedIndex = currentEditingIndex;
-                            console.log('Guardando índice antes de abrir modal de tarjeta:', savedIndex);
                             closePaymentMethodModal(false);
                             // Asegurarse de que el índice se mantenga
                             currentEditingIndex = savedIndex;
                             setTimeout(() => {
-                                console.log('Abriendo modal de tarjeta con índice:', currentEditingIndex);
                                 openCardModal();
                             }, 200);
                         }
@@ -738,7 +735,6 @@
 
             // Abrir modal de selección de tarjeta
             function openCardModal() {
-                console.log('Abriendo modal de tarjeta, currentEditingIndex:', currentEditingIndex);
                 
                 // Actualizar referencias a los botones (por si el DOM cambió)
                 gatewayButtons = document.querySelectorAll('.gateway-btn');
@@ -752,11 +748,9 @@
                     const pm = paymentMethodsData[currentEditingIndex];
                     selectedGatewayId = pm.gatewayId ? String(pm.gatewayId) : null;
                     selectedCardId = pm.cardId ? String(pm.cardId) : null;
-                    console.log('Restaurando valores del método:', pm, { selectedGatewayId, selectedCardId });
                 } else {
                     selectedGatewayId = null;
                     selectedCardId = null;
-                    console.warn('currentEditingIndex es inválido o no hay método de pago:', currentEditingIndex);
                 }
                 
                 // Marcar botones según valores guardados
@@ -832,7 +826,6 @@
                         const checkIcon = gatewayBtn.querySelector('.fa-check-circle');
                         if (checkIcon) checkIcon.classList.remove('hidden');
                         selectedGatewayId = gatewayBtn.dataset.gatewayId;
-                        console.log('Pasarela seleccionada:', selectedGatewayId, gatewayBtn.dataset.gatewayName);
                         updateConfirmButton();
                         return;
                     }
@@ -861,7 +854,6 @@
                         const checkIcon = cardBtn.querySelector('.fa-check-circle');
                         if (checkIcon) checkIcon.classList.remove('hidden');
                         selectedCardId = cardBtn.dataset.cardId;
-                        console.log('Tarjeta seleccionada:', selectedCardId, cardBtn.dataset.cardName);
                         updateConfirmButton();
                         return;
                     }
@@ -903,7 +895,6 @@
 
             // Confirmar selección de tarjeta
             confirmCardSelection?.addEventListener('click', function() {
-                console.log('Confirmar clicado', { selectedGatewayId, selectedCardId, currentEditingIndex });
                 
                 if (selectedGatewayId && selectedCardId && currentEditingIndex >= 0) {
                     // Actualizar referencias a los botones antes de obtener los nombres
@@ -919,18 +910,13 @@
                     const gatewayBtn = Array.from(gatewayButtons).find(b => b.dataset.gatewayId == selectedGatewayId);
                     const cardBtn = Array.from(cardButtons).find(b => b.dataset.cardId == selectedCardId);
 
-                    console.log('Botones encontrados', { gatewayBtn, cardBtn });
 
                     if (gatewayBtn) {
                         pm.gatewayName = gatewayBtn.dataset.gatewayName || '';
-                        console.log('Nombre pasarela:', pm.gatewayName);
                     }
                     if (cardBtn) {
                         pm.cardName = cardBtn.dataset.cardName || '';
-                        console.log('Nombre tarjeta:', pm.cardName);
                     }
-
-                    console.log('Método de pago actualizado:', pm);
 
                     // Actualizar la lista
                     updatePaymentMethodsList();
@@ -941,7 +927,6 @@
                     selectedGatewayId = null;
                     selectedCardId = null;
                 } else {
-                    console.error('Faltan datos para confirmar', { selectedGatewayId, selectedCardId, currentEditingIndex });
                 }
             });
 
@@ -998,7 +983,6 @@
                             const isOld = !order.isActive || (activatedAt && activatedAt < tenMinutesAgo);
                             
                             if (isOld) {
-                                console.log('Limpiando orden antigua:', key);
                                 delete db[key];
                                 cleaned = true;
                             }
@@ -1008,7 +992,6 @@
                 
                 if (cleaned) {
                     localStorage.setItem('restaurantDB', JSON.stringify(db));
-                    console.log('Órdenes antiguas limpiadas');
                 }
             }
             
@@ -1016,6 +999,7 @@
             cleanupOldOrders();
             
             let order = null;
+            let notificationTimeout = null;
             
             // Si hay un borrador del servidor, usarlo
             if (draftOrderFromServer && draftOrderFromServer.items && draftOrderFromServer.items.length > 0) {
@@ -1045,23 +1029,10 @@
                     
                     const isRecent = activatedAt && activatedAt > tenMinutesAgo;
                     
-                    console.log('Validando orden cargada:', {
-                        isActive: isActive,
-                        activatedAt: activatedAt,
-                        isRecent: isRecent,
-                        order: loadedOrder
-                    });
-                    
                     // Solo cargar si está activa y fue activada recientemente
                     if (isActive && isRecent) {
                         order = loadedOrder;
-                        console.log('Orden activa y reciente cargada desde localStorage:', order);
                     } else {
-                        console.warn('La orden no está activa o es muy antigua. Limpiando...', {
-                            isActive: isActive,
-                            isRecent: isRecent,
-                            activatedAt: activatedAt
-                        });
                         order = null;
                         // Limpiar la orden y la clave activa
                         delete db[activeKey];
@@ -1070,7 +1041,6 @@
                     }
                 } else {
                     // Si no hay orden activa, limpiar cualquier dato residual
-                    console.log('No hay orden activa en localStorage, limpiando datos...');
                     order = null;
                     // Limpiar la clave activa si existe pero no hay orden
                     if (activeKey) {
@@ -1080,7 +1050,6 @@
                 
                 // Validar que la orden tenga items válidos antes de procesarla
                 if (order && (!order.items || !Array.isArray(order.items) || order.items.length === 0)) {
-                    console.warn('La orden no tiene items válidos, limpiando...');
                     order = null;
                     if (activeKey) {
                         const db = JSON.parse(localStorage.getItem('restaurantDB') || '{}');
@@ -1111,7 +1080,6 @@
                         if (itemsUnicos[key]) {
                             // Si ya existe, sumar las cantidades
                             itemsUnicos[key].qty += Number(it.qty) || 0;
-                            console.log(`Producto duplicado encontrado (pId: ${key}), combinando cantidades. Nueva cantidad: ${itemsUnicos[key].qty}`);
                         } else {
                             // Si no existe, agregarlo
                             itemsUnicos[key] = { ...it };
@@ -1120,11 +1088,9 @@
                     
                     // Convertir el objeto de vuelta a array
                     order.items = Object.values(itemsUnicos);
-                    console.log('Items después de eliminar duplicados:', order.items);
                     
                     // Validar que después de normalizar aún hay items válidos
                     if (order.items.length === 0) {
-                        console.warn('Después de normalizar, no quedan items válidos. Limpiando orden...');
                         order = null;
                         if (activeKey) {
                             localStorage.removeItem(ACTIVE_ORDER_KEY_STORAGE);
@@ -1132,7 +1098,6 @@
                     }
                 } else if (order && (!order.items || order.items.length === 0)) {
                     // Si la orden existe pero no tiene items, limpiarla
-                    console.warn('La orden no tiene items, limpiando...');
                     order = null;
                     if (activeKey) {
                         localStorage.removeItem(ACTIVE_ORDER_KEY_STORAGE);
@@ -1142,7 +1107,6 @@
             
             // Validación final: si no hay orden válida, limpiar todo y redirigir
             if (!order || !order.items || order.items.length === 0) {
-                console.log('No hay orden válida para mostrar. Limpiando localStorage...');
                 const activeKey = localStorage.getItem(ACTIVE_ORDER_KEY_STORAGE);
                 if (activeKey) {
                     const db = JSON.parse(localStorage.getItem('restaurantDB') || '{}');
@@ -1161,13 +1125,8 @@
             window.fmtMoney = fmtMoney;
 
             function renderOrder() {
-                console.log('Orden cargada:', order);
-                console.log('Items de la orden:', order?.items);
-                
                 // Validar que haya una orden válida con items
                 if (!order || !Array.isArray(order.items) || order.items.length === 0) {
-                    console.warn('No hay orden o items válidos, limpiando localStorage y redirigiendo...');
-                    
                     // Limpiar localStorage completamente
                     const activeKey = localStorage.getItem(ACTIVE_ORDER_KEY_STORAGE);
                     if (activeKey) {
@@ -1178,16 +1137,17 @@
                     }
                     
                     // Mostrar mensaje y redirigir
-                    alert('No hay productos en la orden. Serás redirigido a la página de pedidos.');
-                    window.location.href = "{{ route('admin.orders.index') }}";
+                    // 
+                    showNotification('Error', 'No hay productos en la orden. Serás redirigido a la página de pedidos.', 'error');
+                    setTimeout(() => {
+                        window.location.href = "{{ route('admin.orders.index') }}";
+                    }, 2000);
                     return;
                 }
                 
                 // Validar que todos los items tengan pId
                 const itemsInvalidos = order.items.filter(it => !it.pId && !it.id);
                 if (itemsInvalidos.length > 0) {
-                    console.error('Items sin pId o id:', itemsInvalidos);
-                    alert('Error: Algunos productos no tienen un ID válido. Por favor, vuelve a agregarlos.');
                     window.location.href = "{{ route('admin.orders.index') }}";
                     return;
                 }
@@ -1227,13 +1187,9 @@
 
                 // Inicializar el primer método de pago con el total
                 if (paymentMethodsData.length === 0) {
-                    console.log('Agregando primer método de pago...');
                     addPaymentMethod();
                 }
                 updatePaymentSummary();
-                
-                // Debug: verificar que se haya agregado el método
-                console.log('Métodos de pago después de inicializar:', paymentMethodsData);
                 
                 // Si es un borrador, establecer las notas
                 if (order.notes && document.getElementById('sale-notes')) {
@@ -1242,61 +1198,44 @@
                 }
             }
 
-            renderOrder();
-
-            // El tipo de documento ya está establecido en el HTML con el primer valor
-            // No es necesario hacer clic automático
-
-            // Funciones de notificación
-            let notificationTimeout;
-            
+            // Funciones de notificación (declaradas antes de renderOrder para evitar ReferenceError)
             function showNotification(title, message, type = 'info') {
                 const notification = document.getElementById('payment-notification');
                 const content = document.getElementById('notification-content');
                 const icon = document.getElementById('notification-icon');
                 const titleEl = document.getElementById('notification-title');
                 const messageEl = document.getElementById('notification-message');
-                
                 if (!notification || !content || !icon || !titleEl || !messageEl) return;
-                
-                // Limpiar timeout anterior
-                if (notificationTimeout) {
-                    clearTimeout(notificationTimeout);
-                }
-                
-                // Configurar colores según el tipo
+                if (notificationTimeout) clearTimeout(notificationTimeout);
                 const colors = {
                     success: 'from-green-500 to-emerald-600 border-green-400/30',
                     error: 'from-red-500 to-red-600 border-red-400/30',
                     warning: 'from-amber-500 to-orange-600 border-amber-400/30',
                     info: 'from-blue-500 to-blue-600 border-blue-400/30'
                 };
-                
                 const icons = {
                     success: 'fa-check-circle',
                     error: 'fa-exclamation-circle',
                     warning: 'fa-exclamation-triangle',
                     info: 'fa-info-circle'
                 };
-                
                 content.className = `bg-gradient-to-r ${colors[type]} text-white px-6 py-4 rounded-xl shadow-2xl border backdrop-blur-sm flex items-center gap-4 min-w-[320px]`;
                 icon.className = `fas ${icons[type]} text-2xl`;
                 titleEl.textContent = title;
                 messageEl.textContent = message;
-                
                 notification.classList.add('notification-show');
-                
                 notificationTimeout = setTimeout(() => {
                     hidePaymentNotification();
                 }, 5000);
             }
-            
             function hidePaymentNotification() {
                 const notification = document.getElementById('payment-notification');
-                if (notification) {
-                    notification.classList.remove('notification-show');
-                }
+                if (notification) notification.classList.remove('notification-show');
             }
+
+            renderOrder();
+
+            // El tipo de documento ya está establecido en el HTML con el primer valor
 
             // Confirmar pago
             document.getElementById('confirm-btn')?.addEventListener('click', function() {
@@ -1344,8 +1283,6 @@
                 }
 
                 // Validar y mapear items asegurándonos de que tengan pId válido
-                console.log('Items antes de mapear:', JSON.stringify(order.items, null, 2));
-                console.log('Mapa de productos disponibles:', Object.keys(productsMap).slice(0, 10));
                 
                 const mappedItems = [];
                 const errores = [];
@@ -1402,9 +1339,7 @@
                     }
                 });
 
-                console.log('Items mapeados:', mappedItems);
-                console.log('Errores encontrados:', errores);
-                
+            
                 if (mappedItems.length === 0) {
                     const mensajeError = errores.length > 0 
                         ? `No hay items válidos para procesar:\n${errores.join('\n')}`
@@ -1413,7 +1348,6 @@
                 }
                 
                 if (errores.length > 0) {
-                    console.warn('Algunos items fueron filtrados:', errores);
                     showNotification('Advertencia', `Se filtraron ${errores.length} producto(s) inválido(s)`, 'warning');
                 }
 
@@ -1438,12 +1372,6 @@
                         note: it.note || '',
                     };
                 });
-                
-                console.log('Payload final antes de enviar:', JSON.stringify({
-                    items: itemsFinales.map(it => ({ pId: it.pId, name: it.name, qty: it.qty, price: it.price })),
-                    document_type_id: parseInt(docTypeId),
-                    payment_methods_count: paymentMethodsData.length
-                }, null, 2));
                 
                 // Verificar que todos los pId existen en el mapa de productos
                 const pIdsInvalidos = itemsFinales.filter(it => {
@@ -1477,16 +1405,19 @@
                 const originalText = this.textContent;
                 this.textContent = 'Procesando...';
 
-                fetch('{{ route('admin.orders.process') }}', {
+
+                fetch('{{ route('admin.orders.processOrderPayment') }}', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
                                 ?.getAttribute('content') || '',
+                        
                             'Accept': 'application/json'
                         },
                         body: JSON.stringify(payload)
                     })
+
                     .then(async r => {
                         const contentType = r.headers.get('content-type');
                         if (contentType && contentType.includes('application/json')) {
@@ -1500,7 +1431,6 @@
                                         errorMessage = data.error.message;
                                     }
                                     if (data.error.file && data.error.line) {
-                                        console.error('Error en:', data.error.file, 'línea', data.error.line);
                                     }
                                 }
                                 if (data.errors && typeof data.errors === 'object') {
@@ -1535,13 +1465,10 @@
                         }
                         // Eliminar la clave activa
                         localStorage.removeItem(ACTIVE_ORDER_KEY_STORAGE);
-                        console.log('Orden completada y limpiada del localStorage');
 
                         window.location.href = "{{ route('admin.orders.index') }}";
                     })
                     .catch(err => {
-                        console.error('Error completo:', err);
-                        console.error('Stack trace:', err.stack);
                         const errorMessage = err.message || 'Error al procesar la venta';
                         showNotification('Error', errorMessage, 'error');
                         this.disabled = false;
