@@ -1052,11 +1052,13 @@
                     const price = Number(it.price) || 0;
                     const lineTotal = qty * price;
                     subtotal += lineTotal;
+                    const safeNote = (it.note ?? it.comment ?? '') || '';
                     return `
                 <div class="flex items-center justify-between rounded-lg border border-gray-200 p-2 dark:border-gray-700 dark:bg-gray-700">
                     <div class="min-w-0 flex-1">
                         <p class="text-sm font-semibold text-gray-900 dark:text-white truncate">${description}</p>
                         <p class="text-xs text-gray-500 dark:text-gray-400">${qty} x ${fmtMoney(price)}</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">${safeNote}</p>
                     </div>
                     <p class="ml-2 text-sm font-bold text-gray-900 dark:text-white whitespace-nowrap">${fmtMoney(lineTotal)}</p>
                 </div>
@@ -1196,7 +1198,7 @@
                         name: it.name,
                         qty: Number(it.qty) || 0,
                         price: Number(it.price) || 0,
-                        note: it.note || '',
+                        note: String(it.note ?? it.comment ?? '').trim(),
                     })),
                     document_type_id: parseInt(docTypeId),
                     payment_methods: paymentMethodsData.map(pm => ({
