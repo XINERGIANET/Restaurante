@@ -292,7 +292,7 @@ class ProductController extends Controller
             'complement_mode' => $validated['complement_mode'],
             'classification' => $validated['classification'],
             'features' => $validated['features'],
-            'recipe' => $validated['recipe'] === 'S',
+            'recipe' => (bool) $validated['recipe'],
         ];
     }
 
