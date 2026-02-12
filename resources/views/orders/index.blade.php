@@ -1,4 +1,4 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 
 @section('title', 'Punto de Venta')
 
@@ -28,12 +28,12 @@
 
             {{-- 2. GRID DE MESAS - FORZADO A 4 COLUMNAS --}}
             <div class="flex-1 pb-10">
-                <template x-if="filteredTables.length > 0">
+                <template x-if="filteredTables?.length > 0">
                     <div
                         class="grid gap-5"
                         style="grid-template-columns: repeat(4, minmax(0, 1fr));"
                     >
-                        <template x-for="table in filteredTables" :key="table.id">
+                        <template x-for="table in (filteredTables || [])" :key="table.id">
                         
                         {{-- TARJETA EXACTA XINERGIA --}}
                             <div @click="openTable(table)" 
@@ -68,7 +68,7 @@
                                     <div class="flex items-center justify-between gap-2 text-sm font-medium text-gray-500 dark:text-gray-400">
                                         <div>
                                             <span class="inline-block w-16">Mozo:</span>
-                                            <span class="text-gray-800 dark:text-white/90" x-text="table.order_movement_id ? '{{ $user?->name ?? 'Sin asignar' }}' : '-'"></span>
+                                            <span class="text-gray-800 dark:text-white/90" x-text="(table.waiter || '-')"></span>
                                         </div>
 
                                         <span class="inline-flex items-center gap-1 text-[11px] font-medium text-gray-600 dark:text-gray-300">
@@ -125,7 +125,7 @@
                 </template>
                 
                 {{-- Mensaje cuando no hay mesas --}}
-                <template x-if="filteredTables.length === 0">
+                <template x-if="!filteredTables || filteredTables.length === 0">
                     <div class="flex items-center justify-center h-full">
                         <div class="text-center">
                             <p class="text-gray-500 dark:text-gray-400 text-lg">No hay mesas disponibles en esta área</p>
@@ -144,7 +144,7 @@
         $firstAreaId = !empty($areasData) && count($areasData) > 0 ? $areasData[0]['id'] : null;
     @endphp
 
-    const registerPosSystem = () => {
+    window.registerPosSystem = function() {
         if (!window.Alpine) {
             return;
         }
@@ -246,7 +246,7 @@
         });
     };
 
-    document.addEventListener('alpine:init', registerPosSystem);
-    document.addEventListener('turbo:load', registerPosSystem);
+    document.addEventListener('alpine:init', window.registerPosSystem);
+    document.addEventListener('turbo:load', window.registerPosSystem);
 </script>
 @endsection

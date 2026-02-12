@@ -1,4 +1,4 @@
-<div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-4" 
+<div class="grid w-full min-w-0 grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4" 
      x-data="{
         // Variable que controla si se muestran los campos (True si NO es ingrediente)
         showComplements: '{{ old('type', $product->type ?? 'PRODUCT') }}'.trim() !== 'INGREDENT',
@@ -27,7 +27,7 @@
      }">
 
     <div>
-        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Codigo</label>
+        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Codigo <span class="text-red-500">*</span></label>
         <input
             type="text"
             name="code"
@@ -39,7 +39,7 @@
     </div>
 
     <div>
-        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Nombre</label>
+        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Nombre <span class="text-red-500">*</span></label>
         <input
             type="text"
             name="description"
@@ -51,7 +51,7 @@
     </div>
 
     <div>
-        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Abreviatura</label>
+        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Abreviatura <span class="text-red-500">*</span></label>
         <input
             type="text"
             name="abbreviation"
@@ -63,7 +63,7 @@
     </div>
 
     <div>
-        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Tipo</label>
+        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Tipo <span class="text-red-500">*</span></label>
         <select
             name="type"
             required
@@ -76,7 +76,7 @@
     </div>
 
     <div>
-        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Categoria</label>
+        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Categoria <span class="text-red-500">*</span></label>
         <select
             name="category_id"
             required
@@ -92,7 +92,7 @@
     </div>
 
     <div>
-        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Unidad base</label>
+        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Unidad base <span class="text-red-500">*</span></label>
         <select
             name="base_unit_id"
             required
@@ -108,7 +108,7 @@
     </div>
 
     <div>
-        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Kardex</label>
+        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Kardex <span class="text-red-500">*</span></label>
         <select
             name="kardex"
             required
@@ -120,7 +120,7 @@
     </div>
 
         <div x-show="showComplements" x-transition>
-        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Complemento</label>
+        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Complemento <span class="text-red-500" x-show="showComplements">*</span></label>
         <select
             name="complement"
             x-model="complementValue"
@@ -150,7 +150,7 @@
     </div>
 
     <div x-show="showComplements" x-transition>
-        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Clasificacion</label>
+        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Clasificacion <span class="text-red-500" x-show="showComplements">*</span></label>
         <select
             name="classification"
             x-model="classificationValue"
@@ -163,7 +163,7 @@
         </select>
     </div>
 
-    <div class="lg:col-span-3 grid grid-cols-1 lg:grid-cols-2 gap-5">
+    <div class="col-span-full grid grid-cols-1 gap-5 sm:grid-cols-2">
         <div x-data="{ 
                 imagePreview: '{{ isset($product) && $product->image ? asset('storage/' . $product->image) : '' }}',
                 fileName: '{{ isset($product) && $product->image ? basename($product->image) : '' }}',
@@ -253,4 +253,127 @@
             >{{ old('features', $product->features ?? '') }}</textarea>
         </div>
     </div>
+
+    {{-- Datos de sucursal (product_branch) - Precio, stock, etc. para la sucursal actual --}}
+    @php
+        $currentBranch = $currentBranch ?? null;
+        $taxRates = $taxRates ?? collect();
+        $productBranch = $productBranch ?? null;
+    @endphp
+    @if ($currentBranch)
+        <div class="col-span-full mt-8">
+            <div class="rounded-xl border border-gray-200 bg-gradient-to-br from-slate-50 to-gray-50/80 dark:from-gray-800/50 dark:to-slate-900/50 dark:border-gray-700 overflow-hidden shadow-sm">
+                {{-- Header de la sección --}}
+                <div class="flex items-center gap-3 px-5 py-4 border-b border-gray-200/80 dark:border-gray-700/80 bg-white/60 dark:bg-gray-800/40">
+                    <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+                        <i class="ri-store-2-line text-xl"></i>
+                    </div>
+                    <div>
+                        <h4 class="text-base font-semibold text-gray-800 dark:text-white/95">Datos en sucursal</h4>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ $currentBranch->legal_name }}</p>
+                    </div>
+                </div>
+
+                {{-- Contenido: Precio y venta | Inventario --}}
+                <div class="p-5 space-y-6">
+                    {{-- Bloque: Precio y venta --}}
+                    <div>
+                        <p class="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Precio y venta</p>
+                        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                            <div class="sm:col-span-1">
+                                <label class="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-gray-700 dark:text-gray-400">
+                                    <i class="ri-money-dollar-circle-line text-gray-400 text-base"></i>
+                                    Precio <span class="text-red-500">*</span>
+                                </label>
+                                <input type="number" step="0.01" name="product_branch_price"
+                                    value="{{ old('product_branch_price', $productBranch->price ?? 0) }}"
+                                    placeholder="0.00"
+                                    class="dark:bg-dark-900 shadow-theme-xs focus:border-blue-400 focus:ring-blue-500/20 dark:focus:border-blue-600 dark:focus:ring-blue-500/30 h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-2 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white/90 dark:placeholder:text-white/30" />
+                            </div>
+                            <div class="sm:col-span-1">
+                                <label class="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-gray-700 dark:text-gray-400">
+                                    <i class="ri-percent-line text-gray-400 text-base"></i>
+                                    Tasa de impuesto <span class="text-red-500">*</span>
+                                </label>
+                                <select name="product_branch_tax_rate_id"
+                                    class="dark:bg-dark-900 shadow-theme-xs focus:border-blue-400 focus:ring-blue-500/20 dark:focus:border-blue-600 dark:focus:ring-blue-500/30 h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 focus:ring-2 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white/90">
+                                    <option value="">Seleccione tasa</option>
+                                    @foreach ($taxRates as $taxRate)
+                                        <option value="{{ $taxRate->id }}" @selected(old('product_branch_tax_rate_id', $productBranch->tax_rate_id ?? '') == $taxRate->id)>
+                                            {{ $taxRate->description }} ({{ $taxRate->tax_rate }}%)
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Bloque: Inventario --}}
+                    <div>
+                        <p class="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Inventario</p>
+                        <div class="grid gap-4 sm:grid-cols-3">
+                            <div>
+                                <label class="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-gray-700 dark:text-gray-400">
+                                    <i class="ri-box-3-line text-gray-400 text-base"></i>
+                                    Stock actual <span class="text-red-500">*</span>
+                                </label>
+                                <input type="number" name="product_branch_stock"
+                                    value="{{ old('product_branch_stock', $productBranch->stock ?? 0) }}"
+                                    placeholder="0"
+                                    min="0"
+                                    class="dark:bg-dark-900 shadow-theme-xs focus:border-blue-400 focus:ring-blue-500/20 dark:focus:border-blue-600 dark:focus:ring-blue-500/30 h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-2 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white/90 dark:placeholder:text-white/30 @error('product_branch_stock') border-red-500 dark:border-red-500 @enderror" />
+                                @error('product_branch_stock')
+                                    <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                                @enderror
+                            </div>
+                            <div>
+                                <label class="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-gray-700 dark:text-gray-400">
+                                    <i class="ri-arrow-down-circle-line text-gray-400 text-base"></i>
+                                    Stock mínimo
+                                </label>
+                                <input type="number" step="0.01" name="product_branch_stock_minimum"
+                                    value="{{ old('product_branch_stock_minimum', $productBranch->stock_minimum ?? 0) }}"
+                                    placeholder="0"
+                                    min="0"
+                                    class="dark:bg-dark-900 shadow-theme-xs focus:border-blue-400 focus:ring-blue-500/20 dark:focus:border-blue-600 dark:focus:ring-blue-500/30 h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-2 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white/90 dark:placeholder:text-white/30" />
+                            </div>
+                            <div>
+                                <label class="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-gray-700 dark:text-gray-400">
+                                    <i class="ri-arrow-up-circle-line text-gray-400 text-base"></i>
+                                    Stock máximo
+                                </label>
+                                <input type="number" step="0.01" name="product_branch_stock_maximum"
+                                    value="{{ old('product_branch_stock_maximum', $productBranch->stock_maximum ?? 0) }}"
+                                    placeholder="0"
+                                    min="0"
+                                    class="dark:bg-dark-900 shadow-theme-xs focus:border-blue-400 focus:ring-blue-500/20 dark:focus:border-blue-600 dark:focus:ring-blue-500/30 h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-2 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white/90 dark:placeholder:text-white/30" />
+                            </div>
+                            <div>
+                                <label class="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-gray-700 dark:text-gray-400">
+                                    <i class="ri-arrow-right-circle-line text-gray-400 text-base"></i>
+                                    Stock mínimo de venta
+                                </label>
+                                <input type="number" step="0.01" name="product_branch_minimum_sell"
+                                    value="{{ old('product_branch_minimum_sell', $productBranch->minimum_sell ?? 0) }}"
+                                    placeholder="0"
+                                    min="0"
+                                    class="dark:bg-dark-900 shadow-theme-xs focus:border-blue-400 focus:ring-blue-500/20 dark:focus:border-blue-600 dark:focus:ring-blue-500/30 h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-2 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white/90 dark:placeholder:text-white/30" />
+                            </div>
+                            <div>
+                                <label class="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-gray-700 dark:text-gray-400">
+                                    <i class="ri-arrow-left-circle-line text-gray-400 text-base"></i>
+                                    Stock mínimo de compra
+                                </label>
+                                <input type="number" step="0.01" name="product_branch_minimum_purchase"
+                                    value="{{ old('product_branch_minimum_purchase', $productBranch->minimum_purchase ?? 0) }}"
+                                    placeholder="0"
+                                    min="0"
+                                    class="dark:bg-dark-900 shadow-theme-xs focus:border-blue-400 focus:ring-blue-500/20 dark:focus:border-blue-600 dark:focus:ring-blue-500/30 h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-2 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white/90 dark:placeholder:text-white/30" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
 </div>

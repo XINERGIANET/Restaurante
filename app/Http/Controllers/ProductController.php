@@ -6,11 +6,13 @@ use App\Models\Branch;
 use App\Models\Category;
 use App\Models\Operation;
 use App\Models\Product;
+use App\Models\ProductBranch;
 use App\Models\TaxRate;
 use App\Models\Unit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 class ProductController extends Controller
 {
@@ -126,6 +128,7 @@ class ProductController extends Controller
         }
         
         $product = Product::create($data);
+        $this->syncProductBranch($request, $product, null);
         $viewId = $request->input('view_id');
         
         return redirect()
@@ -137,11 +140,20 @@ class ProductController extends Controller
     {
         $categories = Category::query()->orderBy('description')->get();
         $units = Unit::query()->orderBy('description')->get();
+        $taxRates = TaxRate::query()->where('status', true)->orderBy('order_num')->get();
+        $branchId = session('branch_id');
+        $currentBranch = $branchId ? Branch::find($branchId) : null;
+        $productBranch = ($branchId && $product->id)
+            ? ProductBranch::where('product_id', $product->id)->where('branch_id', $branchId)->first()
+            : null;
 
         return view('products.edit', [
             'product' => $product,
             'categories' => $categories,
             'units' => $units,
+            'taxRates' => $taxRates,
+            'currentBranch' => $currentBranch,
+            'productBranch' => $productBranch,
             'viewId' => $request->input('view_id'),
         ]);
     }
@@ -178,6 +190,7 @@ class ProductController extends Controller
         }
         
         $product->update($data);
+        $this->syncProductBranch($request, $product, $product);
         $viewId = $request->input('view_id');
         
         return redirect()
@@ -223,5 +236,65 @@ class ProductController extends Controller
         }
         
         return $validated;
+    }
+
+    private function syncProductBranch(Request $request, Product $product, ?Product $existingProduct): void
+    {
+        $branchId = session('branch_id');
+        if (!$branchId) {
+            return;
+        }
+
+        $price = $request->input('product_branch_price');
+        $stock = $request->input('product_branch_stock');
+        $taxRateId = $request->input('product_branch_tax_rate_id');
+
+        $productBranch = ProductBranch::where('product_id', $product->id)
+            ->where('branch_id', $branchId)
+            ->first();
+
+        $stockMinimum = (float) ($request->input('product_branch_stock_minimum', 0) ?? 0);
+        $stockMaximum = (float) ($request->input('product_branch_stock_maximum', 0) ?? 0);
+        $stockValue = (float) ($stock ?? 0);
+
+        // Validar: stock debe estar entre stock_minimum y stock_maximum
+        if ($stockMaximum > 0 && $stockValue > $stockMaximum) {
+            throw ValidationException::withMessages([
+                'product_branch_stock' => ['El stock actual no puede ser mayor que el stock máximo (' . $stockMaximum . ').'],
+            ]);
+        }
+        if ($stockValue < $stockMinimum) {
+            throw ValidationException::withMessages([
+                'product_branch_stock' => ['El stock actual no puede ser menor que el stock mínimo (' . $stockMinimum . ').'],
+            ]);
+        }
+
+        if ($productBranch) {
+            $productBranch->update([
+                'stock' => (int) ($stock ?? $productBranch->stock),
+                'price' => (float) ($price ?? $productBranch->price),
+                'tax_rate_id' => $taxRateId ?: $productBranch->tax_rate_id,
+                'stock_minimum' => $stockMinimum,
+                'stock_maximum' => $stockMaximum,
+                'minimum_sell' => (float) ($request->input('product_branch_minimum_sell', 0) ?? 0),
+                'minimum_purchase' => (float) ($request->input('product_branch_minimum_purchase', 0) ?? 0),
+            ]);
+        } elseif ($price !== null && $price !== '' && (float) $price >= 0) {
+            ProductBranch::create([
+                'product_id' => $product->id,
+                'branch_id' => $branchId,
+                'stock' => (int) ($stock ?? 0),
+                'price' => (float) $price,
+                'tax_rate_id' => $taxRateId ?: null,
+                'stock_minimum' => $stockMinimum,
+                'stock_maximum' => $stockMaximum,
+                'minimum_sell' => (float) ($request->input('product_branch_minimum_sell', 0) ?? 0),
+                'minimum_purchase' => (float) ($request->input('product_branch_minimum_purchase', 0) ?? 0),
+                'unit_sale' => 'N',
+                'status' => 'E',
+                'favorite' => 'N',
+                'duration_minutes' => 0,
+            ]);
+        }
     }
 }
