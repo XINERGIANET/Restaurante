@@ -7,7 +7,6 @@ use App\Models\Category;
 use App\Models\Operation;
 use App\Models\Product;
 use App\Models\ProductBranch;
-use App\Models\ProductBranch;
 use App\Models\TaxRate;
 use App\Models\Unit;
 use Illuminate\Http\Request;
@@ -126,8 +125,6 @@ class ProductController extends Controller
             $productData['image'] = is_string($imagePath) ? $imagePath : (string) $imagePath;
             Log::info('Image path added to data: ' . $productData['image']);
         }
-        
-        dd($productData);
 
         $product = Product::create($productData);
         
@@ -152,11 +149,7 @@ class ProductController extends Controller
         $categories = Category::query()->orderBy('description')->get();
         $units = Unit::query()->orderBy('description')->get();
         $taxRates = TaxRate::query()->where('status', true)->orderBy('order_num')->get();
-        // TODO: Cargar suppliers desde la tabla correspondiente
-        // $suppliers = Supplier::query()->orderBy('description')->get(); 
         $branchId = $request->session()->get('branch_id');
-        
-        // Obtener datos de ProductBranch para la sucursal actual
         $productBranch = $product->productBranches()
             ->where('branch_id', $branchId)
             ->first();
@@ -167,7 +160,7 @@ class ProductController extends Controller
             'categories' => $categories,
             'units' => $units,
             'taxRates' => $taxRates,
-            'suppliers' => collect(), // Vacío por ahora, agregar cuando exista modelo Supplier
+            'suppliers' => collect(), 
             'viewId' => $request->input('view_id'),
         ]);
     }
@@ -175,8 +168,6 @@ class ProductController extends Controller
     public function update(Request $request, Product $product)
     {
         $validated = $this->validateProduct($request);
-        
-        // Separar datos de Product y ProductBranch
         $productData = $this->prepareProductData($validated);
         $branchData = $this->prepareBranchData($validated);
         
@@ -218,7 +209,7 @@ class ProductController extends Controller
             } else {
                 $branchData['product_id'] = $product->id;
                 $branchData['branch_id'] = $branchId;
-                $branchData['status'] = 'A';
+                $branchData['status'] = 'E';
                 ProductBranch::create($branchData);
             }
         }
@@ -256,7 +247,6 @@ class ProductController extends Controller
             'category_id' => ['required', 'integer', 'exists:categories,id'],
             'base_unit_id' => ['required', 'integer', 'exists:units,id'],
             'kardex' => ['required', 'string', 'in:S,N'],
-            'recipe' => ['required', 'string', 'in:S,N'],
             'status' => ['required', 'string', 'in:A,I'],
             'image' => ['nullable', 'sometimes', 'image', 'mimes:jpeg,png,jpg,gif,webp', 'max:2048'],
             'complement' => ['required', 'string', 'in:NO,HAS,IS'],
@@ -277,6 +267,7 @@ class ProductController extends Controller
             'favorite' => ['required', 'string', 'in:S,N'],
             'duration_minutes' => ['nullable', 'integer', 'min:0'],
             'supplier_id' => ['nullable', 'integer'],
+            'recipe' => ['required', 'boolean'],
         ]);
         
         // Eliminar el campo image si está vacío o es null
@@ -297,8 +288,6 @@ class ProductController extends Controller
             'category_id' => $validated['category_id'],
             'base_unit_id' => $validated['base_unit_id'],
             'kardex' => $validated['kardex'],
-            'recipe' => $validated['recipe'],
-            'status' => $validated['status'],
             'complement' => $validated['complement'],
             'complement_mode' => $validated['complement_mode'],
             'classification' => $validated['classification'],
@@ -309,19 +298,20 @@ class ProductController extends Controller
     private function prepareBranchData(array $validated): array
     {
         return [
-            'price' => $validated['price'],
-            'stock' => $validated['stock'],
+            'status' => $validated['status'],
+            'expiration_date' => $validated['expiration_date'],
             'stock_minimum' => $validated['stock_minimum'],
             'stock_maximum' => $validated['stock_maximum'],
             'minimum_sell' => $validated['minimum_sell'],
             'minimum_purchase' => $validated['minimum_purchase'],
+            'favorite' => $validated['favorite'],
             'tax_rate_id' => $validated['tax_rate_id'],
             'unit_sale' => $validated['unit_sale'],
-            'expiration_date' => $validated['expiration_date'],
-            'favorite' => $validated['favorite'],
             'duration_minutes' => $validated['duration_minutes'],
             'supplier_id' => $validated['supplier_id'],
-            'recipe' => $validated['recipe'] === 'S' ? true : false,
+            'stock' => $validated['stock'],
+            'price' => $validated['price'],
+            'recipe' => $validated['recipe'] === 'S',
         ];
     }
 }

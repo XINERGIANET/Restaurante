@@ -24,6 +24,11 @@ class Product extends Model
         'features',
     ];
 
+    protected $casts = [
+        'kardex' => 'string',
+        'type' => 'string',
+    ];
+
     public function category()
     {
         return $this->belongsTo(Category::class);
