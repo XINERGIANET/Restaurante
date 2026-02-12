@@ -7,7 +7,19 @@
         <x-common.component-card title="Editar producto" desc="Actualiza la informacion del producto.">
             @if ($errors->any())
                 <div class="mb-5">
-                    <x-ui.alert variant="error" title="Revisa los campos" message="Hay errores en el formulario, corrige los datos e intenta nuevamente." />
+                    <x-ui.alert 
+                            variant="error" 
+                            title="Revisa los campos" 
+                        >
+                        <div class="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                            <p class="font-medium">Hay errores en el formulario, corrige los datos e intenta nuevamente:</p>
+                            <ul class="list-disc pl-5 mt-1 space-y-1">
+                                @foreach ($errors->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    </x-ui.alert>
                 </div>
             @endif
 
