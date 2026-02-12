@@ -69,24 +69,35 @@ class OrderController extends Controller
                 ->get();
         }
 
-        $orders = Movement::query()
-            ->with(['branch', 'person', 'movementType', 'documentType'])
-            ->where('movement_type_id', 2)
-            ->where(function ($query) {
-                $query->where('comment', 'like', 'Pedido del restaurante%')
-                    ->orWhere('comment', 'like', '%[BORRADOR]%');
+        $orders = OrderMovement::query()
+            ->with([
+                'movement.branch',
+                'movement.person',
+                'movement.movementType',
+                'movement.documentType',
+                'table',
+                'area',
+            ])
+            ->when($branchId, function ($query) use ($branchId) {
+                $query->where('branch_id', $branchId);
             })
+            
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
-                    $inner->where('number', 'like', "%{$search}%")
-                        ->orWhere('person_name', 'like', "%{$search}%")
-                        ->orWhere('user_name', 'like', "%{$search}%");
+                    $inner->whereHas('movement', function ($movementQuery) use ($search) {
+                        $movementQuery->where(function ($movementInner) use ($search) {
+                            $movementInner->where('number', 'like', "%{$search}%")
+                                ->orWhere('person_name', 'like', "%{$search}%")
+                                ->orWhere('user_name', 'like', "%{$search}%");
+                        });
+                    })
+                    ->orWhere('status', 'like', "%{$search}%");
                 });
             })
             ->orderByDesc('id')
             ->paginate($perPage)
             ->withQueryString();
-
+      
         return view('orders.list', [
             'orders' => $orders,
             'search' => $search,

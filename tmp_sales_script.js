@@ -1,244 +1,7 @@
-@extends('layouts.app')
 
-@section('content')
-    @php
-        $viewId = request('view_id');
-        $salesIndexUrl = route('admin.sales.index', $viewId ? ['view_id' => $viewId] : []);
-        $salesChargeUrl = route('admin.sales.charge', $viewId ? ['view_id' => $viewId] : []);
-    @endphp
-    {{-- Breadcrumb --}}
-    <div class=" flex flex-wrap items-center justify-between gap-3 mb-4">
-        <div class="flex items-center gap-2">
-            <span class="text-gray-500 dark:text-gray-400"><i class="ri-restaurant-fill"></i></span>
-            <h2 class="text-xl font-semibold text-gray-800 dark:text-white/90">
-                Punto de Venta
-            </h2>
-        </div>
-        <nav>
-            <ol class="flex items-center gap-1.5">
-                <li>
-                    <a class="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-                        href="{{ $salesIndexUrl }}">
-                        Ventas
-                        <svg class="stroke-current" width="17" height="16" viewBox="0 0 17 16" fill="none"
-                            xmlns="http://www.w3.org/2000/svg">
-                            <path d="M6.0765 12.667L10.2432 8.50033L6.0765 4.33366" stroke="" stroke-width="1.2"
-                                stroke-linecap="round" stroke-linejoin="round"></path>
-                        </svg>
-                    </a>
-                </li>
-                <li class="text-sm text-gray-800 dark:text-white/90">
-                    Nueva Venta
-                </li>
-            </ol>
-        </nav>
-    </div>
-
-    {{-- Contenedor Principal - Full Width con fondo --}}
-    <div class="-mx-4 md:-mx-6 -mb-4 md:-mb-6">
-        <div class="flex items-start w-full dark:bg-slate-950 fade-in min-h-[calc(100vh-180px)]" style="--brand:#3B82F6;">
-
-            {{-- ================= SECCIÓN IZQUIERDA: MENÚ ================= --}}
-            <main class="flex-1 p-4 flex flex-col min-w-0">
-
-             
-
-                {{-- Grid de Productos --}}
-                <div class="p-6  dark:bg-slate-900 min-h-[calc(100vh-260px)]">
-                   
-                    <div id="category-filters" class="mb-5 flex flex-wrap gap-2"></div>
-                    <div id="products-grid"
-                        class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-5 gap-3 w-full">
-                        {{-- JS llenará esto --}}
-                    </div>
-                </div>
-            </main>
-
-            {{-- ================= SECCIÓN DERECHA: CARRITO (STICKY) ================= --}}
-            <aside
-                class="w-[420px] dark:bg-slate-900 backdrop-blur-sm border-l border-gray-300 dark:border-slate-800 flex flex-col shadow-2xl z-20 shrink-0 sticky top-0 h-screen">
-
-                {{-- Header Carrito --}}
-                <div
-                    class="h-14 px-4 border-b border-gray-200 dark:border-slate-800 dark:bg-slate-900/80 backdrop-blur-sm flex justify-between items-center shrink-0">
-                    <div class="flex items-center gap-2">
-                        <h3 class="text-lg font-bold text-slate-800 dark:text-white">Orden Actual</h3>
-                        <span id="cart-count-badge"
-                            class="inline-block px-2 py-0.5 bg-blue-600 dark:bg-blue-500 text-white rounded-full text-[10px] font-bold shadow-lg shadow-blue-500/30">
-                            0
-                        </span>
-                    </div>
-                    <span
-                        class="px-2.5 py-0.5 bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 rounded-full text-[10px] font-bold border border-blue-100 dark:border-blue-800">En
-                        curso</span>
-                </div>
-
-                {{-- Lista Items --}}
-                <div id="cart-container" class="flex-1 overflow-y-auto p-3 dark:bg-slate-900"></div>
-
-                {{-- Footer Totales --}}
-                <div
-                    class="p-4 dark:bg-slate-950/90 backdrop-blur-sm border-t border-gray-300 dark:border-slate-800 shadow-[0_-5px_25px_rgba(0,0,0,0.05)] dark:shadow-[0_-5px_25px_rgba(0,0,0,0.3)] shrink-0 z-30">
-                    <div class="space-y-2 mb-4 text-sm">
-                        <div class="flex justify-between text-gray-500 dark:text-gray-400 font-medium text-xs">
-                            <span>Subtotal</span>
-                            <span class="text-slate-800 dark:text-white" id="ticket-subtotal">$0.00</span>
-                        </div>
-                        <div class="flex justify-between text-gray-500 dark:text-gray-400 font-medium text-xs">
-                            <span>Impuestos (10%)</span>
-                            <span class="text-slate-800 dark:text-white" id="ticket-tax">$0.00</span>
-                        </div>
-                        <div class="border-t border-dashed border-gray-300 dark:border-slate-700 my-1.5"></div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-base font-bold text-slate-800 dark:text-white">Total a Pagar</span>
-                            <span class="text-2xl font-black text-blue-600 dark:text-blue-400"
-                                id="ticket-total">$0.00</span>
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-3">
-                        <button onclick="goBack()"
-                            class="hidden py-2.5 rounded-lg border border-gray-300 dark:border-slate-700 dark:bg-slate-800 text-gray-700 dark:text-white text-sm font-bold hover:bg-gray-50 dark:hover:bg-slate-700 shadow-sm transition-all">
-                            Guardar
-                        </button>
-                        <button type="button" id="checkout-button" onclick="goToChargeView()"
-                            class="py-2.5 rounded-lg bg-blue-600 text-white text-sm font-bold shadow-lg shadow-blue-500/30 dark:shadow-blue-500/20 hover:bg-blue-700 dark:hover:bg-blue-600 active:scale-95 transition-all flex justify-center items-center gap-2">
-                            <span>Cobrar</span> <i class="fas fa-cash-register text-xs"></i>
-                        </button>
-                    </div>
-                </div>
-            </aside>
-        </div>
-    </div>
-
-    {{-- Notificación de producto agregado --}}
-    <div id="add-to-cart-notification"
-        class="fixed top-24 right-8 z-50 transform transition-all duration-500 translate-x-[150%] opacity-0">
-        <div
-            class="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-4 rounded-xl shadow-2xl border border-green-400/30 backdrop-blur-sm flex items-center gap-4 min-w-[320px]">
-            <div class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center animate-bounce">
-                <i class="fas fa-check text-2xl"></i>
-            </div>
-            <div class="flex-1">
-                <p class="font-bold text-sm">¡Producto agregado!</p>
-                <p id="notification-product-name" class="text-xs text-green-50 mt-0.5">Producto</p>
-            </div>
-            <button onclick="hideNotification()" class="text-white/80 hover:text-white transition-colors">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-    </div>
-
-    <style>
-        @keyframes slideInFromLeft {
-            from {
-                transform: translateX(-30px);
-                opacity: 0;
-            }
-
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
-        }
-
-        @keyframes pulse-subtle {
-
-            0%,
-            100% {
-                transform: scale(1);
-            }
-
-            50% {
-                transform: scale(1.02);
-            }
-        }
-
-        .cart-item-enter {
-            animation: slideInFromLeft 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
-
-        .product-click-effect {
-            animation: pulse-subtle 0.3s ease-out;
-        }
-
-        .shake-animation {
-            animation: shake 0.5s ease-in-out;
-        }
-
-        @keyframes shake {
-
-            0%,
-            100% {
-                transform: translateX(0);
-            }
-
-            25% {
-                transform: translateX(-5px) rotate(-2deg);
-            }
-
-            75% {
-                transform: translateX(5px) rotate(2deg);
-            }
-        }
-
-        .notification-show {
-            transform: translateX(0) !important;
-            opacity: 1 !important;
-        }
-
-        .qty-badge-pop {
-            animation: popScale 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
-
-        @keyframes popScale {
-            0% {
-                transform: scale(0.8);
-            }
-
-            50% {
-                transform: scale(1.2);
-            }
-
-            100% {
-                transform: scale(1);
-            }
-        }
-
-        .pulse-button {
-            animation: pulse-glow 2s infinite;
-        }
-
-        @keyframes pulse-glow {
-
-            0%,
-            100% {
-                box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
-            }
-
-            50% {
-                box-shadow: 0 0 30px rgba(59, 130, 246, 0.6);
-            }
-        }
-
-        .fade-in {
-            animation: fadeIn 0.3s ease-in;
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-            }
-
-            to {
-                opacity: 1;
-            }
-        }
-    </style>
-
-    <script>
     (function () {
-        const productsRaw = @json($products ?? []);
-        const productBranchesRaw = @json($productBranches ?? $productsBranches ?? []);
+        const productsRaw = "URL";
+        const productBranchesRaw = "URL";
 
         const products = Array.isArray(productsRaw) ? productsRaw : Object.values(productsRaw || {});
         const productBranches = Array.isArray(productBranchesRaw) ? productBranchesRaw : Object.values(productBranchesRaw || {});
@@ -250,18 +13,6 @@
                 priceByProductId.set(pid, Number(pb.price ?? 0));
             }
         });
-        let selectedCategory = 'General';
-
-        function getProductCategory(prod) {
-            const value = (prod && prod.category) ? String(prod.category).trim() : '';
-            return value !== '' ? value : 'Sin categoria';
-        }
-
-        function getCategories() {
-            const unique = new Set();
-            products.forEach((prod) => unique.add(getProductCategory(prod)));
-            return ['General', ...Array.from(unique).sort((a, b) => a.localeCompare(b))];
-        }
 
         const ACTIVE_SALE_KEY_STORAGE = 'restaurantActiveSaleKey';
         let db = JSON.parse(localStorage.getItem('restaurantDB') || '{}');
@@ -302,11 +53,9 @@
             products.forEach((prod) => {
                 const productId = Number(prod.id);
                 const price = priceByProductId.get(productId);
-                const category = getProductCategory(prod);
 
                 // Mostrar solo productos asignados a la sucursal actual
                 if (typeof price === 'undefined') return;
-                if (selectedCategory !== 'General' && category !== selectedCategory) return;
 
                 const el = document.createElement('div');
                 el.className = 'group cursor-pointer transition-transform duration-200 hover:scale-105';
@@ -315,7 +64,7 @@
                 });
 
                 const safeName = prod.name || 'Sin nombre';
-                const safeCategory = category;
+                const safeCategory = prod.category || 'Sin categoria';
 
                 el.innerHTML = `
                     <div class="rounded-lg overflow-hidden p-3 dark:bg-slate-800/40 shadow-md hover:shadow-xl border border-gray-300 dark:border-slate-700/50 hover:border-blue-500 dark:hover:border-blue-500 hover:shadow-blue-500/10 transition-all duration-200 hover:-translate-y-1 backdrop-blur-sm">
@@ -341,40 +90,6 @@
             if (rendered === 0) {
                 grid.innerHTML = '<div class="col-span-full text-center text-gray-500 py-8">No hay productos disponibles para esta sucursal.</div>';
             }
-        }
-
-        function renderCategoryFilters() {
-            const container = document.getElementById('category-filters');
-            const label = document.getElementById('selected-category-label');
-            if (!container) return;
-
-            container.innerHTML = '';
-            const categories = getCategories();
-
-            categories.forEach((category) => {
-                const button = document.createElement('button');
-                button.type = 'button';
-                button.className = 'px-3 py-1.5 rounded-lg border text-xs font-semibold transition';
-                const isActive = category === selectedCategory;
-
-                if (isActive) {
-                    button.className += ' bg-blue-600 text-white border-blue-600';
-                } else {
-                    button.className += ' bg-white text-slate-700 border-gray-300 hover:border-blue-400 hover:text-blue-600';
-                }
-
-                button.textContent = category;
-                button.addEventListener('click', () => {
-                    selectedCategory = category;
-                    if (label) label.textContent = selectedCategory;
-                    renderCategoryFilters();
-                    renderProducts();
-                });
-
-                container.appendChild(button);
-            });
-
-            if (label) label.textContent = selectedCategory;
         }
 
         function addToCart(prod, price) {
@@ -504,7 +219,7 @@
                 return;
             }
             saveDB();
-            window.location.href = @json($salesChargeUrl);
+            window.location.href = "URL";
         }
 
         function goBack() {
@@ -513,7 +228,7 @@
                 currentSale.total = 0;
                 saveDB();
                 localStorage.removeItem(ACTIVE_SALE_KEY_STORAGE);
-                window.location.href = @json($salesIndexUrl);
+                window.location.href = "URL";
                 return;
             }
 
@@ -527,7 +242,7 @@
                 notes: 'Venta guardada como borrador - pendiente de pago'
             };
 
-            fetch(@json(route('admin.sales.draft')), {
+            fetch("URL"), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -536,7 +251,7 @@
                 body: JSON.stringify(saleData)
             })
             .finally(() => {
-                window.location.href = @json($salesIndexUrl);
+                window.location.href = "URL";
             });
         }
 
@@ -560,7 +275,6 @@
         function init() {
             const clientNameEl = document.getElementById('pos-client-name');
             if (clientNameEl) clientNameEl.innerText = currentSale.clientName || 'Publico General';
-            renderCategoryFilters();
             renderProducts();
             renderTicket();
         }
@@ -573,7 +287,4 @@
         window.goToChargeView = goToChargeView;
         window.hideNotification = hideNotification;
     })();
-</script>
-@endsection
-
 

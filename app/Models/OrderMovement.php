@@ -44,4 +44,14 @@ class OrderMovement extends Model
         return $this->belongsTo(Area::class);
     }
 
+    public function movement()
+    {
+        return $this->belongsTo(Movement::class);
+    }
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class);
+    }
+
 }

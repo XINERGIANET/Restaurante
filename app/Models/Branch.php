@@ -12,7 +12,6 @@ class Branch extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'tax_id',
         'ruc',
         'company_id',
         'legal_name',

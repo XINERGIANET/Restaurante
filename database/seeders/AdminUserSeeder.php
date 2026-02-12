@@ -40,11 +40,11 @@ class AdminUserSeeder extends Seeder
             ]);
         }
 
-        $branchTaxId = $companyTaxId . '-001';
-        $branchId = DB::table('branches')->where('tax_id', $branchTaxId)->value('id');
+        $branchRuc = '20100000001';
+        $branchId = DB::table('branches')->where('ruc', $branchRuc)->value('id');
         if (!$branchId) {
             $branchId = DB::table('branches')->insertGetId([
-                'tax_id' => $branchTaxId,
+                'ruc' => $branchRuc,
                 'company_id' => $companyId,
                 'legal_name' => 'Sucursal Principal',
                 'logo' => 'logo.png',

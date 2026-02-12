@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\View;
 use App\Models\Operation;
+use App\Models\Branch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
@@ -81,6 +82,19 @@ class ViewsController extends Controller
                     'abbreviation' => $validated['abbreviation'] ?? null,
                     'status'    => (bool) $validated['status'],  
                 ]);
+
+                $branchIds = Branch::query()->pluck('id');
+                if ($branchIds->isNotEmpty()) {
+                    $now = now();
+                    $viewBranchRows = $branchIds->map(fn ($branchId) => [
+                        'view_id' => $view->id,
+                        'branch_id' => $branchId,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ])->all();
+
+                    DB::table('view_branch')->insert($viewBranchRows);
+                }
 
                 $base = $validated['abbreviation'] ?: $validated['name'];
                 $actionBase = Str::slug($base, '.');

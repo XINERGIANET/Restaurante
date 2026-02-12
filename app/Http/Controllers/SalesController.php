@@ -68,7 +68,7 @@ class SalesController extends Controller
         }
 
         $sales = Movement::query()
-            ->with(['branch', 'person', 'movementType', 'documentType'])
+            ->with(['branch', 'person', 'movementType', 'documentType', 'salesMovement'])
             ->where('movement_type_id', 2) //2 es venta
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
@@ -91,42 +91,50 @@ class SalesController extends Controller
 
     public function create()
     {
-        $products = Product::where('type', 'PRODUCT')
+        $branchId = session('branch_id');
+
+        $products = Product::query()
+            ->where('type', 'PRODUCT')
             ->with('category')
+            ->orderBy('description')
             ->get()
-            ->map(function($product) {
+            ->map(function (Product $product) {
                 $imageUrl = ($product->image && !empty($product->image))
-                    ? asset('storage/' . $product->image) 
+                    ? asset('storage/' . ltrim($product->image, '/'))
                     : null;
+
                 return [
-                    'id' => $product->id,
+                    'id' => (int) $product->id,
                     'name' => $product->description,
-                    'price' => 0.00,
                     'img' => $imageUrl,
-                    'note' =>  $product->note ?? null,
-                    'category' => $product->category ? $product->category->description : 'Sin categoría'
+                    'note' => $product->note ?? null,
+                    'category' => $product->category ? $product->category->description : 'Sin categoria',
                 ];
-            });
-        $productsBranches = ProductBranch::where('branch_id', session('branch_id'))
+            })
+            ->values();
+
+        $productBranches = ProductBranch::query()
+            ->where('branch_id', $branchId)
             ->with('product')
             ->get()
-            ->filter(function($productBranch) {
-                return $productBranch->product !== null;
-            })
-            ->map(function($productBranch) {
+            ->filter(fn ($productBranch) => $productBranch->product !== null)
+            ->map(function ($productBranch) {
                 return [
-                    'id' => $productBranch->product_id,
-                    'name' => $productBranch->product->description,
-                    'price' => $productBranch->price,
-                    'image' => $productBranch->product->image,
-                    'note' => $productBranch->product->note ?? null,
+                    'id' => (int) $productBranch->id,
+                    'product_id' => (int) $productBranch->product_id,
+                    'price' => (float) $productBranch->price,
                 ];
-            });
+            })
+            ->values();
+
         return view('sales.create', [
             'products' => $products,
-            'productsBranches' => $productsBranches,
+            'productBranches' => $productBranches,
+            // Compatibilidad con implementaciones previas en la vista
+            'productsBranches' => $productBranches,
         ]);
     }
+
     // POS: vista de cobro
     public function charge(Request $request)
     {
@@ -713,13 +721,13 @@ class SalesController extends Controller
                 ],
                 'series' => '001',
                 'year' => Carbon::now()->year,
-                'detail_type' => 'DETAILED',
+                'detail_type' => 'DETALLADO',
                 'consumption' => 'N',
-                'payment_type' => 'CREDIT', // Crédito = pendiente de pago
+                'payment_type' => 'CONTADO', 
                 'status' => 'N',
-                'sale_type' => 'RETAIL',
+                'sale_type' => 'MINORISTA',
                 'currency' => 'PEN',
-                'exchange_rate' => 1.000,
+                'exchange_rate' => 3.5,
                 'subtotal' => $subtotal,
                 'tax' => $tax,
                 'total' => $total,
@@ -914,3 +922,4 @@ class SalesController extends Controller
         ];
     }
 }
+

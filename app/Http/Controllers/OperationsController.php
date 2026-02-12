@@ -4,7 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\View;
 use App\Models\Operation;
+use App\Models\Branch;
+use App\Models\Profile;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class OperationsController extends Controller
 {
@@ -56,7 +59,44 @@ class OperationsController extends Controller
     {
         $data = $this->validateData($request);
 
-        $view->operations()->create($data);
+        DB::transaction(function () use ($view, $data) {
+            $operation = $view->operations()->create($data);
+            $status = (int) ($operation->status ?? 1);
+            $now = now();
+
+            $branches = Branch::query()->pluck('id');
+            $profiles = Profile::query()->pluck('id');
+
+            if ($branches->isNotEmpty()) {
+                $branchOperationRows = $branches->map(fn ($branchId) => [
+                    'operation_id' => $operation->id,
+                    'branch_id' => $branchId,
+                    'status' => $status,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ])->all();
+
+                DB::table('branch_operation')->insert($branchOperationRows);
+            }
+
+            if ($branches->isNotEmpty() && $profiles->isNotEmpty()) {
+                $operationProfileBranchRows = [];
+                foreach ($branches as $branchId) {
+                    foreach ($profiles as $profileId) {
+                        $operationProfileBranchRows[] = [
+                            'operation_id' => $operation->id,
+                            'profile_id' => $profileId,
+                            'branch_id' => $branchId,
+                            'status' => $status,
+                            'created_at' => $now,
+                            'updated_at' => $now,
+                        ];
+                    }
+                }
+
+                DB::table('operation_profile_branch')->insert($operationProfileBranchRows);
+            }
+        });
 
         $viewId = $request->input('view_id');
 
