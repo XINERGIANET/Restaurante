@@ -72,9 +72,9 @@ class SalesController extends Controller
             ->where('movement_type_id', 2) //2 es venta
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
-                    $inner->where('number', 'like', "%{$search}%")
-                        ->orWhere('person_name', 'like', "%{$search}%")
-                        ->orWhere('user_name', 'like', "%{$search}%");
+                    $inner->where('number', 'ILIKE', "%{$search}%")
+                        ->orWhere('person_name', 'ILIKE', "%{$search}%")
+                        ->orWhere('user_name', 'ILIKE', "%{$search}%");
                 });
             })
             ->orderByDesc('id')

@@ -112,8 +112,8 @@ class PettyCashController extends Controller
             })
             ->when($search, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
-                    $q->where('person_name', 'like', "%{$search}%")
-                        ->orWhere('number', 'like', "%{$search}%");
+                    $q->where('person_name', 'ILIKE', "%{$search}%")
+                        ->orWhere('number', 'ILIKE', "%{$search}%");
                 });
             })
             ->orderBy('moved_at', 'desc')

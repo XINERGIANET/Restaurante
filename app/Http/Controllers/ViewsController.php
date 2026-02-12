@@ -47,7 +47,7 @@ class ViewsController extends Controller
 
         $views = View::query()
             ->when($search, function ($query, $search) {
-                $query->where('name', 'like', "%{$search}%");
+                $query->where('name', 'ILIKE', "%{$search}%");
             })
             ->paginate(10)
             ->withQueryString(); 

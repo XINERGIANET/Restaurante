@@ -44,7 +44,7 @@ class TaxRateController extends Controller
         }
         $taxRates = TaxRate::query()
             ->when($search, function ($query) use ($search) {
-                $query->where('description', 'like', "%{$search}%");
+                $query->where('description', 'ILIKE', "%{$search}%");
             })
             ->orderBy('order_num')
             ->paginate($perPage)

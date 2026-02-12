@@ -125,11 +125,13 @@
                         />
                     </div>
                     <div class="flex flex-wrap gap-2">
-                        <x-ui.button size="sm" variant="primary" type="submit">
-                            Buscar
+                        <x-ui.button size="md" variant="primary" type="submit" class="flex-1 sm:flex-none h-11 px-4 shadow-sm hover:shadow-md transition-all duration-200 active:scale-95" style="background-color: #244BB3; border-color: #244BB3;">
+                            <i class="ri-search-line text-gray-100"></i>
+                            <span class="font-medium text-gray-100">Buscar</span>
                         </x-ui.button>
-                        <x-ui.link-button size="sm" variant="outline" href="{{ route('admin.views.operations.index', $viewId ? [$view, 'view_id' => $viewId] : $view) }}">
-                            Limpiar
+                        <x-ui.link-button size="md" variant="outline" href="{{ route('admin.views.operations.index', $viewId ? [$view, 'view_id' => $viewId] : $view) }}" class="flex-1 sm:flex-none h-11 px-4 border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200">
+                            <i class="ri-refresh-line"></i>
+                            <span class="font-medium">Limpiar</span>
                         </x-ui.link-button>
                     </div>
                 </form>
@@ -181,8 +183,8 @@
             </div>
 
             {{-- TABLA DE RESULTADOS --}}
-            <div class="mt-4 overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
-                <div class="max-w-full overflow-x-auto custom-scrollbar">
+            <div class="mt-4 rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]" style="overflow: visible; max-height: none;">
+                <div class="max-w-full overflow-visible">
                     <table class="w-full min-w-[880px]">
                         <thead>
                             <tr class="border-b border-gray-100 dark:border-gray-800">

@@ -47,7 +47,7 @@ class MovementTypeController extends Controller
 
         $movementTypes = MovementType::query()
             ->when($search, function ($query) use ($search) {
-                $query->where('description', 'like', "%{$search}%");
+                $query->where('description', 'ILIKE', "%{$search}%");
             })
             ->orderByDesc('id')
             ->paginate($perPage)
