@@ -4,9 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\Module;
 use App\Models\MenuOption;
+use App\Models\Branch;
+use App\Models\Profile;
 use App\Models\View; 
 use App\Models\Operation;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class MenuOptionController extends Controller
 {
@@ -79,8 +83,35 @@ class MenuOptionController extends Controller
     public function store(Request $request, Module $module)
     {
         $data = $this->validateData($request);
-        
-        $module->menuOptions()->create($data);
+
+        DB::transaction(function () use ($module, $data) {
+            $menuOption = $module->menuOptions()->create($data);
+            $branchIds = Branch::query()->pluck('id');
+            $profileIds = Profile::query()->pluck('id');
+
+            if ($branchIds->isEmpty() || $profileIds->isEmpty()) {
+                return;
+            }
+
+            $now = now();
+            $rows = [];
+            foreach ($branchIds as $branchId) {
+                foreach ($profileIds as $profileId) {
+                    $rows[] = [
+                        'id' => (string) Str::uuid(),
+                        'name' => $menuOption->name,
+                        'profile_id' => $profileId,
+                        'menu_option_id' => $menuOption->id,
+                        'branch_id' => $branchId,
+                        'status' => false,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ];
+                }
+            }
+
+            DB::table('user_permission')->insert($rows);
+        });
 
         return redirect()
             ->route('admin.modules.menu_options.index', request('view_id') ? [$module, 'view_id' => request('view_id')] : $module)

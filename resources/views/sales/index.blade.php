@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-    <div x-data="{}">
+    <div x-data="{ openRow: null }">
         @php
             use Illuminate\Support\Facades\Route;
 
@@ -130,23 +130,29 @@
                 <table class="w-full">
                     <thead>
                         <tr class="text-white">
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6 first:rounded-tl-xl">
-                                <p class="font-semibold text-white text-theme-xs uppercase">Numero</p>
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="w-16 px-4 py-3 text-left sm:px-6 first:rounded-tl-xl">
+                                <p class="font-semibold text-white text-theme-xs uppercase">#</p>
                             </th>
                             <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
-                                <p class="font-semibold text-white text-theme-xs uppercase">Fecha</p>
-                            </th>
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
-                                <p class="font-semibold text-white text-theme-xs uppercase">Sucursal</p>
+                                <p class="font-semibold text-white text-theme-xs uppercase">Comprobante</p>
                             </th>
                             <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
                                 <p class="font-semibold text-white text-theme-xs uppercase">Tipo</p>
                             </th>
                             <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
-                                <p class="font-semibold text-white text-theme-xs uppercase">Documento</p>
+                                <p class="font-semibold text-white text-theme-xs uppercase">Subtotal</p>
                             </th>
                             <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
-                                <p class="font-semibold text-white text-theme-xs uppercase">Estado</p>
+                                <p class="font-semibold text-white text-theme-xs uppercase">IGV</p>
+                            </th>
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                                <p class="font-semibold text-white text-theme-xs uppercase">Total</p>
+                            </th>
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                                <p class="font-semibold text-white text-theme-xs uppercase">Persona</p>
+                            </th>
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                                <p class="font-semibold text-white text-theme-xs uppercase">Situación</p>
                             </th>
                             <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-right sm:px-6 last:rounded-tr-xl">
                                 <p class="font-semibold text-white text-theme-xs uppercase">Acciones</p>
@@ -156,20 +162,34 @@
                     <tbody>
                         @forelse ($sales as $sale)
                             <tr class="border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-white/5">
+                                <td class="px-4 py-4 sm:px-6">
+                                    <div class="flex items-center gap-2">
+                                        <button type="button"
+                                            @click="openRow === {{ $sale->id }} ? openRow = null : openRow = {{ $sale->id }}"
+                                            class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-500 text-white transition hover:bg-brand-600">
+                                            <i class="ri-add-line" x-show="openRow !== {{ $sale->id }}"></i>
+                                            <i class="ri-subtract-line" x-show="openRow === {{ $sale->id }}"></i>
+                                        </button>
+                                        <p class="font-medium text-gray-800 text-theme-sm dark:text-white/90">{{ $sale->id }}</p>
+                                    </div>
+                                </td>
                                 <td class="px-5 py-4 sm:px-6">
                                     <p class="font-medium text-gray-800 text-theme-sm dark:text-white/90">{{ $sale->number }}</p>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
-                                    <p class="text-gray-500 text-theme-sm dark:text-gray-400">{{ $sale->moved_at?->format('d/m/Y H:i') }}</p>
-                                </td>
-                                <td class="px-5 py-4 sm:px-6">
-                                    <p class="text-gray-500 text-theme-sm dark:text-gray-400">{{ $sale->branch?->legal_name ?? '-' }}</p>
-                                </td>
-                                <td class="px-5 py-4 sm:px-6">
-                                    <p class="text-gray-500 text-theme-sm dark:text-gray-400">{{ $sale->movementType?->description ?? '-' }}</p>
-                                </td>
-                                <td class="px-5 py-4 sm:px-6">
                                     <p class="text-gray-500 text-theme-sm dark:text-gray-400">{{ $sale->documentType?->name ?? '-' }}</p>
+                                </td>
+                                <td class="px-5 py-4 sm:px-6">
+                                    <p class="font-semibold text-gray-800 text-theme-md dark:text-white/90">{{ number_format((float) ($sale->salesMovement?->subtotal ?? 0), 2) }}</p>
+                                </td>
+                                <td class="px-5 py-4 sm:px-6">
+                                    <p class="font-semibold text-gray-800 text-theme-md dark:text-white/90">{{ number_format((float) ($sale->salesMovement?->tax ?? 0), 2) }}</p>
+                                </td>
+                                <td class="px-5 py-4 sm:px-6">
+                                    <p class="font-semibold text-gray-800 text-theme-md dark:text-white/90">{{ number_format((float) ($sale->salesMovement?->total ?? 0), 2) }}</p>
+                                </td>
+                                <td class="px-5 py-4 sm:px-6">
+                                    <p class="text-gray-700 text-theme-sm dark:text-gray-300">{{ $sale->person_name ?? '-' }}</p>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
                                     @php
@@ -186,7 +206,7 @@
                                     @endphp
                                     <x-ui.badge variant="light" color="{{ $badgeColor }}">
                                         {{ $badgeText }}
-                                    </x-ui.badge>
+                                        </x-ui.badge>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
                                     <div class="flex items-center justify-end gap-2">
@@ -304,9 +324,64 @@
                                     </div>
                                 </td>
                             </tr>
+                            <tr x-show="openRow === {{ $sale->id }}" x-cloak class="bg-gray-50/60 dark:bg-gray-800/40">
+                                <td colspan="9" class="px-6 py-4">
+                                    @php
+                                        $saleDetail = $sale->salesMovement;
+                                    @endphp
+                                    <div class="mx-auto w-full max-w-3xl">
+                                        <div class="grid gap-3 sm:grid-cols-2">
+                                            <div class="border-b border-gray-200 pb-2">
+                                                <span class="font-semibold text-gray-800">Fecha:</span>
+                                                <span class="text-gray-600">{{ $sale->moved_at?->format('Y-m-d h:i:s A') ?? '-' }}</span>
+                                            </div>
+                                            <div class="border-b border-gray-200 pb-2">
+                                                <span class="font-semibold text-gray-800">Usuario:</span>
+                                                <span class="text-gray-600">{{ $sale->user_name ?? '-' }}</span>
+                                            </div>
+                                            <div class="border-b border-gray-200 pb-2">
+                                                <span class="font-semibold text-gray-800">Responsable:</span>
+                                                <span class="text-gray-600">{{ $sale->responsible_name ?? '-' }}</span>
+                                            </div>
+                                            <div class="border-b border-gray-200 pb-2">
+                                                <span class="font-semibold text-gray-800">Tipo de detalle:</span>
+                                                <span class="text-gray-600">{{ $saleDetail?->detail_type ?? '-' }}</span>
+                                            </div>
+                                            <div class="border-b border-gray-200 pb-2">
+                                                <span class="font-semibold text-gray-800">Moneda:</span>
+                                                <span class="text-gray-600">{{ $saleDetail?->currency ?? '-' }}</span>
+                                            </div>
+                                            <div class="border-b border-gray-200 pb-2">
+                                                <span class="font-semibold text-gray-800">T. cambio:</span>
+                                                <span class="text-gray-600">{{ number_format((float) ($saleDetail?->exchange_rate ?? 0), 3) }}</span>
+                                            </div>
+                                            <div class="border-b border-gray-200 pb-2">
+                                                <span class="font-semibold text-gray-800">Por consumo:</span>
+                                                <span class="text-gray-600">{{ ($saleDetail?->consumption ?? 'N') === 'S' ? 'Si' : 'No' }}</span>
+                                            </div>
+                                            <div class="border-b border-gray-200 pb-2">
+                                                <span class="font-semibold text-gray-800">Tipo de pago:</span>
+                                                <span class="text-gray-600">{{ $saleDetail?->payment_type ?? '-' }}</span>
+                                            </div>
+                                            <div class="border-b border-gray-200 pb-2 sm:col-span-2">
+                                                <span class="font-semibold text-gray-800">Comentario:</span>
+                                                <span class="text-gray-600">{{ $sale->comment ?: '-' }}</span>
+                                            </div>
+                                            <div class="border-b border-gray-200 pb-2">
+                                                <span class="font-semibold text-gray-800">Estado en SUNAT:</span>
+                                                <span class="text-gray-600">{{ $saleDetail?->status ?? '-' }}</span>
+                                            </div>
+                                            <div class="border-b border-gray-200 pb-2">
+                                                <span class="font-semibold text-gray-800">Origen:</span>
+                                                <span class="text-gray-600">{{ $sale->movementType?->description ?? '-' }} - {{ $sale->number }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="px-6 py-12">
+                                <td colspan="9" class="px-6 py-12">
                                     <div class="flex flex-col items-center gap-3 text-center text-sm text-gray-500">
                                         <div class="rounded-full bg-gray-100 p-3 text-gray-400 dark:bg-gray-800 dark:text-gray-300">
                                             <i class="ri-shopping-bag-3-line"></i>

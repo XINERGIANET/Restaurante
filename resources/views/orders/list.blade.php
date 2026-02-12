@@ -157,29 +157,29 @@
                         @forelse ($orders as $order)
                             <tr class="border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-white/5">
                                 <td class="px-5 py-4 sm:px-6">
-                                    <p class="font-medium text-gray-800 text-theme-sm dark:text-white/90">{{ $order->number }}</p>
+                                    <p class="font-medium text-gray-800 text-theme-sm dark:text-white/90">{{ $order->movement?->number ?? '-' }}</p>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
-                                    <p class="text-gray-500 text-theme-sm dark:text-gray-400">{{ $order->moved_at?->format('d/m/Y H:i') }}</p>
+                                    <p class="text-gray-500 text-theme-sm dark:text-gray-400">{{ $order->movement?->moved_at?->format('d/m/Y H:i') ?? '-' }}</p>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
-                                    <p class="text-gray-500 text-theme-sm dark:text-gray-400">{{ $order->branch?->legal_name ?? '-' }}</p>
+                                    <p class="text-gray-500 text-theme-sm dark:text-gray-400">{{ $order->movement?->branch?->legal_name ?? $order->branch?->legal_name ?? '-' }}</p>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
-                                    <p class="text-gray-500 text-theme-sm dark:text-gray-400">{{ $order->movementType?->description ?? '-' }}</p>
+                                    <p class="text-gray-500 text-theme-sm dark:text-gray-400">{{ $order->movement?->movementType?->description ?? '-' }}</p>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
-                                    <p class="text-gray-500 text-theme-sm dark:text-gray-400">{{ $order->documentType?->name ?? '-' }}</p>
+                                    <p class="text-gray-500 text-theme-sm dark:text-gray-400">{{ $order->movement?->documentType?->name ?? '-' }}</p>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
                                     @php
-                                        $status = $order->status ?? 'A';
-                                        $badgeColor = 'success';
-                                        $badgeText = 'Activo';
-                                        if ($status === 'P') {
-                                            $badgeColor = 'warning';
-                                            $badgeText = 'Pendiente';
-                                        } elseif ($status !== 'A') {
+                                        $status = strtoupper((string) ($order->status ?? 'PENDIENTE'));
+                                        $badgeColor = 'warning';
+                                        $badgeText = 'Pendiente';
+                                        if (in_array($status, ['FINALIZADO', 'F', 'ACTIVO', 'A'], true)) {
+                                            $badgeColor = 'success';
+                                            $badgeText = 'Activo';
+                                        } elseif (in_array($status, ['CANCELADO', 'I', 'INACTIVO'], true)) {
                                             $badgeColor = 'error';
                                             $badgeText = 'Inactivo';
                                         }
@@ -196,14 +196,14 @@
                                                     $action = $operation->action ?? '';
                                                     $isDelete = str_contains($action, 'destroy');
                                                     $isCharge = str_contains($action, 'charge');
-                                                    if ($isCharge && ($order->status ?? 'A') !== 'P') {
+                                                    if ($isCharge && !in_array(strtoupper((string) $order->status), ['P', 'PENDIENTE'], true)) {
                                                         continue;
                                                     }
 
                                                     $actionUrl = $resolveActionUrl($action, $order, $operation);
                                                     if ($isCharge && $actionUrl !== '#') {
                                                         $separator = str_contains($actionUrl, '?') ? '&' : '?';
-                                                        $actionUrl .= $separator . 'movement_id=' . urlencode($order->id);
+                                                        $actionUrl .= $separator . 'movement_id=' . urlencode($order->movement_id);
                                                     }
 
                                                     if ($actionUrl === '#') {
@@ -248,12 +248,12 @@
                                                 @endif
                                             @endforeach
                                         @else
-                                            @if(($order->status ?? 'A') === 'P')
+                                            @if(in_array(strtoupper((string) $order->status), ['P', 'PENDIENTE'], true))
                                                 <div class="relative group">
                                                     <x-ui.link-button
                                                         size="icon"
                                                         variant="primary"
-                                                        href="{{ route('admin.orders.charge', array_merge(['movement_id' => $order->id], $viewId ? ['view_id' => $viewId] : [])) }}"
+                                                        href="{{ route('admin.orders.charge', array_merge(['movement_id' => $order->movement_id], $viewId ? ['view_id' => $viewId] : [])) }}"
                                                         className="rounded-xl"
                                                         style="background-color: #10B981; color: #FFFFFF;"
                                                         aria-label="Cobrar"

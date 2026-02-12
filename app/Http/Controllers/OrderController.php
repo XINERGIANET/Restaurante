@@ -69,24 +69,35 @@ class OrderController extends Controller
                 ->get();
         }
 
-        $orders = Movement::query()
-            ->with(['branch', 'person', 'movementType', 'documentType'])
-            ->where('movement_type_id', 2)
-            ->where(function ($query) {
-                $query->where('comment', 'like', 'Pedido del restaurante%')
-                    ->orWhere('comment', 'like', '%[BORRADOR]%');
+        $orders = OrderMovement::query()
+            ->with([
+                'movement.branch',
+                'movement.person',
+                'movement.movementType',
+                'movement.documentType',
+                'table',
+                'area',
+            ])
+            ->when($branchId, function ($query) use ($branchId) {
+                $query->where('branch_id', $branchId);
             })
+            
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
-                    $inner->where('number', 'like', "%{$search}%")
-                        ->orWhere('person_name', 'like', "%{$search}%")
-                        ->orWhere('user_name', 'like', "%{$search}%");
+                    $inner->whereHas('movement', function ($movementQuery) use ($search) {
+                        $movementQuery->where(function ($movementInner) use ($search) {
+                            $movementInner->where('number', 'like', "%{$search}%")
+                                ->orWhere('person_name', 'like', "%{$search}%")
+                                ->orWhere('user_name', 'like', "%{$search}%");
+                        });
+                    })
+                    ->orWhere('status', 'like', "%{$search}%");
                 });
             })
             ->orderByDesc('id')
             ->paginate($perPage)
             ->withQueryString();
-
+      
         return view('orders.list', [
             'orders' => $orders,
             'search' => $search,
@@ -95,7 +106,7 @@ class OrderController extends Controller
         ]);
     }
 
-    public function index()
+    public function index(Request $request)
     {
         $branchId = session('branch_id');
 
@@ -126,10 +137,14 @@ class OrderController extends Controller
                 $situation = (in_array($rawSituation, ['PENDIENTE', 'OCUPADA', 'ocupada', 'Pendiente'], true)) ? 'ocupada' : 'libre';
             }
 
-            $orderMovement = OrderMovement::where('table_id', $table->id)
+            $orderMovement = OrderMovement::with('movement')
+                ->where('table_id', $table->id)
                 ->whereIn('status', ['PENDIENTE', 'P'])
+                ->orderByDesc('id')
                 ->first();
             $totalAmount = $orderMovement ? (float) $orderMovement->subtotal : 0;
+            $taxAmount = $orderMovement ? (float) ($orderMovement->tax ?? 0) : 0;
+            $totalWithTax = round($totalAmount + $taxAmount, 2);
 
             return [
                 'id' => $table->id,
@@ -137,9 +152,9 @@ class OrderController extends Controller
                 'area_id' => (int) $table->area_id,
                 'situation' => $situation,
                 'diners' => (int) ($table->capacity ?? 0),
-                'waiter' => $orderMovement?->user_name ?? '-',
-                'client' => $orderMovement?->person_name ?? '-',
-                'total' => number_format($totalAmount, 2, '.', '') + number_format($orderMovement?->tax, 2, '.', ''),
+                'waiter' => $orderMovement?->movement?->user_name ?? '-',
+                'client' => $orderMovement?->movement?->person_name ?? '-',
+                'total' => $totalWithTax,
                 'order_movement_id' => $orderMovement?->id ?? null,
                 'elapsed' => $elapsed,
             ];
@@ -156,6 +171,7 @@ class OrderController extends Controller
         return view('orders.index', [
             'areas' => $areasArray,
             'tables' => $tablesPayload,
+            'user' => $request->user(),
         ]);
     }
 
@@ -356,67 +372,99 @@ class OrderController extends Controller
         DB::beginTransaction();
 
         try {
-            // Buscar tipo de movimiento y tipo de documento genéricos para el pedido
-            $movementType = MovementType::where('description', 'like', '%pedido%')
-                ->orWhere('description', 'like', '%orden%')
-                ->first() ?? MovementType::first();
+            // Si hay mesa, buscar pedido pendiente existente para actualizar en lugar de crear uno nuevo
+            $existingOrderMovement = $tableId
+                ? OrderMovement::where('table_id', $tableId)
+                    ->whereIn('status', ['PENDIENTE', 'P'])
+                    ->orderByDesc('id')
+                    ->first()
+                : null;
 
-            $documentType = DocumentType::first();
+            if ($existingOrderMovement && !empty($items)) {
+                // ACTUALIZAR pedido existente
+                $existingOrderMovement->update([
+                    'subtotal' => $subtotal,
+                    'tax' => $tax,
+                    'total' => $total,
+                    'people_count' => $peopleCount,
+                    'delivery_amount' => $deliveryAmount,
+                    'contact_phone' => $request->filled('contact_phone') ? $request->contact_phone : null,
+                    'delivery_address' => $request->filled('delivery_address') ? $request->delivery_address : null,
+                    'delivery_time' => $request->filled('delivery_time') ? $request->delivery_time : null,
+                ]);
 
-            if (!$movementType || !$documentType) {
-                throw new \Exception('No hay tipo de movimiento o tipo de documento configurado para pedidos.');
+                $existingOrderMovement->movement?->update([
+                    'moved_at' => now(),
+                    'user_id' => $user?->id,
+                    'user_name' => $user?->name ?? 'Sistema',
+                ]);
+
+                // Eliminar detalles antiguos y crear los nuevos
+                $existingOrderMovement->details()->forceDelete();
+
+                $orderMovement = $existingOrderMovement;
+                $movement = $orderMovement->movement;
+            } else {
+                // CREAR nuevo pedido
+                $movementType = MovementType::where('description', 'like', '%pedido%')
+                    ->orWhere('description', 'like', '%orden%')
+                    ->first() ?? MovementType::first();
+
+                $documentType = DocumentType::first();
+
+                if (!$movementType || !$documentType) {
+                    throw new \Exception('No hay tipo de movimiento o tipo de documento configurado para pedidos.');
+                }
+
+                $todayCount = Movement::whereDate('created_at', now()->toDateString())->count() + 1;
+                $number = 'ORD-' . now()->format('Ymd') . '-' . str_pad($todayCount, 4, '0', STR_PAD_LEFT);
+
+                $movement = Movement::create([
+                    'number' => $number,
+                    'moved_at' => now(),
+                    'user_id' => $user?->id,
+                    'user_name' => $user?->name ?? 'Sistema',
+                    'person_id' => null,
+                    'person_name' => 'Público General',
+                    'responsible_id' => $user?->id,
+                    'responsible_name' => $user?->name ?? 'Sistema',
+                    'comment' => 'Pedido desde punto de venta',
+                    'status' => 'P',
+                    'movement_type_id' => $movementType->id,
+                    'document_type_id' => $documentType->id,
+                    'branch_id' => $branchId,
+                    'parent_movement_id' => null,
+                ]);
+
+                $orderMovement = OrderMovement::create([
+                    'currency' => 'PEN',
+                    'exchange_rate' => 1,
+                    'subtotal' => $subtotal,
+                    'tax' => $tax,
+                    'total' => $total,
+                    'people_count' => $peopleCount,
+                    'finished_at' => null,
+                    'table_id' => $tableId,
+                    'area_id' => $areaId,
+                    'delivery_amount' => $deliveryAmount,
+                    'contact_phone' => $request->filled('contact_phone') ? $request->contact_phone : null,
+                    'delivery_address' => $request->filled('delivery_address') ? $request->delivery_address : null,
+                    'delivery_time' => $request->filled('delivery_time') ? $request->delivery_time : null,
+                    'status' => 'PENDIENTE',
+                    'movement_id' => $movement->id,
+                    'branch_id' => $branchId,
+                ]);
             }
 
-            // Generar número simple de movimiento para pedidos
-            $todayCount = Movement::whereDate('created_at', now()->toDateString())->count() + 1;
-            $number = 'ORD-' . now()->format('Ymd') . '-' . str_pad($todayCount, 4, '0', STR_PAD_LEFT);
-
-            $movement = Movement::create([
-                'number' => $number,
-                'moved_at' => now(),
-                'user_id' => $user?->id,
-                'user_name' => $user?->name ?? 'Sistema',
-                'person_id' => null,
-                'person_name' => 'Público General',
-                'responsible_id' => $user?->id,
-                'responsible_name' => $user?->name ?? 'Sistema',
-                'comment' => 'Pedido desde punto de venta',
-                'status' => 'P', // Pendiente
-                'movement_type_id' => $movementType->id,
-                'document_type_id' => $documentType->id,
-                'branch_id' => $branchId,
-                'parent_movement_id' => null,
-            ]);
-
-            $orderMovement = OrderMovement::create([
-                'currency' => 'PEN',
-                'exchange_rate' => 1,
-                'subtotal' => $subtotal,
-                'tax' => $tax,
-                'total' => $total,
-                'people_count' => $peopleCount,
-                'finished_at' => null,
-                'table_id' => $tableId,
-                'area_id' => $areaId,
-                'delivery_amount' => $deliveryAmount,
-                'contact_phone' => $request->filled('contact_phone') ? $request->contact_phone : null,
-                'delivery_address' => $request->filled('delivery_address') ? $request->delivery_address : null,
-                'delivery_time' => $request->filled('delivery_time') ? $request->delivery_time : null,
-                'status' => 'PENDIENTE',
-                'movement_id' => $movement->id,
-                'branch_id' => $branchId,
-            ]);
-
-        // Marcar la mesa como ocupada / con pedido pendiente
-        if ($tableId) {
-            $table = Table::find($tableId);
-
-            if ($table) {
-                $table->situation = 'ocupada';
-                $table->opened_at = now();
-                $table->save();
+            // Marcar la mesa como ocupada
+            if ($tableId) {
+                $table = Table::find($tableId);
+                if ($table) {
+                    $table->situation = 'ocupada';
+                    $table->opened_at = $table->opened_at ?? now();
+                    $table->save();
+                }
             }
-        }
 
         foreach ($items as $rawItem) {
             $productId = $rawItem['product_id'] ?? $rawItem['pId'] ?? null;
@@ -431,8 +479,8 @@ class OrderController extends Controller
                 $unitId = Unit::query()->value('id'); // unidad por defecto
             }
 
-            $code = $rawItem['code'] ?? ($product->code ?? (string) $productId);
-            $description = $rawItem['description'] ?? ($product->description ?? ($rawItem['name'] ?? 'Producto'));
+            $code = $rawItem['code'] ?? ($product?->code ?? (string) $productId);
+            $description = $rawItem['description'] ?? ($product?->description ?? ($rawItem['name'] ?? 'Producto'));
 
             OrderMovementDetail::create([
                 'order_movement_id' => $orderMovement->id,
@@ -533,9 +581,19 @@ class OrderController extends Controller
                 'message' => 'Mesa no encontrada',
             ], 404);
         }
+
+        // Cancelar pedidos pendientes asociados a la mesa
+        OrderMovement::where('table_id', $tableId)
+            ->whereIn('status', ['PENDIENTE', 'P'])
+            ->update([
+                'status' => 'CANCELADO',
+                'finished_at' => now(),
+            ]);
+
         $table->situation = 'libre';
         $table->opened_at = null;
         $table->save();
+
         return response()->json([
             'success' => true,
             'message' => 'Mesa liberada correctamente',

@@ -32,7 +32,7 @@
             @endforeach
         };
 
-        console.log('Loaded productBranchData:', window.productBranchData);
+        
     </script>
 
     <div x-data="{
@@ -426,7 +426,7 @@
             @close-product-branch-modal.window="open = false"
             :isOpen="false"
             :showCloseButton="false"
-            class="max-w-5xl"
+            class="w-full max-w-5xl sm:max-w-6xl"
         >
             <div class="p-6 sm:p-8">
                 <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -483,8 +483,8 @@
         </x-ui.modal>
 
         <x-ui.modal x-data="{ open: false }" @open-product-modal.window="open = true"
-            @close-product-modal.window="open = false" :isOpen="false" :showCloseButton="false" class="max-w-5xl">
-            <div class="p-6 sm:p-8">
+            @close-product-modal.window="open = false" :isOpen="false" :showCloseButton="false" class="w-full max-w-5xl sm:max-w-6xl lg:max-w-7xl">
+            <div class="flex w-full flex-col min-h-0 p-6 sm:p-8">
                 <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div class="flex items-center gap-4">
                         <div
@@ -510,13 +510,18 @@
                     </div>
                 @endif
 
-                <form method="POST" action="{{ route('admin.products.store') }}" enctype="multipart/form-data" class="space-y-6">
+                <form method="POST" action="{{ route('admin.products.store') }}" enctype="multipart/form-data" class="flex w-full flex-col min-h-0 space-y-6">
                     @csrf
                     @if ($viewId)
                         <input type="hidden" name="view_id" value="{{ $viewId }}">
                     @endif
 
-                    @include('products._form', ['product' => null])
+                    @include('products._form', [
+                        'product' => null,
+                        'currentBranch' => $currentBranch ?? null,
+                        'taxRates' => $taxRates ?? collect(),
+                        'productBranch' => null,
+                    ])
 
                     <div class="flex flex-wrap gap-3">
                         <x-ui.button type="submit" size="md" variant="primary">

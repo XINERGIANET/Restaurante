@@ -68,7 +68,7 @@ class SalesController extends Controller
         }
 
         $sales = Movement::query()
-            ->with(['branch', 'person', 'movementType', 'documentType'])
+            ->with(['branch', 'person', 'movementType', 'documentType', 'salesMovement'])
             ->where('movement_type_id', 2) //2 es venta
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
@@ -91,42 +91,50 @@ class SalesController extends Controller
 
     public function create()
     {
-        $products = Product::where('type', 'PRODUCT')
+        $branchId = session('branch_id');
+
+        $products = Product::query()
+            ->where('type', 'PRODUCT')
             ->with('category')
+            ->orderBy('description')
             ->get()
-            ->map(function($product) {
+            ->map(function (Product $product) {
                 $imageUrl = ($product->image && !empty($product->image))
-                    ? asset('storage/' . $product->image) 
+                    ? asset('storage/' . ltrim($product->image, '/'))
                     : null;
+
                 return [
-                    'id' => $product->id,
+                    'id' => (int) $product->id,
                     'name' => $product->description,
-                    'price' => 0.00,
                     'img' => $imageUrl,
-                    'note' =>  $product->note ?? null,
-                    'category' => $product->category ? $product->category->description : 'Sin categoría'
+                    'note' => $product->note ?? null,
+                    'category' => $product->category ? $product->category->description : 'Sin categoria',
                 ];
-            });
-        $productsBranches = ProductBranch::where('branch_id', session('branch_id'))
+            })
+            ->values();
+
+        $productBranches = ProductBranch::query()
+            ->where('branch_id', $branchId)
             ->with('product')
             ->get()
-            ->filter(function($productBranch) {
-                return $productBranch->product !== null;
-            })
-            ->map(function($productBranch) {
+            ->filter(fn ($productBranch) => $productBranch->product !== null)
+            ->map(function ($productBranch) {
                 return [
-                    'id' => $productBranch->product_id,
-                    'name' => $productBranch->product->description,
-                    'price' => $productBranch->price,
-                    'image' => $productBranch->product->image,
-                    'note' => $productBranch->product->note ?? null,
+                    'id' => (int) $productBranch->id,
+                    'product_id' => (int) $productBranch->product_id,
+                    'price' => (float) $productBranch->price,
                 ];
-            });
+            })
+            ->values();
+
         return view('sales.create', [
             'products' => $products,
-            'productsBranches' => $productsBranches,
+            'productBranches' => $productBranches,
+            // Compatibilidad con implementaciones previas en la vista
+            'productsBranches' => $productBranches,
         ]);
     }
+
     // POS: vista de cobro
     public function charge(Request $request)
     {
@@ -149,6 +157,28 @@ class SalesController extends Controller
             ->where('status', true)
             ->orderBy('order_num')
             ->get(['id', 'description', 'type', 'icon', 'order_num']);
+        
+        $cashRegisters = CashRegister::query()
+            ->orderByRaw("CASE WHEN status = 'A' THEN 0 ELSE 1 END")
+            ->orderBy('number')
+            ->get(['id', 'number', 'status']);
+
+        $branchId = session('branch_id');
+        $people = Person::query()
+            ->when($branchId, fn ($query) => $query->where('branch_id', $branchId))
+            ->orderBy('first_name')
+            ->orderBy('last_name')
+            ->get(['id', 'first_name', 'last_name', 'document_number']);
+
+        $defaultClientId = Person::query()
+            ->when($branchId, fn ($query) => $query->where('branch_id', $branchId))
+            ->whereRaw('UPPER(first_name) = ?', ['CLIENTES'])
+            ->whereRaw('UPPER(last_name) = ?', ['VARIOS'])
+            ->value('id');
+
+        if (!$defaultClientId) {
+            $defaultClientId = 4;
+        }
         
         // Si se pasa un movement_id, cargar la venta pendiente o con pago parcial
         $draftSale = null;
@@ -173,6 +203,7 @@ class SalesController extends Controller
                 $draftSale = [
                     'id' => $movement->id,
                     'number' => $movement->number,
+                    'clientId' => $movement->person_id,
                     'items' => $movement->salesMovement->details->map(function($detail) {
                         return [
                             'pId' => $detail->product_id,
@@ -199,6 +230,9 @@ class SalesController extends Controller
             'paymentMethods' => $paymentMethods,
             'paymentGateways' => $paymentGateways,
             'cards' => $cards,
+            'cashRegisters' => $cashRegisters,
+            'people' => $people,
+            'defaultClientId' => $defaultClientId,
             'draftSale' => $draftSale,
             'pendingAmount' => $pendingAmount,
             'products' => $products, // Mapa de ID => descripción
@@ -217,6 +251,8 @@ class SalesController extends Controller
                 // Compatibilidad: algunos flujos pueden enviar `comment` en lugar de `note`
                 'items.*.comment' => 'nullable|string|max:65535',
                 'document_type_id' => 'required|integer|exists:document_types,id',
+                'cash_register_id' => 'required|integer|exists:cash_registers,id',
+                'person_id' => 'nullable|integer|exists:people,id',
                 'payment_methods' => 'required|array|min:1',
                 'payment_methods.*.payment_method_id' => 'required|integer|exists:payment_methods,id',
                 'payment_methods.*.amount' => 'required|numeric|min:0.01',
@@ -267,6 +303,14 @@ class SalesController extends Controller
             
             $documentType = DocumentType::findOrFail($request->document_type_id);
 
+            $selectedPerson = null;
+            if (!empty($validated['person_id'])) {
+                $selectedPerson = Person::query()
+                    ->where('id', $validated['person_id'])
+                    ->where('branch_id', $branchId)
+                    ->firstOrFail();
+            }
+
             // Obtener concepto de pago para ventas (Pago de cliente - ID 5)
             $paymentConcept = PaymentConcept::find(5); // Pago de cliente
             
@@ -294,18 +338,17 @@ class SalesController extends Controller
                 throw new \Exception('No se encontró un concepto de pago válido. Por favor, crea un concepto de pago primero.');
             }
 
-            // Calcular totales
-            $subtotal = 0;
-            $tax = 0;
+            // Los precios del front ya incluyen IGV.
+            $total = 0;
             foreach ($request->items as $item) {
-                $itemTotal = $item['qty'] * $item['price'];
-                $subtotal += $itemTotal;
+                $lineTotal = (float) $item['qty'] * (float) $item['price'];
+                $total += $lineTotal;
             }
-            $tax = $subtotal * 0.10; // 10% de impuesto
-            $total = $subtotal + $tax;
+            $subtotal = $total / 1.10;
+            $tax = $total - $subtotal;
 
-            // Obtener caja y turno activos
-            $cashRegister = CashRegister::where('status', 'A')->first() ?? CashRegister::first();
+            // Caja seleccionada desde el formulario de cobro
+            $cashRegister = CashRegister::find($validated['cash_register_id']);
             if (!$cashRegister) {
                 throw new \Exception('No hay caja registradora disponible');
             }
@@ -316,15 +359,14 @@ class SalesController extends Controller
                 throw new \Exception("La suma de los métodos de pago ({$totalPaymentMethods}) debe ser igual al total ({$total})");
             }
 
-            // Calcular totales
-            $subtotal = 0;
-            $tax = 0;
+            // Recalcular con la misma regla (precio final con IGV incluido)
+            $total = 0;
             foreach ($request->items as $item) {
-                $itemTotal = $item['qty'] * $item['price'];
-                $subtotal += $itemTotal;
+                $lineTotal = (float) $item['qty'] * (float) $item['price'];
+                $total += $lineTotal;
             }
-            $tax = $subtotal * 0.10; // 10% de impuesto
-            $total = $subtotal + $tax;
+            $subtotal = $total / 1.10;
+            $tax = $total - $subtotal;
 
             // Calcular el total recibido de todos los métodos de pago
             $amountReceived = $totalPaymentMethods;
@@ -351,6 +393,10 @@ class SalesController extends Controller
                     'comment' => $request->notes ?? 'Venta completada desde punto de venta',
                     'status' => 'A', // Siempre Activo (pago completo)
                     'document_type_id' => $documentType->id,
+                    'person_id' => $selectedPerson?->id,
+                    'person_name' => $selectedPerson
+                        ? trim(($selectedPerson->first_name ?? '') . ' ' . ($selectedPerson->last_name ?? ''))
+                        : 'Publico General',
                 ]);
                 
                 // Eliminar los detalles anteriores para recrearlos
@@ -366,8 +412,10 @@ class SalesController extends Controller
                     'moved_at' => now(),
                     'user_id' => $user?->id,
                     'user_name' => $user?->name ?? 'Sistema',
-                    'person_id' => null, // Público General
-                    'person_name' => 'Público General',
+                    'person_id' => $selectedPerson?->id,
+                    'person_name' => $selectedPerson
+                        ? trim(($selectedPerson->first_name ?? '') . ' ' . ($selectedPerson->last_name ?? ''))
+                        : 'Publico General',
                     'responsible_id' => $user?->id,
                     'responsible_name' => $user?->name ?? 'Sistema',
                     'comment' => $request->notes ?? 'Venta desde punto de venta',
@@ -453,8 +501,10 @@ class SalesController extends Controller
                 $taxRate = $productBranch->taxRate;
                 $taxRateValue = $taxRate ? ($taxRate->tax_rate / 100) : 0.10;
 
-                $itemSubtotal = $item['qty'] * $item['price'];
-                $itemTax = $itemSubtotal * $taxRateValue;
+                // Precio de venta incluye impuesto.
+                $itemTotal = (float) $item['qty'] * (float) $item['price'];
+                $itemSubtotal = $taxRateValue > 0 ? ($itemTotal / (1 + $taxRateValue)) : $itemTotal;
+                $itemTax = $itemTotal - $itemSubtotal;
 
                 // Nota por producto (compatibilidad note/comment) y normalización
                 $detailNoteRaw = data_get($item, 'note', data_get($item, 'comment'));
@@ -479,7 +529,7 @@ class SalesController extends Controller
                         'tax_rate' => $taxRate->tax_rate,
                     ] : null,
                     'quantity' => $item['qty'],
-                    'amount' => $itemSubtotal + $itemTax,
+                    'amount' => $itemTotal,
                     'discount_percentage' => 0.000000,
                     'original_amount' => $itemSubtotal,
                     'comment' => $detailNote,
@@ -503,6 +553,8 @@ class SalesController extends Controller
                 // Actualizar el total del CashMovement
                 $cashMovement->update([
                     'total' => $total,
+                    'cash_register_id' => $cashRegister->id,
+                    'cash_register' => $cashRegister->number ?? 'Caja Principal',
                 ]);
             } else {
                 // Crear nuevo CashMovement (entrada de dinero)
@@ -668,15 +720,14 @@ class SalesController extends Controller
                 throw new \Exception('No se encontró un tipo de documento válido.');
             }
 
-            // Calcular totales
-            $subtotal = 0;
-            $tax = 0;
+            // Los precios del front ya incluyen IGV.
+            $total = 0;
             foreach ($request->items as $item) {
-                $itemTotal = $item['qty'] * $item['price'];
-                $subtotal += $itemTotal;
+                $lineTotal = (float) $item['qty'] * (float) $item['price'];
+                $total += $lineTotal;
             }
-            $tax = $subtotal * 0.10; // 10% de impuesto
-            $total = $subtotal + $tax;
+            $subtotal = $total / 1.10;
+            $tax = $total - $subtotal;
 
             // Generar número de movimiento
             $number = 'V-' . Carbon::now()->format('Ymd') . '-' . str_pad(Movement::whereDate('created_at', Carbon::today())->count() + 1, 4, '0', STR_PAD_LEFT);
@@ -713,13 +764,13 @@ class SalesController extends Controller
                 ],
                 'series' => '001',
                 'year' => Carbon::now()->year,
-                'detail_type' => 'DETAILED',
+                'detail_type' => 'DETALLADO',
                 'consumption' => 'N',
-                'payment_type' => 'CREDIT', // Crédito = pendiente de pago
+                'payment_type' => 'CONTADO', 
                 'status' => 'N',
-                'sale_type' => 'RETAIL',
+                'sale_type' => 'MINORISTA',
                 'currency' => 'PEN',
-                'exchange_rate' => 1.000,
+                'exchange_rate' => 3.5,
                 'subtotal' => $subtotal,
                 'tax' => $tax,
                 'total' => $total,
@@ -747,8 +798,10 @@ class SalesController extends Controller
                 $taxRate = $productBranch->taxRate;
                 $taxRateValue = $taxRate ? ($taxRate->tax_rate / 100) : 0.10;
 
-                $itemSubtotal = $item['qty'] * $item['price'];
-                $itemTax = $itemSubtotal * $taxRateValue;
+                // Precio de venta incluye impuesto.
+                $itemTotal = (float) $item['qty'] * (float) $item['price'];
+                $itemSubtotal = $taxRateValue > 0 ? ($itemTotal / (1 + $taxRateValue)) : $itemTotal;
+                $itemTax = $itemTotal - $itemSubtotal;
 
                 // Nota por producto (compatibilidad note/comment) y normalización
                 $detailNoteRaw = data_get($item, 'note', data_get($item, 'comment'));
@@ -774,7 +827,7 @@ class SalesController extends Controller
                         'tax_rate' => $taxRate->tax_rate,
                     ] : null,
                     'quantity' => $item['qty'],
-                    'amount' => $itemSubtotal + $itemTax,
+                    'amount' => $itemTotal,
                     'discount_percentage' => 0.000000,
                     'original_amount' => $itemSubtotal,
                     'comment' => $detailNote,
@@ -914,3 +967,5 @@ class SalesController extends Controller
         ];
     }
 }
+
+

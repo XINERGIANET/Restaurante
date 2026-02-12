@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\ParameterCategories;
 use App\Models\Parameters;
+use App\Models\Branch;
 use App\Models\Operation;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ParameterController extends Controller
 {
@@ -89,12 +91,28 @@ class ParameterController extends Controller
         ]);
         
         try {
-            Parameters::create([
-                'description' => $request->description,
-                'value' => $request->value,
-                'parameter_category_id' => $request->parameter_category_id,
-                'status' => $request->status ? $request->status : 1,
-            ]);
+            DB::transaction(function () use ($request) {
+                $parameter = Parameters::create([
+                    'description' => $request->description,
+                    'value' => $request->value,
+                    'parameter_category_id' => $request->parameter_category_id,
+                    'status' => $request->status ? $request->status : 1,
+                ]);
+
+                $branchIds = Branch::query()->pluck('id');
+                if ($branchIds->isNotEmpty()) {
+                    $now = now();
+                    $rows = $branchIds->map(fn ($branchId) => [
+                        'value' => $parameter->value,
+                        'parameter_id' => $parameter->id,
+                        'branch_id' => $branchId,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ])->all();
+
+                    DB::table('branch_parameters')->insert($rows);
+                }
+            });
             $viewId = $request->input('view_id');
             return redirect()
                 ->route('admin.parameters.index', $viewId ? ['view_id' => $viewId] : [])

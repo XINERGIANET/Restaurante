@@ -74,28 +74,24 @@ class BranchSeeder extends Seeder
         // Crear sucursales de prueba
         $branches = [
             [
-                'tax_id' => $companyTaxId . '-001',
                 'ruc' => '20100000001',
                 'legal_name' => 'Sucursal Principal',
                 'address' => 'Av. Principal 123, Lima Centro',
                 'location_id' => $locationIds[0] ?? null,
             ],
             [
-                'tax_id' => $companyTaxId . '-002',
                 'ruc' => '20100000002',
                 'legal_name' => 'Sucursal Miraflores',
                 'address' => 'Av. Larco 456, Miraflores',
                 'location_id' => $locationIds[1] ?? null,
             ],
             [
-                'tax_id' => $companyTaxId . '-003',
                 'ruc' => '20100000003',
                 'legal_name' => 'Sucursal San Isidro',
                 'address' => 'Av. Javier Prado 789, San Isidro',
                 'location_id' => $locationIds[2] ?? null,
             ],
             [
-                'tax_id' => $companyTaxId . '-004',
                 'ruc' => '20100000004',
                 'legal_name' => 'Sucursal Surco',
                 'address' => 'Av. Caminos del Inca 321, Surco',
@@ -106,12 +102,11 @@ class BranchSeeder extends Seeder
         $inserted = 0;
         foreach ($branches as $branchData) {
             $exists = DB::table('branches')
-                ->where('tax_id', $branchData['tax_id'])
+                ->where('ruc', $branchData['ruc'])
                 ->exists();
 
             if (!$exists) {
                 DB::table('branches')->insert([
-                    'tax_id' => $branchData['tax_id'],
                     'ruc' => $branchData['ruc'],
                     'company_id' => $companyId,
                     'legal_name' => $branchData['legal_name'],

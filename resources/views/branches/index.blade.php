@@ -235,7 +235,7 @@
                                     </div>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
-                                    <p class="font-medium text-gray-700 text-theme-sm dark:text-gray-200">{{ $branch->tax_id }}</p>
+                                    <p class="font-medium text-gray-700 text-theme-sm dark:text-gray-200">{{ $branch->ruc }}</p>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
                                     <p class="text-gray-500 text-theme-sm dark:text-gray-400">{{ $branch->address ?? '-' }}</p>

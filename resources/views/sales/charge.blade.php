@@ -17,11 +17,30 @@
         <div class="grid grid-cols-1 gap-4 lg:grid-cols-3" style="height: calc(100vh - 160px);">
             {{-- Columna Izquierda: Resumen --}}
             <div class="lg:col-span-2 flex flex-col gap-3 overflow-hidden">
-                {{-- Cliente --}}
+                                {{-- Cliente y Caja --}}
                 <div class="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800 shrink-0">
-                    <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Cliente</p>
-                    <p class="mt-0.5 text-base font-semibold text-gray-900 dark:text-white" id="client-name">Público General
-                    </p>
+                    <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+                        <div>
+                            <label for="client-id" class="mb-2 block text-xs font-semibold text-gray-900 dark:text-white">Cliente</label>
+                            <select id="client-id"
+                                class="w-full rounded-lg border border-gray-300 bg-gray-50 px-2.5 py-2 text-xs text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400">
+                                @foreach ($people as $person)
+                                    <option value="{{ $person->id }}" @selected((int) $person->id === (int) $defaultClientId)>{{ trim(($person->document_number ?? '') . ' - ' .($person->first_name ?? '') . ' ' . ($person->last_name ?? '')) }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label for="cash-register-id" class="mb-2 block text-xs font-semibold text-gray-900 dark:text-white">Caja</label>
+                            <select id="cash-register-id"
+                                class="w-full rounded-lg border border-gray-300 bg-gray-50 px-2.5 py-2 text-xs text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400">
+                                @foreach ($cashRegisters as $cashRegister)
+                                    <option value="{{ $cashRegister->id }}" @selected($cashRegister->status === 'A')>
+                                        {{ $cashRegister->number }}{{ $cashRegister->status === 'A' ? ' (Activa)' : '' }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
                 </div>
 
                 {{-- Productos --}}
@@ -40,14 +59,10 @@
                         </div>
                     </div>
                 </div>
-            </div>
 
-            {{-- Columna Derecha: Pago (Sticky) --}}
-            <div
-                class="flex flex-col gap-3 lg:sticky lg:top-4 h-fit max-h-[calc(100vh-80px)] overflow-y-auto custom-scrollbar">
                 {{-- Totales --}}
                 <div
-                    class="rounded-lg border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100 p-3 dark:border-blue-800 dark:from-blue-900/20 dark:to-blue-800/20">
+                    class="rounded-lg border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100 p-3 dark:border-blue-800 dark:from-blue-900/20 dark:to-blue-800/20 shrink-0">
                     <h3 class="mb-2 text-sm font-semibold text-gray-900 dark:text-white">Resumen</h3>
                     <div class="space-y-1.5">
                         <div class="flex justify-between text-xs">
@@ -67,7 +82,10 @@
                         </div>
                     </div>
                 </div>
+            </div>
 
+            {{-- Columna Derecha: Pago (Sticky) --}}
+            <div class="flex flex-col gap-3 lg:sticky lg:top-4 h-fit max-h-[calc(100vh-80px)] overflow-y-auto custom-scrollbar">
                 {{-- Tipo de Documento --}}
                 <div class="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
                     <label class="mb-2 block text-xs font-semibold text-gray-900 dark:text-white">Tipo de Documento</label>
@@ -98,7 +116,7 @@
                     <div class="mb-3 flex items-center justify-between">
                         <label class="block text-sm font-semibold text-gray-900 dark:text-white">Métodos de Pago</label>
                         <button type="button" id="add-payment-method-btn"
-                            class="rounded-lg px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-100 transition">
+                            class="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-700">
                             <i class="fas fa-plus mr-1"></i> Agregar
                             </button>
                     </div>
@@ -402,6 +420,7 @@
             const paymentMethods = @json($paymentMethods ?? []);
             const paymentGateways = @json($paymentGateways ?? []);
             const cards = @json($cards ?? []);
+            const defaultClientId = @json($defaultClientId ?? 4);
             const productsMap = @json($products ?? []); // Mapa de ID => descripción
             
             // Debug: verificar que los métodos de pago se carguen
@@ -410,6 +429,8 @@
             const docButtons = document.querySelectorAll('.doc-type-btn');
             const totalElement = document.getElementById('total');
             const documentTypeInput = document.getElementById('document-type-id');
+            const clientInput = document.getElementById('client-id');
+            const cashRegisterInput = document.getElementById('cash-register-id');
             const paymentMethodsList = document.getElementById('payment-methods-list');
             const addPaymentMethodBtn = document.getElementById('add-payment-method-btn');
             const paymentMethodSelectionModal = document.getElementById('payment-method-selection-modal');
@@ -518,11 +539,11 @@
                                         <p class="text-sm font-semibold text-gray-900 dark:text-white">${methodName || 'Seleccionar método'}</p>
                                         ${isCard && !hasCardInfo ? '<p class="text-xs text-orange-600 dark:text-orange-400 mt-0.5">Configurar pasarela y tarjeta</p>' : ''}
                                     </div>
-                                    <i class="fas fa-chevron-down text-xs text-gray-400"></i>
+                                    <i class="fas fa-chevron-down text-xs "></i>
                                 </div>
                             </button>
                             <button type="button" class="remove-payment-method ml-2 rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700 transition" data-index="${index}" title="Eliminar método">
-                                <i class="fas fa-times"></i>
+                                  <i class="ri-delete-bin-line"></i>
                             </button>
                         </div>
                         ${cardInfo}
@@ -532,8 +553,8 @@
                                 <input type="number" step="0.01" min="0" class="payment-amount-input w-full text-right rounded-lg border-2 border-gray-300 bg-white pl-8 pr-3 py-2.5 text-base font-bold text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:focus:border-blue-400" 
                                     value="${amount > 0 ? amount.toFixed(2) : '0.00'}" data-index="${index}" placeholder="0.00">
                             </div>
-                            <button type="button" class="fill-remaining-btn rounded-lg bg-blue-100 px-3 py-2.5 text-xs font-semibold text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50" data-index="${index}" title="Completar con lo que falta">
-                                <i class="fas fa-fill"></i>
+                            <button type="button" class="fill-remaining-btn rounded-lg bg-blue-100 px-3 py-2.5 text-sm font-semibold text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50" data-index="${index}" title="Completar con lo que falta">
+                                <i class="ri-money-dollar-circle-line"></i>
                             </button>
                         </div>
                         <input type="hidden" class="payment-method-id" value="${methodId || ''}" data-index="${index}">
@@ -1032,6 +1053,47 @@
 
             // Hacer fmtMoney disponible globalmente
             window.fmtMoney = fmtMoney;
+            function hydratePaymentMethodsFromSale(total) {
+                if (!sale || !Array.isArray(sale.payment_methods) || sale.payment_methods.length === 0) {
+                    return false;
+                }
+
+                const normalized = sale.payment_methods
+                    .map((pm) => {
+                        const methodId = Number(pm.payment_method_id ?? pm.methodId);
+                        if (!methodId) return null;
+                        const catalogMethod = paymentMethods.find((m) => Number(m.id) === methodId);
+                        if (!catalogMethod) return null;
+
+                        const methodName = catalogMethod.description || '';
+                        const isCard = methodName.toLowerCase().includes('tarjeta') || methodName.toLowerCase().includes('card');
+
+                        return {
+                            methodId,
+                            methodName,
+                            isCard,
+                            amount: Number(pm.amount ?? 0),
+                            gatewayId: pm.payment_gateway_id ? Number(pm.payment_gateway_id) : null,
+                            cardId: pm.card_id ? Number(pm.card_id) : null,
+                            gatewayName: '',
+                            cardName: '',
+                        };
+                    })
+                    .filter(Boolean);
+
+                if (normalized.length === 0) {
+                    return false;
+                }
+
+                const sum = normalized.reduce((acc, item) => acc + (Number(item.amount) || 0), 0);
+                if (sum <= 0) {
+                    normalized[0].amount = Number(total || 0);
+                }
+
+                paymentMethodsData = normalized;
+                updatePaymentMethodsList();
+                return true;
+            }
 
             function renderSale() {
                 if (!sale || !Array.isArray(sale.items) || sale.items.length === 0) {
@@ -1039,7 +1101,9 @@
                     return;
                 }
 
-                document.getElementById('client-name').textContent = sale.clientName || 'Público General';
+                if (clientInput) {
+                    clientInput.value = sale.clientId ? String(sale.clientId) : String(defaultClientId);
+                }
 
                 const totalItems = sale.items.reduce((sum, it) => sum + (Number(it.qty) || 0), 0);
                 document.getElementById('items-count').textContent = `${totalItems} items`;
@@ -1067,15 +1131,18 @@
 
                 document.getElementById('items-list').innerHTML = rows;
 
-                const tax = subtotal * 0.10;
-                const total = subtotal + tax;
+                // Los precios ya incluyen IGV.
+                const total = subtotal;
+                const subtotalBase = total / 1.10;
+                const tax = total - subtotalBase;
 
-                document.getElementById('subtotal').textContent = fmtMoney(subtotal);
+                document.getElementById('subtotal').textContent = fmtMoney(subtotalBase);
                 document.getElementById('tax').textContent = fmtMoney(tax);
                 document.getElementById('total').textContent = fmtMoney(total);
 
                 // Inicializar el primer método de pago con el total
-                if (paymentMethodsData.length === 0) {
+                const preloaded = hydratePaymentMethodsFromSale(total);
+                if (!preloaded && paymentMethodsData.length === 0) {
                     addPaymentMethod();
                 }
                 updatePaymentSummary();
@@ -1153,6 +1220,11 @@
                     showNotification('Error', 'Selecciona un tipo de documento', 'error');
                     return;
                 }
+                const cashRegisterId = cashRegisterInput?.value;
+                if (!cashRegisterId) {
+                    showNotification('Error', 'Selecciona una caja', 'error');
+                    return;
+                }
 
                 const totalText = (totalElement?.textContent || 'S/0.00').replace('S/', '').replace(',', '').trim();
                 const total = parseFloat(totalText) || 0;
@@ -1200,6 +1272,8 @@
                         note: String(it.note ?? it.comment ?? '').trim(),
                     })),
                     document_type_id: parseInt(docTypeId),
+                    cash_register_id: parseInt(cashRegisterId),
+                    person_id: clientInput?.value ? parseInt(clientInput.value) : null,
                     payment_methods: paymentMethodsData.map(pm => ({
                         payment_method_id: pm.methodId,
                         amount: parseFloat(pm.amount) || 0,
@@ -1218,7 +1292,7 @@
                 const originalText = this.textContent;
                 this.textContent = 'Procesando...';
 
-                fetch('{{ route('admin.sales.processSalePayment') }}', {
+                fetch('{{ route('admin.sales.process') }}', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -1287,3 +1361,5 @@
         });
     </script>
 @endsection
+
+

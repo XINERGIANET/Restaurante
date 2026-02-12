@@ -242,7 +242,20 @@
                                             @php
                                                 $action = $operation->action ?? '';
                                                 $isDelete = str_contains($action, 'destroy');
-                                                $actionUrl = $resolveActionUrl($action, [$company, $branch, $view], $operation);
+                                                if ($isDelete) {
+                                                    $actionUrl = route('admin.companies.branches.views.destroy', [$company, $branch, $view]);
+                                                    $deleteQuery = array_filter([
+                                                        'view_id' => $viewId,
+                                                        'company_view_id' => $companyViewId,
+                                                        'branch_view_id' => $branchViewId,
+                                                        'icon' => $requestIcon,
+                                                    ], fn ($value) => !is_null($value) && $value !== '');
+                                                    if (!empty($deleteQuery)) {
+                                                        $actionUrl .= '?' . http_build_query($deleteQuery);
+                                                    }
+                                                } else {
+                                                    $actionUrl = $resolveActionUrl($action, [$company, $branch, $view], $operation);
+                                                }
                                                 $textColor = $resolveTextColor($operation);
                                                 $buttonColor = $operation->color ?: '#3B82F6';
                                                 $buttonStyle = "background-color: {$buttonColor}; color: {$textColor};";

@@ -26,7 +26,7 @@
         <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
 
     <div>
-        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Codigo</label>
+        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Codigo <span class="text-red-500">*</span></label>
         <input
             type="text"
             name="code"
@@ -38,7 +38,7 @@
     </div>
 
     <div>
-        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Nombre</label>
+        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Nombre <span class="text-red-500">*</span></label>
         <input
             type="text"
             name="description"
@@ -50,7 +50,7 @@
     </div>
 
     <div>
-        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Abreviatura</label>
+        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Abreviatura <span class="text-red-500">*</span></label>
         <input
             type="text"
             name="abbreviation"

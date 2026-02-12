@@ -7,11 +7,13 @@ use App\Models\Category;
 use App\Models\Operation;
 use App\Models\Product;
 use App\Models\ProductBranch;
+use App\Models\ProductBranch;
 use App\Models\TaxRate;
 use App\Models\Unit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 class ProductController extends Controller
 {

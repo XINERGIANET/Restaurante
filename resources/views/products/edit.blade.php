@@ -18,7 +18,12 @@
                     <input type="hidden" name="view_id" value="{{ $viewId }}">
                 @endif
 
-                @include('products._form', ['product' => $product])
+                @include('products._form', [
+                    'product' => $product,
+                    'currentBranch' => $currentBranch ?? null,
+                    'taxRates' => $taxRates ?? collect(),
+                    'productBranch' => $productBranch ?? null,
+                ])
 
                 <div class="flex flex-wrap gap-3">
                     <x-ui.button type="submit" size="md" variant="primary">

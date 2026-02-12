@@ -7,7 +7,10 @@ use App\Models\Company;
 use App\Models\Location;
 use App\Models\Module;
 use App\Models\Operation;
+use App\Models\Person;
 use App\Models\Profile;
+use App\Models\Role;
+use App\Models\User;
 use App\Models\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -62,7 +65,7 @@ class BranchController extends Controller
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
                     $inner->where('legal_name', 'like', "%{$search}%")
-                        ->orWhere('tax_id', 'like', "%{$search}%")
+                        ->orWhere('ruc', 'like', "%{$search}%")
                         ->orWhere('address', 'like', "%{$search}%");
                 });
             })
@@ -95,7 +98,11 @@ class BranchController extends Controller
             $data['logo'] = Storage::url($path);
         }
 
-        $company->branches()->create($data);
+        DB::transaction(function () use ($company, $data) {
+            $branch = $company->branches()->create($data);
+            $this->replicateBranchConfiguration($branch->id);
+            $this->createDefaultBranchPersonAndUser($branch);
+        });
 
         $params = [];
         if ($request->filled('view_id')) {
@@ -978,8 +985,7 @@ class BranchController extends Controller
     private function validateBranch(Request $request): array
     {
         return $request->validate([
-            'tax_id' => ['required', 'string', 'max:255'],
-            'ruc' => ['nullable', 'string', 'max:255'],
+            'ruc' => ['required', 'string', 'max:255'],
             'legal_name' => ['required', 'string', 'max:255'],
             'logo' => ['nullable', 'image', 'max:2048'],
             'address' => ['nullable', 'string', 'max:255'],
@@ -1061,6 +1067,202 @@ class BranchController extends Controller
 
         if (!$assigned) {
             abort(404);
+        }
+    }
+
+    private function replicateBranchConfiguration(int $newBranchId): void
+    {
+        $templateBranchId = (int) env('BRANCH_TEMPLATE_ID', 4);
+        if ($newBranchId === $templateBranchId) {
+            return;
+        }   
+
+        $now = now();
+
+        $templateViews = DB::table('view_branch')
+            ->where('branch_id', $templateBranchId)
+            ->whereNull('deleted_at')
+            ->get(['view_id']);
+
+        foreach ($templateViews as $row) {
+            $exists = DB::table('view_branch')
+                ->where('branch_id', $newBranchId)
+                ->where('view_id', $row->view_id)
+                ->whereNull('deleted_at')
+                ->exists();
+
+            if (!$exists) {
+                DB::table('view_branch')->insert([
+                    'view_id' => $row->view_id,
+                    'branch_id' => $newBranchId,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]);
+            }
+        }
+
+        $templateProfiles = DB::table('profile_branch')
+            ->where('branch_id', $templateBranchId)
+            ->whereNull('deleted_at')
+            ->get(['profile_id']);
+
+        foreach ($templateProfiles as $row) {
+            $exists = DB::table('profile_branch')
+                ->where('branch_id', $newBranchId)
+                ->where('profile_id', $row->profile_id)
+                ->whereNull('deleted_at')
+                ->exists();
+
+            if (!$exists) {
+                DB::table('profile_branch')->insert([
+                    'profile_id' => $row->profile_id,
+                    'branch_id' => $newBranchId,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]);
+            }
+        }
+
+        $templateBranchOperations = DB::table('branch_operation')
+            ->where('branch_id', $templateBranchId)
+            ->whereNull('deleted_at')
+            ->get(['operation_id', 'status']);
+
+        foreach ($templateBranchOperations as $row) {
+            $exists = DB::table('branch_operation')
+                ->where('branch_id', $newBranchId)
+                ->where('operation_id', $row->operation_id)
+                ->whereNull('deleted_at')
+                ->exists();
+
+            if (!$exists) {
+                DB::table('branch_operation')->insert([
+                    'operation_id' => $row->operation_id,
+                    'branch_id' => $newBranchId,
+                    'status' => $row->status,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]);
+            }
+        }
+
+        $templateOperationProfiles = DB::table('operation_profile_branch')
+            ->where('branch_id', $templateBranchId)
+            ->whereNull('deleted_at')
+            ->get(['operation_id', 'profile_id', 'status']);
+
+        foreach ($templateOperationProfiles as $row) {
+            $exists = DB::table('operation_profile_branch')
+                ->where('branch_id', $newBranchId)
+                ->where('operation_id', $row->operation_id)
+                ->where('profile_id', $row->profile_id)
+                ->whereNull('deleted_at')
+                ->exists();
+
+            if (!$exists) {
+                DB::table('operation_profile_branch')->insert([
+                    'operation_id' => $row->operation_id,
+                    'profile_id' => $row->profile_id,
+                    'branch_id' => $newBranchId,
+                    'status' => $row->status,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]);
+            }
+        }
+
+        $templateParameters = DB::table('branch_parameters')
+            ->where('branch_id', $templateBranchId)
+            ->whereNull('deleted_at')
+            ->get(['parameter_id', 'value']);
+
+        foreach ($templateParameters as $row) {
+            $exists = DB::table('branch_parameters')
+                ->where('branch_id', $newBranchId)
+                ->where('parameter_id', $row->parameter_id)
+                ->whereNull('deleted_at')
+                ->exists();
+
+            if (!$exists) {
+                DB::table('branch_parameters')->insert([
+                    'parameter_id' => $row->parameter_id,
+                    'value' => $row->value,
+                    'branch_id' => $newBranchId,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]);
+            }
+        }
+
+        $templatePermissions = DB::table('user_permission as up')
+            ->join('menu_option as mo', 'mo.id', '=', 'up.menu_option_id')
+            ->where('up.branch_id', $templateBranchId)
+            ->whereNull('up.deleted_at')
+            ->where('mo.module_id', '!=', 1) 
+            ->get(['up.name', 'up.profile_id', 'up.menu_option_id', 'up.status']);
+
+        foreach ($templatePermissions as $row) {
+            $exists = DB::table('user_permission')
+                ->where('branch_id', $newBranchId)
+                ->where('profile_id', $row->profile_id)
+                ->where('menu_option_id', $row->menu_option_id)
+                ->whereNull('deleted_at')
+                ->exists();
+
+            if (!$exists) {
+                DB::table('user_permission')->insert([
+                    'id' => (string) Str::uuid(),
+                    'name' => $row->name,
+                    'profile_id' => $row->profile_id,
+                    'menu_option_id' => $row->menu_option_id,
+                    'branch_id' => $newBranchId,
+                    'status' => (bool) $row->status,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]);
+            }
+        }
+    }
+
+    private function createDefaultBranchPersonAndUser(Branch $branch): void
+    {
+        $generatedEmail =  $branch->ruc . '@xinergia.local';
+     
+
+        $person = Person::create([
+            'first_name' => $branch->legal_name,
+            'last_name' => '',
+            'person_type' => 'RUC',
+            'phone' => '-',
+            'email' => $generatedEmail,
+            'document_number' => (string) $branch->ruc,
+            'address' => $branch->address ?: '-',
+            'location_id' => $branch->location_id,
+            'branch_id' => $branch->id,
+        ]);
+
+     
+        User::create([
+            'name' => $branch->ruc,
+            'email' => $generatedEmail,
+            'password' => (string) $branch->ruc,
+            'person_id' => $person->id,
+            'profile_id' => 2,
+        ]);
+
+        $defaultRoleId = (int) env('BRANCH_DEFAULT_ROLE_ID', 1);
+        if (!Role::where('id', $defaultRoleId)->exists()) {
+            $defaultRoleId = (int) Role::query()->orderBy('id')->value('id');
+        }
+
+        if ($defaultRoleId > 0) {
+            DB::table('role_person')->insert([
+                'role_id' => $defaultRoleId,
+                'person_id' => $person->id,
+                'branch_id' => $branch->id,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
         }
     }
 }
