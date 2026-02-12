@@ -488,10 +488,13 @@
                 });
             }
 
-            const tax = subtotal * 0.10;
-            document.getElementById('ticket-subtotal').innerText = `$${subtotal.toFixed(2)}`;
+            // Los precios ya incluyen IGV: el total es la suma de lÃ­neas y se descompone base + igv.
+            const total = subtotal;
+            const subtotalBase = total / 1.10;
+            const tax = total - subtotalBase;
+            document.getElementById('ticket-subtotal').innerText = `$${subtotalBase.toFixed(2)}`;
             document.getElementById('ticket-tax').innerText = `$${tax.toFixed(2)}`;
-            document.getElementById('ticket-total').innerText = `$${(subtotal + tax).toFixed(2)}`;
+            document.getElementById('ticket-total').innerText = `$${total.toFixed(2)}`;
 
             const cartCountBadge = document.getElementById('cart-count-badge');
             const totalItems = (currentSale.items || []).reduce((sum, item) => sum + (Number(item.qty) || 0), 0);
@@ -575,5 +578,3 @@
     })();
 </script>
 @endsection
-
-
