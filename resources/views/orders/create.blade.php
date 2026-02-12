@@ -204,9 +204,9 @@
                     document.getElementById('pos-client-name').innerText = currentTable.clientName ||
                         "{{ $person?->name ?? 'Sin cliente' }}";
                 }
+                refreshCartPricesFromServer();
                 renderProducts();
                 renderTicket();
-                console.log('Inicialización completada correctamente');
             }
 
             // Función para escapar HTML y prevenir XSS
@@ -240,6 +240,24 @@
             const serverProducts = @json($products ?? []);
             const serverProductBranches = @json($productBranches ?? []);
 
+            // Actualizar precios del carrito con los precios actuales del servidor
+            function refreshCartPricesFromServer() {
+                if (!currentTable?.items || !serverProductBranches?.length) return;
+                let updated = false;
+                currentTable.items.forEach(item => {
+                    const pId = parseInt(item.pId || item.product_id, 10);
+                    const pb = serverProductBranches.find(p => p.product_id === pId || parseInt(p.product_id, 10) === pId);
+                    if (pb) {
+                        const newPrice = parseFloat(pb.price);
+                        if (!isNaN(newPrice) && newPrice >= 0 && newPrice !== parseFloat(item.price)) {
+                            item.price = newPrice;
+                            updated = true;
+                        }
+                    }
+                });
+                if (updated) saveDB();
+            }
+
             function renderProducts() {
                 const grid = document.getElementById('products-grid');
                 grid.innerHTML = '';
@@ -252,8 +270,8 @@
 
                 let productsRendered = 0;
                 serverProducts.forEach(prod => {
-                    const productBranch = serverProductBranches.find(p => p.product_id === prod.id || p.id ===
-                        prod.id);
+                    const productBranch = serverProductBranches.find(p => p.product_id === prod.id || p.id === prod.id);
+                    if (!productBranch) return;
 
                     const el = document.createElement('div');
                     el.className = "group cursor-pointer transition-transform duration-200 hover:scale-105";

@@ -17,7 +17,6 @@ class Product extends Model
         'category_id',
         'base_unit_id',
         'kardex',
-        'is_compound',
         'image',
         'complement',
         'complement_mode',
