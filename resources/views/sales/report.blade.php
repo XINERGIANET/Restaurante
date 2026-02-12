@@ -1,109 +1,100 @@
 @extends('layouts.app')
 
 @section('content')
-    <div>
-        @php
-            use Illuminate\Support\Facades\Route;
+    @php
+        use Illuminate\Support\Facades\Route;
 
-            $viewId = request('view_id');
-            $operacionesCollection = collect($operaciones ?? []);
-            $topOperations = $operacionesCollection->where('type', 'T');
-            $rowOperations = $operacionesCollection->where('type', 'R');
+        $viewId = request('view_id');
+        $operacionesCollection = collect($operaciones ?? []);
+        $topOperations = $operacionesCollection->where('type', 'T');
+        $rowOperations = $operacionesCollection->where('type', 'R');
 
-            $resolveActionUrl = function ($action, $model = null, $operation = null) use ($viewId) {
-                if (!$action) {
-                    return '#';
+        $resolveActionUrl = function ($action, $model = null, $operation = null) use ($viewId) {
+            if (!$action) {
+                return '#';
+            }
+            if (str_starts_with($action, '/') || str_starts_with($action, 'http')) {
+                $url = $action; 
+            } else {
+                $routeCandidates = [$action];
+                if (!str_starts_with($action, 'admin.')) {
+                    $routeCandidates[] = 'admin.' . $action;
                 }
-
-                if (str_starts_with($action, '/') || str_starts_with($action, 'http')) {
-                    $url = $action;
-                } else {
-                    $routeCandidates = [$action];
-                    if (!str_starts_with($action, 'admin.')) {
-                        $routeCandidates[] = 'admin.' . $action;
+                $routeCandidates = array_merge(
+                    $routeCandidates,
+                    array_map(fn ($name) => $name . '.index', $routeCandidates)
+                );
+                $routeName = null;
+                foreach ($routeCandidates as $candidate) {
+                    if (Route::has($candidate)) {
+                        $routeName = $candidate;
+                        break;
                     }
-                    $routeCandidates = array_merge(
-                        $routeCandidates,
-                        array_map(fn ($name) => $name . '.index', $routeCandidates)
-                    );
-
-                    $routeName = null;
-                    foreach ($routeCandidates as $candidate) {
-                        if (Route::has($candidate)) {
-                            $routeName = $candidate;
-                            break;
-                        }
-                    }
-
-                    if ($routeName) {
-                        try {
-                            $url = $model ? route($routeName, $model) : route($routeName);
-                        } catch (\Exception $e) {
-                            $url = '#';
-                        }
-                    } else {
+                }
+                if ($routeName) {
+                    try {
+                        $url = $model ? route($routeName, $model) : route($routeName);
+                    } catch (\Exception $e) {
                         $url = '#';
                     }
+                } else {
+                    $url = '#';
                 }
+            }
+            $targetViewId = $viewId;
+            if ($operation && !empty($operation->view_id_action)) {
+                $targetViewId = $operation->view_id_action;
+            }
+            if ($targetViewId && $url !== '#') {
+                $separator = str_contains($url, '?') ? '&' : '?';
+                $url .= $separator . 'view_id=' . urlencode($targetViewId);
+            }
+            return $url;
+        };
+    @endphp
+    <div>
+        <x-common.page-breadcrumb pageTitle="Reporte de Ventas" />
 
-                $targetViewId = $viewId;
-                if ($operation && !empty($operation->view_id_action)) {
-                    $targetViewId = $operation->view_id_action;
-                }
-
-                if ($targetViewId && $url !== '#') {
-                    $separator = str_contains($url, '?') ? '&' : '?';
-                    $url .= $separator . 'view_id=' . urlencode($targetViewId);
-                }
-
-                return $url;
-            };
-        @endphp
-
-        <x-common.page-breadcrumb pageTitle="Ventas" />
-
-        <x-common.component-card title="Listado de ventas" desc="Gestiona las ventas registradas.">
-            <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-                <form method="GET" class="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
+        <x-common.component-card title="Reporte de Ventas" desc="Genera un reporte de las ventas registradas.">
+            {{-- Barra de filtros y acción principal --}}
+            <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
+                <form method="GET" class="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3 min-w-0 lg:flex-1 lg:max-w-2xl">
                     @if ($viewId)
                         <input type="hidden" name="view_id" value="{{ $viewId }}">
                     @endif
-                    <div class="w-full sm:w-24">
-                        <select
-                            name="per_page"
-                            class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-3 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
-                            onchange="this.form.submit()"
-                        >
-                            @foreach ([10, 20, 50, 100] as $size)
-                                <option value="{{ $size }}" @selected($perPage == $size)>{{ $size }} / página</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="relative flex-1">
-                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-                            <i class="ri-search-line"></i>
-                        </span>
-                        <input
-                            type="text"
-                            name="search"
-                            value="{{ $search }}"
-                            placeholder="Buscar por numero, persona o usuario"
-                            class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 pl-12 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
-                        />
-                    </div>
-                    <div class="flex flex-wrap gap-2">
-                        <x-ui.button size="md" variant="primary" type="submit" class="flex-1 sm:flex-none h-11 px-6 shadow-sm hover:shadow-md transition-all duration-200 active:scale-95" style="background-color: #244BB3; border-color: #244BB3;">
-                            <i class="ri-search-line text-gray-100"></i>
-                            <span class="font-medium text-gray-100">Buscar</span>
-                        </x-ui.button>
-                        <x-ui.link-button size="md" variant="outline" href="{{ route('admin.sales.index', $viewId ? ['view_id' => $viewId] : []) }}" class="flex-1 sm:flex-none h-11 px-6 border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200">
-                            <i class="ri-refresh-line"></i>
-                            <span class="font-medium">Limpiar</span>
-                        </x-ui.link-button>
+                    <div class="flex flex-wrap items-center gap-3 sm:flex-1 sm:flex-nowrap min-w-0">
+                        <div class="w-32 shrink-0">
+                            <select
+                                name="per_page"
+                                class="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                                onchange="this.form.submit()"
+                            >
+                                @foreach ([10, 20, 50, 100] as $size)
+                                    <option value="{{ $size }}" @selected($perPage == $size)>{{ $size }}/pág</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="relative flex-1 min-w-[140px] max-w-sm">
+                            <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"><i class="ri-search-line"></i></span>
+                            <input
+                                type="text"
+                                name="search"
+                                value="{{ $search ?? '' }}"
+                                placeholder="Buscar..."
+                                class="h-10 w-full rounded-lg border border-gray-300 bg-white py-2 pl-9 pr-3 text-sm text-gray-800 shadow-sm placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                            />
+                        </div>
+                        <div class="flex gap-2 shrink-0">
+                            <button type="submit" class="inline-flex h-10 items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-4 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                                <i class="ri-search-line"></i> Buscar
+                            </button>
+                            <a href="{{ route('sales.report', $viewId ? ['view_id' => $viewId] : []) }}" class="inline-flex h-10 items-center justify-center gap-1.5 rounded-lg border border-gray-300 bg-white px-4 text-sm font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700">
+                                <i class="ri-refresh-line"></i> Limpiar
+                            </a>
+                        </div>
                     </div>
                 </form>
-
-                <div class="flex flex-wrap items-center gap-2">
+                <div class="shrink-0 border-t border-gray-200 pt-4 lg:border-t-0 lg:border-l lg:border-gray-200 lg:pl-6 lg:pt-0">
                     @if ($topOperations->isNotEmpty())
                         @foreach ($topOperations as $operation)
                             @php
@@ -112,72 +103,49 @@
                                 $topStyle = "background-color: {$topColor}; color: {$topTextColor};";
                                 $topActionUrl = $resolveActionUrl($operation->action ?? '', null, $operation);
                             @endphp
-                            <x-ui.link-button size="md" variant="primary" style="{{ $topStyle }}" href="{{ $topActionUrl }}">
-                                <i class="{{ $operation->icon }}"></i>
-                                <span>{{ $operation->name }}</span>
-                            </x-ui.link-button>
+                            <a href="{{ $topActionUrl }}" class="inline-flex h-10 items-center justify-center gap-2 rounded-lg px-4 text-sm font-medium text-white shadow-sm hover:opacity-90" style="{{ $topStyle }}">
+                                <i class="{{ $operation->icon }}"></i>{{ $operation->name }}
+                            </a>
                         @endforeach
                     @else
-                        <x-ui.link-button size="md" variant="primary" style="background-color: #12f00e; color: #111827;" href="{{ route('admin.sales.create', $viewId ? ['view_id' => $viewId] : []) }}">
-                            <i class="ri-add-line"></i>
-                            <span>Nueva venta</span>
-                        </x-ui.link-button>
+                        <a href="{{ route('admin.sales.create', $viewId ? ['view_id' => $viewId] : []) }}" class="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-green-500 px-4 text-sm font-medium text-gray-900 shadow-sm hover:bg-green-600">
+                            <i class="ri-add-line text-lg"></i> Nueva venta
+                        </a>
                     @endif
                 </div>
             </div>
 
-            <div class="mt-4 rounded-xl border border-gray-200 bg-white overflow-visible dark:border-gray-800 dark:bg-white/[0.03]">
-                <table class="w-full">
+            <div class="mt-6 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800/50">
+                <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                     <thead>
-                        <tr class="text-white">
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6 first:rounded-tl-xl">
-                                <p class="font-semibold text-white text-theme-xs uppercase">Comprobante</p>
-                            </th>
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
-                                <p class="font-semibold text-white text-theme-xs uppercase">Tipo</p>
-                            </th>
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
-                                <p class="font-semibold text-white text-theme-xs uppercase">Subtotal</p>
-                            </th>
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
-                                <p class="font-semibold text-white text-theme-xs uppercase">IGV</p>
-                            </th>
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
-                                <p class="font-semibold text-white text-theme-xs uppercase">Total</p>
-                            </th>
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
-                                <p class="font-semibold text-white text-theme-xs uppercase">Persona</p>
-                            </th>
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
-                                <p class="font-semibold text-white text-theme-xs uppercase">Situación</p>
-                            </th>
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-right sm:px-6 last:rounded-tr-xl">
-                                <p class="font-semibold text-white text-theme-xs uppercase">Acciones</p>
-                            </th>
+                        <tr class="bg-gray-50 dark:bg-gray-700/80">
+                            <th scope="col" class="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">Comprobante</th>
+                            <th scope="col" class="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">Tipo</th>
+                            <th scope="col" class="px-3 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">Subtotal</th>
+                            <th scope="col" class="px-3 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">IGV</th>
+                            <th scope="col" class="px-3 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">Total</th>
+                            <th scope="col" class="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">Cliente</th>
+                            <th scope="col" class="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">Fecha</th>
+                            <th scope="col" class="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">Usuario</th>
+                            <th scope="col" class="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">Estado</th>
+                            <th scope="col" class="px-3 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">Acciones</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody class="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800/30">
                         @forelse ($sales as $sale)
-                            <tr class="border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-white/5">
-                                <td class="px-5 py-4 sm:px-6">
-                                    <p class="font-medium text-gray-800 text-theme-sm dark:text-white/90">{{ $sale->number }}</p>
+                            <tr class="transition-colors hover:bg-gray-50/80 dark:hover:bg-gray-700/30">
+                                <td class="whitespace-nowrap px-4 py-3.5">
+                                    <span class="font-medium text-gray-900 dark:text-white">{{ $sale->number }}</span>
                                 </td>
-                                <td class="px-5 py-4 sm:px-6">
-                                    <p class="text-gray-500 text-theme-sm dark:text-gray-400">{{ $sale->documentType?->name ?? '-' }}</p>
-                                </td>
-                                <td class="px-5 py-4 sm:px-6">
-                                    <p class="text-gray-800 text-theme-sm dark:text-white/90">{{ number_format((float) ($sale->salesMovement?->subtotal ?? 0), 2) }}</p>
-                                </td>
-                                <td class="px-5 py-4 sm:px-6">
-                                    <p class="text-gray-800 text-theme-sm dark:text-white/90">{{ number_format((float) ($sale->salesMovement?->tax ?? 0), 2) }}</p>
-                                </td>
-                                <td class="px-5 py-4 sm:px-6">
-                                    <p class="text-gray-800 text-theme-sm dark:text-white/90">{{ number_format((float) ($sale->salesMovement?->total ?? 0), 2) }}</p>
-                                </td>
-                                <td class="px-5 py-4 sm:px-6">
-                                    <p class="text-gray-800 text-theme-sm dark:text-white/90">{{ $sale->person_name ?? '-' }}</p>
-                                </td>
-                                <td class="px-5 py-4 sm:px-6">
+                                <td class="whitespace-nowrap px-4 py-3.5 text-sm text-gray-600 dark:text-gray-400">{{ $sale->documentType?->name ?? '-' }}</td>
+                                <td class="whitespace-nowrap px-4 py-3.5 text-right text-sm font-medium tabular-nums text-gray-900 dark:text-white">S/ {{ number_format((float) ($sale->salesMovement?->subtotal ?? 0), 2) }}</td>
+                                <td class="whitespace-nowrap px-4 py-3.5 text-right text-sm tabular-nums text-gray-600 dark:text-gray-400">S/ {{ number_format((float) ($sale->salesMovement?->tax ?? 0), 2) }}</td>
+                                <td class="whitespace-nowrap px-4 py-3.5 text-right text-sm font-semibold tabular-nums text-gray-900 dark:text-white">S/ {{ number_format((float) ($sale->salesMovement?->total ?? 0), 2) }}</td>
+                                <td class="px-4 py-3.5 text-sm text-gray-700 dark:text-gray-300 max-w-[180px] truncate" title="{{ $sale->person_name ?? '-' }}">{{ $sale->person_name ?? '-' }}</td>
+                                <td class="whitespace-nowrap px-4 py-3.5 text-sm text-gray-600 dark:text-gray-400">{{ $sale->moved_at ? \Carbon\Carbon::parse($sale->moved_at)->format('d/m/Y H:i') : '-' }}</td>
+                                <td class="whitespace-nowrap px-4 py-3.5 text-sm text-gray-600 dark:text-gray-400">{{ $sale->user_name ?? '-' }}</td>
+                                <td class="whitespace-nowrap px-4 py-3.5 text-center">
                                     @php
                                         $status = $sale->status ?? 'A';
                                         $badgeColor = 'success';
@@ -190,12 +158,12 @@
                                             $badgeText = 'Inactivo';
                                         }
                                     @endphp
-                                    <x-ui.badge variant="light" color="{{ $badgeColor }}">
+                                    <x-ui.badge variant="light" color="{{ $badgeColor }}" class="inline-flex text-xs font-medium">
                                         {{ $badgeText }}
-                                        </x-ui.badge>
+                                    </x-ui.badge>
                                 </td>
-                                <td class="px-5 py-4 sm:px-6">
-                                    <div class="flex items-center justify-end gap-2">
+                                <td class="whitespace-nowrap px-4 py-3.5">
+                                    <div class="flex items-center justify-end gap-1.5">
                                         @if ($rowOperations->isNotEmpty())
                                             @foreach ($rowOperations as $operation)
                                                 @php
@@ -312,16 +280,18 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="8" class="px-6 py-12">
-                                    <div class="flex flex-col items-center gap-3 text-center text-sm text-gray-500">
-                                        <div class="rounded-full bg-gray-100 p-3 text-gray-400 dark:bg-gray-800 dark:text-gray-300">
-                                            <i class="ri-shopping-bag-3-line"></i>
+                                <td colspan="10" class="px-6 py-16">
+                                    <div class="flex flex-col items-center justify-center gap-4 text-center">
+                                        <div class="rounded-full bg-gray-100 p-5 text-gray-400 dark:bg-gray-700 dark:text-gray-500">
+                                            <i class="ri-file-list-3-line text-4xl"></i>
                                         </div>
-                                        <p class="text-base font-semibold text-gray-700 dark:text-gray-200">No hay ventas registradas.</p>
-                                        <p class="text-gray-500">Crea la primera venta para comenzar.</p>
-                                        <x-ui.link-button size="sm" variant="primary" href="{{ route('admin.sales.create', $viewId ? ['view_id' => $viewId] : []) }}">
-                                            <i class="ri-add-line"></i>
-                                            <span>Registrar venta</span>
+                                        <div>
+                                            <p class="text-base font-semibold text-gray-700 dark:text-gray-200">No hay ventas en este reporte</p>
+                                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Ajusta los filtros o registra una nueva venta.</p>
+                                        </div>
+                                        <x-ui.link-button size="sm" variant="primary" href="{{ route('admin.sales.create', $viewId ? ['view_id' => $viewId] : []) }}" class="mt-1">
+                                            <i class="ri-add-line mr-1"></i>
+                                            Registrar venta
                                         </x-ui.link-button>
                                     </div>
                                 </td>
@@ -329,18 +299,16 @@
                         @endforelse
                     </tbody>
                 </table>
+                </div>
             </div>
 
-            <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div class="text-sm text-gray-500">
-                    Mostrando
-                    <span class="font-semibold text-gray-700 dark:text-gray-200">{{ $sales->firstItem() ?? 0 }}</span>
-                    -
-                    <span class="font-semibold text-gray-700 dark:text-gray-200">{{ $sales->lastItem() ?? 0 }}</span>
-                    de
-                    <span class="font-semibold text-gray-700 dark:text-gray-200">{{ $sales->total() }}</span>
-                </div>
-                <div>
+            <div class="mt-4 flex flex-col gap-3 rounded-lg border border-gray-200 bg-gray-50/50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/30 sm:flex-row sm:items-center sm:justify-between">
+                <p class="text-sm text-gray-600 dark:text-gray-400">
+                    Mostrando <span class="font-medium text-gray-900 dark:text-white">{{ $sales->firstItem() ?? 0 }}</span>
+                    a <span class="font-medium text-gray-900 dark:text-white">{{ $sales->lastItem() ?? 0 }}</span>
+                    de <span class="font-medium text-gray-900 dark:text-white">{{ $sales->total() }}</span> registros
+                </p>
+                <div class="flex justify-end">
                     {{ $sales->links() }}
                 </div>
             </div>

@@ -175,7 +175,10 @@
   --z-index-99999: 99999;
   --z-index-999999: 999999;
 }
-
+input[type="date"]::-webkit-calendar-picker-indicator {
+  opacity: 1;
+  cursor: pointer;
+}
 /*
   The default border color has changed to `currentColor` in Tailwind CSS v4,
   so we've added these compatibility styles to make sure everything still

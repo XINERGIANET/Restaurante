@@ -98,9 +98,9 @@
                     <div class="mb-3 flex items-center justify-between">
                         <label class="block text-sm font-semibold text-gray-900 dark:text-white">Métodos de Pago</label>
                         <button type="button" id="add-payment-method-btn"
-                            class="rounded-lg px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-100 transition">
+                            class="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-700">
                             <i class="fas fa-plus mr-1"></i> Agregar
-                            </button>
+                        </button>
                     </div>
                     <div id="payment-methods-list" class="space-y-3">
                         {{-- Los métodos de pago se agregarán dinámicamente aquí --}}
@@ -110,18 +110,18 @@
                         <div class="flex justify-between items-center mb-2">
                             <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">Total pagado:</span>
                             <span class="text-lg font-bold text-gray-900 dark:text-white" id="total-paid">S/0.00</span>
-                            </div>
+                        </div>
                         <div id="payment-remaining" class="mt-2 hidden rounded-lg bg-orange-50 p-2 dark:bg-orange-900/20">
                             <div class="flex justify-between items-center">
                                 <span class="text-xs font-semibold text-orange-700 dark:text-orange-400">Falta pagar:</span>
                                 <span class="text-sm font-bold text-orange-700 dark:text-orange-400" id="remaining-amount">S/0.00</span>
+                            </div>
                         </div>
-                    </div>
                         <div id="payment-excess" class="mt-2 hidden rounded-lg bg-green-50 p-2 dark:bg-green-900/20">
                             <div class="flex justify-between items-center">
-                                <span class="text-xs font-semibold text-green-700 dark:text-green-400">Excedente:</span>
+                                <span class="text-xs font-semibold text-green-700 dark:text-green-400">Vuelto a devolver:</span>
                                 <span class="text-sm font-bold text-green-700 dark:text-green-400" id="excess-amount">S/0.00</span>
-                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -164,7 +164,7 @@
                                          str_contains(strtolower($paymentMethod->description), 'card');
                                 $icon = $isCard ? 'fa-credit-card' : 
                                        (str_contains(strtolower($paymentMethod->description), 'efectivo') || str_contains(strtolower($paymentMethod->description), 'cash') ? 'fa-money-bill-wave' :
-                                       (str_contains(strtolower($paymentMethod->description), 'yape') ? 'fa-mobile-alt' : 'fa-wallet'));
+                                       (str_contains(strtolower($paymentMethod->description), 'yape') || str_contains(strtolower($paymentMethod->description), 'plin') ? 'fa-mobile-alt' : 'fa-wallet'));
                             @endphp
                             <button type="button"
                                 class="pm-selection-btn rounded-lg border-2 border-gray-300 bg-gray-50 p-4 text-left transition hover:bg-blue-50 hover:border-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600"
@@ -481,7 +481,7 @@
                     const desc = (methodDesc || '').toLowerCase();
                     if (desc.includes('tarjeta') || desc.includes('card')) return 'fa-credit-card';
                     if (desc.includes('efectivo') || desc.includes('cash')) return 'fa-money-bill-wave';
-                    if (desc.includes('yape')) return 'fa-mobile-alt';
+                    if (desc.includes('yape') || desc.includes('plin')) return 'fa-mobile-alt';
                     if (desc.includes('transferencia') || desc.includes('transfer')) return 'fa-exchange-alt';
                     return 'fa-wallet';
                 };
@@ -1466,7 +1466,11 @@
                         // Eliminar la clave activa
                         localStorage.removeItem(ACTIVE_ORDER_KEY_STORAGE);
 
-                        window.location.href = "{{ route('admin.orders.index') }}";
+                        sessionStorage.setItem('flash_success_message', data.message || 'Pedido cobrado correctamente');
+                        const viewId = new URLSearchParams(window.location.search).get('view_id');
+                        let url = "{{ route('admin.orders.index') }}";
+                        if (viewId) url += (url.includes('?') ? '&' : '?') + 'view_id=' + encodeURIComponent(viewId);
+                        window.location.href = url;
                     })
                     .catch(err => {
                         const errorMessage = err.message || 'Error al procesar la venta';

@@ -45,7 +45,7 @@ class MenuOptionSeeder extends Seeder
             'Ventas' => [
                 ['name' => 'POS',                'action' => '/admin/ventas/pos',               'icon' => 'mdi-cash-register'],
                 ['name' => 'Facturación',        'action' => '/admin/ventas/facturacion',       'icon' => 'mdi-file-document'],
-                ['name' => 'Reportes',           'action' => '/admin/ventas/reportes',          'icon' => 'mdi-chart-line'],
+                ['name' => 'Reportes',           'action' => '/admin/ventas/reporte',          'icon' => 'mdi-chart-line'],
             ],
             'Compras' => [
                 ['name' => 'Proveedores',        'action' => '/admin/compras/proveedores',      'icon' => 'mdi-truck'],
@@ -56,6 +56,7 @@ class MenuOptionSeeder extends Seeder
                 ['name' => 'Inventario',         'action' => '/admin/almacen/inventario',       'icon' => 'mdi-clipboard-list'],
                 ['name' => 'Insumos',            'action' => '/admin/almacen/insumos',          'icon' => 'mdi-fruit-watermelon'],
                 ['name' => 'Movimientos',        'action' => '/admin/almacen/movimientos',      'icon' => 'mdi-transfer'],
+                ['name' => 'Kardex',             'action' => 'kardex.index',                    'icon' => 'ri-file-list-3-line'],
             ],
             'Caja' => [
                 ['name' => 'Apertura y cierre',  'action' => '/admin/caja/aperturas',           'icon' => 'mdi-lock-open-outline'],

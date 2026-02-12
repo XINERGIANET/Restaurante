@@ -85,7 +85,7 @@
                             <span class="text-slate-800 dark:text-white" id="ticket-subtotal">$0.00</span>
                         </div>
                         <div class="flex justify-between text-gray-500 dark:text-gray-400 font-medium text-xs">
-                            <span>Impuestos (10%)</span>
+                            <span>IGV</span>
                             <span class="text-slate-800 dark:text-white" id="ticket-tax">$0.00</span>
                         </div>
                         <div class="border-t border-dashed border-gray-300 dark:border-slate-700 my-1.5"></div>
@@ -107,6 +107,23 @@
                     </div>
                 </div>
             </aside>
+        </div>
+    </div>
+
+    {{-- Notificación de stock insuficiente --}}
+    <div id="stock-error-notification"
+        class="fixed top-24 right-8 z-50 transform transition-all duration-500 translate-x-[150%] opacity-0 pointer-events-none">
+        <div class="bg-gradient-to-r from-red-500 to-red-600 text-white px-6 py-4 rounded-xl shadow-2xl border border-red-400/30 backdrop-blur-sm flex items-center gap-4 min-w-[320px]">
+            <div class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                <i class="fas fa-exclamation-triangle text-2xl"></i>
+            </div>
+            <div class="flex-1">
+                <p class="font-bold text-sm">Stock insuficiente</p>
+                <p id="stock-error-message" class="text-xs text-red-50 mt-0.5">Solo hay X disponible(s)</p>
+            </div>
+            <button onclick="hideStockError()" class="text-white/80 hover:text-white transition-colors">
+                <i class="fas fa-times"></i>
+            </button>
         </div>
     </div>
 
@@ -244,10 +261,15 @@
         const productBranches = Array.isArray(productBranchesRaw) ? productBranchesRaw : Object.values(productBranchesRaw || {});
 
         const priceByProductId = new Map();
+        const taxRateByProductId = new Map();
+        const stockByProductId = new Map();
+        const defaultTaxPct = 18;
         productBranches.forEach((pb) => {
             const pid = Number(pb.product_id ?? pb.id);
             if (!Number.isNaN(pid)) {
                 priceByProductId.set(pid, Number(pb.price ?? 0));
+                taxRateByProductId.set(pid, pb.tax_rate != null ? Number(pb.tax_rate) : defaultTaxPct);
+                stockByProductId.set(pid, Number(pb.stock ?? 0) || 0);
             }
         });
         let selectedCategory = 'General';
@@ -383,7 +405,15 @@
 
             if (!Array.isArray(currentSale.items)) currentSale.items = [];
 
+            const stock = stockByProductId.get(productId) ?? 0;
             const existing = currentSale.items.find((i) => Number(i.pId) === productId);
+            const qtyToAdd = existing ? existing.qty + 1 : 1;
+
+            if (qtyToAdd > stock) {
+                showStockError(prod.name || 'Producto', stock);
+                return;
+            }
+
             if (existing) {
                 existing.qty += 1;
             } else {
@@ -488,10 +518,18 @@
                 });
             }
 
-            // Los precios ya incluyen IGV: el total es la suma de lÃ­neas y se descompone base + igv.
-            const total = subtotal;
-            const subtotalBase = total / 1.10;
-            const tax = total - subtotalBase;
+            // Los precios ya incluyen IGV. Calcular subtotal e IGV por producto según su tasa (del sistema).
+            let subtotalBase = 0;
+            let tax = 0;
+            (currentSale.items || []).forEach((item) => {
+                const itemTotal = (Number(item.price) || 0) * (Number(item.qty) || 0);
+                const taxPct = taxRateByProductId.get(Number(item.pId)) ?? defaultTaxPct;
+                const taxVal = taxPct / 100;
+                const itemSubtotal = taxVal > 0 ? itemTotal / (1 + taxVal) : itemTotal;
+                subtotalBase += itemSubtotal;
+                tax += itemTotal - itemSubtotal;
+            });
+            const total = subtotalBase + tax;
             document.getElementById('ticket-subtotal').innerText = `$${subtotalBase.toFixed(2)}`;
             document.getElementById('ticket-tax').innerText = `$${tax.toFixed(2)}`;
             document.getElementById('ticket-total').innerText = `$${total.toFixed(2)}`;
@@ -541,6 +579,24 @@
             .finally(() => {
                 window.location.href = @json($salesIndexUrl);
             });
+        }
+
+        function showStockError(productName, stock) {
+            const notification = document.getElementById('stock-error-notification');
+            const msgEl = document.getElementById('stock-error-message');
+            if (!notification || !msgEl) return;
+            msgEl.textContent = (productName || 'Producto') + ': solo hay ' + stock + ' disponible(s).';
+            notification.classList.add('notification-show');
+            notification.classList.remove('pointer-events-none');
+            setTimeout(hideStockError, 3500);
+        }
+
+        function hideStockError() {
+            const notification = document.getElementById('stock-error-notification');
+            if (notification) {
+                notification.classList.remove('notification-show');
+                notification.classList.add('pointer-events-none');
+            }
         }
 
         function showNotification(productName) {
