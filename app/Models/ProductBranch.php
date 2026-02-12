@@ -24,7 +24,6 @@ class ProductBranch extends Model
         'supplier_id',
         'stock',
         'price',
-        'recipe'
     ];
 
     protected $casts = [
@@ -34,7 +33,6 @@ class ProductBranch extends Model
         'stock_maximum' => 'decimal:4',
         'minimum_sell' => 'decimal:4',
         'minimum_purchase' => 'decimal:4',
-        'recipe' => 'boolean',
         'favorite' => 'string',
     ];
 

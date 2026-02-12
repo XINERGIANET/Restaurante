@@ -253,7 +253,8 @@ class ProductController extends Controller
             'complement_mode' => ['nullable', 'string', 'in:,ALL,QUANTITY'],
             'classification' => ['required', 'string', 'in:GOOD,SERVICE'],
             'features' => ['nullable', 'string'],
-            
+            'recipe' => ['required', 'boolean'],
+
             // Datos de ProductBranch (Detalle por Sede)
             'price' => ['required', 'numeric', 'min:0'],
             'stock' => ['required', 'numeric', 'min:0'],
@@ -267,7 +268,6 @@ class ProductController extends Controller
             'favorite' => ['required', 'string', 'in:S,N'],
             'duration_minutes' => ['nullable', 'integer', 'min:0'],
             'supplier_id' => ['nullable', 'integer'],
-            'recipe' => ['required', 'boolean'],
         ]);
         
         // Eliminar el campo image si está vacío o es null
@@ -292,6 +292,7 @@ class ProductController extends Controller
             'complement_mode' => $validated['complement_mode'],
             'classification' => $validated['classification'],
             'features' => $validated['features'],
+            'recipe' => $validated['recipe'] === 'S',
         ];
     }
 
@@ -311,7 +312,6 @@ class ProductController extends Controller
             'supplier_id' => $validated['supplier_id'],
             'stock' => $validated['stock'],
             'price' => $validated['price'],
-            'recipe' => $validated['recipe'] === 'S',
         ];
     }
 }

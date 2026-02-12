@@ -130,8 +130,8 @@
                     name="recipe"
                     class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
                 >
-                    <option value="0" @selected(old('recipe', $productBranch?->recipe ?? 0) == 0)>No</option>
-                    <option value="1" @selected(old('recipe', $productBranch?->recipe ?? 0) == 1)>Sí</option>
+                    <option value="0" @selected(old('recipe', $product?->recipe ?? 0) == 0)>No</option>
+                    <option value="1" @selected(old('recipe', $product?->recipe ?? 0) == 1)>Sí</option>
                 </select>
             </div>
 
