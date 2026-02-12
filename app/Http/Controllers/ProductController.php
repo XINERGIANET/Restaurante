@@ -6,6 +6,7 @@ use App\Models\Branch;
 use App\Models\Category;
 use App\Models\Operation;
 use App\Models\Product;
+use App\Models\ProductBranch;
 use App\Models\TaxRate;
 use App\Models\Unit;
 use Illuminate\Http\Request;
@@ -115,17 +116,28 @@ class ProductController extends Controller
             Log::info(message: 'No image file in request');
         }
         
-        // Ahora validar los datos (sin el campo image si ya lo procesamos)
-        $data = $this->validateProduct($request);
+        $validated = $this->validateProduct($request);        
+        $productData = $this->prepareProductData($validated);
+        $branchData = $this->prepareBranchData($validated);
         
-        // No pasar nunca el archivo subido ni rutas temporales a la BD. Solo path relativo de storage (string).
-        unset($data['image']);
         if ($imagePath !== null && $imagePath !== '') {
-            $data['image'] = is_string($imagePath) ? $imagePath : (string) $imagePath;
-            Log::info('Image path added to data: ' . $data['image']);
+            $productData['image'] = is_string($imagePath) ? $imagePath : (string) $imagePath;
+            Log::info('Image path added to data: ' . $productData['image']);
         }
         
-        $product = Product::create($data);
+        dd($productData);
+
+        $product = Product::create($productData);
+        
+        // Crear ProductBranch para la sucursal actual
+        $branchId = $request->session()->get('branch_id');
+        if ($branchId) {
+            $branchData['product_id'] = $product->id;
+            $branchData['branch_id'] = $branchId;
+            $branchData['status'] = 'A';
+            ProductBranch::create($branchData);
+        }
+        
         $viewId = $request->input('view_id');
         
         return redirect()
@@ -137,21 +149,34 @@ class ProductController extends Controller
     {
         $categories = Category::query()->orderBy('description')->get();
         $units = Unit::query()->orderBy('description')->get();
+        $taxRates = TaxRate::query()->where('status', true)->orderBy('order_num')->get();
+        // TODO: Cargar suppliers desde la tabla correspondiente
+        // $suppliers = Supplier::query()->orderBy('description')->get(); 
+        $branchId = $request->session()->get('branch_id');
+        
+        // Obtener datos de ProductBranch para la sucursal actual
+        $productBranch = $product->productBranches()
+            ->where('branch_id', $branchId)
+            ->first();
 
         return view('products.edit', [
             'product' => $product,
+            'productBranch' => $productBranch,
             'categories' => $categories,
             'units' => $units,
+            'taxRates' => $taxRates,
+            'suppliers' => collect(), // Vacío por ahora, agregar cuando exista modelo Supplier
             'viewId' => $request->input('view_id'),
         ]);
     }
 
     public function update(Request $request, Product $product)
     {
-        $data = $this->validateProduct($request);
+        $validated = $this->validateProduct($request);
         
-        // No pasar nunca el archivo subido ni rutas temporales a la BD
-        unset($data['image']);
+        // Separar datos de Product y ProductBranch
+        $productData = $this->prepareProductData($validated);
+        $branchData = $this->prepareBranchData($validated);
         
         if ($request->hasFile('image')) {
             $file = $request->file('image');
@@ -166,18 +191,36 @@ class ProductController extends Controller
                     }
                     $path = $file->store('product', 'public');
                     if ($path && $path !== '') {
-                        $data['image'] = is_string($path) ? $path : (string) $path;
+                        $productData['image'] = is_string($path) ? $path : (string) $path;
                     } else {
                         Log::warning(message: 'El path de la imagen está vacío después de guardar');
                     }
                 } catch (\Exception $e) {
                     Log::error(message: 'Error al actualizar imagen del producto: ' . $e->getMessage());
-                    unset($data['image']);
                 }
             }
         }
         
-        $product->update($data);
+        // Actualizar producto
+        $product->update($productData);
+        
+        // Actualizar o crear ProductBranch para la sucursal actual
+        $branchId = $request->session()->get('branch_id');
+        if ($branchId) {
+            $productBranch = $product->productBranches()
+                ->where('branch_id', $branchId)
+                ->first();
+            
+            if ($productBranch) {
+                $productBranch->update($branchData);
+            } else {
+                $branchData['product_id'] = $product->id;
+                $branchData['branch_id'] = $branchId;
+                $branchData['status'] = 'A';
+                ProductBranch::create($branchData);
+            }
+        }
+        
         $viewId = $request->input('view_id');
         
         return redirect()
@@ -203,18 +246,35 @@ class ProductController extends Controller
     private function validateProduct(Request $request): array
     {
         $validated = $request->validate([
+            // Datos del Producto
             'code' => ['required', 'string', 'max:50'],
             'description' => ['required', 'string', 'max:255'],
             'abbreviation' => ['required', 'string', 'max:255'],
-            'type' => ['required', 'string', 'in:PRODUCT,COMPONENT'],
+            'type' => ['required', 'string', 'in:PRODUCT,INGREDENT'],
             'category_id' => ['required', 'integer', 'exists:categories,id'],
             'base_unit_id' => ['required', 'integer', 'exists:units,id'],
             'kardex' => ['required', 'string', 'in:S,N'],
-            'image' => ['nullable', 'sometimes', 'image', 'mimes:jpeg,png,jpg,gif,webp', 'max:2048'], // Máximo 2MB
+            'recipe' => ['required', 'string', 'in:S,N'],
+            'status' => ['required', 'string', 'in:A,I'],
+            'image' => ['nullable', 'sometimes', 'image', 'mimes:jpeg,png,jpg,gif,webp', 'max:2048'],
             'complement' => ['required', 'string', 'in:NO,HAS,IS'],
-            'complement_mode' => ['nullable', 'string', 'max:255'],
+            'complement_mode' => ['nullable', 'string', 'in:,ALL,QUANTITY'],
             'classification' => ['required', 'string', 'in:GOOD,SERVICE'],
             'features' => ['nullable', 'string'],
+            
+            // Datos de ProductBranch (Detalle por Sede)
+            'price' => ['required', 'numeric', 'min:0'],
+            'stock' => ['required', 'numeric', 'min:0'],
+            'stock_minimum' => ['required', 'numeric', 'min:0'],
+            'stock_maximum' => ['required', 'numeric', 'min:0'],
+            'minimum_sell' => ['required', 'numeric', 'min:0'],
+            'minimum_purchase' => ['required', 'numeric', 'min:0'],
+            'tax_rate_id' => ['nullable', 'integer', 'exists:tax_rates,id'],
+            'unit_sale' => ['nullable', 'string', 'max:50'],
+            'expiration_date' => ['nullable', 'date'],
+            'favorite' => ['required', 'string', 'in:S,N'],
+            'duration_minutes' => ['nullable', 'integer', 'min:0'],
+            'supplier_id' => ['nullable', 'integer'],
         ]);
         
         // Eliminar el campo image si está vacío o es null
@@ -223,5 +283,43 @@ class ProductController extends Controller
         }
         
         return $validated;
+    }
+
+    private function prepareProductData(array $validated): array
+    {
+        return [
+            'code' => $validated['code'],
+            'description' => $validated['description'],
+            'abbreviation' => $validated['abbreviation'],
+            'type' => $validated['type'],
+            'category_id' => $validated['category_id'],
+            'base_unit_id' => $validated['base_unit_id'],
+            'kardex' => $validated['kardex'],
+            'recipe' => $validated['recipe'],
+            'status' => $validated['status'],
+            'complement' => $validated['complement'],
+            'complement_mode' => $validated['complement_mode'],
+            'classification' => $validated['classification'],
+            'features' => $validated['features'],
+        ];
+    }
+
+    private function prepareBranchData(array $validated): array
+    {
+        return [
+            'price' => $validated['price'],
+            'stock' => $validated['stock'],
+            'stock_minimum' => $validated['stock_minimum'],
+            'stock_maximum' => $validated['stock_maximum'],
+            'minimum_sell' => $validated['minimum_sell'],
+            'minimum_purchase' => $validated['minimum_purchase'],
+            'tax_rate_id' => $validated['tax_rate_id'],
+            'unit_sale' => $validated['unit_sale'],
+            'expiration_date' => $validated['expiration_date'],
+            'favorite' => $validated['favorite'],
+            'duration_minutes' => $validated['duration_minutes'],
+            'supplier_id' => $validated['supplier_id'],
+            'recipe' => $validated['recipe'] === 'S' ? true : false,
+        ];
     }
 }

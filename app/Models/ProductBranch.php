@@ -24,6 +24,7 @@ class ProductBranch extends Model
         'favorite',
         'duration_minutes',
         'supplier_id',
+        'recipe'
     ];
 
     public function product()
