@@ -174,7 +174,7 @@
                                     </div>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
-                                    <p class="font-medium text-gray-800 text-theme-sm dark:text-white/90">{{ $sale->number }}</p>
+                                    <p class="font-medium text-gray-800 text-theme-sm dark:text-white/90">  {{ strtoupper(substr($sale->documentType->name, 0, 1)) }}{{ $sale->salesMovement->series }}-{{ $sale->number }}</p>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
                                     <p class="text-gray-500 text-theme-sm dark:text-gray-400">{{ $sale->documentType?->name ?? '-' }}</p>
