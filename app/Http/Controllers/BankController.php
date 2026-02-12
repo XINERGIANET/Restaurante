@@ -44,7 +44,7 @@ class BankController extends Controller
         }
         $banks = Bank::query()
             ->when($search, function ($query) use ($search) {
-                $query->where('description', 'like', "%{$search}%");
+                $query->where('description', 'ILIKE', "%{$search}%");
             })
             ->orderBy('order_num')
             ->paginate($perPage)

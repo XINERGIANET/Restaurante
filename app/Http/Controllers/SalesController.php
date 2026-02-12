@@ -72,15 +72,15 @@ class SalesController extends Controller
             ->where('movement_type_id', 2) //2 es venta
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
-                    $inner->where('number', 'like', "%{$search}%")
-                        ->orWhere('person_name', 'like', "%{$search}%")
-                        ->orWhere('user_name', 'like', "%{$search}%");
+                    $inner->where('number', 'ILIKE', "%{$search}%")
+                        ->orWhere('person_name', 'ILIKE', "%{$search}%")
+                        ->orWhere('user_name', 'ILIKE', "%{$search}%");
                 });
             })
             ->orderByDesc('id')
             ->paginate($perPage)
             ->withQueryString();
-
+        
         return view('sales.index', [
             'sales' => $sales,
             'search' => $search,
@@ -425,7 +425,11 @@ class SalesController extends Controller
                 }
             } else {
                 // Crear nuevo Movement
-                $number = 'V-' . Carbon::now()->format('Ymd') . '-' . str_pad(Movement::whereDate('created_at', Carbon::today())->count() + 1, 4, '0', STR_PAD_LEFT);
+                $number = $this->generateSaleNumber(
+                    (int) $documentType->id,
+                    (int) $cashRegister->id,
+                    true
+                );
                 
                 $movement = Movement::create([
                     'number' => $number,
@@ -436,9 +440,9 @@ class SalesController extends Controller
                     'person_name' => $selectedPerson
                         ? trim(($selectedPerson->first_name ?? '') . ' ' . ($selectedPerson->last_name ?? ''))
                         : 'Publico General',
-                    'responsible_id' => $user?->id,
-                    'responsible_name' => $user?->name ?? 'Sistema',
-                    'comment' => $request->notes ?? 'Venta desde punto de venta',
+                    'responsible_id' => $user?->person->id,
+                    'responsible_name' => $user?->person->first_name . ' ' . $user?->person->last_name ?? '-',
+                    'comment' => $request->notes ?? '',
                     'status' => 'A', // Siempre Activo (pago completo)
                     'movement_type_id' => $movementType->id,
                     'document_type_id' => $documentType->id,
@@ -472,13 +476,13 @@ class SalesController extends Controller
                     ],
                     'series' => '001',
                     'year' => Carbon::now()->year,
-                    'detail_type' => 'DETAILED',
+                    'detail_type' => 'DETALLADO',
                     'consumption' => 'N',
-                    'payment_type' => 'CASH', // Siempre CASH (pago completo)
+                    'payment_type' => 'CONTADO', // Siempre CASH (pago completo)
                     'status' => 'N' ,
-                    'sale_type' => 'RETAIL',
+                    'sale_type' => 'MINORISTA',
                     'currency' => 'PEN',
-                    'exchange_rate' => 1.000,
+                    'exchange_rate' => 3.5,
                     'subtotal' => $subtotal,
                     'tax' => $tax,
                     'total' => $total,
@@ -506,12 +510,12 @@ class SalesController extends Controller
                 $quantityToSell = (int) $item['qty'];
                 $currentStock = (int) ($productBranch->stock ?? 0);
                 
-                if ($currentStock < $quantityToSell) {
-                    throw new \Exception(
-                        "Stock insuficiente para el producto {$product->description}. " .
-                        "Stock disponible: {$currentStock}, Cantidad solicitada: {$quantityToSell}"
-                    );
-                }
+                // if ($currentStock < $quantityToSell) {
+                //     throw new \Exception(
+                //         "Stock insuficiente para el producto {$product->description}. " .
+                //         "Stock disponible: {$currentStock}, Cantidad solicitada: {$quantityToSell}"
+                //     );
+                // }
 
                 $unit = $product->baseUnit;
                 if (!$unit) {
@@ -747,8 +751,13 @@ class SalesController extends Controller
             $tax = $calculated['tax'];
             $total = $calculated['total'];
 
-            // Generar número de movimiento
-            $number = 'V-' . Carbon::now()->format('Ymd') . '-' . str_pad(Movement::whereDate('created_at', Carbon::today())->count() + 1, 4, '0', STR_PAD_LEFT);
+            // Generar numero de movimiento con serie/correlativo por documento y caja activa
+            $activeCashRegisterId = $this->resolveActiveCashRegisterId((int) $branchId);
+            $number = $this->generateSaleNumber(
+                (int) $documentType->id,
+                $activeCashRegisterId,
+                true
+            );
 
             // Crear Movement con status 'P' (Pendiente) o 'I' (Inactivo)
             $movement = Movement::create([
@@ -1109,6 +1118,113 @@ class SalesController extends Controller
             'sales' => $sales,
         ]);
     }
+
+    /**
+     * Genera numero de venta en formato correlativo simple: 00000127.
+     * Mantiene compatibilidad leyendo tambien numeros historicos con formato antiguo.
+     */
+    private function generateSaleNumber(int $documentTypeId, int $cashRegisterId, bool $reserve = true): string
+    {
+        $documentType = DocumentType::find($documentTypeId);
+        if (!$documentType) {
+            throw new \Exception('Tipo de documento no encontrado.');
+        }
+
+        $cashRegister = CashRegister::find($cashRegisterId);
+        if (!$cashRegister) {
+            throw new \Exception('Caja no encontrada.');
+        }
+
+        $branchId = (int) session('branch_id');
+        if (!$branchId) {
+            throw new \Exception('No se encontro sucursal en sesion.');
+        }
+
+        $year = (int) now()->year;
+
+        $query = Movement::query()
+            ->where('branch_id', $branchId)
+            ->where('document_type_id', $documentTypeId)
+            ->whereYear('moved_at', $year);
+
+        if ($reserve) {
+            $query->lockForUpdate();
+        }
+
+        $lastCorrelative = 0;
+        $numbers = $query->pluck('number');
+
+        foreach ($numbers as $number) {
+            $raw = trim((string) $number);
+            if ($raw === '') {
+                continue;
+            }
+
+            if (preg_match('/^\d+$/', $raw) === 1) {
+                $value = (int) $raw;
+                if ($value > $lastCorrelative) {
+                    $lastCorrelative = $value;
+                }
+                continue;
+            }
+
+            if (preg_match('/(\d+)-\d{4}$/', $raw, $matches) === 1) {
+                $value = (int) $matches[1];
+                if ($value > $lastCorrelative) {
+                    $lastCorrelative = $value;
+                }
+            }
+        }
+
+        $nextCorrelative = $lastCorrelative + 1;
+
+        return str_pad((string) $nextCorrelative, 8, '0', STR_PAD_LEFT);
+    }
+
+    private function resolveDocumentAbbreviation(string $documentName): string
+    {
+        $name = strtolower(trim($documentName));
+
+        if (str_contains($name, 'boleta')) {
+            return 'B';
+        }
+        if (str_contains($name, 'factura')) {
+            return 'F';
+        }
+        if (str_contains($name, 'ticket')) {
+            return 'T';
+        }
+        if (str_contains($name, 'nota')) {
+            return 'N';
+        }
+
+        $firstLetter = strtoupper(substr(preg_replace('/[^a-zA-Z]/', '', $documentName) ?: 'X', 0, 1));
+
+        return $firstLetter !== '' ? $firstLetter : 'X';
+    }
+
+    private function resolveActiveCashRegisterId(int $branchId): int
+    {
+        $cashRegisterId = CashRegister::query()
+            ->where('branch_id', $branchId)
+            ->where('status', 'A')
+            ->orderBy('id')
+            ->value('id');
+
+        if (!$cashRegisterId) {
+            $cashRegisterId = CashRegister::query()
+                ->where('branch_id', $branchId)
+                ->orderBy('id')
+                ->value('id');
+        }
+
+        if (!$cashRegisterId) {
+            throw new \Exception('No hay caja activa/disponible para generar el numero de venta.');
+        }
+
+        return (int) $cashRegisterId;
+    }
 }
+
 
 

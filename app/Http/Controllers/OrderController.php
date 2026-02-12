@@ -86,12 +86,12 @@ class OrderController extends Controller
                 $query->where(function ($inner) use ($search) {
                     $inner->whereHas('movement', function ($movementQuery) use ($search) {
                         $movementQuery->where(function ($movementInner) use ($search) {
-                            $movementInner->where('number', 'like', "%{$search}%")
-                                ->orWhere('person_name', 'like', "%{$search}%")
-                                ->orWhere('user_name', 'like', "%{$search}%");
+                            $movementInner->where('number', 'ILIKE', "%{$search}%")
+                                ->orWhere('person_name', 'ILIKE', "%{$search}%")
+                                ->orWhere('user_name', 'ILIKE', "%{$search}%");
                         });
                     })
-                    ->orWhere('status', 'like', "%{$search}%");
+                    ->orWhere('status', 'ILIKE', "%{$search}%");
                 });
             })
             ->orderByDesc('id')

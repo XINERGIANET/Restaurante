@@ -48,8 +48,8 @@ class CategoryController extends Controller
 
         $categories = Category::query()
             ->when($search, function ($query) use ($search) {
-                $query->where('description', 'like', "%{$search}%")
-                    ->orWhere('abbreviation', 'like', "%{$search}%");
+                $query->where('description', 'ILIKE', "%{$search}%")
+                    ->orWhere('abbreviation', 'ILIKE', "%{$search}%");
             })
             ->orderByDesc('id')
             ->paginate($perPage)

@@ -303,9 +303,9 @@ class WarehouseMovementController extends Controller
             ->with(['movement.movementType', 'movement.documentType', 'branch'])
             ->when($search, function ($query) use ($search) {
                 $query->whereHas('movement', function ($q) use ($search) {
-                    $q->where('number', 'like', "%{$search}%")
-                        ->orWhere('person_name', 'like', "%{$search}%")
-                        ->orWhere('user_name', 'like', "%{$search}%");
+                    $q->where('number', 'ILIKE', "%{$search}%")
+                        ->orWhere('person_name', 'ILIKE', "%{$search}%")
+                        ->orWhere('user_name', 'ILIKE', "%{$search}%");
                 });
             })
             ->orderByDesc('id')

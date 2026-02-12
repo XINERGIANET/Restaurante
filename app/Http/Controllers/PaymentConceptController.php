@@ -46,7 +46,7 @@ class PaymentConceptController extends Controller
 
         $paymentConcepts = PaymentConcept::query()
             ->when($search, function ($query) use ($search) {
-                $query->where('description', 'like', "%{$search}%");
+                $query->where('description', 'ILIKE', "%{$search}%");
             })
             ->orderBy('id')
             ->paginate($perPage)

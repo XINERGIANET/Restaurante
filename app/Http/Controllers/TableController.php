@@ -49,7 +49,7 @@ class TableController extends Controller
 
         $tables = Table::query()
             ->when($search, function ($query) use ($search) {
-                $query->where('name', 'like', "%{$search}%");
+                $query->where('name', 'ILIKE', "%{$search}%");
             })
             ->orderByDesc('id')
             ->paginate($perPage)
@@ -82,7 +82,7 @@ class TableController extends Controller
         $tables = Table::query()
             ->where('area_id', $area->id)
             ->when($search, function ($query) use ($search) {
-                $query->where('name', 'like', "%{$search}%");
+                $query->where('name', 'ILIKE', "%{$search}%");
             })
             ->orderByDesc('id')
             ->paginate($perPage)

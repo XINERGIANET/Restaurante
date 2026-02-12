@@ -49,7 +49,7 @@ class ProfileController extends Controller
 
         $profiles = Profile::query()
             ->when($search, function ($query) use ($search) {
-                $query->where('name', 'like', "%{$search}%");
+                $query->where('name', 'ILIKE', "%{$search}%");
             })
             ->orderBy('id')
             ->paginate($perPage)

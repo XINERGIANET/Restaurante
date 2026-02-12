@@ -1230,6 +1230,20 @@
                 }
             }
 
+            function showErrorModal(message, title = 'No se pudo completar la venta') {
+                if (window.Swal && typeof window.Swal.fire === 'function') {
+                    window.Swal.fire({
+                        icon: 'error',
+                        title,
+                        text: message,
+                        confirmButtonText: 'Entendido',
+                        confirmButtonColor: '#2563eb'
+                    });
+                    return;
+                }
+                showNotification('Error', message, 'error');
+            }
+
             // Confirmar pago
             document.getElementById('confirm-btn')?.addEventListener('click', function() {
                 const docTypeId = documentTypeInput?.value;
@@ -1320,35 +1334,29 @@
                         body: JSON.stringify(payload)
                     })
                     .then(async r => {
-                        const contentType = r.headers.get('content-type');
-                        if (contentType && contentType.includes('application/json')) {
+                        const contentType = r.headers.get('content-type') || '';
+
+                        if (contentType.includes('application/json')) {
                             const data = await r.json();
                             if (!r.ok) {
-                                // Construir mensaje de error mÃ¡s detallado
                                 let errorMessage = data.message || data.error || 'Error al procesar la venta';
-                                if (data.error && typeof data.error === 'object') {
-                                    // Si hay informaciÃ³n de debug, incluirla
-                                    if (data.error.message) {
-                                        errorMessage = data.error.message;
-                                    }
-                                    if (data.error.file && data.error.line) {
-                                    }
-                                }
                                 if (data.errors && typeof data.errors === 'object') {
-                                    // Si hay errores de validaciÃ³n, mostrarlos
                                     const validationErrors = Object.values(data.errors).flat().join(', ');
                                     errorMessage = validationErrors || errorMessage;
+                                }
+                                if (r.status >= 500 && (!errorMessage || errorMessage === 'Error al procesar la venta')) {
+                                    errorMessage = 'Ocurrió un error interno al procesar la venta. Por favor, inténtalo nuevamente en unos minutos.';
                                 }
                                 throw new Error(errorMessage);
                             }
                             return data;
-                        } else {
-                            // Si no es JSON, probablemente es HTML (error del servidor)
-                            const text = await r.text();
-                            throw new Error(
-                                'Error del servidor. Por favor, revisa los logs o contacta al administrador.'
-                                );
                         }
+
+                        await r.text();
+                        if (!r.ok) {
+                            throw new Error('Ocurrió un error interno al procesar la venta. Por favor, inténtalo nuevamente en unos minutos.');
+                        }
+                        throw new Error('Respuesta inesperada del servidor.');
                     })
                     .then(data => {
                         if (!data.success) {
@@ -1374,7 +1382,7 @@
                     })
                     .catch(err => {   
                         const errorMessage = err.message || 'Error al procesar la venta';
-                        showNotification('Error', errorMessage, 'error');
+                        showErrorModal(errorMessage);
                         this.disabled = false;
                         this.textContent = originalText;
                     });
@@ -1382,5 +1390,3 @@
         });
     </script>
 @endsection
-
-

@@ -49,9 +49,9 @@ class AreaController extends Controller
             ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
-                    $inner->where('name', 'like', "%{$search}%")
+                    $inner->where('name', 'ILIKE', "%{$search}%")
                         ->orWhereHas('branch', function ($branchQuery) use ($search) {
-                            $branchQuery->where('legal_name', 'like', "%{$search}%");
+                            $branchQuery->where('legal_name', 'ILIKE', "%{$search}%");
                         });
                 });
             })

@@ -9,7 +9,7 @@
 ])
 
 @php
-    $base = 'inline-flex items-center justify-center font-medium gap-2 rounded-full transition';
+    $base = 'inline-flex items-center justify-center font-medium gap-2 rounded-xl transition';
 
     $sizeMap = [
         'sm' => 'px-4 py-3 text-sm',

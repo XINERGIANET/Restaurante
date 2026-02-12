@@ -9,21 +9,31 @@ class ProductBranch extends Model
     protected $table = 'product_branch';
 
     protected $fillable = [
-        'product_id',
-        'branch_id',
-        'stock',
-        'price',
+        'status',
+        'expiration_date',
         'stock_minimum',
         'stock_maximum',
         'minimum_sell',
         'minimum_purchase',
+        'favorite',
         'tax_rate_id',
         'unit_sale',
-        'status',
-        'expiration_date',
-        'favorite',
+        'product_id',
+        'branch_id',        
         'duration_minutes',
         'supplier_id',
+        'stock',
+        'price',
+    ];
+
+    protected $casts = [
+        'stock' => 'decimal:4',
+        'price' => 'decimal:2',
+        'stock_minimum' => 'decimal:4',
+        'stock_maximum' => 'decimal:4',
+        'minimum_sell' => 'decimal:4',
+        'minimum_purchase' => 'decimal:4',
+        'favorite' => 'string',
     ];
 
     public function product()

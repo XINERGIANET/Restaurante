@@ -271,21 +271,20 @@
             </div>
 
 
+            <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div class="text-sm text-gray-500 dark:text-gray-400">
+                    Mostrando
+                    <span class="font-semibold text-gray-700 dark:text-gray-200">{{ $companies->firstItem() ?? 0 }}</span>
+                    -
+                    <span class="font-semibold text-gray-700 dark:text-gray-200">{{ $companies->lastItem() ?? 0 }}</span>
+                    de
+                    <span class="font-semibold text-gray-700 dark:text-gray-200">{{ $companies->total() }}</span>
+                </div>
+                <div class="flex-none pagination-simple">
+                    {{ $companies->links() }}
+                </div>
+            </div>
         </x-common.component-card>
-
-        <div class="mt-5 mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between px-4 sm:px-6">
-            <div class="text-sm text-gray-500 dark:text-gray-400">
-                Mostrando
-                <span class="font-semibold text-gray-700 dark:text-gray-200">{{ $companies->firstItem() ?? 0 }}</span>
-                -
-                <span class="font-semibold text-gray-700 dark:text-gray-200">{{ $companies->lastItem() ?? 0 }}</span>
-                de
-                <span class="font-semibold text-gray-700 dark:text-gray-200">{{ $companies->total() }}</span>
-            </div>
-            <div class="flex-none pagination-simple">
-                {{ $companies->links() }}
-            </div>
-        </div>
 
 
         <x-ui.modal x-data="{ open: false }" @open-company-modal.window="open = true"

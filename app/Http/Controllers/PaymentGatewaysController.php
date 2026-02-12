@@ -46,7 +46,7 @@ class PaymentGatewaysController extends Controller
 
         $paymentGateways = PaymentGateways::query()
             ->when($search, function ($query) use ($search) {
-                $query->where('description', 'like', "%{$search}%");
+                $query->where('description', 'ILIKE', "%{$search}%");
             })
             ->orderBy('order_num')
             ->paginate($perPage)

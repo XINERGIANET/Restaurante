@@ -53,8 +53,8 @@ class MenuOptionController extends Controller
         $menuOptions = $module->menuOptions()
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
-                    $inner->where('name', 'ilike', "%{$search}%")
-                        ->orWhere('action', 'ilike', "%{$search}%");
+                    $inner->where('name', 'ILIKE', "%{$search}%")
+                        ->orWhere('action', 'ILIKE', "%{$search}%");
                 });
             })
             ->orderBy('id', 'asc')

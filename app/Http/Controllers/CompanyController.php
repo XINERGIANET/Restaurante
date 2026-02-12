@@ -47,9 +47,9 @@ class CompanyController extends Controller
         $companies = Company::query()
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
-                    $inner->where('legal_name', 'like', "%{$search}%")
-                        ->orWhere('tax_id', 'like', "%{$search}%")
-                        ->orWhere('address', 'like', "%{$search}%");
+                    $inner->where('legal_name', 'ILIKE', "%{$search}%")
+                        ->orWhere('tax_id', 'ILIKE', "%{$search}%")
+                        ->orWhere('address', 'ILIKE', "%{$search}%");
                 });
             })
             ->orderByDesc('id')

@@ -64,9 +64,9 @@ class BranchController extends Controller
             ->with('location')
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
-                    $inner->where('legal_name', 'like', "%{$search}%")
-                        ->orWhere('ruc', 'like', "%{$search}%")
-                        ->orWhere('address', 'like', "%{$search}%");
+                    $inner->where('legal_name', 'ILIKE', "%{$search}%")
+                        ->orWhere('ruc', 'ILIKE', "%{$search}%")
+                        ->orWhere('address', 'ILIKE', "%{$search}%");
                 });
             })
             ->orderByDesc('id')

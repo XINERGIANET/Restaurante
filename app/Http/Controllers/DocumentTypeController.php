@@ -50,7 +50,7 @@ class DocumentTypeController extends Controller
             ->with('movementType')
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
-                    $inner->where('name', 'like', "%{$search}%");
+                    $inner->where('name', 'ILIKE', "%{$search}%");
                 });
             })
             ->orderByDesc('id')
