@@ -1,6 +1,6 @@
 <header
     style="height: 55px; background: linear-gradient(150deg, #4BB4ED 0%, #234bbb 100%) !important;"
-    class="sticky top-0 flex w-full z-99999 dark:border-gray-800 dark:bg-gray-900 xl:border-b shadow-md"
+    class="sticky top-0 flex w-full z-99999 dark:border-gray-800 dark:bg-gray-900"
     x-data="{
         isApplicationMenuOpen: false,
         toggleApplicationMenu() {
@@ -9,7 +9,7 @@
     }">
     <div class="flex flex-col items-center justify-between grow xl:flex-row xl:px-6">
         <div
-            class="flex items-center justify-between w-full gap-2 px-3 py-3 border-b border-[#1c3a8c] dark:border-gray-800 sm:gap-4 xl:justify-normal xl:border-b-0 xl:px-0 lg:py-4">
+            class="flex items-center justify-between w-full gap-2 px-3 py-3 dark:border-gray-800 sm:gap-4 xl:justify-normal xl:border-b-0 xl:px-0 lg:py-4">
 
             <!-- Desktop Sidebar Toggle Button -->
             <button

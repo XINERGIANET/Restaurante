@@ -55,9 +55,9 @@ class ProductController extends Controller
         $products = Product::query()
             ->with(['category', 'baseUnit', 'productBranches.branch', 'productBranches.taxRate'])
             ->when($search, function ($query) use ($search) {
-                $query->where('description', 'like', "%{$search}%")
-                    ->orWhere('code', 'like', "%{$search}%")
-                    ->orWhere('abbreviation', 'like', "%{$search}%");
+                $query->where('description', 'ILIKE', "%{$search}%")
+                    ->orWhere('code', 'ILIKE', "%{$search}%")
+                    ->orWhere('abbreviation', 'ILIKE', "%{$search}%");
             })
             ->orderByDesc('id')
             ->paginate($perPage)

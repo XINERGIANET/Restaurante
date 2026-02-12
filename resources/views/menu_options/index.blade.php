@@ -112,11 +112,13 @@
                         />
                     </div>
                     <div class="flex flex-wrap gap-2">
-                        <x-ui.button size="sm" variant="primary" type="submit" style="background-color: #244BB3; border-color: #244BB3;">
-                            <i class="ri-search-line text-gray-100"></i> <span class="text-gray-100">Buscar</span>
+                        <x-ui.button size="md" variant="primary" type="submit" class="flex-1 sm:flex-none h-11 px-4 shadow-sm hover:shadow-md transition-all duration-200 active:scale-95" style="background-color: #244BB3; border-color: #244BB3;">
+                            <i class="ri-search-line text-gray-100"></i>
+                            <span class="font-medium text-gray-100">Buscar</span>
                         </x-ui.button>
-                        <x-ui.link-button size="sm" variant="outline" href="{{ route('admin.modules.menu_options.index', $viewId ? [$module, 'view_id' => $viewId] : $module) }}">
-                            <i class="ri-close-line"></i> Limpiar
+                        <x-ui.link-button size="md" variant="outline" href="{{ route('admin.modules.menu_options.index', $viewId ? [$module, 'view_id' => $viewId] : $module) }}" class="flex-1 sm:flex-none h-11 px-4 border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200">
+                            <i class="ri-refresh-line"></i>
+                            <span class="font-medium">Limpiar</span>
                         </x-ui.link-button>
                     </div>
                 </form>

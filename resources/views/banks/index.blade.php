@@ -85,9 +85,14 @@
                     class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 pl-12 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30" />
             </div>
             <div class="flex flex-wrap gap-2">
-                <x-ui.button size="sm" variant="primary" type="submit">Buscar</x-ui.button>
-                <x-ui.button size="sm" variant="outline" class="rounded-xl"
-                    @click="window.location.href='{{ $viewId ? route('admin.banks.index', ['view_id' => $viewId]) : route('admin.banks.index') }}'">Limpiar</x-ui.button>
+                <x-ui.button size="md" variant="primary" type="submit" class="flex-1 sm:flex-none h-11 px-4 shadow-sm hover:shadow-md transition-all duration-200 active:scale-95" style="background-color: #244BB3; border-color: #244BB3;">
+                    <i class="ri-search-line text-gray-100"></i>
+                    <span class="font-medium text-gray-100">Buscar</span>
+                </x-ui.button>
+                <x-ui.link-button size="md" variant="outline" href="{{ $viewId ? route('admin.banks.index', ['view_id' => $viewId]) : route('admin.banks.index') }}" class="flex-1 sm:flex-none h-11 px-4 border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200">
+                    <i class="ri-refresh-line"></i>
+                    <span class="font-medium">Limpiar</span>
+                </x-ui.link-button>
             </div>
         </form>
         <div class="flex flex-wrap items-center gap-2">
@@ -117,8 +122,8 @@
     </div>
     @if ($banks->count() > 0)
         <div
-            class="mt-4 overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
-            <div class="max-w-full overflow-x-auto custom-scrollbar">
+            class="mt-4 rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]" style="overflow: visible; max-height: none;">
+            <div class="max-w-full overflow-visible">
                 <table class="w-full min-w-[880px]">
                     <thead class="text-left text-theme-xs dark:text-gray-400">
                         <tr class="border-b border-gray-100 dark:border-gray-800">

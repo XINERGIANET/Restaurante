@@ -100,13 +100,17 @@
             });
 
             Alpine.store('sidebar', {
-                // Initialize based on screen size
-                isExpanded: window.innerWidth >= 1280, // true for desktop, false for mobile
+                // Initialize based on screen size and localStorage
+                isExpanded: (window.innerWidth >= 1280) ? (localStorage.getItem('sidebarExpanded') !== 'false') : false,
                 isMobileOpen: false,
                 isHovered: false,
 
                 toggleExpanded() {
                     this.isExpanded = !this.isExpanded;
+                    // Save preference on desktop
+                    if (window.innerWidth >= 1280) {
+                        localStorage.setItem('sidebarExpanded', this.isExpanded);
+                    }
                     // When toggling desktop sidebar, ensure mobile menu is closed
                     this.isMobileOpen = false;
                 },
@@ -194,21 +198,24 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
 
 <body class="min-h-screen flex flex-col"
     x-data="{ 'loaded': true}"
-    x-init="$store.sidebar.isExpanded = window.innerWidth >= 1280;
+    x-init="
     const checkMobile = () => {
         if (window.innerWidth < 1280) {
             $store.sidebar.setMobileOpen(false);
             $store.sidebar.isExpanded = false;
         } else {
             $store.sidebar.isMobileOpen = false;
-            $store.sidebar.isExpanded = true;
+            // Respect stored preference on desktop
+            const saved = localStorage.getItem('sidebarExpanded');
+            $store.sidebar.isExpanded = (saved !== 'false');
         }
     };
     if (window.__sidebarResizeHandler) {
         window.removeEventListener('resize', window.__sidebarResizeHandler);
     }
     window.__sidebarResizeHandler = checkMobile;
-    window.addEventListener('resize', window.__sidebarResizeHandler);">
+    window.addEventListener('resize', window.__sidebarResizeHandler);
+    checkMobile();">
 
     {{-- preloader --}}
     <x-common.preloader/>

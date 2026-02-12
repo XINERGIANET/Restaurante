@@ -46,7 +46,7 @@ class PaymentMethodController extends Controller
 
         $paymentMethods = PaymentMethod::query()
             ->when($search, function ($query) use ($search) {
-                $query->where('description', 'like', "%{$search}%");
+                $query->where('description', 'ILIKE', "%{$search}%");
             })
             ->orderBy('order_num')
             ->paginate($perPage)

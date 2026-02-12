@@ -47,8 +47,8 @@ class BoxController extends Controller
         $cash = CashRegister::query()
             ->when($search, function ($query, $search) {
                 $query->where(function ($inner) use ($search) {
-                    $inner->where('number', 'like', "%{$search}%")
-                        ->orWhere('series', 'like', "%{$search}%");
+                    $inner->where('number', 'ILIKE', "%{$search}%")
+                        ->orWhere('series', 'ILIKE', "%{$search}%");
                 });
             })
             ->orderBy('number', 'asc')
