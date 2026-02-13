@@ -127,7 +127,7 @@
             </div>
 
             <div class="table-responsive mt-4 rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
-                <table class="w-full min-w-[880px]">
+                <table class="w-full min-w-[1100px]">
                     <thead>
                         <tr class="text-white">
                             <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6 first:rounded-tl-xl sticky-left-header">

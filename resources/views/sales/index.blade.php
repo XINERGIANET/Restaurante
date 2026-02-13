@@ -127,7 +127,7 @@
             </div>
 
             <div class="table-responsive mt-4 rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
-                <table class="w-full min-w-[1000px]">
+                <table class="w-full min-w-[1100px]">
                     <thead>
                         <tr class="text-white">
                             <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6 first:rounded-tl-xl sticky-left-header">
@@ -136,22 +136,22 @@
                             <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
                                 <p class="font-semibold text-white text-theme-xs uppercase">Comprobante</p>
                             </th>
-                            <th class="px-5 py-3 text-left sm:px-6">
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class= "px-5 py-3 text-left sm:px-6">
                                 <p class="font-semibold text-white text-theme-xs uppercase">Subtotal</p>
                             </th>
-                            <th class="px-5 py-3 text-left sm:px-6">
+                            <th  style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
                                 <p class="font-semibold text-white text-theme-xs uppercase">IGV</p>
                             </th>
-                            <th class="px-5 py-3 text-left sm:px-6">
+                            <th  style="background-color: #63B7EC; color: #FFFFFF;"  class="px-5 py-3 text-left sm:px-6">
                                 <p class="font-semibold text-white text-theme-xs uppercase">Total</p>
                             </th>
-                            <th class="px-5 py-3 text-left sm:px-6">
+                            <th  style="background-color: #63B7EC; color: #FFFFFF;"  class="px-5 py-3 text-left sm:px-6">
                                 <p class="font-semibold text-white text-theme-xs uppercase">Persona</p>
                             </th>
-                            <th class="px-5 py-3 text-left sm:px-6">
+                            <th  style="background-color: #63B7EC; color: #FFFFFF;"  class="px-5 py-3 text-left sm:px-6">
                                 <p class="font-semibold text-white text-theme-xs uppercase">Situación</p>
                             </th>
-                            <th class="px-5 py-3 text-right sm:px-6 last:rounded-tr-xl">
+                            <th  style="background-color: #63B7EC; color: #FFFFFF;"  class="px-5 py-3 text-right sm:px-6 last:rounded-tr-xl">
                                 <p class="font-semibold text-white text-theme-xs uppercase">Acciones</p>
                             </th>
                         </tr>
