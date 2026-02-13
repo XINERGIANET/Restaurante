@@ -295,42 +295,50 @@
             </div>
 
             {{-- TABLA --}}
-            <div class="table-responsive mt-4 rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] overflow-x-auto">
-                <table class="w-full min-w-[1100px]">
-                    <thead style="background-color: #63B7EC; color: #FFFFFF;">
-                        <tr class="text-white">
-                            <th class="px-3 py-3 text-center sm:px-4 sticky-left-header" style="width: 50px;">
-                                <p class="font-semibold text-white text-theme-xs uppercase">ID</p>
-                            </th>
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-3 py-3 text-left sm:px-4">
-                                <p class="font-semibold text-white text-theme-xs uppercase">Numero</p>
-                            </th>
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-3 py-3 text-left sm:px-4">
-                                <p class="font-semibold text-white text-theme-xs uppercase">Tipo</p>
-                            </th>
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-3 py-3 text-left sm:px-4">
-                                <p class="font-semibold text-white text-theme-xs uppercase">Concepto</p>
-                            </th>
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-3 py-3 text-left sm:px-4">
-                                <p class="font-semibold text-white text-theme-xs uppercase">Total</p>
-                            </th>
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-3 py-3 text-left sm:px-4">
-                                <p class="font-semibold text-white text-theme-xs uppercase">Fecha</p>
-                            </th>
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-3 py-3 text-left sm:px-4">
-                                <p class="font-semibold text-white text-theme-xs uppercase">Usuario / Caja / Turno</p>
-                            </th>
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-3 py-3 text-left sm:px-4">
-                                <p class="font-semibold text-white text-theme-xs uppercase">Situacion</p>
-                            </th>
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-3 py-3 text-left sm:px-4">
-                                <p class="font-semibold text-white text-theme-xs uppercase">Pagos</p>
-                            </th>
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-3 py-3 text-right sm:px-4 last:rounded-tr-xl">
-                                <p class="font-semibold text-white text-theme-xs uppercase">Acciones</p>
-                            </th>
-                        </tr>
-                    </thead>
+            <div
+                class="table-responsive mt-4 rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+                <div class="max-w-full">
+                    <table class="w-full min-w-[880px]">
+                        <thead style="background-color: #63B7EC; color: #FFFFFF;">
+                            <tr class="text-white" >
+                                <th class="px-5 py-3 text-center sm:px-6 sticky-left-header">
+                                    <p class="font-medium text-theme-xs dark:text-white">Orden</p>
+                                </th>
+                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                                    <p class="font-semibold text-white text-theme-xs uppercase">Numero</p>
+                                </th>
+                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                                    <p class="font-semibold text-white text-theme-xs uppercase">Tipo</p>
+                                </th>
+                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                                    <p class="font-semibold text-white text-theme-xs uppercase">Concepto</p>
+                                </th>
+                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                                    <p class="font-semibold text-white text-theme-xs uppercase">Total</p>
+                                </th>
+                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                                    <p class="font-semibold text-white text-theme-xs uppercase">Fecha</p>
+                                </th>
+                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                                    <p class="font-semibold text-white text-theme-xs uppercase">Usuario</p>
+                                </th>
+                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="hidden lg:table-cell px-5 py-3 text-left sm:px-6">
+                                    <p class="font-semibold text-white text-theme-xs uppercase">Caja</p>
+                                </th>
+                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="hidden xl:table-cell px-5 py-3 text-left sm:px-6">
+                                    <p class="font-semibold text-white text-theme-xs uppercase">Turno</p>
+                                </th>
+                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                                    <p class="font-semibold text-white text-theme-xs uppercase">Situacion</p>
+                                </th>
+                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                                    <p class="font-semibold text-white text-theme-xs uppercase">Metodos de pago</p>
+                                </th>
+                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-right sm:px-6 last:rounded-tr-xl">
+                                    <p class="font-semibold text-white text-theme-xs uppercase">Operaciones</p>
+                                </th>
+                            </tr>
+                        </thead>
                             @forelse ($movements as $movement)
                                 @php
                                     $docName = $movement->documentType?->name ?? 'General';

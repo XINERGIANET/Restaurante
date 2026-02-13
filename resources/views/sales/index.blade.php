@@ -330,10 +330,7 @@
                             <tr x-show="openRow === {{ $sale->id }}" x-cloak class="bg-gray-50/70 dark:bg-gray-800/40 border-b border-gray-100 dark:border-gray-800">
                                 <td colspan="9" class="px-6 py-4">
                                     <div class="mx-auto w-full max-w-xl space-y-1 text-center text-gray-800 dark:text-gray-200">
-                                        <div class="grid grid-cols-2 border-b border-gray-200 py-2 dark:border-gray-700">
-                                            <span class="font-semibold">Persona</span>
-                                            <span>{{ $sale->person_name ?: '-' }}</span>
-                                        </div>
+                                       
                                         <div class="grid grid-cols-2 border-b border-gray-200 py-2 dark:border-gray-700">
                                             <span class="font-semibold">Fecha</span>
                                             <span>{{ $sale->moved_at ? $sale->moved_at->format('Y-m-d h:i:s A') : '-' }}</span>
