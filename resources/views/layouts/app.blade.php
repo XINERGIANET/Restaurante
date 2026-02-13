@@ -226,7 +226,7 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
         @include('layouts.backdrop')
         @include('layouts.sidebar')
 
-        <div class="flex-1 flex flex-col min-h-full transition-all duration-300 ease-in-out"
+        <div class="flex-1 flex flex-col min-w-0 min-h-full transition-all duration-300 ease-in-out"
             :class="{
                 'xl:ml-[290px]': $store.sidebar.isExpanded || $store.sidebar.isHovered,
                 'xl:ml-[90px]': !$store.sidebar.isExpanded && !$store.sidebar.isHovered,
@@ -236,7 +236,7 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
             @include('layouts.app-header')
             <!-- app header end -->
             
-            <main class="flex-1 p-4 mx-auto w-full max-w-(--breakpoint-2xl) md:p-6 flex flex-col">
+            <main class="flex-1 p-4 mx-auto w-full max-w-(--breakpoint-2xl) md:p-6 flex flex-col min-w-0 overflow-hidden">
                 <div class="flex-1">
                     @yield('content')
                 </div>

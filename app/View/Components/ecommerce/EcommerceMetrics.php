@@ -8,9 +8,11 @@ use Illuminate\View\Component;
 
 class EcommerceMetrics extends Component
 {
-    public function __construct()
+    public $dashboardData;
+
+    public function __construct($dashboardData = [])
     {
-        //
+        $this->dashboardData = $dashboardData;
     }
 
     public function render(): View|Closure|string

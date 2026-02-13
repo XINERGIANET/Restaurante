@@ -3,14 +3,17 @@ export const initChartThree = () => {
     const chartElement = document.querySelector('#chartThree');
 
     if (chartElement) {
+        const salesData = window.dashboardData?.monthlySales || [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        const subtotalData = window.dashboardData?.monthlySubtotal || [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+
         const chartThreeOptions = {
             series: [{
-                name: "Sales",
-                data: [180, 190, 170, 160, 175, 165, 170, 205, 230, 210, 240, 235],
+                name: "Ventas (Total)",
+                data: salesData,
             },
             {
-                name: "Revenue",
-                data: [40, 30, 50, 40, 55, 40, 70, 100, 110, 120, 150, 140],
+                name: "Base Imponible (Subtotal)",
+                data: subtotalData,
             },
             ],
             legend: {

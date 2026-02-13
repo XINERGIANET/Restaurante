@@ -183,9 +183,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/Pedidos/cancelar', [OrderController::class, 'cancelOrder'])
         ->name('admin.orders.cancelOrder');
     // dashboard pages
-    Route::get('/', function () {
-        return view('pages.dashboard.ecommerce', ['title' => 'E-commerce Dashboard']);
-    })->name('dashboard');
+    Route::get('/', [\App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
 
     // calender pages
     Route::get('/calendar', function () {
