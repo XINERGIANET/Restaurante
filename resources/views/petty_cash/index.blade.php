@@ -380,10 +380,13 @@
                                         </div>
                                     </td>
                                     <td class="px-3 py-4 sm:px-4 align-middle">
-                                        <div class="space-y-0.5">
-                                            <p class="text-gray-800 text-[11px] font-bold dark:text-white/90">{{ $movement->user_name ?: '-' }}</p>
-                                            <p class="text-gray-500 text-[10px] dark:text-gray-400 capitalize">{{ $movement->cashMovement?->cash_register ?: '-' }} - {{ $movement->cashMovement?->shift?->name ?: '-' }}</p>
-                                        </div>
+                                        <p class="text-gray-800 text-[11px] font-bold dark:text-white/90">{{ $movement->user_name ?: '-' }}</p>
+                                    </td>
+                                    <td class="hidden lg:table-cell px-3 py-4 sm:px-4 align-middle">
+                                        <p class="text-gray-500 text-[10px] dark:text-gray-400 capitalize">{{ $movement->cashMovement?->cash_register ?: '-' }}</p>
+                                    </td>
+                                    <td class="hidden xl:table-cell px-3 py-4 sm:px-4 align-middle">
+                                        <p class="text-gray-500 text-[10px] dark:text-gray-400 capitalize">{{ $movement->cashMovement?->shift?->name ?: '-' }}</p>
                                     </td>
                                     <td class="px-3 py-4 sm:px-4 align-middle">
                                         <x-ui.badge variant="light" color="{{ $isActive ? 'success' : 'error' }}">{{ $isActive ? 'Activado' : 'Desactivado' }}</x-ui.badge>
@@ -432,7 +435,7 @@
                                     </td>
                                 </tr>
                                 <tr x-show="expanded" x-cloak class="border-b border-gray-100 bg-gray-50 dark:border-gray-800 dark:bg-gray-900/20">
-                                    <td colspan="10" class="px-5 py-4 sm:px-6">
+                                    <td colspan="12" class="px-5 py-4 sm:px-6">
                                         <div class="mx-auto w-full max-w-xl space-y-1 text-center text-gray-800 dark:text-gray-200">
                                             <div class="grid grid-cols-2 border-b border-gray-200 py-2 dark:border-gray-700"><span class="font-semibold">Persona</span><span>{{ $movement->person_name ?: '-' }}</span></div>
                                             <div class="grid grid-cols-2 border-b border-gray-200 py-2 dark:border-gray-700"><span class="font-semibold">Responsable</span><span>{{ $movement->responsible_name ?: '-' }}</span></div>
@@ -447,7 +450,7 @@
                             @empty
                                 <tbody>
                                     <tr>
-                                        <td colspan="10" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">No hay movimientos registrados.</td>
+                                        <td colspan="12" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">No hay movimientos registrados.</td>
                                     </tr>
                                 </tbody>
                             @endforelse
