@@ -80,7 +80,7 @@ class SalesController extends Controller
             ->orderByDesc('id')
             ->paginate($perPage)
             ->withQueryString();
-
+        
         return view('sales.index', [
             'sales' => $sales,
             'search' => $search,
@@ -115,14 +115,18 @@ class SalesController extends Controller
 
         $productBranches = ProductBranch::query()
             ->where('branch_id', $branchId)
-            ->with('product')
+            ->with(['product', 'taxRate'])
             ->get()
             ->filter(fn ($productBranch) => $productBranch->product !== null)
             ->map(function ($productBranch) {
+                $taxRate = $productBranch->taxRate;
+                $taxRatePct = $taxRate ? (float) $taxRate->tax_rate : null;
                 return [
                     'id' => (int) $productBranch->id,
                     'product_id' => (int) $productBranch->product_id,
                     'price' => (float) $productBranch->price,
+                    'tax_rate' => $taxRatePct,
+                    'stock' => (float) ($productBranch->stock ?? 0),
                 ];
             })
             ->values();
@@ -200,16 +204,26 @@ class SalesController extends Controller
                     $pendingAmount = $debt ?? 0;
                 }
                 
+                $defaultTaxRate = TaxRate::where('status', true)->orderBy('order_num')->first();
+                $defaultTaxPct = $defaultTaxRate ? (float) $defaultTaxRate->tax_rate : 18;
                 $draftSale = [
                     'id' => $movement->id,
                     'number' => $movement->number,
                     'clientId' => $movement->person_id,
-                    'items' => $movement->salesMovement->details->map(function($detail) {
+                    'items' => $movement->salesMovement->details->map(function ($detail) use ($defaultTaxPct) {
+                        $taxRatePct = $defaultTaxPct;
+                        if ($detail->tax_rate_snapshot && isset($detail->tax_rate_snapshot['tax_rate'])) {
+                            $taxRatePct = (float) $detail->tax_rate_snapshot['tax_rate'];
+                        }
+                        $amountWithTax = (float) $detail->amount;
+                        $quantity = (float) $detail->quantity ?: 1;
+                        $priceWithTax = $quantity > 0 ? $amountWithTax / $quantity : 0;
                         return [
                             'pId' => $detail->product_id,
                             'name' => $detail->product->description ?? 'Producto #' . $detail->product_id,
-                            'qty' => (float) $detail->quantity,
-                            'price' => (float) $detail->original_amount / (float) $detail->quantity,
+                            'qty' => $quantity,
+                            'price' => $priceWithTax,
+                            'tax_rate' => $taxRatePct,
                             'note' => $detail->comment ?? '',
                             'product_note' => $detail->product->note ?? null,
                         ];
@@ -224,6 +238,17 @@ class SalesController extends Controller
         
         // Obtener todos los productos para poder mostrar sus nombres cuando se carga desde localStorage
         $products = Product::pluck('description', 'id')->toArray();
+
+        $productBranches = ProductBranch::query()
+            ->where('branch_id', $branchId ?? 0)
+            ->with('taxRate')
+            ->get()
+            ->map(fn ($pb) => [
+                'product_id' => (int) $pb->product_id,
+                'price' => (float) $pb->price,
+                'tax_rate' => $pb->taxRate ? (float) $pb->taxRate->tax_rate : null,
+            ])
+            ->values();
         
         return view('sales.charge', [
             'documentTypes' => $documentTypes,
@@ -235,7 +260,8 @@ class SalesController extends Controller
             'defaultClientId' => $defaultClientId,
             'draftSale' => $draftSale,
             'pendingAmount' => $pendingAmount,
-            'products' => $products, // Mapa de ID => descripción
+            'products' => $products,
+            'productBranches' => $productBranches,
         ]);
     }
     // POS: procesar venta
@@ -338,14 +364,11 @@ class SalesController extends Controller
                 throw new \Exception('No se encontró un concepto de pago válido. Por favor, crea un concepto de pago primero.');
             }
 
-            // Los precios del front ya incluyen IGV.
-            $total = 0;
-            foreach ($request->items as $item) {
-                $lineTotal = (float) $item['qty'] * (float) $item['price'];
-                $total += $lineTotal;
-            }
-            $subtotal = $total / 1.10;
-            $tax = $total - $subtotal;
+            // Los precios del front ya incluyen IGV. Calcular subtotal e IGV por producto según su tasa.
+            $calculated = $this->calculateSubtotalAndTaxFromItems($request->items, $branchId);
+            $subtotal = $calculated['subtotal'];
+            $tax = $calculated['tax'];
+            $total = $calculated['total'];
 
             // Caja seleccionada desde el formulario de cobro
             $cashRegister = CashRegister::find($validated['cash_register_id']);
@@ -360,13 +383,10 @@ class SalesController extends Controller
             }
 
             // Recalcular con la misma regla (precio final con IGV incluido)
-            $total = 0;
-            foreach ($request->items as $item) {
-                $lineTotal = (float) $item['qty'] * (float) $item['price'];
-                $total += $lineTotal;
-            }
-            $subtotal = $total / 1.10;
-            $tax = $total - $subtotal;
+            $calculated = $this->calculateSubtotalAndTaxFromItems($request->items, $branchId);
+            $subtotal = $calculated['subtotal'];
+            $tax = $calculated['tax'];
+            $total = $calculated['total'];
 
             // Calcular el total recibido de todos los métodos de pago
             $amountReceived = $totalPaymentMethods;
@@ -405,7 +425,11 @@ class SalesController extends Controller
                 }
             } else {
                 // Crear nuevo Movement
-                $number = 'V-' . Carbon::now()->format('Ymd') . '-' . str_pad(Movement::whereDate('created_at', Carbon::today())->count() + 1, 4, '0', STR_PAD_LEFT);
+                $number = $this->generateSaleNumber(
+                    (int) $documentType->id,
+                    (int) $cashRegister->id,
+                    true
+                );
                 
                 $movement = Movement::create([
                     'number' => $number,
@@ -416,9 +440,9 @@ class SalesController extends Controller
                     'person_name' => $selectedPerson
                         ? trim(($selectedPerson->first_name ?? '') . ' ' . ($selectedPerson->last_name ?? ''))
                         : 'Publico General',
-                    'responsible_id' => $user?->id,
-                    'responsible_name' => $user?->name ?? 'Sistema',
-                    'comment' => $request->notes ?? 'Venta desde punto de venta',
+                    'responsible_id' => $user?->person->id,
+                    'responsible_name' => $user?->person->first_name . ' ' . $user?->person->last_name ?? '-',
+                    'comment' => $request->notes ?? '',
                     'status' => 'A', // Siempre Activo (pago completo)
                     'movement_type_id' => $movementType->id,
                     'document_type_id' => $documentType->id,
@@ -452,13 +476,13 @@ class SalesController extends Controller
                     ],
                     'series' => '001',
                     'year' => Carbon::now()->year,
-                    'detail_type' => 'DETAILED',
+                    'detail_type' => 'DETALLADO',
                     'consumption' => 'N',
-                    'payment_type' => 'CASH', // Siempre CASH (pago completo)
+                    'payment_type' => 'CONTADO', // Siempre CASH (pago completo)
                     'status' => 'N' ,
-                    'sale_type' => 'RETAIL',
+                    'sale_type' => 'MINORISTA',
                     'currency' => 'PEN',
-                    'exchange_rate' => 1.000,
+                    'exchange_rate' => 3.5,
                     'subtotal' => $subtotal,
                     'tax' => $tax,
                     'total' => $total,
@@ -486,12 +510,12 @@ class SalesController extends Controller
                 $quantityToSell = (int) $item['qty'];
                 $currentStock = (int) ($productBranch->stock ?? 0);
                 
-                if ($currentStock < $quantityToSell) {
-                    throw new \Exception(
-                        "Stock insuficiente para el producto {$product->description}. " .
-                        "Stock disponible: {$currentStock}, Cantidad solicitada: {$quantityToSell}"
-                    );
-                }
+                // if ($currentStock < $quantityToSell) {
+                //     throw new \Exception(
+                //         "Stock insuficiente para el producto {$product->description}. " .
+                //         "Stock disponible: {$currentStock}, Cantidad solicitada: {$quantityToSell}"
+                //     );
+                // }
 
                 $unit = $product->baseUnit;
                 if (!$unit) {
@@ -499,7 +523,7 @@ class SalesController extends Controller
                 }
 
                 $taxRate = $productBranch->taxRate;
-                $taxRateValue = $taxRate ? ($taxRate->tax_rate / 100) : 0.10;
+                $taxRateValue = $taxRate ? ($taxRate->tax_rate / 100) : $this->getDefaultTaxRateValue();
 
                 // Precio de venta incluye impuesto.
                 $itemTotal = (float) $item['qty'] * (float) $item['price'];
@@ -625,6 +649,7 @@ class SalesController extends Controller
                     'total' => $total,
                 ]
             ]);
+            
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -720,17 +745,19 @@ class SalesController extends Controller
                 throw new \Exception('No se encontró un tipo de documento válido.');
             }
 
-            // Los precios del front ya incluyen IGV.
-            $total = 0;
-            foreach ($request->items as $item) {
-                $lineTotal = (float) $item['qty'] * (float) $item['price'];
-                $total += $lineTotal;
-            }
-            $subtotal = $total / 1.10;
-            $tax = $total - $subtotal;
+            // Los precios del front ya incluyen IGV. Calcular subtotal e IGV por producto según su tasa.
+            $calculated = $this->calculateSubtotalAndTaxFromItems($request->items, $branchId);
+            $subtotal = $calculated['subtotal'];
+            $tax = $calculated['tax'];
+            $total = $calculated['total'];
 
-            // Generar número de movimiento
-            $number = 'V-' . Carbon::now()->format('Ymd') . '-' . str_pad(Movement::whereDate('created_at', Carbon::today())->count() + 1, 4, '0', STR_PAD_LEFT);
+            // Generar numero de movimiento con serie/correlativo por documento y caja activa
+            $activeCashRegisterId = $this->resolveActiveCashRegisterId((int) $branchId);
+            $number = $this->generateSaleNumber(
+                (int) $documentType->id,
+                $activeCashRegisterId,
+                true
+            );
 
             // Crear Movement con status 'P' (Pendiente) o 'I' (Inactivo)
             $movement = Movement::create([
@@ -770,7 +797,7 @@ class SalesController extends Controller
                 'status' => 'N',
                 'sale_type' => 'MINORISTA',
                 'currency' => 'PEN',
-                'exchange_rate' => 3.5,
+                'exchange_rate' => 1.000,
                 'subtotal' => $subtotal,
                 'tax' => $tax,
                 'total' => $total,
@@ -796,7 +823,7 @@ class SalesController extends Controller
                 }
 
                 $taxRate = $productBranch->taxRate;
-                $taxRateValue = $taxRate ? ($taxRate->tax_rate / 100) : 0.10;
+                $taxRateValue = $taxRate ? ($taxRate->tax_rate / 100) : $this->getDefaultTaxRateValue();
 
                 // Precio de venta incluye impuesto.
                 $itemTotal = (float) $item['qty'] * (float) $item['price'];
@@ -966,6 +993,238 @@ class SalesController extends Controller
             'documentTypes' => $documentTypes,
         ];
     }
+
+    /** Obtiene la tasa de impuesto por defecto del sistema (valor 0-1, ej: 0.18 para 18%). */
+    private function getDefaultTaxRateValue(): float
+    {
+        $taxRate = TaxRate::where('status', true)->orderBy('order_num')->first();
+        return $taxRate ? ((float) $taxRate->tax_rate) / 100 : 0.18;
+    }
+
+    /**
+     * Calcula subtotal, IGV y total desde los ítems usando la tasa de impuesto de cada producto.
+     * Usa la tasa configurada en ProductBranch->TaxRate; si no tiene, usa la tasa por defecto del sistema.
+     */
+    private function calculateSubtotalAndTaxFromItems(array $items, int $branchId): array
+    {
+        $defaultTaxPct = $this->getDefaultTaxRateValue();
+        $subtotal = 0.0;
+        $tax = 0.0;
+        $total = 0.0;
+
+        foreach ($items as $item) {
+            $productBranch = ProductBranch::with('taxRate')
+                ->where('product_id', $item['pId'])
+                ->where('branch_id', $branchId)
+                ->first();
+
+            $taxRate = $productBranch?->taxRate;
+            $taxRateValue = $taxRate ? ($taxRate->tax_rate / 100) : $defaultTaxPct;
+
+            $itemTotal = (float) ($item['qty'] ?? 0) * (float) ($item['price'] ?? 0);
+            $itemSubtotal = $taxRateValue > 0 ? ($itemTotal / (1 + $taxRateValue)) : $itemTotal;
+            $itemTax = $itemTotal - $itemSubtotal;
+
+            $subtotal += $itemSubtotal;
+            $tax += $itemTax;
+            $total += $itemTotal;
+        }
+
+        return [
+            'subtotal' => round($subtotal, 2),
+            'tax' => round($tax, 2),
+            'total' => round($total, 2),
+        ];
+    }
+
+    public function reportSales(Request $request)
+    {
+        $branchId = session('branch_id');
+        $search = $request->input('search');
+        $dateFrom = $request->input('date_from');
+        $dateTo = $request->input('date_to');
+        $perPage = (int) $request->input('per_page', 10);
+        $allowedPerPage = [10, 20, 50, 100];
+        if (!in_array($perPage, $allowedPerPage, true)) {
+            $perPage = 10;
+        }
+        $personId = $request->input('person_id');
+        $query = Movement::query()
+            ->with(['branch', 'person', 'movementType', 'documentType', 'salesMovement'])
+            ->where('movement_type_id', 2)
+            ->where('branch_id', $branchId);
+        if ($search !== null && $search !== '') {
+            $query->where(function ($inner) use ($search) {
+                $inner->where('number', 'like', "%{$search}%")
+                    ->orWhere('person_name', 'like', "%{$search}%")
+                    ->orWhere('user_name', 'like', "%{$search}%");
+            });
+        }
+        if ($personId !== null && $personId !== '') {
+            $query->where('person_id', $personId);
+        }
+        if ($dateFrom !== null && $dateFrom !== '') {
+            $query->where('moved_at', '>=', $dateFrom);
+        }
+        if ($dateTo !== null && $dateTo !== '') {
+            $query->where('moved_at', '<=', $dateTo);
+        }
+        $sales = $query->orderBy('moved_at', 'desc')->paginate($perPage)->withQueryString();
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json(['success' => true, 'sales' => $sales, 'pagination' => [
+                'current_page' => $sales->currentPage(),
+                'last_page' => $sales->lastPage(),
+                'per_page' => $sales->perPage(),
+                'total' => $sales->total(),
+            ]]);
+        }
+
+        $viewId = $request->input('view_id');
+        $profileId = $request->session()->get('profile_id') ?? $request->user()?->profile_id;
+        $operaciones = collect();
+        if ($viewId && $branchId && $profileId) {
+            $operaciones = Operation::query()
+                ->select('operations.*')
+                ->join('branch_operation', function ($join) use ($branchId) {
+                    $join->on('branch_operation.operation_id', '=', 'operations.id')
+                        ->where('branch_operation.branch_id', $branchId)
+                        ->where('branch_operation.status', 1)
+                        ->whereNull('branch_operation.deleted_at');
+                })
+                ->join('operation_profile_branch', function ($join) use ($branchId, $profileId) {
+                    $join->on('operation_profile_branch.operation_id', '=', 'operations.id')
+                        ->where('operation_profile_branch.branch_id', $branchId)
+                        ->where('operation_profile_branch.profile_id', $profileId)
+                        ->where('operation_profile_branch.status', 1)
+                        ->whereNull('operation_profile_branch.deleted_at');
+                })
+                ->where('operations.status', 1)
+                ->where('operations.view_id', $viewId)
+                ->whereNull('operations.deleted_at')
+                ->orderBy('operations.id')
+                ->distinct()
+                ->get();
+        }
+
+        return view('sales.report', [
+            'branchId' => $branchId,
+            'search' => $search,
+            'dateFrom' => $dateFrom,
+            'dateTo' => $dateTo,
+            'perPage' => $perPage,
+            'allowedPerPage' => $allowedPerPage,
+            'operaciones' => $operaciones,
+            'sales' => $sales,
+        ]);
+    }
+
+    /**
+     * Genera numero de venta en formato correlativo simple: 00000127.
+     * Mantiene compatibilidad leyendo tambien numeros historicos con formato antiguo.
+     */
+    private function generateSaleNumber(int $documentTypeId, int $cashRegisterId, bool $reserve = true): string
+    {
+        $documentType = DocumentType::find($documentTypeId);
+        if (!$documentType) {
+            throw new \Exception('Tipo de documento no encontrado.');
+        }
+
+        $cashRegister = CashRegister::find($cashRegisterId);
+        if (!$cashRegister) {
+            throw new \Exception('Caja no encontrada.');
+        }
+
+        $branchId = (int) session('branch_id');
+        if (!$branchId) {
+            throw new \Exception('No se encontro sucursal en sesion.');
+        }
+
+        $year = (int) now()->year;
+
+        $query = Movement::query()
+            ->where('branch_id', $branchId)
+            ->where('document_type_id', $documentTypeId)
+            ->whereYear('moved_at', $year);
+
+        if ($reserve) {
+            $query->lockForUpdate();
+        }
+
+        $lastCorrelative = 0;
+        $numbers = $query->pluck('number');
+
+        foreach ($numbers as $number) {
+            $raw = trim((string) $number);
+            if ($raw === '') {
+                continue;
+            }
+
+            if (preg_match('/^\d+$/', $raw) === 1) {
+                $value = (int) $raw;
+                if ($value > $lastCorrelative) {
+                    $lastCorrelative = $value;
+                }
+                continue;
+            }
+
+            if (preg_match('/(\d+)-\d{4}$/', $raw, $matches) === 1) {
+                $value = (int) $matches[1];
+                if ($value > $lastCorrelative) {
+                    $lastCorrelative = $value;
+                }
+            }
+        }
+
+        $nextCorrelative = $lastCorrelative + 1;
+
+        return str_pad((string) $nextCorrelative, 8, '0', STR_PAD_LEFT);
+    }
+
+    private function resolveDocumentAbbreviation(string $documentName): string
+    {
+        $name = strtolower(trim($documentName));
+
+        if (str_contains($name, 'boleta')) {
+            return 'B';
+        }
+        if (str_contains($name, 'factura')) {
+            return 'F';
+        }
+        if (str_contains($name, 'ticket')) {
+            return 'T';
+        }
+        if (str_contains($name, 'nota')) {
+            return 'N';
+        }
+
+        $firstLetter = strtoupper(substr(preg_replace('/[^a-zA-Z]/', '', $documentName) ?: 'X', 0, 1));
+
+        return $firstLetter !== '' ? $firstLetter : 'X';
+    }
+
+    private function resolveActiveCashRegisterId(int $branchId): int
+    {
+        $cashRegisterId = CashRegister::query()
+            ->where('branch_id', $branchId)
+            ->where('status', 'A')
+            ->orderBy('id')
+            ->value('id');
+
+        if (!$cashRegisterId) {
+            $cashRegisterId = CashRegister::query()
+                ->where('branch_id', $branchId)
+                ->orderBy('id')
+                ->value('id');
+        }
+
+        if (!$cashRegisterId) {
+            throw new \Exception('No hay caja activa/disponible para generar el numero de venta.');
+        }
+
+        return (int) $cashRegisterId;
+    }
 }
+
 
 

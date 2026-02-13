@@ -271,10 +271,26 @@
                 </div>
             </div>
 
-            <div class="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <form method="GET" class="flex items-center gap-2 text-sm text-gray-600">
+                    @if ($viewId)
+                        <input type="hidden" name="view_id" value="{{ $viewId }}">
+                    @endif
+                    @if (request('search'))
+                        <input type="hidden" name="search" value="{{ request('search') }}">
+                    @endif
+                    <input type="hidden" name="cash_register_id" value="{{ $selectedBoxId }}">
+                    <span>Registros por pagina:</span>
+                    <select name="per_page" onchange="this.form.submit()"
+                        class="h-9 rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
+                        @foreach ([10, 20, 50, 100] as $size)
+                            <option value="{{ $size }}" @selected(($perPage ?? 10) == $size)>{{ $size }}</option>
+                        @endforeach
+                    </select>
+                </form>
                 <div class="flex items-center gap-2 text-sm text-gray-500">
-                    <span>Total</span><x-ui.badge size="sm" variant="light"
-                        color="info">{{ $movements->total() }}</x-ui.badge>
+                    <span>Total</span>
+                    <x-ui.badge size="sm" variant="light" color="info">{{ $movements->total() }}</x-ui.badge>
                 </div>
             </div>
 
@@ -288,102 +304,86 @@
                                 <th class="px-5 py-3 text-center sm:px-6 sticky-left-header">
                                     <p class="font-medium text-theme-xs dark:text-white">Orden</p>
                                 </th>
-                                <th class="px-5 py-3 text-center sm:px-6">
-                                    <p class="font-medium text-theme-xs dark:text-white">Número</p>
+                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                                    <p class="font-semibold text-white text-theme-xs uppercase">Numero</p>
                                 </th>
-                                <th class="px-5 py-3 text-center sm:px-6">
-                                    <p class="font-medium text-theme-xs dark:text-white">Tipo</p>
+                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                                    <p class="font-semibold text-white text-theme-xs uppercase">Tipo</p>
                                 </th>
-                                <th class="px-5 py-3 text-center sm:px-6">
-                                    <p class="font-medium text-theme-xs dark:text-white">Comentario</p>
-                                </th>   
-                                <th class="px-5 py-3 text-center sm:px-6">
-                                    <p class="font-medium text-theme-xs dark:text-white">Monto</p>
+                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                                    <p class="font-semibold text-white text-theme-xs uppercase">Concepto</p>
                                 </th>
-                                <th class="px-5 py-3 text-center sm:px-6">
-                                    <p class="font-medium text-theme-xs dark:text-white">Fecha</p>
+                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                                    <p class="font-semibold text-white text-theme-xs uppercase">Total</p>
                                 </th>
-                                <th class="px-5 py-3 text-center sm:px-6">
-                                    <p class="font-medium text-theme-xs dark:text-white">Acciones</p>
+                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                                    <p class="font-semibold text-white text-theme-xs uppercase">Fecha</p>
+                                </th>
+                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                                    <p class="font-semibold text-white text-theme-xs uppercase">Usuario</p>
+                                </th>
+                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="hidden lg:table-cell px-5 py-3 text-left sm:px-6">
+                                    <p class="font-semibold text-white text-theme-xs uppercase">Caja</p>
+                                </th>
+                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="hidden xl:table-cell px-5 py-3 text-left sm:px-6">
+                                    <p class="font-semibold text-white text-theme-xs uppercase">Turno</p>
+                                </th>
+                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                                    <p class="font-semibold text-white text-theme-xs uppercase">Situacion</p>
+                                </th>
+                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                                    <p class="font-semibold text-white text-theme-xs uppercase">Metodos de pago</p>
+                                </th>
+                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-right sm:px-6 last:rounded-tr-xl">
+                                    <p class="font-semibold text-white text-theme-xs uppercase">Operaciones</p>
                                 </th>
                             </tr>
                         </thead>
-                        <tbody>
                             @forelse ($movements as $movement)
                                 @php
-                                    // 1. Detectar Tipo de Movimiento
                                     $docName = $movement->documentType?->name ?? 'General';
-                                    $isApertura = stripos($movement->comment, 'Apertura de caja') !== false;
-                                    $isCierre = stripos($movement->comment, 'Cierre de caja') !== false;
-
-                                    // 2. Definir Clases de la Fila (Background)
-                                    $rowClasses = 'border-b border-gray-100 transition dark:border-gray-800'; // Clases base
-
-                                    if ($isApertura) {
-                                        $rowClasses .=
-                                            ' bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/30';
-                                    } elseif ($isCierre) {
-                                        // ROJO/NARANJA para Cierre
-                                        $rowClasses .=
-                                            ' bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/30';
-                                    } else {
-                                        // NORMAL (Gris al pasar el mouse)
-                                        $rowClasses .= ' hover:bg-gray-50 dark:hover:bg-white/5';
-                                    }
-
+                                    $conceptName = $movement->cashMovement?->paymentConcept?->description ?? '-';
                                     $isIngreso = stripos($docName, 'ingreso') !== false;
-
-                                    if ($isApertura) {
-                                        $badgeColor = 'success';
-                                    } elseif ($isCierre) {
-                                        $badgeColor = 'warning';
-                                    } elseif ($isIngreso) {
-                                        $badgeColor = 'success';
-                                    } else {
-                                        $badgeColor = 'error';
-                                    }
+                                    $movementStatus = (string) ($movement->status ?? '1');
+                                    $isActive = in_array($movementStatus, ['1', 'A'], true);
+                                    $paymentSummary = collect($movement->cashMovement?->details ?? [])
+                                        ->groupBy('payment_method')
+                                        ->map(fn($items, $method) => trim(($method ?: 'Metodo') . ': ' . number_format($items->sum('amount'), 2)))
+                                        ->values()
+                                        ->implode(' | ');
                                 @endphp
-
-                                {{-- Aplicamos la clase dinámica aquí --}}
-                                <tr class="{{ $rowClasses }}">
-                                    <td class="px-5 py-4 sm:px-6 sticky-left">
-                                        <span
-                                            class="font-bold {{ $isApertura ? 'text-blue-600' : ($isCierre ? 'text-red-600' : 'text-[#00A389]') }}">
-                                            #{{ $loop->iteration }}
-                                        </span>
+                                <tbody x-data="{ expanded: false }">
+                                <tr class="border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-white/5 align-top">
+                                    <td class="px-4 py-4 text-center">
+                                        <button type="button" @click="expanded = !expanded"
+                                            class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-500 text-white transition hover:bg-brand-600 dark:bg-brand-500 dark:text-white">
+                                            <i class="ri-add-line" x-show="!expanded"></i>
+                                            <i class="ri-subtract-line" x-show="expanded"></i>
+                                        </button>
                                     </td>
-
-                                    <td class="px-5 py-4 sm:px-6">
-                                        <span
-                                            class="text-sm font-mono text-gray-600 dark:text-gray-400">{{ $movement->number }}</span>
+                                    <td class="px-5 py-4 sm:px-6 align-middle">
+                                        <p class="font-medium text-gray-800 text-theme-sm dark:text-white/90">{{ $movement->number }}</p>
                                     </td>
-
-                                    <td class="px-5 py-4 sm:px-6">
-                                        <x-ui.badge variant="light" color="{{ $badgeColor }}">
-                                            {{ $docName }}
-                                        </x-ui.badge>
+                                    <td class="px-5 py-4 sm:px-6 align-middle">
+                                        <x-ui.badge variant="light" color="{{ $isIngreso ? 'success' : 'error' }}">{{ $isIngreso ? 'Ingreso' : 'Egreso' }}</x-ui.badge>
                                     </td>
-
-                                    <td class="px-5 py-4 sm:px-6">
-                                        <p
-                                            class="font-medium text-theme-sm {{ $isApertura ? 'text-blue-700 dark:text-blue-300' : ($isCierre ? 'text-red-700 dark:text-red-300' : 'text-gray-800 dark:text-white/90') }}">
-                                            {{ $movement->comment }}
-                                        </p>
+                                    <td class="px-5 py-4 sm:px-6 align-middle">
+                                        <x-ui.badge variant="light" color="warning">{{ $conceptName }}</x-ui.badge>
                                     </td>
-
-                                    <td class="px-5 py-4 sm:px-6">
-                                        <span class="font-bold text-gray-800 dark:text-gray-200">
-                                            S/. {{ number_format($movement->cashMovement->total ?? 0, 2) }}
-                                        </span>
+                                    <td class="px-5 py-4 sm:px-6 align-middle">
+                                        <p class="text-gray-800 text-theme-sm dark:text-white/90">{{ number_format($movement->cashMovement?->total ?? 0, 2) }}</p>
                                     </td>
-
-                                    <td class="px-5 py-4 sm:px-6">
-                                        <span class="text-xs text-gray-500 dark:text-gray-400">
-                                            {{ $movement->moved_at ? $movement->moved_at->format('d/m/Y H:i') : '-' }}
-                                        </span>
+                                    <td class="px-5 py-4 sm:px-6 align-middle">
+                                        <p class="text-gray-800 text-theme-sm dark:text-white/90">{{ $movement->moved_at ? $movement->moved_at->format('Y-m-d h:i:s A') : '-' }}</p>
                                     </td>
-
-                                    <td class="px-5 py-4 sm:px-6">
+                                    <td class="px-5 py-4 sm:px-6 align-middle"><p class="text-gray-800 text-theme-sm dark:text-white/90">{{ $movement->user_name ?: '-' }}</p></td>
+                                    <td class="hidden lg:table-cell px-5 py-4 sm:px-6 align-middle"><p class="text-gray-800 text-theme-sm dark:text-white/90">{{ $movement->cashMovement?->cash_register ?: '-' }}</p></td>
+                                    <td class="hidden xl:table-cell px-5 py-4 sm:px-6 align-middle"><p class="text-gray-800 text-theme-sm dark:text-white/90">{{ $movement->cashMovement?->shift?->name ?: '-' }}</p></td>
+                                    <td class="px-5 py-4 sm:px-6 align-middle">
+                                        <x-ui.badge variant="light" color="{{ $isActive ? 'success' : 'error' }}">{{ $isActive ? 'Activado' : 'Desactivado' }}</x-ui.badge>
+                                    </td>
+                                    <td class="px-5 py-4 sm:px-6 align-middle"><p class="text-gray-800 text-theme-sm dark:text-white/90">{{ $paymentSummary ?: '-' }}</p></td>
+                                    <td class="px-5 py-4 sm:px-6 align-middle">
                                         <div class="flex items-center justify-end gap-2">
                                             @if ($rowOperations->isNotEmpty())
                                                 @foreach ($rowOperations as $operation)
@@ -397,47 +397,50 @@
                                                         $variant = $isDelete ? 'eliminate' : (str_contains($action, 'edit') ? 'edit' : 'primary');
                                                     @endphp
                                                     @if ($isDelete)
-                                                        <form method="POST" action="{{ $actionUrl }}" class="relative group js-swal-delete"
-                                                            data-swal-title="Eliminar movimiento?"
-                                                            data-swal-text="Se eliminara {{ $movement->number }}. Esta accion no se puede deshacer."
-                                                            data-swal-confirm="Si, eliminar"
-                                                            data-swal-cancel="Cancelar"
-                                                            data-swal-confirm-color="#ef4444"
-                                                            data-swal-cancel-color="#6b7280">
+                                                        <form method="POST" action="{{ $actionUrl }}" class="relative group js-swal-delete" data-swal-title="Eliminar movimiento?" data-swal-text="Se eliminara {{ $movement->number }}. Esta accion no se puede deshacer." data-swal-confirm="Si, eliminar" data-swal-cancel="Cancelar" data-swal-confirm-color="#ef4444" data-swal-cancel-color="#6b7280">
                                                             @csrf
                                                             @method('DELETE')
                                                             @if ($viewId)
                                                                 <input type="hidden" name="view_id" value="{{ $viewId }}">
                                                             @endif
-                                                            <x-ui.button size="icon" variant="{{ $variant }}" type="submit"
-                                                                className="rounded-xl" style="{{ $buttonStyle }}"
-                                                                aria-label="{{ $operation->name }}">
+                                                            <x-ui.button size="icon" variant="{{ $variant }}" type="submit" className="rounded-xl" style="{{ $buttonStyle }}" aria-label="{{ $operation->name }}">
                                                                 <i class="{{ $operation->icon }}"></i>
                                                             </x-ui.button>
+                                                            <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">{{ $operation->name }}</span>
                                                         </form>
                                                     @else
                                                         <div class="relative group">
-                                                            <x-ui.link-button size="icon" variant="{{ $variant }}" href="{{ $actionUrl }}"
-                                                                className="rounded-xl" style="{{ $buttonStyle }}"
-                                                                aria-label="{{ $operation->name }}">
+                                                            <x-ui.link-button size="icon" variant="{{ $variant }}" href="{{ $actionUrl }}" className="rounded-xl" style="{{ $buttonStyle }}" aria-label="{{ $operation->name }}">
                                                                 <i class="{{ $operation->icon }}"></i>
                                                             </x-ui.link-button>
+                                                            <span class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">{{ $operation->name }}</span>
                                                         </div>
                                                     @endif
                                                 @endforeach
-                                            
                                             @endif
                                         </div>
                                     </td>
                                 </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="7" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
-                                        No hay movimientos registrados.
+                                <tr x-show="expanded" x-cloak class="border-b border-gray-100 bg-gray-50 dark:border-gray-800 dark:bg-gray-900/20">
+                                    <td colspan="12" class="px-5 py-4 sm:px-6">
+                                        <div class="mx-auto w-full max-w-xl space-y-1 text-center text-gray-800 dark:text-gray-200">
+                                            <div class="grid grid-cols-2 border-b border-gray-200 py-2 dark:border-gray-700"><span class="font-semibold">Persona</span><span>{{ $movement->person_name ?: '-' }}</span></div>
+                                            <div class="grid grid-cols-2 border-b border-gray-200 py-2 dark:border-gray-700"><span class="font-semibold">Responsable</span><span>{{ $movement->responsible_name ?: '-' }}</span></div>
+                                            <div class="grid grid-cols-2 border-b border-gray-200 py-2 dark:border-gray-700"><span class="font-semibold">Moneda</span><span>{{ $movement->cashMovement?->currency ?: 'PEN' }}</span></div>
+                                            <div class="grid grid-cols-2 border-b border-gray-200 py-2 dark:border-gray-700"><span class="font-semibold">Origen</span><span>{{ $movement->movementType?->description ?: 'Caja chica' }} - {{ $movement->number }}</span></div>
+                                            <div class="grid grid-cols-2 border-b border-gray-200 py-2 dark:border-gray-700"><span class="font-semibold">T. cambio</span><span>{{ number_format((float) ($movement->cashMovement?->exchange_rate ?? 1), 3) }}</span></div>
+                                            <div class="grid grid-cols-2 py-2"><span class="font-semibold">Comentario</span><span>{{ $movement->comment ?: '-' }}</span></div>
+                                        </div>
                                     </td>
                                 </tr>
+                                </tbody>
+                            @empty
+                                <tbody>
+                                    <tr>
+                                        <td colspan="12" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">No hay movimientos registrados.</td>
+                                    </tr>
+                                </tbody>
                             @endforelse
-                        </tbody>
                     </table>
                 </div>
             </div>

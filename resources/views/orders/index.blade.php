@@ -255,4 +255,29 @@
     document.addEventListener('turbo:load', registerPosSystem);
     document.addEventListener('turbo:render', registerPosSystem);
 </script>
+
+@push('scripts')
+<script>
+(function() {
+    function showFlashToast() {
+        const msg = sessionStorage.getItem('flash_success_message');
+        if (!msg) return;
+        sessionStorage.removeItem('flash_success_message');
+        if (window.Swal) {
+            Swal.fire({
+                toast: true,
+                position: 'bottom-end',
+                icon: 'success',
+                title: msg,
+                showConfirmButton: false,
+                timer: 3500,
+                timerProgressBar: true
+            });
+        }
+    }
+    showFlashToast();
+    document.addEventListener('turbo:load', showFlashToast);
+})();
+</script>
+@endpush
 @endsection

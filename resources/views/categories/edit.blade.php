@@ -6,8 +6,13 @@
 
         <x-common.component-card title="Editar categoria" desc="Actualiza la informacion de la categoria.">
             @if ($errors->any())
-                <div class="mb-5">
-                    <x-ui.alert variant="error" title="Revisa los campos" message="Hay errores en el formulario, corrige los datos e intenta nuevamente." />
+                <div class="mb-5 rounded-lg border border-error-500/30 bg-error-500/10 px-4 py-3 text-sm text-error-700 dark:border-error-500/50 dark:bg-error-500/20 dark:text-error-300">
+                    <p class="font-semibold mb-2">Revisa los campos</p>
+                    <ul class="list-disc list-inside space-y-1">
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
                 </div>
             @endif
 

@@ -177,20 +177,20 @@
                 <table class="w-full min-w-max">
                     <thead>
                         <tr class="text-white">
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="w-12 px-4 py-4 text-center first:rounded-tl-xl sticky-left-header"></th>
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="w-12 px-4 py-4 text-center first:rounded-tl-xl"></th>
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="hidden md:table-cell px-5 py-3 text-left sm:px-6">
                                 <p class="font-semibold text-white text-theme-xs uppercase">Código</p>
                             </th>
                             <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
                                 <p class="font-semibold text-white text-theme-xs uppercase">Descripción</p>
                             </th>
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="hidden sm:table-cell px-5 py-3 text-left sm:px-6">
                                 <p class="font-semibold text-white text-theme-xs uppercase">Categoría</p>
                             </th>
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="hidden lg:table-cell px-5 py-3 text-left sm:px-6">
                                 <p class="font-semibold text-white text-theme-xs uppercase">Unidad base</p>
                             </th>
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="hidden xl:table-cell px-5 py-3 text-left sm:px-6">
                                 <p class="font-semibold text-white text-theme-xs uppercase">Tipo</p>
                             </th>
                             <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-right sm:px-6 last:rounded-tr-xl">
@@ -210,7 +210,7 @@
                                         <i class="ri-subtract-line" x-show="openRow === {{ $product->id }}"></i>
                                     </button>
                                 </td>
-                                <td class="px-5 py-4 sm:px-6">
+                                <td class="hidden md:table-cell px-5 py-4 sm:px-6">
                                     <p class="font-medium text-gray-800 text-theme-sm dark:text-white/90">
                                         {{ $product->code }}</p>
                                 </td>
@@ -218,15 +218,15 @@
                                     <p class="text-gray-500 text-theme-sm dark:text-gray-400">{{ $product->description }}
                                     </p>
                                 </td>
-                                <td class="px-5 py-4 sm:px-6">
+                                <td class="hidden sm:table-cell px-5 py-4 sm:px-6">
                                     <p class="text-gray-500 text-theme-sm dark:text-gray-400">
                                         {{ $product->category?->description ?? '-' }}</p>
                                 </td>
-                                <td class="px-5 py-4 sm:px-6">
+                                <td class="hidden lg:table-cell px-5 py-4 sm:px-6">
                                     <p class="text-gray-500 text-theme-sm dark:text-gray-400">
                                         {{ $product->baseUnit?->description ?? '-' }}</p>
                                 </td>
-                                <td class="px-5 py-4 sm:px-6">
+                                <td class="hidden xl:table-cell px-5 py-4 sm:px-6">
                                     <p class="text-gray-500 text-theme-sm dark:text-gray-400">{{ $product->type }}</p>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
@@ -339,7 +339,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="px-6 py-12">
+                                <td colspan="7" class="px-6 py-12">
                                     <div class="flex flex-col items-center gap-3 text-center text-sm text-gray-500">
                                         <div
                                             class="rounded-full bg-gray-100 p-3 text-gray-400 dark:bg-gray-800 dark:text-gray-300">

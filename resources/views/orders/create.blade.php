@@ -157,6 +157,9 @@
         </aside>
     </div>
 
+    {{-- Notificación (éxito, error, etc.) --}}
+    <div id="notification" class="fixed top-24 right-8 z-50 max-w-sm opacity-0 pointer-events-none transition-opacity duration-300" aria-live="polite"></div>
+
     {{-- SCRIPTS (envueltos en IIFE para evitar redeclaración al re-render Livewire) --}}
     <script>
         (function() {
@@ -344,6 +347,8 @@
                     return;
                 }
 
+                const stock = parseFloat(productBranch.stock ?? 0) || 0;
+
                 // Asegurar que el ID del producto sea un número entero para la comparación
                 const productId = parseInt(prod.id, 10);
                 if (isNaN(productId) || productId <= 0) {
@@ -363,6 +368,11 @@
                     return !isNaN(itemPId) && itemPId === productId;
                 });
 
+                const qtyToAdd = existing ? existing.qty + 1 : 1;
+                if (qtyToAdd > stock) {
+                    showNotification('Stock insuficiente', (prod.name || 'Producto') + ': solo hay ' + stock + ' disponible(s).', 'error');
+                    return;
+                }
 
                 if (existing) {
                     // Si existe, solo aumentar la cantidad
@@ -519,19 +529,27 @@
                         },
                         body: JSON.stringify(order)
                     })
-                    .then(response => response.json())
+                    .then(async (response) => {
+                        const ct = response.headers.get('content-type');
+                        if (ct && ct.includes('application/json')) {
+                            return response.json();
+                        }
+                        throw new Error(response.status === 419 ? 'Sesión expirada. Recarga la página.' : (response.status === 401 ? 'Debes iniciar sesión.' : 'Error del servidor. Intenta de nuevo.'));
+                    })
                     .then(data => {
                         if (data && data.success) {
+                            sessionStorage.setItem('flash_success_message', data.message);
                             window.location.href = "{{ route('admin.orders.index') }}";
                         } else {
                             console.error('Error al guardar:', data);
-                            alert(data?.message || 'No se pudo guardar el pedido.');
+                            sessionStorage.setItem('flash_error_message', data?.message );
                         }
                     })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        alert('Error al guardar el pedido. Revisa la consola.');
-                    });
+                            .catch(error => {
+                                console.error('Error:', error);
+                                sessionStorage.setItem('flash_error_message', 'Error al guardar el pedido. Revisa la consola.');
+                            });
+
             }
 
             function processOrderPayment() {
@@ -540,7 +558,7 @@
                     if (typeof showNotification === 'function') {
                         showNotification('Error', 'Agrega productos a la orden antes de cobrar.', 'error');
                     } else {
-                        alert('Agrega productos a la orden antes de cobrar.');
+                        sessionStorage.setItem('flash_error_message', 'Agrega productos a la orden antes de cobrar.');
                     }
                     return;
                 }
@@ -565,7 +583,7 @@
                     delivery_time: currentTable.delivery_time ?? null,
                     delivery_amount: currentTable.delivery_amount ?? 0,
                 };
-                fetch('{{ route('admin.orders.process') }}', {
+                fetch('{{ route('admin.orders.processOrderPayment') }}', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -575,11 +593,18 @@
                         },
                         body: JSON.stringify(payload)
                     })
-                    .then(response => response.json())
+                    .then(async (response) => {
+                        const ct = response.headers.get('content-type');
+                        if (ct && ct.includes('application/json')) {
+                            return response.json();
+                        }
+                        throw new Error(response.status === 419 ? 'Sesión expirada. Recarga la página.' : (response.status === 401 ? 'Debes iniciar sesión.' : 'Error del servidor. Intenta de nuevo.'));
+                    })
                     .then(data => {
                         if (data && data.success && data.movement_id) {
                             const url = new URL("{{ route('admin.orders.charge') }}", window.location.origin);
                             url.searchParams.set('movement_id', data.movement_id);
+                            sessionStorage.setItem('flash_success_message', data.message || 'Pedido cobrado correctamente');
                             window.location.href = url.toString();
                         } else {
                             if (typeof showNotification === 'function') {
@@ -617,6 +642,11 @@
                             table_id: tableId
                         }),
                     })
+                    .then(async (r) => {
+                        if (r.headers.get('content-type')?.includes('application/json')) {
+                            return r.json();
+                        }
+                    })
                     .then(() => {
                         /* mesa liberada o ya estaba libre */ })
                     .catch(() => {
@@ -649,14 +679,23 @@
 
             function showNotification(title, message, type = 'info') {
                 const notification = document.getElementById('notification');
-                if (notification) {
-                    notification.innerHTML = `
-                    <div class="notification-${type}">
-                        <h3>${title}</h3>
-                        <p>${message}</p>
+                if (!notification) return;
+                const isError = type === 'error';
+                notification.innerHTML = `
+                    <div class="rounded-xl border p-4 shadow-lg ${isError ? 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800' : 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800'}">
+                        <div class="flex items-start gap-3">
+                            <div class="${isError ? 'text-red-500' : 'text-green-500'}"><i class="fas fa-${isError ? 'exclamation-circle' : 'check-circle'} text-xl"></i></div>
+                            <div>
+                                <h3 class="font-semibold ${isError ? 'text-red-800 dark:text-red-200' : 'text-green-800 dark:text-green-200'}">${title}</h3>
+                                <p class="text-sm mt-1 ${isError ? 'text-red-700 dark:text-red-300' : 'text-green-700 dark:text-green-300'}">${message}</p>
+                            </div>
+                        </div>
                     </div>
                 `;
-                }
+                notification.classList.remove('opacity-0', 'pointer-events-none');
+                setTimeout(() => {
+                    notification.classList.add('opacity-0', 'pointer-events-none');
+                }, 3500);
             }
 
             // Exponer funciones usadas desde onclick en el HTML (mismo ámbito tras re-render)

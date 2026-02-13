@@ -70,7 +70,7 @@
                             <span class="font-semibold text-gray-900 dark:text-white" id="subtotal">S/0.00</span>
                         </div>
                         <div class="flex justify-between text-xs">
-                            <span class="text-gray-600 dark:text-gray-400">Impuestos (10%)</span>
+                            <span class="text-gray-600 dark:text-gray-400">IGV</span>
                             <span class="font-semibold text-gray-900 dark:text-white" id="tax">S/0.00</span>
                         </div>
                         <div class="border-t border-blue-300 pt-1.5 dark:border-blue-700">
@@ -128,18 +128,18 @@
                         <div class="flex justify-between items-center mb-2">
                             <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">Total pagado:</span>
                             <span class="text-lg font-bold text-gray-900 dark:text-white" id="total-paid">S/0.00</span>
-                            </div>
+                        </div>
                         <div id="payment-remaining" class="mt-2 hidden rounded-lg bg-orange-50 p-2 dark:bg-orange-900/20">
                             <div class="flex justify-between items-center">
                                 <span class="text-xs font-semibold text-orange-700 dark:text-orange-400">Falta pagar:</span>
                                 <span class="text-sm font-bold text-orange-700 dark:text-orange-400" id="remaining-amount">S/0.00</span>
+                            </div>
                         </div>
-                    </div>
                         <div id="payment-excess" class="mt-2 hidden rounded-lg bg-green-50 p-2 dark:bg-green-900/20">
                             <div class="flex justify-between items-center">
-                                <span class="text-xs font-semibold text-green-700 dark:text-green-400">Excedente:</span>
+                                <span class="text-xs font-semibold text-green-700 dark:text-green-400">Vuelto a devolver:</span>
                                 <span class="text-sm font-bold text-green-700 dark:text-green-400" id="excess-amount">S/0.00</span>
-                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -182,7 +182,7 @@
                                          str_contains(strtolower($paymentMethod->description), 'card');
                                 $icon = $isCard ? 'fa-credit-card' : 
                                        (str_contains(strtolower($paymentMethod->description), 'efectivo') || str_contains(strtolower($paymentMethod->description), 'cash') ? 'fa-money-bill-wave' :
-                                       (str_contains(strtolower($paymentMethod->description), 'yape') ? 'fa-mobile-alt' : 'fa-wallet'));
+                                       (str_contains(strtolower($paymentMethod->description), 'yape') || str_contains(strtolower($paymentMethod->description), 'plin') ? 'fa-mobile-alt' : 'fa-wallet'));
                             @endphp
                             <button type="button"
                                 class="pm-selection-btn rounded-lg border-2 border-gray-300 bg-gray-50 p-4 text-left transition hover:bg-blue-50 hover:border-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600"
@@ -421,7 +421,16 @@
             const paymentGateways = @json($paymentGateways ?? []);
             const cards = @json($cards ?? []);
             const defaultClientId = @json($defaultClientId ?? 4);
-            const productsMap = @json($products ?? []); // Mapa de ID => descripción
+            const productsMap = @json($products ?? []);
+            const productBranches = @json($productBranches ?? []);
+            const taxRateByProductId = new Map();
+            const defaultTaxPct = 18;
+            productBranches.forEach((pb) => {
+                const pid = Number(pb.product_id);
+                if (!Number.isNaN(pid)) {
+                    taxRateByProductId.set(pid, pb.tax_rate != null ? Number(pb.tax_rate) : defaultTaxPct);
+                }
+            });
             
             // Debug: verificar que los métodos de pago se carguen
             console.log('Métodos de pago cargados:', paymentMethods);
@@ -503,7 +512,7 @@
                     const desc = (methodDesc || '').toLowerCase();
                     if (desc.includes('tarjeta') || desc.includes('card')) return 'fa-credit-card';
                     if (desc.includes('efectivo') || desc.includes('cash')) return 'fa-money-bill-wave';
-                    if (desc.includes('yape')) return 'fa-mobile-alt';
+                    if (desc.includes('yape') || desc.includes('plin')) return 'fa-mobile-alt';
                     if (desc.includes('transferencia') || desc.includes('transfer')) return 'fa-exchange-alt';
                     return 'fa-wallet';
                 };
@@ -1131,10 +1140,18 @@
 
                 document.getElementById('items-list').innerHTML = rows;
 
-                // Los precios ya incluyen IGV.
-                const total = subtotal;
-                const subtotalBase = total / 1.10;
-                const tax = total - subtotalBase;
+                // Calcular subtotal e IGV por producto según su tasa (del sistema o del ítem si es borrador).
+                let subtotalBase = 0;
+                let tax = 0;
+                sale.items.forEach((it) => {
+                    const itemTotal = (Number(it.qty) || 0) * (Number(it.price) || 0);
+                    const taxPct = it.tax_rate != null ? Number(it.tax_rate) : (taxRateByProductId.get(Number(it.pId)) ?? defaultTaxPct);
+                    const taxVal = taxPct / 100;
+                    const itemSubtotal = taxVal > 0 ? itemTotal / (1 + taxVal) : itemTotal;
+                    subtotalBase += itemSubtotal;
+                    tax += itemTotal - itemSubtotal;
+                });
+                const total = subtotalBase + tax;
 
                 document.getElementById('subtotal').textContent = fmtMoney(subtotalBase);
                 document.getElementById('tax').textContent = fmtMoney(tax);
@@ -1211,6 +1228,20 @@
                 if (notification) {
                     notification.classList.remove('notification-show');
                 }
+            }
+
+            function showErrorModal(message, title = 'No se pudo completar la venta') {
+                if (window.Swal && typeof window.Swal.fire === 'function') {
+                    window.Swal.fire({
+                        icon: 'error',
+                        title,
+                        text: message,
+                        confirmButtonText: 'Entendido',
+                        confirmButtonColor: '#2563eb'
+                    });
+                    return;
+                }
+                showNotification('Error', message, 'error');
             }
 
             // Confirmar pago
@@ -1303,35 +1334,29 @@
                         body: JSON.stringify(payload)
                     })
                     .then(async r => {
-                        const contentType = r.headers.get('content-type');
-                        if (contentType && contentType.includes('application/json')) {
+                        const contentType = r.headers.get('content-type') || '';
+
+                        if (contentType.includes('application/json')) {
                             const data = await r.json();
                             if (!r.ok) {
-                                // Construir mensaje de error más detallado
                                 let errorMessage = data.message || data.error || 'Error al procesar la venta';
-                                if (data.error && typeof data.error === 'object') {
-                                    // Si hay información de debug, incluirla
-                                    if (data.error.message) {
-                                        errorMessage = data.error.message;
-                                    }
-                                    if (data.error.file && data.error.line) {
-                                    }
-                                }
                                 if (data.errors && typeof data.errors === 'object') {
-                                    // Si hay errores de validación, mostrarlos
                                     const validationErrors = Object.values(data.errors).flat().join(', ');
                                     errorMessage = validationErrors || errorMessage;
+                                }
+                                if (r.status >= 500 && (!errorMessage || errorMessage === 'Error al procesar la venta')) {
+                                    errorMessage = 'Ocurri� un error interno al procesar la venta. Por favor, int�ntalo nuevamente en unos minutos.';
                                 }
                                 throw new Error(errorMessage);
                             }
                             return data;
-                        } else {
-                            // Si no es JSON, probablemente es HTML (error del servidor)
-                            const text = await r.text();
-                            throw new Error(
-                                'Error del servidor. Por favor, revisa los logs o contacta al administrador.'
-                                );
                         }
+
+                        await r.text();
+                        if (!r.ok) {
+                            throw new Error('Ocurri� un error interno al procesar la venta. Por favor, int�ntalo nuevamente en unos minutos.');
+                        }
+                        throw new Error('Respuesta inesperada del servidor.');
                     })
                     .then(data => {
                         if (!data.success) {
@@ -1349,11 +1374,15 @@
                         }
                         localStorage.removeItem(ACTIVE_SALE_KEY_STORAGE);
 
-                        window.location.href = "{{ route('admin.sales.index') }}";
+                        sessionStorage.setItem('flash_success_message', data.message || 'Venta cobrada correctamente');
+                        const viewId = new URLSearchParams(window.location.search).get('view_id');
+                        let url = "{{ route('admin.sales.index') }}";
+                        if (viewId) url += (url.includes('?') ? '&' : '?') + 'view_id=' + encodeURIComponent(viewId);
+                        window.location.href = url;
                     })
                     .catch(err => {   
                         const errorMessage = err.message || 'Error al procesar la venta';
-                        showNotification('Error', errorMessage, 'error');
+                        showErrorModal(errorMessage);
                         this.disabled = false;
                         this.textContent = originalText;
                     });
@@ -1361,5 +1390,3 @@
         });
     </script>
 @endsection
-
-

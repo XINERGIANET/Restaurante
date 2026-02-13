@@ -26,19 +26,19 @@
     <div class="lg:col-span-2" x-data="{ 
             imagePreview: '{{ isset($category) && $category->image ? asset('storage/' . $category->image) : '' }}',
             fileName: '{{ isset($category) && $category->image ? basename($category->image) : '' }}',
+            imageError: '',
             
             showPreview(event) {
+                this.imageError = '';
                 const file = event.target.files[0];
                 if (!file) {
-                    // Si el usuario cancela la selección, volvemos al estado inicial (útil en edición)
                     this.imagePreview = '{{ isset($category) && $category->image ? asset('storage/' . $category->image) : '' }}';
                     this.fileName = '{{ isset($category) && $category->image ? basename($category->image) : '' }}';
                     return;
                 }
 
-                // Validaciones básicas
                 if (file.size > 2048 * 1024) {
-                    alert('El archivo es demasiado grande. Máximo 2MB.');
+                    this.imageError = 'El archivo es demasiado grande. Máximo 2MB.';
                     event.target.value = '';
                     return;
                 }
@@ -54,6 +54,7 @@
             removeImage() {
                 this.imagePreview = '';
                 this.fileName = '';
+                this.imageError = '';
                 document.getElementById('image-input').value = '';
             }
         }">
@@ -90,6 +91,8 @@
         <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
             JPG, PNG, GIF, WEBP • Máximo 2MB
         </p>
+
+        <p x-show="imageError" x-text="imageError" class="mt-1 text-xs text-error-600 dark:text-error-400" x-cloak></p>
 
         @error('image')
             <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>

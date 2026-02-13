@@ -421,16 +421,9 @@
 
                 const data = await response.json();
 
-                if (response.ok) {
-                    alert('Entrada de productos guardada correctamente');
-                    goBack();
-                } else {
-                    alert('Error: ' + (data.message || 'No se pudo guardar la entrada'));
-                }
+               
             } catch (error) {
-                console.error('Error:', error);
-                alert('Error al guardar la entrada de productos');
-            }
+                }
         }
 
         // Búsqueda de productos

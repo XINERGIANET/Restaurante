@@ -115,7 +115,8 @@ class MenuOptionController extends Controller
 
         return redirect()
             ->route('admin.modules.menu_options.index', request('view_id') ? [$module, 'view_id' => request('view_id')] : $module)
-            ->with('status', 'Opción de menú creada correctamente.');
+            ->with('status', 'Opción de menú creada correctamente.')
+            ->with('status_route', 'admin.modules.menu_options');
     }
 
     public function show(Module $module, MenuOption $menuOption)
@@ -149,7 +150,8 @@ class MenuOptionController extends Controller
 
         return redirect()
             ->route('admin.modules.menu_options.index', request('view_id') ? [$module, 'view_id' => request('view_id')] : $module)
-            ->with('status', 'Opción de menú actualizada correctamente.');
+            ->with('status', 'Opción de menú actualizada correctamente.')
+            ->with('status_route', 'admin.modules.menu_options');
     }
 
     public function destroy(Module $module, MenuOption $menuOption)
@@ -159,7 +161,8 @@ class MenuOptionController extends Controller
 
         return redirect()
             ->route('admin.modules.menu_options.index', request('view_id') ? [$module, 'view_id' => request('view_id')] : $module)
-            ->with('status', 'Opción de menú eliminada correctamente.');
+            ->with('status', 'Opción de menú eliminada correctamente.')
+            ->with('status_route', 'admin.modules.menu_options');
     }
 
     // --- Validaciones y Helpers ---

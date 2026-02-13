@@ -226,6 +226,7 @@ class OrderController extends Controller
                     'id' => $productBranch->id,
                     'product_id' => $productBranch->product_id,
                     'price' => (float) $productBranch->price,
+                    'stock' => (float) ($productBranch->stock ?? 0),
                 ];
             });
         $categories = Category::orderBy('description')->get();
@@ -500,11 +501,15 @@ class OrderController extends Controller
 
         DB::commit();
 
-        return response()->json([
-            'success' => true,
-            'order_movement_id' => $orderMovement->id,
-            'movement_id' => $movement->id,
-        ]);
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Pedido guardado correctamente',
+                    'movement_id' => $movement->id,
+                    'order_movement_id' => $orderMovement->id,
+                ]);
+            }
+
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Error al procesar pedido', [
@@ -512,10 +517,14 @@ class OrderController extends Controller
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al procesar el pedido',
-            ], 500);
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                ], 500);
+            }
+
+            return redirect()->route('admin.orders.index')->with('error', 'Error al procesar el pedido');
         }
     }
 
@@ -555,6 +564,8 @@ class OrderController extends Controller
         try {
             return response()->json([
                 'success' => true,
+                'message' => 'Pedido cobrado correctamente',
+                'movement_id' => $orderMovement?->movement_id,
                 'order_movement_id' => $orderMovement?->id,
             ]);
         } catch (\Throwable $e) {
