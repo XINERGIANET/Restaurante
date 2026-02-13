@@ -435,9 +435,9 @@ class OrderController extends Controller
                     'responsible_id' => $user?->id,
                     'responsible_name' => $user?->name ?? 'Sistema',
                     'comment' => 'Pedido desde punto de venta',
-                    'status' => 'P',
-                    'movement_type_id' => $movementType->id,
-                    'document_type_id' => $documentType->id,
+                    'status' => 'A',
+                    'movement_type_id' => 5,
+                    'document_type_id' => 11,
                     'branch_id' => $branchId,
                     'parent_movement_id' => null,
                 ]);

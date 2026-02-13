@@ -300,7 +300,7 @@
                 <div class="max-w-full">
                     <table class="w-full min-w-[880px]">
                         <thead style="background-color: #63B7EC; color: #FFFFFF;">
-                            <tr class="text-white">
+                            <tr class="text-white" >
                                 <th class="px-5 py-3 text-center sm:px-6 sticky-left-header">
                                     <p class="font-medium text-theme-xs dark:text-white">Orden</p>
                                 </th>
