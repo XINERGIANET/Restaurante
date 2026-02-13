@@ -45,7 +45,7 @@ class ModulesController extends Controller
 
         $modules = Modules::query()
             ->when($search, function ($query, $search) {
-                $query->where('name', 'like', "%{$search}%");
+                $query->where('name', 'ILIKE', "%{$search}%");
             })
             ->orderBy('order_num', 'asc')
             ->paginate(10)

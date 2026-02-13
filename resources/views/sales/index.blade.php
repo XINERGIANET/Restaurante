@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-    <div x-data="{ openRow: null }">
+    <div>
         @php
             use Illuminate\Support\Facades\Route;
 
@@ -75,7 +75,7 @@
                             onchange="this.form.submit()"
                         >
                             @foreach ([10, 20, 50, 100] as $size)
-                                <option value="{{ $size }}" @selected($perPage == $size)>{{ $size }} / pagina</option>
+                                <option value="{{ $size }}" @selected($perPage == $size)>{{ $size }} / página</option>
                             @endforeach
                         </select>
                     </div>
@@ -126,35 +126,32 @@
                 </div>
             </div>
 
-            <div class="mt-4 rounded-xl border border-gray-200 bg-white overflow-visible dark:border-gray-800 dark:bg-white/[0.03]">
-                <table class="w-full">
+            <div x-data="{ openRow: null }" class="table-responsive mt-4 rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+                <table class="w-full min-w-[1100px]">
                     <thead>
                         <tr class="text-white">
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="w-16 px-4 py-3 text-left sm:px-6 first:rounded-tl-xl">
-                                <p class="font-semibold text-white text-theme-xs uppercase">#</p>
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6 first:rounded-tl-xl sticky-left-header">
+                                <p class="font-semibold text-white text-theme-xs uppercase">ID</p>
                             </th>
                             <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
                                 <p class="font-semibold text-white text-theme-xs uppercase">Comprobante</p>
                             </th>
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
-                                <p class="font-semibold text-white text-theme-xs uppercase">Tipo</p>
-                            </th>
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class= "px-5 py-3 text-left sm:px-6">
                                 <p class="font-semibold text-white text-theme-xs uppercase">Subtotal</p>
                             </th>
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                            <th  style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
                                 <p class="font-semibold text-white text-theme-xs uppercase">IGV</p>
                             </th>
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                            <th  style="background-color: #63B7EC; color: #FFFFFF;"  class="px-5 py-3 text-left sm:px-6">
                                 <p class="font-semibold text-white text-theme-xs uppercase">Total</p>
                             </th>
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                            <th  style="background-color: #63B7EC; color: #FFFFFF;"  class="px-5 py-3 text-left sm:px-6">
                                 <p class="font-semibold text-white text-theme-xs uppercase">Persona</p>
                             </th>
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                            <th  style="background-color: #63B7EC; color: #FFFFFF;"  class="px-5 py-3 text-left sm:px-6">
                                 <p class="font-semibold text-white text-theme-xs uppercase">Situación</p>
                             </th>
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-right sm:px-6 last:rounded-tr-xl">
+                            <th  style="background-color: #63B7EC; color: #FFFFFF;"  class="px-5 py-3 text-right sm:px-6 last:rounded-tr-xl">
                                 <p class="font-semibold text-white text-theme-xs uppercase">Acciones</p>
                             </th>
                         </tr>
@@ -162,7 +159,7 @@
                     <tbody>
                         @forelse ($sales as $sale)
                             <tr class="border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-white/5">
-                                <td class="px-4 py-4 sm:px-6">
+                                <td class="px-4 py-4 sm:px-6 sticky-left">
                                     <div class="flex items-center gap-2">
                                         <button type="button"
                                             @click="openRow === {{ $sale->id }} ? openRow = null : openRow = {{ $sale->id }}"
@@ -170,26 +167,32 @@
                                             <i class="ri-add-line" x-show="openRow !== {{ $sale->id }}"></i>
                                             <i class="ri-subtract-line" x-show="openRow === {{ $sale->id }}"></i>
                                         </button>
-                                        <p class="font-medium text-gray-800 text-theme-sm dark:text-white/90">{{ $sale->id }}</p>
+                                        <p class="font-bold text-gray-800 text-theme-sm dark:text-white/90">#{{ $sale->id }}</p>
                                     </div>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
-                                    <p class="font-medium text-gray-800 text-theme-sm dark:text-white/90">{{ $sale->number }}</p>
+                                    <div>
+                                        <p class="font-bold text-gray-800 text-theme-sm dark:text-white/90">
+                                            {{ strtoupper(substr($sale->documentType->name, 0, 1)) }}{{ $sale->salesMovement->series }}-{{ $sale->number }}
+                                        </p>
+                                        <p class="text-[11px] text-gray-500 dark:text-gray-400 uppercase font-medium">
+                                            {{ $sale->documentType?->name ?? '-' }}
+                                        </p>
+                                    </div>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
-                                    <p class="text-gray-500 text-theme-sm dark:text-gray-400">{{ $sale->documentType?->name ?? '-' }}</p>
+                                    <p class="text-gray-800 text-theme-sm dark:text-white/90">S/ {{ number_format((float) ($sale->salesMovement?->subtotal ?? 0), 2) }}</p>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
-                                    <p class="font-semibold text-gray-800 text-theme-md dark:text-white/90">{{ number_format((float) ($sale->salesMovement?->subtotal ?? 0), 2) }}</p>
+                                    <p class="text-gray-800 text-theme-sm dark:text-white/90">S/ {{ number_format((float) ($sale->salesMovement?->tax ?? 0), 2) }}</p>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
-                                    <p class="font-semibold text-gray-800 text-theme-md dark:text-white/90">{{ number_format((float) ($sale->salesMovement?->tax ?? 0), 2) }}</p>
+                                    <p class="font-bold text-brand-600 text-theme-sm dark:text-brand-400">S/ {{ number_format((float) ($sale->salesMovement?->total ?? 0), 2) }}</p>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
-                                    <p class="font-semibold text-gray-800 text-theme-md dark:text-white/90">{{ number_format((float) ($sale->salesMovement?->total ?? 0), 2) }}</p>
-                                </td>
-                                <td class="px-5 py-4 sm:px-6">
-                                    <p class="text-gray-700 text-theme-sm dark:text-gray-300">{{ $sale->person_name ?? '-' }}</p>
+                                    <p class="text-gray-800 text-theme-sm dark:text-white/90 truncate max-w-[150px]" title="{{ $sale->person_name ?? 'Público General' }}">
+                                        {{ $sale->person_name ?? 'Público General' }}
+                                    </p>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
                                     @php
@@ -324,57 +327,56 @@
                                     </div>
                                 </td>
                             </tr>
-                            <tr x-show="openRow === {{ $sale->id }}" x-cloak class="bg-gray-50/60 dark:bg-gray-800/40">
-                                <td colspan="9" class="px-6 py-4">
-                                    @php
-                                        $saleDetail = $sale->salesMovement;
-                                    @endphp
-                                    <div class="mx-auto w-full max-w-3xl">
-                                        <div class="grid gap-3 sm:grid-cols-2">
-                                            <div class="border-b border-gray-200 pb-2">
-                                                <span class="font-semibold text-gray-800">Fecha:</span>
-                                                <span class="text-gray-600">{{ $sale->moved_at?->format('Y-m-d h:i:s A') ?? '-' }}</span>
-                                            </div>
-                                            <div class="border-b border-gray-200 pb-2">
-                                                <span class="font-semibold text-gray-800">Usuario:</span>
-                                                <span class="text-gray-600">{{ $sale->user_name ?? '-' }}</span>
-                                            </div>
-                                            <div class="border-b border-gray-200 pb-2">
-                                                <span class="font-semibold text-gray-800">Responsable:</span>
-                                                <span class="text-gray-600">{{ $sale->responsible_name ?? '-' }}</span>
-                                            </div>
-                                            <div class="border-b border-gray-200 pb-2">
-                                                <span class="font-semibold text-gray-800">Tipo de detalle:</span>
-                                                <span class="text-gray-600">{{ $saleDetail?->detail_type ?? '-' }}</span>
-                                            </div>
-                                            <div class="border-b border-gray-200 pb-2">
-                                                <span class="font-semibold text-gray-800">Moneda:</span>
-                                                <span class="text-gray-600">{{ $saleDetail?->currency ?? '-' }}</span>
-                                            </div>
-                                            <div class="border-b border-gray-200 pb-2">
-                                                <span class="font-semibold text-gray-800">T. cambio:</span>
-                                                <span class="text-gray-600">{{ number_format((float) ($saleDetail?->exchange_rate ?? 0), 3) }}</span>
-                                            </div>
-                                            <div class="border-b border-gray-200 pb-2">
-                                                <span class="font-semibold text-gray-800">Por consumo:</span>
-                                                <span class="text-gray-600">{{ ($saleDetail?->consumption ?? 'N') === 'S' ? 'Si' : 'No' }}</span>
-                                            </div>
-                                            <div class="border-b border-gray-200 pb-2">
-                                                <span class="font-semibold text-gray-800">Tipo de pago:</span>
-                                                <span class="text-gray-600">{{ $saleDetail?->payment_type ?? '-' }}</span>
-                                            </div>
-                                            <div class="border-b border-gray-200 pb-2 sm:col-span-2">
-                                                <span class="font-semibold text-gray-800">Comentario:</span>
-                                                <span class="text-gray-600">{{ $sale->comment ?: '-' }}</span>
-                                            </div>
-                                            <div class="border-b border-gray-200 pb-2">
-                                                <span class="font-semibold text-gray-800">Estado en SUNAT:</span>
-                                                <span class="text-gray-600">{{ $saleDetail?->status ?? '-' }}</span>
-                                            </div>
-                                            <div class="border-b border-gray-200 pb-2">
-                                                <span class="font-semibold text-gray-800">Origen:</span>
-                                                <span class="text-gray-600">{{ $sale->movementType?->description ?? '-' }} - {{ $sale->number }}</span>
-                                            </div>
+                            <tr x-show="openRow === {{ $sale->id }}" x-cloak class="bg-gray-50/70 dark:bg-gray-800/40 border-b border-gray-100 dark:border-gray-800">
+                                <td colspan="10" class="px-6 py-4">
+                                    <div class="grid grid-cols-4 gap-3 sm:grid-cols-5">
+                                        <div class="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-gray-700 dark:bg-gray-900/50">
+                                            <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Persona</p>
+                                            <p class="mt-0.5 truncate text-sm font-medium text-gray-800 dark:text-gray-200">{{ $sale->person_name ?: '-' }}</p>
+                                        </div>
+                                        <div class="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-gray-700 dark:bg-gray-900/50">
+                                            <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Fecha</p>
+                                            <p class="mt-0.5 text-sm font-medium text-gray-800 dark:text-gray-200">{{ $sale->moved_at ? $sale->moved_at->format('d/m/Y H:i') : '-' }}</p>
+                                        </div>
+                                        <div class="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-gray-700 dark:bg-gray-900/50">
+                                            <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Usuario</p>
+                                            <p class="mt-0.5 truncate text-sm font-medium text-gray-800 dark:text-gray-200">{{ $sale->user_name ?: '-' }}</p>
+                                        </div>
+                                        <div class="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-gray-700 dark:bg-gray-900/50">
+                                            <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Responsable</p>
+                                            <p class="mt-0.5 truncate text-sm font-medium text-gray-800 dark:text-gray-200">{{ $sale->responsible_name ?: '-' }}</p>
+                                        </div>
+                                        <div class="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-gray-700 dark:bg-gray-900/50">
+                                            <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Tipo de detalle</p>
+                                            <p class="mt-0.5 text-sm font-medium text-gray-800 dark:text-gray-200">{{ $sale->salesMovement?->detail_type ?? '-' }}</p>
+                                        </div>
+                                        <div class="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-gray-700 dark:bg-gray-900/50">
+                                            <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Moneda</p>
+                                            <p class="mt-0.5 text-sm font-medium text-gray-800 dark:text-gray-200">{{ $sale->salesMovement?->currency ?? 'PEN' }}</p>
+                                        </div>
+                                        <div class="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-gray-700 dark:bg-gray-900/50">
+                                            <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">T. cambio</p>
+                                            <p class="mt-0.5 text-sm font-medium text-gray-800 dark:text-gray-200">{{ number_format((float) ($sale->salesMovement?->exchange_rate ?? 1), 3) }}</p>
+                                        </div>
+                                        <div class="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-gray-700 dark:bg-gray-900/50">
+                                            <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Por consumo</p>
+                                            <p class="mt-0.5 text-sm font-medium text-gray-800 dark:text-gray-200">{{ ($sale->salesMovement?->consumption ?? 'N') === 'Y' ? 'Sí' : 'No' }}</p>
+                                        </div>
+                                        <div class="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-gray-700 dark:bg-gray-900/50">
+                                            <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Tipo de pago</p>
+                                            <p class="mt-0.5 text-sm font-medium text-gray-800 dark:text-gray-200">{{ $sale->salesMovement?->payment_type ?? '-' }}</p>
+                                        </div>
+                                        <div class="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-gray-700 dark:bg-gray-900/50 sm:col-span-2">
+                                            <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Comentario</p>
+                                            <p class="mt-0.5 text-sm font-medium text-gray-800 dark:text-gray-200">{{ Str::limit($sale->comment ?? '-', 60) }}</p>
+                                        </div>
+                                        <div class="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-gray-700 dark:bg-gray-900/50">
+                                            <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Estado SUNAT</p>
+                                            <p class="mt-0.5 text-sm font-medium text-gray-800 dark:text-gray-200">{{ $sale->salesMovement?->status ?? '-' }}</p>
+                                        </div>
+                                        <div class="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-gray-700 dark:bg-gray-900/50">
+                                            <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Origen</p>
+                                            <p class="mt-0.5 text-sm font-medium text-gray-800 dark:text-gray-200">{{ $sale->movementType?->description ?? 'Venta' }} - {{ strtoupper(substr($sale->documentType?->name , 0, 1))?? '-' }}{{ $sale->salesMovement?->series }}-{{ $sale->number }}</p>
                                         </div>
                                     </div>
                                 </td>
@@ -415,4 +417,29 @@
             </div>
         </x-common.component-card>
     </div>
+
+    @push('scripts')
+    <script>
+    (function() {
+        function showFlashToast() {
+            const msg = sessionStorage.getItem('flash_success_message');
+            if (!msg) return;
+            sessionStorage.removeItem('flash_success_message');
+            if (window.Swal) {
+                Swal.fire({
+                    toast: true,
+                    position: 'bottom-end',
+                    icon: 'success',
+                    title: msg,
+                    showConfirmButton: false,
+                    timer: 3500,
+                    timerProgressBar: true
+                });
+            }
+        }
+        showFlashToast();
+        document.addEventListener('turbo:load', showFlashToast);
+    })();
+    </script>
+    @endpush
 @endsection

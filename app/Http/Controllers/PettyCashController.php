@@ -39,6 +39,11 @@ class PettyCashController extends Controller
     public function index(Request $request, $cash_register_id = null)
     {
         $search = $request->input('search');
+        $perPage = (int) $request->input('per_page', 10);
+        $allowedPerPage = [10, 20, 50, 100];
+        if (!in_array($perPage, $allowedPerPage, true)) {
+            $perPage = 10;
+        }
         $viewId = $request->input('view_id');
         $branchId = $request->session()->get('branch_id');
         $profileId = $request->session()->get('profile_id') ?? $request->user()?->profile_id;
@@ -106,18 +111,27 @@ class PettyCashController extends Controller
             ->get();
 
         $movements = Movement::query()
-            ->with('documentType')
+            ->with([
+                'documentType',
+                'movementType',
+                'cashMovement',
+                'cashMovement.details',
+                'cashMovement.paymentConcept',
+                'cashMovement.shift',
+            ])
             ->whereHas('cashMovement', function ($query) use ($selectedBoxId) {
                 $query->where('cash_register_id', $selectedBoxId);
             })
             ->when($search, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
-                    $q->where('person_name', 'like', "%{$search}%")
-                        ->orWhere('number', 'like', "%{$search}%");
+                    $q->where('person_name', 'ILIKE', "%{$search}%")
+                        ->orWhere('user_name', 'ILIKE', "%{$search}%")
+                        ->orWhere('responsible_name', 'ILIKE', "%{$search}%")
+                        ->orWhere('number', 'ILIKE', "%{$search}%");
                 });
             })
             ->orderBy('moved_at', 'desc')
-            ->paginate(10)
+            ->paginate($perPage)
             ->withQueryString();
 
         $shifts = Shift::where('branch_id', session('branch_id'))->get();
@@ -151,6 +165,7 @@ class PettyCashController extends Controller
             'digitalWallets'  => $digitalWallets,
             'cards'           => $cards,
             'operaciones'     => $operaciones,
+            'perPage'         => $perPage,
         ]);
     }
 

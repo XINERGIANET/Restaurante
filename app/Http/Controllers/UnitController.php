@@ -44,9 +44,9 @@ class UnitController extends Controller
         }
         $units = Unit::query()
             ->when($search, function ($query) use ($search) {
-                $query->where('description', 'like', "%{$search}%")
-                    ->orWhere('abbreviation', 'like', "%{$search}%")
-                    ->orWhere('type', 'like', "%{$search}%");
+                $query->where('description', 'ILIKE', "%{$search}%")
+                    ->orWhere('abbreviation', 'ILIKE', "%{$search}%")
+                    ->orWhere('type', 'ILIKE', "%{$search}%");
             })
             ->orderByDesc('id')
             ->paginate($perPage)

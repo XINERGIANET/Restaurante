@@ -61,10 +61,10 @@ class PersonController extends Controller
             ->with(['location', 'user.profile'])
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
-                    $inner->where('first_name', 'like', "%{$search}%")
-                        ->orWhere('last_name', 'like', "%{$search}%")
-                        ->orWhere('document_number', 'like', "%{$search}%")
-                        ->orWhere('email', 'like', "%{$search}%");
+                    $inner->where('first_name', 'ILIKE', "%{$search}%")
+                        ->orWhere('last_name', 'ILIKE', "%{$search}%")
+                        ->orWhere('document_number', 'ILIKE', "%{$search}%")
+                        ->orWhere('email', 'ILIKE', "%{$search}%");
                 });
             })
             ->orderByDesc('id')

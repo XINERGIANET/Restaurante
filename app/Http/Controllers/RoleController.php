@@ -48,8 +48,8 @@ class RoleController extends Controller
         $roles = Role::query()
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
-                    $inner->where('name', 'like', "%{$search}%")
-                        ->orWhere('description', 'like', "%{$search}%");
+                    $inner->where('name', 'ILIKE', "%{$search}%")
+                        ->orWhere('description', 'ILIKE', "%{$search}%");
                 });
             })
             ->orderByDesc('id')

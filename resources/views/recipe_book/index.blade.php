@@ -267,8 +267,10 @@
                     </select>
                 </div>
 
-                <!-- Botones -->
                 <div class="flex gap-2">
+                    <x-ui.button size="md" variant="primary" type="submit" class="flex-1 sm:flex-none h-11 px-6 shadow-sm hover:shadow-md transition-all duration-200 active:scale-95" style="background-color: #244BB3; border-color: #244BB3;">
+                        <i class="ri-search-line text-gray-100"></i>
+                        <span class="font-medium text-gray-100">Buscar</span>
                     <x-ui.button size="md" variant="primary" type="submit" class="flex-1 sm:flex-none h-11 px-6 shadow-sm hover:shadow-md transition-all duration-200 active:scale-95" style="background-color: #244BB3; border-color: #244BB3;">
                         <i class="ri-search-line text-gray-100"></i>
                         <span class="font-medium text-gray-100">Buscar</span>

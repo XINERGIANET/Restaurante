@@ -4,10 +4,12 @@ export const initChartOne = () => {
     const chartElement = document.querySelector('#chartOne');
     if (!chartElement) return;
 
+    const salesData = window.dashboardData?.monthlySales || [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+
     const chartOneOptions = {
         series: [{
-            name: "Sales",
-            data: [168, 385, 201, 298, 187, 195, 291, 110, 215, 390, 280, 112],
+            name: "Ventas",
+            data: salesData,
         },],
         colors: ["#465fff"],
         chart: {

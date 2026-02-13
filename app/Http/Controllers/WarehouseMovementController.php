@@ -170,6 +170,12 @@ class WarehouseMovementController extends Controller
                 throw new \Exception('No se encontró un tipo de documento válido para salida.');
             }
 
+            // Generar número de movimiento (secuencia independiente por tipo de documento)
+            $todayCount = Movement::where('document_type_id', $documentType->id)
+                ->whereDate('created_at', Carbon::today())
+                ->count();
+            $number = str_pad($todayCount + 1, 8, '0', STR_PAD_LEFT);
+
             // Validar stock antes de crear el movimiento
             foreach ($request->items as $item) {
                 $productBranch = ProductBranch::where('product_id', $item['product_id'])
@@ -182,9 +188,6 @@ class WarehouseMovementController extends Controller
                     throw new \Exception("Stock insuficiente para \"{$name}\". Disponible: {$stock}, solicitado: {$item['quantity']}.");
                 }
             }
-
-            $todayCount = Movement::whereDate('created_at', Carbon::today())->count();
-            $number = 'S-' . Carbon::now()->format('Ymd') . '-' . str_pad($todayCount + 1, 4, '0', STR_PAD_LEFT);
 
             $movement = Movement::create([
                 'number' => $number,
@@ -234,7 +237,7 @@ class WarehouseMovementController extends Controller
                         'description' => $product->description,
                     ],
                     'unit_id' => $product->baseUnit->id ?? 1,
-                    'quantity' => $item['quantity'],
+                    'quantity' => (float) $item['quantity'],
                     'comment' => $item['comment'] ?? '',
                     'status' => 'A',
                     'branch_id' => $branchId,
@@ -303,9 +306,9 @@ class WarehouseMovementController extends Controller
             ->with(['movement.movementType', 'movement.documentType', 'branch'])
             ->when($search, function ($query) use ($search) {
                 $query->whereHas('movement', function ($q) use ($search) {
-                    $q->where('number', 'like', "%{$search}%")
-                        ->orWhere('person_name', 'like', "%{$search}%")
-                        ->orWhere('user_name', 'like', "%{$search}%");
+                    $q->where('number', 'ILIKE', "%{$search}%")
+                        ->orWhere('person_name', 'ILIKE', "%{$search}%")
+                        ->orWhere('user_name', 'ILIKE', "%{$search}%");
                 });
             })
             ->orderByDesc('id')
@@ -375,9 +378,11 @@ class WarehouseMovementController extends Controller
                 throw new \Exception('No se encontró un tipo de documento válido para entrada.');
             }
 
-            // Generar número de movimiento
-            $todayCount = Movement::whereDate('created_at', Carbon::today())->count();
-            $number = 'E-' . Carbon::now()->format('Ymd') . '-' . str_pad($todayCount + 1, 4, '0', STR_PAD_LEFT);
+            // Generar número de movimiento (secuencia independiente por tipo de documento)
+            $todayCount = Movement::where('document_type_id', $documentType->id)
+                ->whereDate('created_at', Carbon::today())
+                ->count();
+            $number = str_pad($todayCount + 1, 8, '0', STR_PAD_LEFT);
 
             // Crear Movement
             $movement = Movement::create([
@@ -433,7 +438,7 @@ class WarehouseMovementController extends Controller
                         'description' => $product->description,
                     ],
                     'unit_id' => $product->baseUnit->id ?? 1,
-                    'quantity' => $item['quantity'],
+                    'quantity' => (float) $item['quantity'],
                     'comment' => $item['comment'] ?? '',
                     'status' => 'A',
                     'branch_id' => $branchId,

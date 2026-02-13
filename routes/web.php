@@ -32,6 +32,7 @@ use App\Http\Controllers\ShiftController;
 use App\Http\Controllers\TaxRateController;
 use App\Http\Controllers\PettyCashController;
 use App\Http\Controllers\BoxController;
+use App\Http\Controllers\KardexController;
 use App\Http\Controllers\RecipeBookController;
 use App\Http\Controllers\UnitController;
 use App\Http\Controllers\WarehouseMovementController;
@@ -128,6 +129,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/admin/ventas/borrador', [SalesController::class, 'saveDraft'])
         ->name('admin.sales.draft');
 
+    Route::get('/admin/ventas/reporte', [SalesController::class, 'reportSales'])
+        ->name('sales.report');
+
     Route::resource('/admin/herramientas/tipos-movimiento', MovementTypeController::class)
         ->names('admin.movement-types')
         ->parameters(['tipos-movimiento' => 'movementType'])
@@ -154,14 +158,17 @@ Route::middleware('auth')->group(function () {
     Route::put('/admin/herramientas/product-branches/{productBranch}', [ProductBranchController::class, 'update'])
         ->name('admin.product_branches.update');
 
+    //Kardex
+    Route::get('/herramientas/kardex', [KardexController::class, 'index'])
+        ->name('kardex.index');
     //Rutas de ordenes
     Route::resource('/Pedidos', OrderController::class)
         ->names('admin.orders')
         ->parameters(['orders' => 'order'])
         ->only(['index', 'create']); // Solo incluir los métodos que existen
 
-    Route::get('/Pedidos/listado', [OrderController::class, 'list'])
-        ->name('admin.orders.list');
+    Route::get('/Pedidos/reporte', [OrderController::class, 'report'])
+        ->name('orders.report');
 
   
     Route::get('/Pedidos/cobrar', [OrderController::class, 'charge'])
@@ -176,9 +183,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/Pedidos/cancelar', [OrderController::class, 'cancelOrder'])
         ->name('admin.orders.cancelOrder');
     // dashboard pages
-    Route::get('/', function () {
-        return view('pages.dashboard.ecommerce', ['title' => 'E-commerce Dashboard']);
-    })->name('dashboard');
+    Route::get('/', [\App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
 
     // calender pages
     Route::get('/calendar', function () {

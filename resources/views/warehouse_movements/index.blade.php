@@ -106,7 +106,7 @@
                         </div>
                     </div>
                     <div class="flex items-center gap-2 flex-none">
-                        <x-ui.button size="md" variant="primary" type="submit" class="flex-1 sm:flex-none h-11 px-4 shadow-sm hover:shadow-md transition-all duration-200 active:scale-95" style="background-color: #63B7EC; border-color: #63B7EC;">
+                        <x-ui.button size="md" variant="primary" type="submit" class="flex-1 sm:flex-none h-11 px-4 shadow-sm hover:shadow-md transition-all duration-200 active:scale-95" style="background-color: #244BB3; border-color: #244BB3;">
                             <i class="ri-search-line text-gray-100"></i>
                             <span class="font-medium text-gray-100">Buscar</span>
                         </x-ui.button>
@@ -152,11 +152,11 @@
                     </x-ui.link-button>
                 @endif
             </div>
-            <div class="rounded-xl border border-gray-200 bg-white overflow-visible dark:border-gray-800 dark:bg-white/[0.03]" style="overflow: visible; max-height: none;">
-                    <table class="w-full table-fixed">
+            <div class="table-responsive mt-4 rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+                    <table class="w-full min-w-[1100px]">
                         <thead style="background-color: #63B7EC; color: #FFFFFF;">
                             <tr>
-                                <th  class="px-5 py-4 text-center first:rounded-tl-xl">
+                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-4 text-center first:rounded-tl-xl sticky-left-header">
                                     <p class="font-bold text-gray-100 text-xs uppercase tracking-wider">Número</p>
                                 </th>
                                 <th class="px-5 py-4 text-center align-middle break-words">

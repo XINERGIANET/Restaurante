@@ -143,13 +143,13 @@
                         />
                     </div>
                     <div class="flex flex-wrap gap-2">
-                        <x-ui.button size="sm" variant="primary" type="submit">
-                            <i class="ri-search-line"></i>
-                            <span>Buscar</span>
+                        <x-ui.button size="md" variant="primary" type="submit" class="flex-1 sm:flex-none h-11 px-4 shadow-sm hover:shadow-md transition-all duration-200 active:scale-95" style="background-color: #244BB3; border-color: #244BB3;">
+                            <i class="ri-search-line text-gray-100"></i>
+                            <span class="font-medium text-gray-100">Buscar</span>
                         </x-ui.button>
-                        <x-ui.link-button size="sm" variant="outline" href="{{ route('admin.companies.branches.people.index', array_merge([$company, $branch], array_filter(['view_id' => $viewId, 'company_view_id' => $companyViewId, 'branch_view_id' => $branchViewId, 'icon' => $requestIcon]))) }}">
-                            <i class="ri-close-line"></i>
-                            <span>Limpiar</span>
+                        <x-ui.link-button size="md" variant="outline" href="{{ route('admin.companies.branches.people.index', array_merge([$company, $branch], array_filter(['view_id' => $viewId, 'company_view_id' => $companyViewId, 'branch_view_id' => $branchViewId, 'icon' => $requestIcon]))) }}" class="flex-1 sm:flex-none h-11 px-4 border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200">
+                            <i class="ri-refresh-line"></i>
+                            <span class="font-medium">Limpiar</span>
                         </x-ui.link-button>
                     </div>
                 </form>
@@ -189,11 +189,11 @@
                 </div>
             </div>
 
-            <div class="mt-4 rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-white/[0.03] overflow-visible" style="overflow: visible; max-height: none;">
-                <table class="w-full border-separate border-spacing-0">
+            <div class="table-responsive mt-4 rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
+                <table class="w-full min-w-max border-separate border-spacing-0">
                     <thead>
                         <tr class="border-b border-gray-100 dark:border-gray-800 text-white">
-                            <th style="background-color: #63B7EC;" class="w-12 px-4 py-3 text-center first:rounded-tl-2xl"></th>
+                            <th style="background-color: #63B7EC;" class="w-12 px-4 py-3 text-center first:rounded-tl-2xl sticky-left-header"></th>
                             <th style="background-color: #63B7EC;" class="px-3 py-3 text-left sm:px-6 whitespace-nowrap">Nombres</th>
                             <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6 whitespace-nowrap">Tipo</th>
                             <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6 whitespace-nowrap">Nro. Documento</th>
@@ -206,7 +206,7 @@
                     <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
                         @forelse ($people as $person)
                             <tr class="group/row transition hover:bg-gray-50/80 dark:hover:bg-white/5">
-                                <td class="px-4 py-4 text-center">
+                                <td class="px-4 py-4 text-center sticky-left">
                                     <button type="button"
                                         @click="openRow === {{ $person->id }} ? openRow = null : openRow = {{ $person->id }}"
                                         class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-500 text-white transition hover:bg-brand-600 dark:bg-brand-500 dark:text-white">

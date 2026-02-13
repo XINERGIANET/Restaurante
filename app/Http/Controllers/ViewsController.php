@@ -47,7 +47,7 @@ class ViewsController extends Controller
 
         $views = View::query()
             ->when($search, function ($query, $search) {
-                $query->where('name', 'like', "%{$search}%");
+                $query->where('name', 'ILIKE', "%{$search}%");
             })
             ->paginate(10)
             ->withQueryString(); 
@@ -61,6 +61,7 @@ class ViewsController extends Controller
     
     public function store(Request $request)
     {
+        $viewId = $request->input('view_id');
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'abbreviation' => 'nullable|string|max:255',
@@ -136,7 +137,8 @@ class ViewsController extends Controller
                     }
             });
 
-            return redirect()->route('admin.views.index')
+            $redirectParams = $viewId ? ['view_id' => $viewId] : [];
+            return redirect()->route('admin.views.index', $redirectParams)
                 ->with('status', 'Vista creada correctamente');
 
         } catch (\Exception $e) {
@@ -188,7 +190,8 @@ class ViewsController extends Controller
 
             $view->delete();
 
-            return redirect()->route('admin.views.index')
+            $redirectParams = request()->filled('view_id') ? ['view_id' => request()->input('view_id')] : [];
+            return redirect()->route('admin.views.index', $redirectParams)
                 ->with('status', 'Vista eliminada correctamente');
 
         } catch (\Exception $e) {

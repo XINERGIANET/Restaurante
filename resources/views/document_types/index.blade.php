@@ -101,13 +101,13 @@
                         />
                     </div>
                     <div class="flex flex-wrap gap-2">
-                        <x-ui.button size="sm" variant="primary" type="submit">
-                            <i class="ri-search-line"></i>
-                            <span>Buscar</span>
+                        <x-ui.button size="md" variant="primary" type="submit" class="flex-1 sm:flex-none h-11 px-4 shadow-sm hover:shadow-md transition-all duration-200 active:scale-95" style="background-color: #244BB3; border-color: #244BB3;">
+                            <i class="ri-search-line text-gray-100"></i>
+                            <span class="font-medium text-gray-100">Buscar</span>
                         </x-ui.button>
-                        <x-ui.link-button size="sm" variant="outline" href="{{ $viewId ? route('admin.document-types.index', ['view_id' => $viewId]) : route('admin.document-types.index') }}">
-                            <i class="ri-close-line"></i>
-                            <span>Limpiar</span>
+                        <x-ui.link-button size="md" variant="outline" href="{{ $viewId ? route('admin.document-types.index', ['view_id' => $viewId]) : route('admin.document-types.index') }}" class="flex-1 sm:flex-none h-11 px-4 border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200">
+                            <i class="ri-refresh-line"></i>
+                            <span class="font-medium">Limpiar</span>
                         </x-ui.link-button>
                     </div>
                 </form>
@@ -140,11 +140,11 @@
                 </div>
             </div>
 
-            <div class="mt-4 rounded-xl border border-gray-200 bg-white overflow-x-auto dark:border-gray-800 dark:bg-white/[0.03]">
-                <table class="w-full min-w-[700px]">
+            <div class="table-responsive mt-4 rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+                <table class="w-full min-w-max">
                     <thead>
                         <tr class="border-b border-gray-100 dark:border-gray-800">
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-3 py-3 text-left sm:px-6 sticky left-0 z-20 shadow-[2px_0_5px_rgba(0,0,0,0.05)] w-24 max-w-[96px] sm:w-auto sm:max-w-none">
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6 sticky-left-header">
                                 <p class="font-medium text-white text-theme-xs dark:text-white truncate">Nombre</p>
                             </th>
                             <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
@@ -161,7 +161,7 @@
                     <tbody>
                         @forelse ($documentTypes as $documentType)
                             <tr class="group/row border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-white/5">
-                                <td class="px-3 py-4 sm:px-6 sticky left-0 z-10 bg-white dark:bg-[#121212] group-hover/row:bg-gray-50 dark:group-hover/row:bg-gray-800 shadow-[2px_0_5px_rgba(0,0,0,0.05)] w-24 max-w-[96px] sm:w-auto sm:max-w-none">
+                                <td class="px-5 py-4 sm:px-6 sticky-left">
                                     <p class="font-medium text-gray-800 text-theme-sm dark:text-white/90 truncate" title="{{ $documentType->name }}">{{ $documentType->name }}</p>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
