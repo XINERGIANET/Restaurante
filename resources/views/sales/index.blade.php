@@ -325,59 +325,55 @@
                                 </td>
                             </tr>
                             <tr x-show="openRow === {{ $sale->id }}" x-cloak class="bg-gray-50/70 dark:bg-gray-800/40 border-b border-gray-100 dark:border-gray-800">
-                                <td colspan="9" class="px-6 py-4">
-                                    <div class="mx-auto w-full max-w-xl space-y-1 text-center text-gray-800 dark:text-gray-200">
-                                        <div class="grid grid-cols-2 border-b border-gray-200 py-2 dark:border-gray-700">
-                                            <span class="font-semibold">Persona</span>
-                                            <span>{{ $sale->person_name ?: '-' }}</span>
+                                <td colspan="10" class="px-6 py-4">
+                                    <div class="grid grid-cols-4 gap-3 sm:grid-cols-5">
+                                        <div class="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-gray-700 dark:bg-gray-900/50">
+                                            <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Persona</p>
+                                            <p class="mt-0.5 truncate text-sm font-medium text-gray-800 dark:text-gray-200">{{ $sale->person_name ?: '-' }}</p>
                                         </div>
-                                        <div class="grid grid-cols-2 border-b border-gray-200 py-2 dark:border-gray-700">
-                                            <span class="font-semibold">Fecha</span>
-                                            <span>{{ $sale->moved_at ? $sale->moved_at->format('Y-m-d h:i:s A') : '-' }}</span>
+                                        <div class="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-gray-700 dark:bg-gray-900/50">
+                                            <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Fecha</p>
+                                            <p class="mt-0.5 text-sm font-medium text-gray-800 dark:text-gray-200">{{ $sale->moved_at ? $sale->moved_at->format('d/m/Y H:i') : '-' }}</p>
                                         </div>
-                                        <div class="grid grid-cols-2 border-b border-gray-200 py-2 dark:border-gray-700">
-                                            <span class="font-semibold">Usuario</span>
-                                            <span>{{ $sale->user_name ?: '-' }}</span>
+                                        <div class="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-gray-700 dark:bg-gray-900/50">
+                                            <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Usuario</p>
+                                            <p class="mt-0.5 truncate text-sm font-medium text-gray-800 dark:text-gray-200">{{ $sale->user_name ?: '-' }}</p>
                                         </div>
-                                        <div class="grid grid-cols-2 border-b border-gray-200 py-2 dark:border-gray-700">
-                                            <span class="font-semibold">Responsable</span>
-                                            <span>{{ $sale->responsible_name ?: '-' }}</span>
+                                        <div class="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-gray-700 dark:bg-gray-900/50">
+                                            <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Responsable</p>
+                                            <p class="mt-0.5 truncate text-sm font-medium text-gray-800 dark:text-gray-200">{{ $sale->responsible_name ?: '-' }}</p>
                                         </div>
-                                        <div class="grid grid-cols-2 border-b border-gray-200 py-2 dark:border-gray-700">
-                                            <span class="font-semibold">Tipo de detalle</span>
-                                            <span>{{ $sale->salesMovement?->detail_type ?? '-' }}</span>
+                                        <div class="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-gray-700 dark:bg-gray-900/50">
+                                            <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Tipo de detalle</p>
+                                            <p class="mt-0.5 text-sm font-medium text-gray-800 dark:text-gray-200">{{ $sale->salesMovement?->detail_type ?? '-' }}</p>
                                         </div>
-                                        <div class="grid grid-cols-2 border-b border-gray-200 py-2 dark:border-gray-700">
-                                            <span class="font-semibold">Moneda</span>
-                                            <span>{{ $sale->salesMovement?->currency ?? 'PEN' }}</span>
+                                        <div class="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-gray-700 dark:bg-gray-900/50">
+                                            <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Moneda</p>
+                                            <p class="mt-0.5 text-sm font-medium text-gray-800 dark:text-gray-200">{{ $sale->salesMovement?->currency ?? 'PEN' }}</p>
                                         </div>
-                                        <div class="grid grid-cols-2 border-b border-gray-200 py-2 dark:border-gray-700">
-                                            <span class="font-semibold">T. cambio</span>
-                                            <span>{{ number_format((float) ($sale->salesMovement?->exchange_rate ?? 1), 3) }}</span>
+                                        <div class="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-gray-700 dark:bg-gray-900/50">
+                                            <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">T. cambio</p>
+                                            <p class="mt-0.5 text-sm font-medium text-gray-800 dark:text-gray-200">{{ number_format((float) ($sale->salesMovement?->exchange_rate ?? 1), 3) }}</p>
                                         </div>
-                                        <div class="grid grid-cols-2 border-b border-gray-200 py-2 dark:border-gray-700">
-                                            <span class="font-semibold">Por consumo</span>
-                                            <span>{{ ($sale->salesMovement?->consumption ?? 'N') === 'Y' ? 'Si' : 'No' }}</span>
+                                        <div class="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-gray-700 dark:bg-gray-900/50">
+                                            <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Por consumo</p>
+                                            <p class="mt-0.5 text-sm font-medium text-gray-800 dark:text-gray-200">{{ ($sale->salesMovement?->consumption ?? 'N') === 'Y' ? 'Sí' : 'No' }}</p>
                                         </div>
-                                        <div class="grid grid-cols-2 border-b border-gray-200 py-2 dark:border-gray-700">
-                                            <span class="font-semibold">Tipo de pago</span>
-                                            <span>{{ $sale->salesMovement?->payment_type ?? '-' }}</span>
+                                        <div class="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-gray-700 dark:bg-gray-900/50">
+                                            <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Tipo de pago</p>
+                                            <p class="mt-0.5 text-sm font-medium text-gray-800 dark:text-gray-200">{{ $sale->salesMovement?->payment_type ?? '-' }}</p>
                                         </div>
-                                        <div class="grid grid-cols-2 border-b border-gray-200 py-2 dark:border-gray-700">
-                                            <span class="font-semibold">Comentario</span>
-                                            <span>{{ $sale->comment ?: '-' }}</span>
+                                        <div class="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-gray-700 dark:bg-gray-900/50 sm:col-span-2">
+                                            <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Comentario</p>
+                                            <p class="mt-0.5 text-sm font-medium text-gray-800 dark:text-gray-200">{{ Str::limit($sale->comment ?? '-', 60) }}</p>
                                         </div>
-                                        <div class="grid grid-cols-2 border-b border-gray-200 py-2 dark:border-gray-700">
-                                            <span class="font-semibold">Estado en SUNAT</span>
-                                            <span>
-                                                <x-ui.badge variant="light" color="info">
-                                                    {{ $sale->salesMovement?->status ?? '-' }}
-                                                </x-ui.badge>
-                                            </span>
+                                        <div class="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-gray-700 dark:bg-gray-900/50">
+                                            <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Estado SUNAT</p>
+                                            <p class="mt-0.5 text-sm font-medium text-gray-800 dark:text-gray-200">{{ $sale->salesMovement?->status ?? '-' }}</p>
                                         </div>
-                                        <div class="grid grid-cols-2 py-2">
-                                            <span class="font-semibold">Origen</span>
-                                            <span>{{ $sale->movementType?->description ?? 'Venta' }} - {{ $sale->number }}</span>
+                                        <div class="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-gray-700 dark:bg-gray-900/50">
+                                            <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Origen</p>
+                                            <p class="mt-0.5 text-sm font-medium text-gray-800 dark:text-gray-200">{{ $sale->movementType?->description ?? 'Venta' }} - {{ $sale->number }}</p>
                                         </div>
                                     </div>
                                 </td>

@@ -167,8 +167,8 @@ Route::middleware('auth')->group(function () {
         ->parameters(['orders' => 'order'])
         ->only(['index', 'create']); // Solo incluir los métodos que existen
 
-    Route::get('/Pedidos/listado', [OrderController::class, 'list'])
-        ->name('admin.orders.list');
+    Route::get('/Pedidos/reporte', [OrderController::class, 'report'])
+        ->name('orders.report');
 
   
     Route::get('/Pedidos/cobrar', [OrderController::class, 'charge'])

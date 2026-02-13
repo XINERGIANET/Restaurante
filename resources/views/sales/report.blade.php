@@ -30,18 +30,18 @@
                                 @endforeach
                             </select>
                         </div>
-                        <div class="flex items-end gap-2">
-                            <x-ui.button type="submit" size="md" variant="primary" class="h-11 px-6"
-                                style="background-color: #63B7EC; border-color: #63B7EC;">
-                                <i class="ri-search-line"></i>
-                                <span>Consultar</span>
-                            </x-ui.button>
-                            <x-ui.link-button href="{{ route('sales.report', $viewId ? ['view_id' => $viewId] : []) }}"
-                                size="md" variant="outline" class="h-11 px-6">
-                                <i class="ri-refresh-line"></i>
-                                <span>Limpiar</span>
-                            </x-ui.link-button>
-                        </div>
+                    </div>
+                    <div class="mt-5 flex items-end gap-2">
+                        <x-ui.button type="submit" size="md" variant="primary" class="h-11 px-6"
+                            style="background-color: #63B7EC; border-color: #63B7EC;">
+                            <i class="ri-search-line"></i>
+                            <span>Consultar</span>
+                        </x-ui.button>
+                        <x-ui.link-button href="{{ route('sales.report', $viewId ? ['view_id' => $viewId] : []) }}"
+                            size="md" variant="outline" class="h-11 px-6">
+                            <i class="ri-refresh-line"></i>
+                            <span>Limpiar</span>
+                        </x-ui.link-button>
                     </div>
                 </form>
                 <div
@@ -176,23 +176,49 @@
                                         </div>
                                     </td>
                                 </tr>
-                                <tr x-show="openRow === {{ $sale->id }}" x-cloak class="bg-gray-50/60 dark:bg-gray-800/40">
-                                    <td class="px-6 py-4">
-                                        <div class="flex flex-col gap-4">
-                                            <p class="text-xs uppercase tracking-wide text-gray-400">Cliente</p>
-                                            <p class="font-medium text-gray-700 dark:text-gray-200">{{ $sale->salesMovement?->details?->first()?->person_name ?? '-' }}</p>
-                                        </div>
-                                    </td>
-                                    <td  class="px-6 py-4">
-                                        <div class="flex flex-col gap-4">
-                                            <p class="text-xs uppercase tracking-wide text-gray-400">subtotal</p>
-                                            <p class="font-medium text-gray-700 dark:text-gray-200">{{ number_format((float) ($sale->salesMovement?->total ?? 0), 2) }}</p>
-                                        </div>
-                                    </td>
-                                    <td  class="px-6 py-4">
-                                        <div class="flex flex-col gap-4">
-                                            <p class="text-xs uppercase tracking-wide text-gray-400">IGV</p>
-                                            <p class="font-medium text-gray-700 dark:text-gray-200">{{ number_format((float) ($sale->salesMovement?->tax ?? 0), 2) }}</p>
+                                <tr x-show="openRow === {{ $sale->id }}" x-cloak class="bg-gray-50/70 dark:bg-gray-800/40 border-b border-gray-100 dark:border-gray-800">
+                                    <td colspan="10" class="px-6 py-4">
+                                        <div class="grid grid-cols-4 gap-3 sm:grid-cols-4">
+                                            <div class="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-gray-700 dark:bg-gray-900/50">
+                                                <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Cliente</p>
+                                                <p class="mt-0.5 truncate text-sm font-medium text-gray-800 dark:text-gray-200">{{ $sale->person_name ?: ($sale->salesMovement?->movement?->person_name ?? '-') }}</p>
+                                            </div>
+                                            <div class="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-gray-700 dark:bg-gray-900/50">
+                                                <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Subtotal</p>
+                                                <p class="mt-0.5 text-sm font-medium text-gray-800 dark:text-gray-200">{{ number_format((float) ($sale->salesMovement?->subtotal ?? 0), 2) }}</p>
+                                            </div>
+                                            <div class="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-gray-700 dark:bg-gray-900/50">
+                                                <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">IGV</p>
+                                                <p class="mt-0.5 text-sm font-medium text-gray-800 dark:text-gray-200">{{ number_format((float) ($sale->salesMovement?->tax ?? 0), 2) }}</p>
+                                            </div>
+                                            <div class="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-gray-700 dark:bg-gray-900/50">
+                                                <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Tipo de pago</p>
+                                                <p class="mt-0.5 text-sm font-medium text-gray-800 dark:text-gray-200">{{ $sale->salesMovement?->payment_type ?? '-' }}</p>
+                                            </div>
+                                            <div class="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-gray-700 dark:bg-gray-900/50">
+                                                <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Fecha</p>
+                                                <p class="mt-0.5 text-sm font-medium text-gray-800 dark:text-gray-200">{{ $sale->moved_at ? $sale->moved_at->format('d/m/Y H:i') : '-' }}</p>
+                                            </div>
+                                            <div class="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-gray-700 dark:bg-gray-900/50">
+                                                <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Usuario</p>
+                                                <p class="mt-0.5 truncate text-sm font-medium text-gray-800 dark:text-gray-200">{{ $sale->user_name ?: '-' }}</p>
+                                            </div>
+                                            <div class="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-gray-700 dark:bg-gray-900/50">
+                                                <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Responsable</p>
+                                                <p class="mt-0.5 truncate text-sm font-medium text-gray-800 dark:text-gray-200">{{ $sale->responsible_name ?: '-' }}</p>
+                                            </div>
+                                            <div class="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-gray-700 dark:bg-gray-900/50">
+                                                <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Moneda</p>
+                                                <p class="mt-0.5 text-sm font-medium text-gray-800 dark:text-gray-200">{{ $sale->salesMovement?->currency ?? 'PEN' }}</p>
+                                            </div>
+                                            <div class="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-gray-700 dark:bg-gray-900/50">
+                                                <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Estado SUNAT</p>
+                                                <p class="mt-0.5 text-sm font-medium text-gray-800 dark:text-gray-200">{{ $sale->salesMovement?->status ?? '-' }}</p>
+                                            </div>
+                                            <div class="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-gray-700 dark:bg-gray-900/50">
+                                                <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Origen</p>
+                                                <p class="mt-0.5 text-sm font-medium text-gray-800 dark:text-gray-200">{{ $sale->movementType?->description ?? 'Venta' }} - {{ $sale->documentType?->name[0] ?? '' }}{{ $sale->salesMovement?->series ?? '' }} - {{ $sale->number }}</p>
+                                            </div>
                                         </div>
                                     </td>
                                 </tr>
