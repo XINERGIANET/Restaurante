@@ -45,6 +45,11 @@ class Movement extends Model
     {
         return $this->belongsTo(MovementType::class);
     }
+        public function movement()
+    {
+        return $this->belongsTo(Movement::class, 'parent_movement_id');
+    }
+
 
     public function documentType()
     {
