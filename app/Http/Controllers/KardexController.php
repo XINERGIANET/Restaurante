@@ -96,7 +96,7 @@ class KardexController extends Controller
                 'exit' => $isEntry ? 0 : $qty,
                 'unit' => $detailUnit,
                 'unit_price' => null,
-                'origin' => ($mov->documentType?->name ?? 'Almacén') . ' - ' . $mov->number,
+                'origin' => $mov->number,
             ]);
         }
 
