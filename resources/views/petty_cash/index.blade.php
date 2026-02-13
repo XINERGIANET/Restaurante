@@ -298,7 +298,7 @@
             <div
                 class="table-responsive mt-4 rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
                 <div class="max-w-full">
-                    <table class="w-full min-w-[880px]">
+                    <table class="w-max min-w-[880px]">
                         <thead style="background-color: #63B7EC; color: #FFFFFF;">
                             <tr class="text-white" >
                                 <th class="px-5 py-3 text-center sm:px-6 sticky-left-header">

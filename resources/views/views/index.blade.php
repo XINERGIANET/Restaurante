@@ -307,6 +307,9 @@
 
             <form method="POST" action="{{ route('admin.views.store') }}" class="space-y-6">
                 @csrf
+                @if ($viewId)
+                    <input type="hidden" name="view_id" value="{{ $viewId }}">
+                @endif
 
                 @include('views._form', ['view' => null])
 
@@ -326,4 +329,3 @@
     
     </div> 
 @endsection
-
