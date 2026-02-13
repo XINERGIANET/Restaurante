@@ -280,12 +280,12 @@
 
             {{-- TABLA --}}
             <div
-                class="mt-4 rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]" style="overflow: visible; max-height: none;">
-                <div class="max-w-full overflow-visible">
+                class="table-responsive mt-4 rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+                <div class="max-w-full">
                     <table class="w-full min-w-[880px]">
                         <thead style="background-color: #63B7EC; color: #FFFFFF;">
                             <tr class="text-white">
-                                <th class="px-5 py-3 text-center sm:px-6">
+                                <th class="px-5 py-3 text-center sm:px-6 sticky-left-header">
                                     <p class="font-medium text-theme-xs dark:text-white">Orden</p>
                                 </th>
                                 <th class="px-5 py-3 text-center sm:px-6">
@@ -346,7 +346,7 @@
 
                                 {{-- Aplicamos la clase dinámica aquí --}}
                                 <tr class="{{ $rowClasses }}">
-                                    <td class="px-5 py-4 sm:px-6">
+                                    <td class="px-5 py-4 sm:px-6 sticky-left">
                                         <span
                                             class="font-bold {{ $isApertura ? 'text-blue-600' : ($isCierre ? 'text-red-600' : 'text-[#00A389]') }}">
                                             #{{ $loop->iteration }}

@@ -152,11 +152,11 @@
 
 
             <div
-                class="rounded-xl border border-gray-200 bg-white overflow-visible dark:border-gray-800 dark:bg-white/[0.03]" style="overflow: visible; max-height: none;">
-                <table class="w-full">
+                class="table-responsive rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+                <table class="w-full min-w-max">
                         <thead>
                             <tr class="text-white">
-                                <th style="background-color: #63B7EC;" class="px-3 py-4 text-left whitespace-nowrap first:rounded-tl-xl sticky left-0 z-20 w-32 max-w-[128px] sm:w-auto sm:max-w-none">
+                                <th style="background-color: #63B7EC;" class="px-3 py-4 text-left whitespace-nowrap first:rounded-tl-xl sticky-left-header w-32 max-w-[128px] sm:w-auto sm:max-w-none">
                                     <p class="font-bold text-gray-100 text-xs uppercase tracking-wider truncate">Razón social</p>
                                 </th>
                                 <th style="background-color: #63B7EC;" class="px-5 py-4 text-center whitespace-nowrap">
@@ -173,7 +173,7 @@
                         <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
                             @forelse ($companies as $company)
                                 <tr class="group/row transition hover:bg-gray-50/80 dark:hover:bg-white/5">
-                                    <td class="px-3 py-4 whitespace-nowrap sticky left-0 z-10 bg-white dark:bg-[#121212] group-hover/row:bg-gray-50 dark:group-hover/row:bg-gray-800 w-32 max-w-[128px] sm:w-auto sm:max-w-none">
+                                    <td class="px-3 py-4 whitespace-nowrap sticky-left w-32 max-w-[128px] sm:w-auto sm:max-w-none">
                                         <div class="flex items-center gap-2">
                                             <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/10 shrink-0">
                                                 <i class="ri-building-line text-xs"></i>

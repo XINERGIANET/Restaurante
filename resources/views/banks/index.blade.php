@@ -121,13 +121,11 @@
         </div>
     </div>
     @if ($banks->count() > 0)
-        <div
-            class="mt-4 rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]" style="overflow: visible; max-height: none;">
-            <div class="max-w-full overflow-visible">
-                <table class="w-full min-w-[880px]">
+        <div class="table-responsive mt-4 rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+            <table class="w-full min-w-max">
                     <thead class="text-left text-theme-xs dark:text-gray-400">
                         <tr class="border-b border-gray-100 dark:border-gray-800">
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-center sm:px-6">
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-center sm:px-6 sticky-left-header">
                                 ID
                             </th>
                             <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-center sm:px-6">
@@ -148,7 +146,7 @@
                         @foreach ($banks as $bank)
                             <tr
                                 class="border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-white/5">
-                                  <td class="px-5 py-4 sm:px-6 text-center">
+                                  <td class="px-5 py-4 sm:px-6 text-center sticky-left">
                                     <p class="font-medium text-gray-900 text-theme-sm dark:text-white/90">
                                         {{ $bank->id }}</p>
                                 </td>
@@ -227,8 +225,7 @@
                             </tr>
                         @endforeach
                     </tbody>
-                </table>
-            </div>
+            </table>
         </div>
     @else
         <div class="rounded-lg border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">

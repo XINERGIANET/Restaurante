@@ -189,11 +189,11 @@
                 </div>
             </div>
 
-            <div class="mt-4 rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-white/[0.03] overflow-visible" style="overflow: visible; max-height: none;">
-                <table class="w-full border-separate border-spacing-0">
+            <div class="table-responsive mt-4 rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
+                <table class="w-full min-w-max border-separate border-spacing-0">
                     <thead>
                         <tr class="border-b border-gray-100 dark:border-gray-800 text-white">
-                            <th style="background-color: #63B7EC;" class="w-12 px-4 py-3 text-center first:rounded-tl-2xl"></th>
+                            <th style="background-color: #63B7EC;" class="w-12 px-4 py-3 text-center first:rounded-tl-2xl sticky-left-header"></th>
                             <th style="background-color: #63B7EC;" class="px-3 py-3 text-left sm:px-6 whitespace-nowrap">Nombres</th>
                             <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6 whitespace-nowrap">Tipo</th>
                             <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6 whitespace-nowrap">Nro. Documento</th>
@@ -206,7 +206,7 @@
                     <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
                         @forelse ($people as $person)
                             <tr class="group/row transition hover:bg-gray-50/80 dark:hover:bg-white/5">
-                                <td class="px-4 py-4 text-center">
+                                <td class="px-4 py-4 text-center sticky-left">
                                     <button type="button"
                                         @click="openRow === {{ $person->id }} ? openRow = null : openRow = {{ $person->id }}"
                                         class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-500 text-white transition hover:bg-brand-600 dark:bg-brand-500 dark:text-white">

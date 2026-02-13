@@ -183,25 +183,24 @@
             </div>
 
             {{-- TABLA DE RESULTADOS --}}
-            <div class="mt-4 rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]" style="overflow: visible; max-height: none;">
-                <div class="max-w-full overflow-visible">
+            <div class="table-responsive mt-4 rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
                     <table class="w-full min-w-[880px]">
                         <thead>
-                            <tr class="border-b border-gray-100 dark:border-gray-800">
-                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-white text-theme-xs dark:text-white">ID</p></th>
-                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-white text-theme-xs dark:text-white">Icono</p></th>
-                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-white text-theme-xs dark:text-white">Nombre</p></th>
-                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-white text-theme-xs dark:text-white">Tipo</p></th>
-                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-white text-theme-xs dark:text-white">Acción</p></th>
-                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-white text-theme-xs dark:text-white">Estado</p></th>
-                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-right sm:px-6"><p class="font-medium text-white text-theme-xs dark:text-white">Acciones</p></th>
+                            <tr class="border-b border-gray-100 dark:border-gray-800 text-white">
+                                <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6 first:rounded-tl-xl sticky-left-header"><p class="font-medium text-white text-theme-xs dark:text-white">ID</p></th>
+                                <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-white text-theme-xs dark:text-white">Icono</p></th>
+                                <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-white text-theme-xs dark:text-white">Nombre</p></th>
+                                <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-white text-theme-xs dark:text-white">Tipo</p></th>
+                                <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-white text-theme-xs dark:text-white">Acción</p></th>
+                                <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6"><p class="font-medium text-white text-theme-xs dark:text-white">Estado</p></th>
+                                <th style="background-color: #63B7EC;" class="px-5 py-3 text-right sm:px-6 last:rounded-tr-xl text-white"><p class="font-medium text-white text-theme-xs dark:text-white">Acciones</p></th>
                             </tr>
                         </thead>
                         <tbody>
                             @forelse ($operations as $operation)
                                 <tr class="border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-white/5">
                                     
-                                    <td class="px-5 py-4 sm:px-6">
+                                    <td class="px-5 py-4 sm:px-6 sticky-left">
                                         <span class="font-bold text-gray-700 dark:text-gray-200">#{{ $operation->id }}</span>
                                     </td>
 

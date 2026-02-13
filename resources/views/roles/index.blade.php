@@ -149,11 +149,11 @@
                 </div>
             </div>
 
-            <div class="mt-4 rounded-xl border border-gray-200 bg-white overflow-visible dark:border-gray-800 dark:bg-white/[0.03]" style="overflow: visible; max-height: none;">
-                <table class="w-full min-w-[600px]">
+            <div class="table-responsive mt-4 rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+                <table class="w-full min-w-max">
                     <thead>
                         <tr class="text-white">
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-3 py-3 text-center sm:px-6 first:rounded-tl-xl sticky left-0 z-20 w-24 max-w-[96px] sm:w-auto sm:max-w-none shadow-[2px_0_5px_rgba(0,0,0,0.1)]">
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-3 py-3 text-center sm:px-6 first:rounded-tl-xl sticky-left-header">
                                 <p class="font-semibold text-white text-theme-xs truncate">Nombre</p>
                             </th>
                             <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-center sm:px-6">
@@ -167,7 +167,7 @@
                     <tbody>
                         @forelse ($roles as $role)
                             <tr class="group/row border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-white/5">
-                                <td class="px-3 py-4 sm:px-6 text-center sticky left-0 z-10 bg-white dark:bg-[#121212] group-hover/row:bg-gray-50 dark:group-hover/row:bg-gray-800 shadow-[2px_0_5px_rgba(0,0,0,0.05)] w-24 max-w-[96px] sm:w-auto sm:max-w-none">
+                                <td class="px-3 py-4 sm:px-6 text-center sticky-left">
                                     <p class="font-medium text-gray-800 text-theme-sm dark:text-white/90 truncate" title="{{ $role->name }}">{{ $role->name }}</p>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6 text-center">

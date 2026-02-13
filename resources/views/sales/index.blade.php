@@ -126,11 +126,11 @@
                 </div>
             </div>
 
-            <div class="mt-4 rounded-xl border border-gray-200 bg-white overflow-visible dark:border-gray-800 dark:bg-white/[0.03]">
-                <table class="w-full">
+            <div class="table-responsive mt-4 rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+                <table class="w-full min-w-[1100px]">
                     <thead>
                         <tr class="text-white">
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="w-16 px-4 py-3 text-left sm:px-6 first:rounded-tl-xl">
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="w-16 px-4 py-3 text-left sm:px-6 first:rounded-tl-xl sticky-left-header">
                                 <p class="font-semibold text-white text-theme-xs uppercase">#</p>
                             </th>
                             <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
@@ -162,7 +162,7 @@
                     <tbody>
                         @forelse ($sales as $sale)
                             <tr class="border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-white/5">
-                                <td class="px-4 py-4 sm:px-6">
+                                <td class="px-4 py-4 sm:px-6 sticky-left">
                                     <div class="flex items-center gap-2">
                                         <button type="button"
                                             @click="openRow === {{ $sale->id }} ? openRow = null : openRow = {{ $sale->id }}"

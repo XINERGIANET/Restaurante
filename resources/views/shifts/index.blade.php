@@ -149,11 +149,11 @@
                 </div>
             </div>
 
-            <div class="mt-4 rounded-xl border border-gray-200 bg-white overflow-visible dark:border-gray-800 dark:bg-white/[0.03]">
-                <table class="w-full">
+            <div class="table-responsive mt-4 rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+                <table class="w-full min-w-[700px]">
                     <thead>
                         <tr class="border-b border-gray-100 dark:border-gray-800 text-left">
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 font-medium text-theme-xs first:rounded-tl-xl">Nombre / Abr.</th>
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 font-medium text-theme-xs first:rounded-tl-xl sticky-left-header">Nombre / Abr.</th>
                             <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 font-medium text-theme-xs">Sucursal</th>
                             <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 font-medium text-theme-xs">Horario</th>
                             <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 font-medium text-theme-xs text-right last:rounded-tr-xl">Acciones</th>
@@ -162,7 +162,7 @@
                     <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
                         @forelse ($shifts as $shift)
                             <tr class="transition hover:bg-gray-50 dark:hover:bg-white/5">
-                                <td class="px-5 py-4">
+                                <td class="px-5 py-4 sticky-left">
                                     <div class="flex flex-col">
                                         <p class="font-medium text-gray-800 text-theme-sm dark:text-white/90">{{ $shift->name }}</p>
                                         <span class="text-xs text-gray-400">{{ $shift->abbreviation }}</span>

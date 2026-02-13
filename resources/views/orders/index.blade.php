@@ -26,18 +26,17 @@
                 </template>
             </div>
 
-            {{-- 2. GRID DE MESAS - FORZADO A 4 COLUMNAS --}}
+            {{-- 2. GRID DE MESAS - RESPONSIVO --}}
             <div class="flex-1 pb-10">
                 <template x-if="filteredTables?.length > 0">
                     <div
-                        class="grid gap-5"
-                        style="grid-template-columns: repeat(4, minmax(0, 1fr));"
+                        class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5"
                     >
                         <template x-for="table in (filteredTables || [])" :key="table.id">
                         
                         {{-- TARJETA EXACTA XINERGIA --}}
                             <div @click="openTable(table)" 
-                            class="group relative cursor-pointer rounded-2xl border p-5 transition-all hover:shadow-lg bg-white dark:bg-gray-800 flex flex-col justify-between h-[180px]"
+                            class="group relative cursor-pointer rounded-2xl border p-5 transition-all hover:shadow-lg bg-white dark:bg-gray-800 flex flex-col justify-between min-h-[190px] h-auto"
                             :class="table.situation === 'ocupada' 
                                 ? 'border-gray-200 dark:border-gray-700 border-l-4' 
                                 : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'"

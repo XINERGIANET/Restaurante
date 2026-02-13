@@ -204,11 +204,11 @@
                 </div>
             </div>
 
-            <div class="mt-4 rounded-xl border border-gray-200 bg-white overflow-visible dark:border-gray-800 dark:bg-white/[0.03]">
-                <table class="w-full">
+            <div class="table-responsive mt-4 rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+                <table class="w-full min-w-[880px]">
                     <thead>
                         <tr class="text-white">
-                            <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6 first:rounded-tl-xl">
+                            <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6 first:rounded-tl-xl sticky-left-header">
                                 <p class="font-semibold text-gray-100 text-theme-xs uppercase">Nombre</p>
                             </th>
                             <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6">
@@ -225,7 +225,7 @@
                     <tbody>
                         @forelse ($assignedViews as $view)
                             <tr class="border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-white/5">
-                                <td class="px-5 py-4 sm:px-6">
+                                <td class="px-5 py-4 sm:px-6 sticky-left">
                                     <p class="font-medium text-gray-800 text-theme-sm dark:text-white/90">{{ $view->name }}</p>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
@@ -393,28 +393,28 @@
                         <input type="hidden" name="icon" value="{{ $requestIcon }}">
                     @endif
 
-                     <div class="mt-4 min-h-0 flex-1 overflow-y-auto rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
-                        <table class="w-full">
+                     <div class="table-responsive mt-4 min-h-0 flex-1 rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+                        <table class="w-full min-w-[700px]">
                             <thead>
                                 <tr class="text-white">
-                                        <th style="background-color: #63B7EC;" class="px-3 py-4 text-left whitespace-nowrap first:rounded-tl-xl sticky left-0 z-20 w-32 max-w-[128px] sm:w-auto sm:max-w-none">
-                                            <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Asignar</p>
+                                        <th style="background-color: #63B7EC;" class="px-3 py-4 text-left whitespace-nowrap first:rounded-tl-xl sticky-left-header">
+                                            <p class="font-medium text-white text-theme-xs dark:text-white">Asignar</p>
                                         </th>
-                                        <th style="background-color: #63B7EC;" class="px-3 py-4 text-left whitespace-nowrap first:rounded-tl-xl sticky left-0 z-20 w-32 max-w-[128px] sm:w-auto sm:max-w-none">
-                                            <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Nombre</p>
+                                        <th style="background-color: #63B7EC;" class="px-3 py-4 text-left whitespace-nowrap">
+                                            <p class="font-medium text-white text-theme-xs dark:text-white">Nombre</p>
                                         </th>
-                                        <th style="background-color: #63B7EC;" class="px-3 py-4 text-left whitespace-nowrap first:rounded-tl-xl sticky left-0 z-20 w-32 max-w-[128px] sm:w-auto sm:max-w-none">
-                                            <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Abreviatura</p>
+                                        <th style="background-color: #63B7EC;" class="px-3 py-4 text-left whitespace-nowrap">
+                                            <p class="font-medium text-white text-theme-xs dark:text-white">Abreviatura</p>
                                         </th>
-                                        <th style="background-color: #63B7EC;" class="px-3 py-4 text-left whitespace-nowrap first:rounded-tl-xl sticky left-0 z-20 w-32 max-w-[128px] sm:w-auto sm:max-w-none">
-                                            <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">Estado</p>
+                                        <th style="background-color: #63B7EC;" class="px-3 py-4 text-left whitespace-nowrap last:rounded-tr-xl">
+                                            <p class="font-medium text-white text-theme-xs dark:text-white">Estado</p>
                                         </th>
                                     </tr>
                                 </thead>
                             <tbody>
-                                @forelse ($allViews as $view)
+                                 @forelse ($allViews as $view)
                                     <tr class="border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-white/5">
-                                        <td class="px-5 py-4 sm:px-6">
+                                        <td class="px-5 py-4 sm:px-6 sticky-left">
                                             <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
                                                 <input
                                                     type="checkbox"
@@ -426,7 +426,7 @@
                                                 <span>Asignar</span>
                                             </label>
                                         </td>
-                                        <td class="px-5 py-4 sm:px-6">
+                                        <td class="px-3 py-4 sm:px-6">
                                             <p class="font-medium text-gray-800 text-theme-sm dark:text-white/90">{{ $view->name }}</p>
                                         </td>
                                         <td class="px-5 py-4 sm:px-6">
