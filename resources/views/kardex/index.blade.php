@@ -73,18 +73,16 @@
                             <th class="px-3 py-3 text-xs font-semibold uppercase sm:px-4">P. unit.</th>
                             <th class="px-3 py-3 text-xs font-semibold uppercase sm:px-4 last:rounded-tr-xl">Origen</th>
                         </tr>
-                    </thead>
+                </thead>
                     <tbody>
                         @forelse ($movements as $idx => $m)
                             @php
                                 $tipo = $m['type'] ?? '-';
-                                $tipoStyle = match($tipo) {
-                                    'Entrada almacén' => 'background-color: #d1fae5; color: #065f46; border: 1px solid #10b981;',
-                                    'Salida almacén' => 'background-color: #fee2e2; color: #991b1b; border: 1px solid #ef4444;',
-                                    'Venta' => 'background-color: #fce7f3; color: #9d174d; border: 1px solid #ec4899;',
-                                    'Pedido' => 'background-color: #fef3c7; color: #92400e; border: 1px solid #f59e0b;',
-                                    'Saldo inicial' => 'background-color: #f1f5f9; color: #334155; border: 1px solid #94a3b8;',
-                                    default => 'background-color: #f3f4f6; color: #4b5563; border: 1px solid #d1d5db;',
+                                $tipoStyle = match(true) {
+                                    str_starts_with($tipo, 'Entrada') => 'background-color: #d1fae5; color: #065f46; border: 1px solid #10b981;',
+                                    str_starts_with($tipo, 'Salida') => 'background-color: #fee2e2; color: #991b1b; border: 1px solid #ef4444;',
+                                    $tipo === 'Saldo inicial' => 'background-color: #f1f5f9; color: #334155; border: 1px solid #94a3b8;',
+                                    default => 'background-color: #FFA770; color: #ffffff; border: 1px solid #FF6F2E;',
                                 };
                             @endphp
                             <tr class="border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-white/5 {{ $idx % 2 === 0 ? 'bg-white dark:bg-transparent' : 'bg-gray-50/50 dark:bg-white/[0.02]' }}">

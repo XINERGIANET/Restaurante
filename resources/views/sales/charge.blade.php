@@ -698,7 +698,6 @@
                             // Si es tarjeta, siempre abrir modal de pasarela/tarjeta
                             // Guardar el Ã­ndice antes de cerrar el modal
                             const savedIndex = currentEditingIndex;
-                            console.log('Guardando Ã­ndice antes de abrir modal de tarjeta:', savedIndex);
                             closePaymentMethodModal(false);
                             // Asegurarse de que el Ã­ndice se mantenga
                             currentEditingIndex = savedIndex;
@@ -768,7 +767,6 @@
 
             // Abrir modal de selecciÃ³n de tarjeta
             function openCardModal() {
-                console.log('Abriendo modal de tarjeta, currentEditingIndex:', currentEditingIndex);
                 
                 // Actualizar referencias a los botones (por si el DOM cambiÃ³)
                 gatewayButtons = document.querySelectorAll('.gateway-btn');
@@ -933,7 +931,6 @@
 
             // Confirmar selecciÃ³n de tarjeta
             confirmCardSelection?.addEventListener('click', function() {
-                console.log('Confirmar clicado', { selectedGatewayId, selectedCardId, currentEditingIndex });
                 
                 if (selectedGatewayId && selectedCardId && currentEditingIndex >= 0) {
                     // Actualizar referencias a los botones antes de obtener los nombres
@@ -949,18 +946,12 @@
                     const gatewayBtn = Array.from(gatewayButtons).find(b => b.dataset.gatewayId == selectedGatewayId);
                     const cardBtn = Array.from(cardButtons).find(b => b.dataset.cardId == selectedCardId);
 
-                    console.log('Botones encontrados', { gatewayBtn, cardBtn });
-
                     if (gatewayBtn) {
                         pm.gatewayName = gatewayBtn.dataset.gatewayName || '';
-                        console.log('Nombre pasarela:', pm.gatewayName);
                     }
                     if (cardBtn) {
                         pm.cardName = cardBtn.dataset.cardName || '';
-                        console.log('Nombre tarjeta:', pm.cardName);
                     }
-
-                    console.log('MÃ©todo de pago actualizado:', pm);
 
                     // Actualizar la lista
                     updatePaymentMethodsList();
@@ -971,7 +962,6 @@
                     selectedGatewayId = null;
                     selectedCardId = null;
                 } else {
-                    console.error('Faltan datos para confirmar', { selectedGatewayId, selectedCardId, currentEditingIndex });
                 }
             });
 
@@ -1345,7 +1335,7 @@
                                     errorMessage = validationErrors || errorMessage;
                                 }
                                 if (r.status >= 500 && (!errorMessage || errorMessage === 'Error al procesar la venta')) {
-                                    errorMessage = 'Ocurrió un error interno al procesar la venta. Por favor, inténtalo nuevamente en unos minutos.';
+                                    errorMessage = 'Ocurriï¿½ un error interno al procesar la venta. Por favor, intï¿½ntalo nuevamente en unos minutos.';
                                 }
                                 throw new Error(errorMessage);
                             }
@@ -1354,7 +1344,7 @@
 
                         await r.text();
                         if (!r.ok) {
-                            throw new Error('Ocurrió un error interno al procesar la venta. Por favor, inténtalo nuevamente en unos minutos.');
+                            throw new Error('Ocurriï¿½ un error interno al procesar la venta. Por favor, intï¿½ntalo nuevamente en unos minutos.');
                         }
                         throw new Error('Respuesta inesperada del servidor.');
                     })
