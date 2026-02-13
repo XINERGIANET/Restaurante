@@ -8,12 +8,14 @@ use Illuminate\View\Component;
 
 class RecentOrders extends Component
 {
+    public $orders;
+
     /**
      * Create a new component instance.
      */
-    public function __construct()
+    public function __construct($orders = [])
     {
-        //
+        $this->orders = $orders;
     }
 
     /**

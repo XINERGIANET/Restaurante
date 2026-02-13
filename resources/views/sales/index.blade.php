@@ -126,18 +126,15 @@
                 </div>
             </div>
 
-            <div x-data="{ openRow: null }" class="mt-4 rounded-xl border border-gray-200 bg-white overflow-visible dark:border-gray-800 dark:bg-white/[0.03]">
-                <table class="w-full">
-                    <thead class="bg-[#363d46]">
-                        <tr class="text-white" style="background-color: #63B7EC; color: #FFFFFF;" >
-                            <th class="w-12 px-2 py-3 text-center text-sm font-semibold first:rounded-tl-xl">
-                                <p class="font-semibold text-white text-theme-xs">#</p>
+            <div class="table-responsive mt-4 rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+                <table class="w-full min-w-[1000px]">
+                    <thead>
+                        <tr class="text-white">
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6 first:rounded-tl-xl sticky-left-header">
+                                <p class="font-semibold text-white text-theme-xs uppercase">ID</p>
                             </th>
-                            <th class="px-5 py-3 text-left sm:px-6">
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
                                 <p class="font-semibold text-white text-theme-xs uppercase">Comprobante</p>
-                            </th>
-                            <th class="px-5 py-3 text-left sm:px-6">
-                                <p class="font-semibold text-white text-theme-xs uppercase">Tipo</p>
                             </th>
                             <th class="px-5 py-3 text-left sm:px-6">
                                 <p class="font-semibold text-white text-theme-xs uppercase">Subtotal</p>
@@ -170,26 +167,32 @@
                                             <i class="ri-add-line" x-show="openRow !== {{ $sale->id }}"></i>
                                             <i class="ri-subtract-line" x-show="openRow === {{ $sale->id }}"></i>
                                         </button>
-                                        <p class="font-medium text-gray-800 text-theme-sm dark:text-white/90">{{ $sale->id }}</p>
+                                        <p class="font-bold text-gray-800 text-theme-sm dark:text-white/90">#{{ $sale->id }}</p>
                                     </div>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
-                                    <p class="font-medium text-gray-800 text-theme-sm dark:text-white/90">  {{ strtoupper(substr($sale->documentType->name, 0, 1)) }}{{ $sale->salesMovement->series }}-{{ $sale->number }}</p>
+                                    <div>
+                                        <p class="font-bold text-gray-800 text-theme-sm dark:text-white/90">
+                                            {{ strtoupper(substr($sale->documentType->name, 0, 1)) }}{{ $sale->salesMovement->series }}-{{ $sale->number }}
+                                        </p>
+                                        <p class="text-[11px] text-gray-500 dark:text-gray-400 uppercase font-medium">
+                                            {{ $sale->documentType?->name ?? '-' }}
+                                        </p>
+                                    </div>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
-                                    <p class="text-gray-500 text-theme-sm dark:text-gray-400">{{ $sale->documentType?->name ?? '-' }}</p>
+                                    <p class="text-gray-800 text-theme-sm dark:text-white/90">S/ {{ number_format((float) ($sale->salesMovement?->subtotal ?? 0), 2) }}</p>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
-                                    <p class="text-gray-800 text-theme-sm dark:text-white/90">{{ number_format((float) ($sale->salesMovement?->subtotal ?? 0), 2) }}</p>
+                                    <p class="text-gray-800 text-theme-sm dark:text-white/90">S/ {{ number_format((float) ($sale->salesMovement?->tax ?? 0), 2) }}</p>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
-                                    <p class="text-gray-800 text-theme-sm dark:text-white/90">{{ number_format((float) ($sale->salesMovement?->tax ?? 0), 2) }}</p>
+                                    <p class="font-bold text-brand-600 text-theme-sm dark:text-brand-400">S/ {{ number_format((float) ($sale->salesMovement?->total ?? 0), 2) }}</p>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
-                                    <p class="text-gray-800 text-theme-sm dark:text-white/90">{{ number_format((float) ($sale->salesMovement?->total ?? 0), 2) }}</p>
-                                </td>
-                                <td class="px-5 py-4 sm:px-6">
-                                    <p class="text-gray-800 text-theme-sm dark:text-white/90">{{ $sale->person_name ?? '-' }}</p>
+                                    <p class="text-gray-800 text-theme-sm dark:text-white/90 truncate max-w-[150px]" title="{{ $sale->person_name ?? 'Público General' }}">
+                                        {{ $sale->person_name ?? 'Público General' }}
+                                    </p>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
                                     @php
