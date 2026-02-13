@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Branch;
-use App\Models\OrderMovementDetail;
 use App\Models\Product;
 use App\Models\SalesMovementDetail;
 use App\Models\WarehouseMovementDetail;
@@ -65,12 +64,12 @@ class KardexController extends Controller
 
         $rows = collect();
 
-        // 1. WarehouseMovementDetail (entradas E-, salidas S-)
+        // 1. WarehouseMovementDetail (entradas y salidas según tipo de documento)
         $warehouseDetails = WarehouseMovementDetail::query()
             ->where('product_id', $productId)
             ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
             ->whereHas('warehouseMovement.movement', fn ($q) => $q->whereBetween('moved_at', [$dateFromStart, $dateToEnd]))
-            ->with(['warehouseMovement.movement', 'unit'])
+            ->with(['warehouseMovement.movement.documentType', 'unit'])
             ->get();
 
         $product = Product::with('baseUnit')->find($productId);
@@ -81,19 +80,23 @@ class KardexController extends Controller
             if (!$mov) {
                 continue;
             }
-            $isEntry = str_starts_with((string) $mov->number, 'E-');
+            // Entrada: prefijo E- o tipo documento Entrada; Salida: prefijo S- o tipo documento Salida
+            $docName = strtolower($mov->documentType?->name ?? '');
+            $isEntry = str_starts_with((string) $mov->number, 'E-')
+                || str_contains($docName, 'entrada')
+                || str_contains($docName, 'entry');
             $qty = (float) $d->quantity;
             $detailUnit = $d->unit?->description ?? $d->unit?->abbreviation ?? $unitName;
             $rows->push([
                 'date' => $mov->moved_at?->format('Y-m-d H:i:s'),
                 'date_sort' => $mov->moved_at?->format('Y-m-d H:i:s'),
                 'number' => $mov->number,
-                'type' => $isEntry ? 'Entrada almacén' : 'Salida almacén',
+                'type' => $isEntry ? 'Entrada' : 'Salida',
                 'entry' => $isEntry ? $qty : 0,
                 'exit' => $isEntry ? 0 : $qty,
                 'unit' => $detailUnit,
                 'unit_price' => null,
-                'origin' => 'Almacén - ' . $mov->number,
+                'origin' => ($mov->documentType?->name ?? 'Almacén') . ' - ' . $mov->number,
             ]);
         }
 
@@ -102,7 +105,7 @@ class KardexController extends Controller
             ->where('product_id', $productId)
             ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
             ->whereHas('salesMovement.movement', fn ($q) => $q->whereBetween('moved_at', [$dateFromStart, $dateToEnd]))
-            ->with(['salesMovement.movement', 'unit'])
+            ->with(['salesMovement.movement.documentType', 'unit'])
             ->get();
 
         foreach ($salesDetails as $d) {
@@ -110,6 +113,7 @@ class KardexController extends Controller
             if (!$mov) {
                 continue;
             }
+            $docTypeName = $mov->documentType?->name ?? 'Venta';
             $qty = (float) $d->quantity;
             $detailUnit = $d->unit?->description ?? $d->unit?->abbreviation ?? $unitName;
             $unitPrice = $qty > 0 ? (float) $d->amount / $qty : null;
@@ -117,41 +121,12 @@ class KardexController extends Controller
                 'date' => $mov->moved_at?->format('Y-m-d H:i:s'),
                 'date_sort' => $mov->moved_at?->format('Y-m-d H:i:s'),
                 'number' => $mov->number,
-                'type' => 'Venta',
+                'type' => $docTypeName,
                 'entry' => 0,
                 'exit' => $qty,
                 'unit' => $detailUnit,
                 'unit_price' => $unitPrice,
-                'origin' => 'Venta - ' . $mov->number,
-            ]);
-        }
-
-        // 3. OrderMovementDetail (pedidos - salida)
-        $orderDetails = OrderMovementDetail::query()
-            ->where('product_id', $productId)
-            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
-            ->whereHas('orderMovement.movement', fn ($q) => $q->whereBetween('moved_at', [$dateFromStart, $dateToEnd]))
-            ->with(['orderMovement.movement', 'unit'])
-            ->get();
-
-        foreach ($orderDetails as $d) {
-            $mov = $d->orderMovement?->movement;
-            if (!$mov) {
-                continue;
-            }
-            $qty = (float) $d->quantity;
-            $detailUnit = $d->unit?->description ?? $d->unit?->abbreviation ?? $unitName;
-            $unitPrice = $qty > 0 ? (float) $d->amount / $qty : null;
-            $rows->push([
-                'date' => $mov->moved_at?->format('Y-m-d H:i:s'),
-                'date_sort' => $mov->moved_at?->format('Y-m-d H:i:s'),
-                'number' => $mov->number,
-                'type' => 'Pedido',
-                'entry' => 0,
-                'exit' => $qty,
-                'unit' => $detailUnit,
-                'unit_price' => $unitPrice,
-                'origin' => 'Pedido - ' . $mov->number,
+                'origin' => $mov->number,
             ]);
         }
 
@@ -198,7 +173,7 @@ class KardexController extends Controller
             ->where('product_id', $productId)
             ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
             ->whereHas('warehouseMovement.movement', fn ($q) => $q->where('moved_at', '<', $beforeDate))
-            ->with('warehouseMovement.movement')
+            ->with('warehouseMovement.movement.documentType')
             ->get();
 
         foreach ($warehouseDetails as $d) {
@@ -207,7 +182,11 @@ class KardexController extends Controller
                 continue;
             }
             $qty = (float) $d->quantity;
-            $balance += str_starts_with((string) $mov->number, 'E-') ? $qty : -$qty;
+            $docName = strtolower($mov->documentType?->name ?? '');
+            $isEntry = str_starts_with((string) $mov->number, 'E-')
+                || str_contains($docName, 'entrada')
+                || str_contains($docName, 'entry');
+            $balance += $isEntry ? $qty : -$qty;
         }
 
         $salesQty = SalesMovementDetail::query()
@@ -216,13 +195,6 @@ class KardexController extends Controller
             ->whereHas('salesMovement.movement', fn ($q) => $q->where('moved_at', '<', $beforeDate))
             ->sum('quantity');
         $balance -= (float) $salesQty;
-
-        $orderQty = OrderMovementDetail::query()
-            ->where('product_id', $productId)
-            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
-            ->whereHas('orderMovement.movement', fn ($q) => $q->where('moved_at', '<', $beforeDate))
-            ->sum('quantity');
-        $balance -= (float) $orderQty;
 
         return $balance;
     }
@@ -244,13 +216,6 @@ class KardexController extends Controller
             SalesMovementDetail::query()
                 ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
                 ->whereHas('salesMovement.movement', fn ($q) => $q->whereBetween('moved_at', [$dateFromStart, $dateToEnd]))
-                ->pluck('product_id')
-        );
-
-        $ids = $ids->merge(
-            OrderMovementDetail::query()
-                ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
-                ->whereHas('orderMovement.movement', fn ($q) => $q->whereBetween('moved_at', [$dateFromStart, $dateToEnd]))
                 ->pluck('product_id')
         );
 

@@ -195,9 +195,10 @@ class SalesController extends Controller
             
             if ($movement && $movement->salesMovement) {
                 // Calcular el monto pendiente si hay una deuda
-                if ($movement->cashMovement) {
+                $relatedCashMovement = $movement->cashMovement ?: $this->resolveCashMovementBySaleMovement($movement->id);
+                if ($relatedCashMovement) {
                     $debt = DB::table('cash_movement_details')
-                        ->where('cash_movement_id', $movement->cashMovement->id)
+                        ->where('cash_movement_id', $relatedCashMovement->id)
                         ->where('type', 'DEUDA')
                         ->where('status', 'A')
                         ->sum('amount');
@@ -338,7 +339,7 @@ class SalesController extends Controller
             }
 
             // Obtener concepto de pago para ventas (Pago de cliente - ID 5)
-            $paymentConcept = PaymentConcept::find(5); // Pago de cliente
+            $paymentConcept = PaymentConcept::find(3); // Pago de cliente
             
             // Si no existe el ID 5, buscar por descripción
             if (!$paymentConcept) {
@@ -570,20 +571,53 @@ class SalesController extends Controller
                 ]);
             }
             
-            // Crear o actualizar CashMovement (entrada de dinero)
-            $cashMovement = CashMovements::where('movement_id', $movement->id)->first();
-            
-            if ($cashMovement) {
-                // Actualizar el total del CashMovement
-                $cashMovement->update([
-                    'total' => $total,
-                    'cash_register_id' => $cashRegister->id,
-                    'cash_register' => $cashRegister->number ?? 'Caja Principal',
+            // Crear/actualizar movimiento de caja separado del movimiento de venta
+            $cashEntryMovement = $this->resolveCashEntryMovementBySaleMovement($movement->id);
+         
+
+            if (!$cashEntryMovement) {
+                $cashEntryMovement = Movement::create([
+                    'number' => $this->generateCashMovementNumber(
+                        (int) $branchId,
+                        (int) $cashRegister->id,
+                        (int) $paymentConcept->id
+                    ),
+                    'moved_at' => now(),
+                    'user_id' => $user?->id,
+                    'user_name' => $user?->name ?? 'Sistema',
+                    'person_id' => $selectedPerson?->id,
+                    'person_name' => $selectedPerson
+                        ? trim(($selectedPerson->first_name ?? '') . ' ' . ($selectedPerson->last_name ?? ''))
+                        : 'Publico General',
+                    'responsible_id' => $user?->person->id,
+                    'responsible_name' => $user?->person->first_name . ' ' . $user?->person->last_name ?? '-',
+                    'comment' => 'Cobro de venta ' . $movement->number,
+                    'status' => '1',
+                    'movement_type_id' => 4,
+                    'document_type_id' => 9,
+                    'branch_id' => $branchId,
+                    'parent_movement_id' => $movement->id,
                 ]);
             } else {
-                // Crear nuevo CashMovement (entrada de dinero)
-                $cashMovement = CashMovements::create([
-                    'payment_concept_id' => 5,
+                $cashEntryMovement->update([
+                    'moved_at' => now(),
+                    'person_id' => $selectedPerson?->id,
+                    'person_name' => $selectedPerson
+                        ? trim(($selectedPerson->first_name ?? '') . ' ' . ($selectedPerson->last_name ?? ''))
+                        : 'Publico General',
+                    'comment' => 'Cobro de venta ' . $movement->number,
+                    'status' => '1',
+                    'movement_type_id' => 4,
+                    'document_type_id' => 9,
+                ]);
+            }
+
+            // Crear o actualizar CashMovement (entrada de dinero)
+            $cashMovement = CashMovements::where('movement_id', $cashEntryMovement->id)->first();
+
+            if ($cashMovement) {
+                $cashMovement->update([
+                    'payment_concept_id' => $paymentConcept->id,
                     'currency' => 'PEN',
                     'exchange_rate' => 1.000,
                     'total' => $total,
@@ -595,7 +629,26 @@ class SalesController extends Controller
                         'start_time' => $shift->start_time,
                         'end_time' => $shift->end_time
                     ],
-                    'movement_id' => $movement->id,
+                    'branch_id' => $branchId,
+                ]);
+                DB::table('cash_movement_details')
+                    ->where('cash_movement_id', $cashMovement->id)
+                    ->delete();
+            } else {
+                $cashMovement = CashMovements::create([
+                    'payment_concept_id' => $paymentConcept->id,
+                    'currency' => 'PEN',
+                    'exchange_rate' => 1.000,
+                    'total' => $total,
+                    'cash_register_id' => $cashRegister->id,
+                    'cash_register' => $cashRegister->number ?? 'Caja Principal',
+                    'shift_id' => $shift->id,
+                    'shift_snapshot' => [
+                        'name' => $shift->name,
+                        'start_time' => $shift->start_time,
+                        'end_time' => $shift->end_time
+                    ],
+                    'movement_id' => $cashEntryMovement->id,
                     'branch_id' => $branchId,
                 ]);
             }
@@ -620,7 +673,7 @@ class SalesController extends Controller
                     'paid_at' => now(),
                     'payment_method_id' => $paymentMethod->id,
                     'payment_method' => $paymentMethod->description ?? '',
-                    'number' => $number,
+                    'number' => $cashEntryMovement->number,
                     'card_id' => $card?->id,
                     'card' => $card?->description ?? '',
                     'bank_id' => null,
@@ -645,6 +698,7 @@ class SalesController extends Controller
                 'message' => 'Venta procesada correctamente',
                 'data' => [
                     'movement_id' => $movement->id,
+                    'cash_movement_id' => $cashEntryMovement->id,
                     'number' => $number,
                     'total' => $total,
                 ]
@@ -1049,10 +1103,15 @@ class SalesController extends Controller
             $perPage = 10;
         }
         $personId = $request->input('person_id');
+        $documentTypeId = $request->input('document_type_id');
         $query = Movement::query()
             ->with(['branch', 'person', 'movementType', 'documentType', 'salesMovement'])
             ->where('movement_type_id', 2)
-            ->where('branch_id', $branchId);
+            ->where('branch_id', $branchId)
+            ->whereHas('salesMovement');
+        if ($documentTypeId !== null && $documentTypeId !== '' && is_numeric($documentTypeId)) {
+            $query->where('document_type_id', (int) $documentTypeId);
+        }
         if ($search !== null && $search !== '') {
             $query->where(function ($inner) use ($search) {
                 $inner->where('number', 'like', "%{$search}%")
@@ -1081,41 +1140,23 @@ class SalesController extends Controller
         }
 
         $viewId = $request->input('view_id');
-        $profileId = $request->session()->get('profile_id') ?? $request->user()?->profile_id;
-        $operaciones = collect();
-        if ($viewId && $branchId && $profileId) {
-            $operaciones = Operation::query()
-                ->select('operations.*')
-                ->join('branch_operation', function ($join) use ($branchId) {
-                    $join->on('branch_operation.operation_id', '=', 'operations.id')
-                        ->where('branch_operation.branch_id', $branchId)
-                        ->where('branch_operation.status', 1)
-                        ->whereNull('branch_operation.deleted_at');
-                })
-                ->join('operation_profile_branch', function ($join) use ($branchId, $profileId) {
-                    $join->on('operation_profile_branch.operation_id', '=', 'operations.id')
-                        ->where('operation_profile_branch.branch_id', $branchId)
-                        ->where('operation_profile_branch.profile_id', $profileId)
-                        ->where('operation_profile_branch.status', 1)
-                        ->whereNull('operation_profile_branch.deleted_at');
-                })
-                ->where('operations.status', 1)
-                ->where('operations.view_id', $viewId)
-                ->whereNull('operations.deleted_at')
-                ->orderBy('operations.id')
-                ->distinct()
-                ->get();
-        }
+
+        $documentTypes = DocumentType::query()
+            ->where('movement_type_id', 2)
+            ->orderBy('name')
+            ->get(['id', 'name']);
 
         return view('sales.report', [
             'branchId' => $branchId,
             'search' => $search,
             'dateFrom' => $dateFrom,
             'dateTo' => $dateTo,
+            'documentTypeId' => $documentTypeId,
+            'documentTypes' => $documentTypes,
             'perPage' => $perPage,
             'allowedPerPage' => $allowedPerPage,
-            'operaciones' => $operaciones,
             'sales' => $sales,
+            'viewId' => $viewId,
         ]);
     }
 
@@ -1224,7 +1265,75 @@ class SalesController extends Controller
 
         return (int) $cashRegisterId;
     }
+
+    private function resolveCashMovementBySaleMovement(int $saleMovementId): ?CashMovements
+    {
+        $cashMovement = CashMovements::where('movement_id', $saleMovementId)->first();
+        if ($cashMovement) {
+            return $cashMovement;
+        }
+
+        $cashEntryMovementId = Movement::query()
+            ->where('parent_movement_id', $saleMovementId)
+            ->whereHas('cashMovement')
+            ->orderByDesc('id')
+            ->value('id');
+
+        return $cashEntryMovementId ? CashMovements::where('movement_id', $cashEntryMovementId)->first() : null;
+    }
+
+    private function resolveCashEntryMovementBySaleMovement(int $saleMovementId): ?Movement
+    {
+        return Movement::query()
+            ->where('parent_movement_id', $saleMovementId)
+            ->whereHas('cashMovement')
+            ->orderByDesc('id')
+            ->first();
+    }
+
+    private function resolveCashMovementTypeId(): int
+    {
+        $movementTypeId = MovementType::query()
+            ->where(function ($query) {
+                $query->where('description', 'ILIKE', '%caja%')
+                    ->orWhere('description', 'ILIKE', '%cash%');
+            })
+            ->orderBy('id')
+            ->value('id');
+
+        if (!$movementTypeId) {
+            $movementTypeId = MovementType::find(4)?->id;
+        }
+
+        if (!$movementTypeId) {
+            $movementTypeId = MovementType::query()->orderBy('id')->value('id');
+        }
+
+        if (!$movementTypeId) {
+            throw new \Exception('No se encontro tipo de movimiento para caja.');
+        }
+
+        return (int) $movementTypeId;
+    }
+
+
+    private function generateCashMovementNumber(int $branchId, int $cashRegisterId, ?int $paymentConceptId = null): string
+    {
+        $lastRecord = Movement::query()
+            ->select('movements.number')
+            ->join('cash_movements', 'cash_movements.movement_id', '=', 'movements.id')
+            ->where('movements.branch_id', $branchId)
+            ->where('cash_movements.cash_register_id', $cashRegisterId)
+            ->when($paymentConceptId !== null, function ($query) use ($paymentConceptId) {
+                $query->where('cash_movements.payment_concept_id', $paymentConceptId);
+            })
+            ->lockForUpdate()
+            ->orderByDesc('movements.number')
+            ->first();
+
+        $lastNumber = $lastRecord?->number;
+        $nextSequence = $lastNumber ? ((int) $lastNumber + 1) : 1;
+
+        return str_pad((string) $nextSequence, 8, '0', STR_PAD_LEFT);
+    }
 }
-
-
-

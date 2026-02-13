@@ -136,22 +136,22 @@
                             <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
                                 <p class="font-semibold text-white text-theme-xs uppercase">Comprobante</p>
                             </th>
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                            <th class="px-5 py-3 text-left sm:px-6">
                                 <p class="font-semibold text-white text-theme-xs uppercase">Subtotal</p>
                             </th>
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                            <th class="px-5 py-3 text-left sm:px-6">
                                 <p class="font-semibold text-white text-theme-xs uppercase">IGV</p>
                             </th>
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                            <th class="px-5 py-3 text-left sm:px-6">
                                 <p class="font-semibold text-white text-theme-xs uppercase">Total</p>
                             </th>
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                            <th class="px-5 py-3 text-left sm:px-6">
                                 <p class="font-semibold text-white text-theme-xs uppercase">Persona</p>
                             </th>
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
-                                <p class="font-semibold text-white text-theme-xs uppercase">Estado</p>
+                            <th class="px-5 py-3 text-left sm:px-6">
+                                <p class="font-semibold text-white text-theme-xs uppercase">Situación</p>
                             </th>
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-right sm:px-6 last:rounded-tr-xl">
+                            <th class="px-5 py-3 text-right sm:px-6 last:rounded-tr-xl">
                                 <p class="font-semibold text-white text-theme-xs uppercase">Acciones</p>
                             </th>
                         </tr>
@@ -327,9 +327,67 @@
                                     </div>
                                 </td>
                             </tr>
+                            <tr x-show="openRow === {{ $sale->id }}" x-cloak class="bg-gray-50/70 dark:bg-gray-800/40 border-b border-gray-100 dark:border-gray-800">
+                                <td colspan="9" class="px-6 py-4">
+                                    <div class="mx-auto w-full max-w-xl space-y-1 text-center text-gray-800 dark:text-gray-200">
+                                        <div class="grid grid-cols-2 border-b border-gray-200 py-2 dark:border-gray-700">
+                                            <span class="font-semibold">Persona</span>
+                                            <span>{{ $sale->person_name ?: '-' }}</span>
+                                        </div>
+                                        <div class="grid grid-cols-2 border-b border-gray-200 py-2 dark:border-gray-700">
+                                            <span class="font-semibold">Fecha</span>
+                                            <span>{{ $sale->moved_at ? $sale->moved_at->format('Y-m-d h:i:s A') : '-' }}</span>
+                                        </div>
+                                        <div class="grid grid-cols-2 border-b border-gray-200 py-2 dark:border-gray-700">
+                                            <span class="font-semibold">Usuario</span>
+                                            <span>{{ $sale->user_name ?: '-' }}</span>
+                                        </div>
+                                        <div class="grid grid-cols-2 border-b border-gray-200 py-2 dark:border-gray-700">
+                                            <span class="font-semibold">Responsable</span>
+                                            <span>{{ $sale->responsible_name ?: '-' }}</span>
+                                        </div>
+                                        <div class="grid grid-cols-2 border-b border-gray-200 py-2 dark:border-gray-700">
+                                            <span class="font-semibold">Tipo de detalle</span>
+                                            <span>{{ $sale->salesMovement?->detail_type ?? '-' }}</span>
+                                        </div>
+                                        <div class="grid grid-cols-2 border-b border-gray-200 py-2 dark:border-gray-700">
+                                            <span class="font-semibold">Moneda</span>
+                                            <span>{{ $sale->salesMovement?->currency ?? 'PEN' }}</span>
+                                        </div>
+                                        <div class="grid grid-cols-2 border-b border-gray-200 py-2 dark:border-gray-700">
+                                            <span class="font-semibold">T. cambio</span>
+                                            <span>{{ number_format((float) ($sale->salesMovement?->exchange_rate ?? 1), 3) }}</span>
+                                        </div>
+                                        <div class="grid grid-cols-2 border-b border-gray-200 py-2 dark:border-gray-700">
+                                            <span class="font-semibold">Por consumo</span>
+                                            <span>{{ ($sale->salesMovement?->consumption ?? 'N') === 'Y' ? 'Si' : 'No' }}</span>
+                                        </div>
+                                        <div class="grid grid-cols-2 border-b border-gray-200 py-2 dark:border-gray-700">
+                                            <span class="font-semibold">Tipo de pago</span>
+                                            <span>{{ $sale->salesMovement?->payment_type ?? '-' }}</span>
+                                        </div>
+                                        <div class="grid grid-cols-2 border-b border-gray-200 py-2 dark:border-gray-700">
+                                            <span class="font-semibold">Comentario</span>
+                                            <span>{{ $sale->comment ?: '-' }}</span>
+                                        </div>
+                                        <div class="grid grid-cols-2 border-b border-gray-200 py-2 dark:border-gray-700">
+                                            <span class="font-semibold">Estado en SUNAT</span>
+                                            <span>
+                                                <x-ui.badge variant="light" color="info">
+                                                    {{ $sale->salesMovement?->status ?? '-' }}
+                                                </x-ui.badge>
+                                            </span>
+                                        </div>
+                                        <div class="grid grid-cols-2 py-2">
+                                            <span class="font-semibold">Origen</span>
+                                            <span>{{ $sale->movementType?->description ?? 'Venta' }} - {{ $sale->number }}</span>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
                         @empty
                             <tr>
-                                <td colspan="8" class="px-6 py-12">
+                                <td colspan="9" class="px-6 py-12">
                                     <div class="flex flex-col items-center gap-3 text-center text-sm text-gray-500">
                                         <div class="rounded-full bg-gray-100 p-3 text-gray-400 dark:bg-gray-800 dark:text-gray-300">
                                             <i class="ri-shopping-bag-3-line"></i>

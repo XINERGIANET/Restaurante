@@ -173,23 +173,7 @@
 
         const productsData = @json($productsMapped);
         const branchId = @json($branchId);
-        
-        console.log('Total productos desde servidor:', {{ $products->count() ?? 0 }});
-        console.log('Total productBranches:', {{ $productBranches->count() ?? 0 }});
-        console.log('Productos mapeados:', productsData.length);
-        console.log('Productos cargados:', productsData);
-        
-        // Debug adicional
-        @if($products->isEmpty())
-            console.warn('⚠️ No se encontraron productos en la base de datos');
-            console.warn('⚠️ Verifica que existan productos en la tabla products');
-            console.warn('⚠️ Branch ID:', {{ $branchId ?? 'null' }});
-        @else
-            console.log('✅ Productos encontrados:', {{ $products->count() }});
-            @if($products->count() > 0)
-                console.log('Primer producto:', @json($products->first()));
-            @endif
-        @endif
+
         let selectedProducts = [];
         let filteredProducts = productsData;
 
@@ -204,13 +188,9 @@
         function renderProducts() {
             const grid = document.getElementById('products-grid');
             if (!grid) {
-                console.error('❌ No se encontró el elemento products-grid');
-                setTimeout(renderProducts, 100); // Reintentar después de 100ms
+                setTimeout(renderProducts, 100);
                 return;
             }
-
-            console.log('🔄 Renderizando productos. Total:', filteredProducts.length);
-            console.log('📦 Productos a renderizar:', filteredProducts);
 
             if (filteredProducts.length === 0) {
                 grid.innerHTML = '<div class="col-span-full text-center py-8 text-gray-500">No se encontraron productos</div>';
@@ -218,11 +198,9 @@
             }
 
             try {
-                console.log('🔨 Iniciando construcción de HTML...');
                 const html = filteredProducts.map((prod, index) => {
                     try {
-                        const imageUrl = getImageUrl( prod.img);
-                        console.log(`Producto ${index + 1}/${filteredProducts.length}: ${prod.id} - ${prod.name} - Imagen: ${imageUrl}`);
+                        const imageUrl = getImageUrl(prod.img);
                         
                         // Escapar caracteres especiales para evitar problemas en el HTML
                         const safeName = String(prod.name || 'Sin nombre').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -236,7 +214,7 @@
                                 <img src="${imageUrl}" alt="${safeName}" 
                                     class="w-full h-full object-cover" 
                                     loading="lazy"
-                                    onerror="console.error('Error cargando imagen para producto ${prod.id}'); this.onerror=null; this.src='https://via.placeholder.com/200x200?text=Sin+Imagen';">
+                                    onerror="this.onerror=null; this.src='https://via.placeholder.com/200x200?text=Sin+Imagen';">
                             </div>
                             <div class="p-3">
                                 <h4 class="font-semibold text-sm text-gray-800 line-clamp-2 mb-1">${safeName}</h4>
@@ -253,8 +231,6 @@
                         </div>
                     `;
                     } catch (prodError) {
-                        console.error(`Error procesando producto ${prod.id}:`, prodError);
-                        // Retornar un producto con error pero visible
                         return `
                         <div class="bg-white rounded-lg shadow-sm border border-red-200 hover:shadow-md transition-all cursor-pointer overflow-hidden"
                             onclick="addProduct(${prod.id})">
@@ -277,20 +253,10 @@
                     `;
                     }
                 }).join('');
-                
-                console.log('📝 HTML generado, longitud:', html.length);
-                console.log('📝 Primeros 500 caracteres del HTML:', html.substring(0, 500));
-                
+
                 grid.innerHTML = html;
-                console.log('✅ Productos renderizados correctamente. Grid innerHTML length:', grid.innerHTML.length);
-                
-                // Verificar que los elementos se hayan insertado
-                const productCards = grid.querySelectorAll('.bg-white.rounded-lg');
-                console.log('✅ Tarjetas de productos encontradas en el DOM:', productCards.length);
-                
+
             } catch (error) {
-                console.error('❌ Error al renderizar productos:', error);
-                console.error('Stack trace:', error.stack);
                 grid.innerHTML = '<div class="col-span-full text-center py-8 text-red-500">Error al cargar productos: ' + error.message + '</div>';
             }
         }
@@ -421,9 +387,19 @@
 
                 const data = await response.json();
 
-               
-            } catch (error) {
+                if (data.success) {
+                    const viewId = new URLSearchParams(window.location.search).get('view_id');
+                    const redirectUrl = viewId
+                        ? `{{ route('warehouse_movements.index') }}?view_id=${viewId}`
+                        : `{{ route('warehouse_movements.index') }}`;
+                    sessionStorage.setItem('flash_success_message', data.message || 'Entrada guardada correctamente');
+                    window.location.href = redirectUrl;
+                } else {
+                    alert(data.message || 'Error al guardar la entrada');
                 }
+            } catch (error) {
+                alert('Error al guardar: ' + (error.message || 'Error de conexión'));
+            }
         }
 
         // Búsqueda de productos
@@ -438,53 +414,26 @@
 
         // Inicializar
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 DOM Content Loaded - Inicializando...');
-            console.log('📊 productsData length:', productsData.length);
-            console.log('📊 filteredProducts length:', filteredProducts.length);
-            
-            // Verificar que el elemento existe
             const grid = document.getElementById('products-grid');
             if (grid) {
-                console.log('✅ Elemento products-grid encontrado');
                 renderProducts();
             } else {
-                console.error('❌ Elemento products-grid NO encontrado');
-                // Reintentar después de un breve delay
-                setTimeout(function() {
-                    renderProducts();
-                }, 500);
+                setTimeout(renderProducts, 500);
             }
-            
             renderCart();
         });
-        
-        // También intentar renderizar inmediatamente si el DOM ya está listo
-        if (document.readyState === 'loading') {
-            console.log('⏳ DOM aún cargando...');
-        } else {
-            console.log('✅ DOM ya está listo, renderizando inmediatamente');
-            console.log('📊 productsData en readyState check:', productsData);
-            console.log('📊 filteredProducts en readyState check:', filteredProducts);
+
+        if (document.readyState !== 'loading') {
             setTimeout(function() {
-                console.log('🔄 Ejecutando renderProducts desde readyState check');
                 renderProducts();
                 renderCart();
             }, 100);
         }
-        
-        // Forzar renderizado después de un pequeño delay adicional como fallback
+
         setTimeout(function() {
-            console.log('🔄 Fallback: Forzando renderizado después de 1 segundo');
-            console.log('📊 productsData en fallback:', productsData);
-            console.log('📊 filteredProducts en fallback:', filteredProducts);
             const grid = document.getElementById('products-grid');
             if (grid && filteredProducts.length > 0) {
-                console.log('✅ Grid encontrado en fallback, renderizando...');
                 renderProducts();
-            } else {
-                console.warn('⚠️ Grid no encontrado o sin productos en fallback');
-                console.log('Grid existe:', !!grid);
-                console.log('filteredProducts.length:', filteredProducts.length);
             }
         }, 1000);
     </script>
