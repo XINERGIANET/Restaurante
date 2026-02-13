@@ -45,4 +45,10 @@ class Product extends Model
     {
         return $this->hasMany(ProductBranch::class);
     }
+
+    public function branches()
+    {
+        return $this->belongsToMany(Branch::class, 'product_branch', 'product_id', 'branch_id')
+                    ->withPivot('price', 'stock'); 
+    }
 }

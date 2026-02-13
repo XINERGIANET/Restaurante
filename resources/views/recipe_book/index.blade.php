@@ -8,106 +8,6 @@
     $ClearIcon = new HtmlString('<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /><path d="M6 6L18 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /></svg>');
     $PlusIcon = new HtmlString('<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>');
     
-    // --- DATOS HARDCODEADOS DE RECETAS ---
-    $recipes = [
-        [
-            'id' => 1,
-            'name' => 'Lomo Saltado Clásico',
-            'description' => 'Trozos de lomo fino salteados al wok con cebolla, tomate y ají amarillo.',
-            'category' => 'Plato de Fondo',
-            'category_class' => 'badge-plato',
-            'time' => '20 min',
-            'method' => 'Wok',
-            'method_icon' => 'ri-fire-line',
-            'cost' => '18.50',
-            'image' => 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80'
-        ],
-        [
-            'id' => 2,
-            'name' => 'Ceviche de Pescado',
-            'description' => 'Pesca del día marinada en limón sutil, con base de leche de tigre clásica.',
-            'category' => 'Entrada',
-            'category_class' => 'badge-entrada',
-            'time' => '10 min',
-            'method' => 'Frío',
-            'method_icon' => 'ri-fridge-line',
-            'cost' => '12.00',
-            'image' => 'https://images.unsplash.com/photo-1535914697087-0b13575608d4?auto=format&fit=crop&w=800&q=80'
-        ],
-        [
-            'id' => 3,
-            'name' => 'Causa de Pollo',
-            'description' => 'Masa de papa amarilla prensada con ají amarillo, rellena de pollo.',
-            'category' => 'Entrada',
-            'category_class' => 'badge-entrada',
-            'time' => '15 min',
-            'method' => 'Manual',
-            'method_icon' => 'ri-hand-heart-line',
-            'cost' => '8.40',
-            'image' => 'https://images.unsplash.com/photo-1601314167389-9a7065992984?auto=format&fit=crop&w=800&q=80'
-        ],
-        [
-            'id' => 4,
-            'name' => 'Pisco Sour Clásico',
-            'description' => 'Cóctel bandera a base de pisco quebranta, limón y jarabe.',
-            'category' => 'Bebida',
-            'category_class' => 'badge-bebida',
-            'time' => '5 min',
-            'method' => 'Barra',
-            'method_icon' => 'ri-goblet-line',
-            'cost' => '6.50',
-            'image' => 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?auto=format&fit=crop&w=800&q=80'
-        ],
-        [
-            'id' => 5,
-            'name' => 'Arroz con Mariscos',
-            'description' => 'Arroz cremoso cocinado con langostinos, calamares y conchas negras.',
-            'category' => 'Plato de Fondo',
-            'category_class' => 'badge-plato',
-            'time' => '35 min',
-            'method' => 'Cocción',
-            'method_icon' => 'ri-fire-line',
-            'cost' => '22.00',
-            'image' => 'https://images.unsplash.com/photo-1633384991695-9e6b87e2362f?auto=format&fit=crop&w=800&q=80'
-        ],
-        [
-            'id' => 6,
-            'name' => 'Tiradito de Pescado',
-            'description' => 'Finas láminas de pescado fresco con crema de ají amarillo y limón.',
-            'category' => 'Entrada',
-            'category_class' => 'badge-entrada',
-            'time' => '12 min',
-            'method' => 'Frío',
-            'method_icon' => 'ri-fridge-line',
-            'cost' => '14.50',
-            'image' => 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=800&q=80'
-        ],
-        [
-            'id' => 7,
-            'name' => 'Suspiro Limeño',
-            'description' => 'Manjar blanco coronado con merengue italiano y canela en polvo.',
-            'category' => 'Postre',
-            'category_class' => 'badge-postre',
-            'time' => '25 min',
-            'method' => 'Repostería',
-            'method_icon' => 'ri-cake-3-line',
-            'cost' => '5.80',
-            'image' => 'https://images.unsplash.com/photo-1488477181946-6428a0291777?auto=format&fit=crop&w=800&q=80'
-        ],
-        [
-            'id' => 8,
-            'name' => 'Chicha Morada',
-            'description' => 'Bebida tradicional de maíz morado con frutas y especias aromáticas.',
-            'category' => 'Bebida',
-            'category_class' => 'badge-bebida',
-            'time' => '45 min',
-            'method' => 'Cocción',
-            'method_icon' => 'ri-fire-line',
-            'cost' => '3.20',
-            'image' => 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?auto=format&fit=crop&w=800&q=80'
-        ]
-    ];
-    
     $totalRecipes = count($recipes);
 @endphp
 
@@ -369,24 +269,22 @@
 
                 <!-- Botones -->
                 <div class="flex gap-2">
-                    <x-ui.button size="sm" variant="primary" type="submit" :startIcon="$SearchIcon">
-                        Buscar
+                    <x-ui.button size="md" variant="primary" type="submit" class="flex-1 sm:flex-none h-11 px-6 shadow-sm hover:shadow-md transition-all duration-200 active:scale-95" style="background-color: #244BB3; border-color: #244BB3;">
+                        <i class="ri-search-line text-gray-100"></i>
+                        <span class="font-medium text-gray-100">Buscar</span>
                     </x-ui.button>
-                    <x-ui.button size="sm" variant="outline" type="button" onclick="window.location.reload()" :startIcon="$ClearIcon">
-                        Limpiar
-                    </x-ui.button>
+                    <x-ui.link-button size="md" variant="outline" href="" class="flex-1 sm:flex-none h-11 px-6 border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200">
+                        <i class="ri-refresh-line"></i>
+                        <span class="font-medium">Limpiar</span>
+                    </x-ui.link-button>
                 </div>
             </form>
             
             <div class="flex items-end">
-                <x-ui.button
-                    size="md"
-                    variant="primary"
-                    type="button"
-                    @click="$dispatch('open-recipe-modal')"
-                >
-                    {!! $PlusIcon !!}
-                    <span>Nueva Receta</span>
+                <x-ui.button size="md" variant="primary" type="button"
+                    style=" background-color: #12f00e; color: #111827;" @click="$dispatch('open-recipe-modal')">
+                    <i class="ri-add-line"></i>
+                    <span>Nuevo producto</span>
                 </x-ui.button>
             </div>
         </div>
@@ -399,129 +297,78 @@
             </div>
         </div>
 
-        <!-- Grid de tarjetas de recetas -->
+        <!-- Grid de tarjetas de recetas (datos reales de BD) -->
         <div class="recipes-grid">
-            
             @foreach($recipes as $recipe)
             <div class="recipe-card">
                 <div class="recipe-image">
-                    <span class="category-badge {{ $recipe['category_class'] }}">{{ $recipe['category'] }}</span>
-                    <img src="{{ $recipe['image'] }}" alt="{{ $recipe['name'] }}">
+                    <span class="category-badge {{ $recipe->category['class'] ?? '' }}">
+                        {{ $recipe->category->description ?? '' }}
+                    </span>
+                    <img src="{{ asset('storage/' . $recipe->image) }}" alt="Imagen de la receta">
                 </div>
                 <div class="recipe-content">
                     <div class="recipe-meta">
-                        <span><i class="ri-time-line"></i> {{ $recipe['time'] }}</span>
-                        <span><i class="{{ $recipe['method_icon'] }}"></i> {{ $recipe['method'] }}</span>
+                        <span><i class="ri-time-line"></i> {{ $recipe->preparation_time ? $recipe->preparation_time . ' min' : '--' }}</span>
+                        <span><i class="ri-fire-line"></i> {{ $recipe->preparation_method ?? '--' }}</span>
                     </div>
-                    <h5 class="recipe-title">{{ $recipe['name'] }}</h5>
+                    <h5 class="recipe-title">{{ $recipe->name }}</h5>
                     <p class="recipe-description">
-                        {{ $recipe['description'] }}
+                        {{ $recipe->description ?? 'Sin descripción' }}
                     </p>
                     <div class="recipe-footer">
                         <div class="price-info">
                             <span class="price-label">Costo Insumos</span>
-                            <span class="price-value">S/ {{ $recipe['cost'] }}</span>
+                            <span class="price-value">S/ {{ number_format($recipe->cost_total, 2) }}</span>
                         </div>
-                        <button class="btn-view-recipe" data-id="{{ $recipe['id'] }}">Ver Ficha</button>
+                        <a href="{{ route('recipe-book.show', $recipe) }}" class="btn-view-recipe">Ver Ficha</a>
                     </div>
                 </div>
             </div>
             @endforeach
-
         </div>
-
-        <!-- Paginación (deshabilitada - datos hardcodeados) -->
-        <!-- <div class="mt-6">
-            Paginación aquí cuando se conecte a BD
-        </div> -->
 
     </x-common.component-card>
 
     <!-- Modal para nueva receta -->
-    <x-ui.modal x-data="{ open: false }" @open-recipe-modal.window="open = true" @close-recipe-modal.window="open = false" :isOpen="false" class="max-w-3xl">
-        <div class="p-6 sm:p-8">
+    <x-ui.modal x-data="{ open: {{ $errors->any() ? 'true' : 'false' }} }" @open-recipe-modal.window="open = true"
+        @close-product-modal.window="open = false" :isOpen="$errors->any() ? true : false" :showCloseButton="false" class="w-full max-w-5xl sm:max-w-6xl lg:max-w-7xl">
+        <div class="flex w-full flex-col min-h-0 p-6 sm:p-8">
             <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                    <p class="text-xs uppercase tracking-[0.3em] text-gray-400">Cocina</p>
-                    <h3 class="mt-2 text-lg font-semibold text-gray-800 dark:text-white/90">Nueva Receta</h3>
-                    <p class="mt-1 text-sm text-gray-500">Ingresa la información de la ficha técnica.</p>
+                <div class="flex items-center gap-4">
+                    <div
+                        class="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-500 dark:bg-brand-500/10">
+                        <i class="ri-restaurant-line text-2xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Registrar nueva receta</h3>
+                        <p class="mt-1 text-sm text-gray-500">Ingresa la informacion de la nueva receta.</p>
+                    </div>
                 </div>
-                <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-500 dark:bg-brand-500/10">
-                    <i class="ri-restaurant-line"></i>
-                </div>
+                <button type="button" @click="open = false"
+                    class="flex h-11 w-11 items-center justify-center rounded-full bg-gray-100 text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
+                    aria-label="Cerrar">
+                    <i class="ri-close-line text-xl"></i>
+                </button>
             </div>
 
-            <form method="POST" action="#" onsubmit="event.preventDefault(); alert('Funcionalidad disponible cuando se conecte a la base de datos');" class="space-y-6">
-                @csrf
-
-                <div class="space-y-4">
-                    <div>
-                        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                            Nombre del platillo
-                        </label>
-                        <input 
-                            type="text" 
-                            name="name"
-                            placeholder="Ej. Lomo Saltado Criollo"
-                            class="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
-                        />
-                    </div>
-
-                    <div>
-                        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                            Categoría
-                        </label>
-                        <select 
-                            name="category"
-                            class="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
-                        >
-                            <option value="">Seleccionar...</option>
-                            <option value="plato_fondo">Plato de Fondo</option>
-                            <option value="entrada">Entrada</option>
-                            <option value="postre">Postre</option>
-                            <option value="bebida">Bebida</option>
-                        </select>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                Tiempo (min)
-                            </label>
-                            <input 
-                                type="number" 
-                                name="time"
-                                placeholder="20"
-                                class="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
-                            />
-                        </div>
-
-                        <div>
-                            <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                Costo (S/)
-                            </label>
-                            <input 
-                                type="number" 
-                                name="cost"
-                                step="0.01"
-                                placeholder="18.50"
-                                class="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
-                            />
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                            Descripción
-                        </label>
-                        <textarea 
-                            name="description"
-                            rows="3"
-                            placeholder="Descripción breve del platillo..."
-                            class="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
-                        ></textarea>
-                    </div>
+            @if ($errors->any())
+                <div class="mb-5">
+                    <x-ui.alert variant="error" title="Revisa los campos"
+                        message="Hay errores en el formulario, corrige los datos e intenta nuevamente." />
                 </div>
+            @endif
+
+            <form method="POST" action="{{ route('recipe-book.store') }}" enctype="multipart/form-data" class="flex w-full flex-col min-h-0 space-y-6">
+                @csrf
+                <input type="hidden" name="view_id" value="{{ $viewId }}">
+
+                @include('recipe_book._form', [
+                    'product' => null,
+                    'currentBranch' => $currentBranch ?? null,
+                    'taxRates' => $taxRates ?? collect(),
+                    'productBranch' => null,
+                ])
 
                 <div class="flex flex-wrap gap-3">
                     <x-ui.button type="submit" size="md" variant="primary">
@@ -536,6 +383,16 @@
             </form>
         </div>
     </x-ui.modal>
+
+    @if ($errors->any())
+        <script>
+            document.addEventListener('alpine:init', () => {
+                setTimeout(() => {
+                    window.dispatchEvent(new CustomEvent('open-recipe-modal'));
+                }, 100);
+            });
+        </script>
+    @endif
     
 </div>
 

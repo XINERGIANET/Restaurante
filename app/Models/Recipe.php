@@ -12,6 +12,9 @@ class Recipe extends Model
     protected $fillable = [
         'code',
         'name',
+        'product_id',
+        'branch_id',
+        'company_id',
         'description',
         'category_id',
         'yield_unit_id',
@@ -31,6 +34,21 @@ class Recipe extends Model
         'status' => 'string',
     ];
 
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
+    }
+
+    public function product()
+    {
+        return $this->belongsTo(Product::class);
+    }
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class);
+    }
+
     public function category()
     {
         return $this->belongsTo(Category::class);
@@ -49,5 +67,10 @@ class Recipe extends Model
     public function isActive(): bool
     {
         return $this->status === 'A';
+    }
+
+    public function unit()
+    {
+        return $this->belongsTo(Unit::class, 'yield_unit_id');
     }
 }

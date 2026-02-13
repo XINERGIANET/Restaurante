@@ -24,14 +24,6 @@
                 @endif
             @endforeach
         };
-
-        // Rutas de productos
-        window.productRoutes = {
-            @foreach ($products as $product)
-                {{ $product->id }}: '{{ route('admin.products.product_branches.store', $product) }}',
-            @endforeach
-        };
-
         
     </script>
 
@@ -427,7 +419,7 @@
             :isOpen="false"
             :showCloseButton="false"
             class="w-full max-w-5xl sm:max-w-6xl"
-        >
+            >
             <div class="p-6 sm:p-8">
                 <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div class="flex items-center gap-4">
@@ -454,31 +446,6 @@
                         <x-ui.alert variant="error" title="Revisa los campos" message="Hay errores en el formulario, corrige los datos e intenta nuevamente." />
                     </div>
                 @endif
-
-                <form id="product-branch-form" method="POST" action="{{ route('admin.product_branches.store_generic') }}" class="space-y-6">
-                    @csrf
-                    <input type="hidden" name="product_id" x-model="productId">
-                    @if ($viewId)
-                        <input type="hidden" name="view_id" value="{{ $viewId }}">
-                    @endif
-
-                    @include('products.product_branch._form', [
-                        'productBranch' => null,
-                        'currentBranch' => $currentBranch,
-                        'taxRates' => $taxRates,
-                    ])
-
-                    <div class="flex flex-wrap gap-3">
-                        <x-ui.button type="submit" size="md" variant="primary">
-                            <i class="ri-save-line"></i>
-                            <span>Guardar</span>
-                        </x-ui.button>
-                        <x-ui.button type="button" size="md" variant="outline" @click="open = false">
-                            <i class="ri-close-line"></i>
-                            <span>Cancelar</span>
-                        </x-ui.button>
-                    </div>
-                </form>
             </div>
         </x-ui.modal>
 
