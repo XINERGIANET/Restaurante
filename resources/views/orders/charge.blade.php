@@ -6,10 +6,10 @@
         <div class="mb-4">
             <div class="flex items-center justify-between">
                 <h1 class="text-xl font-bold text-gray-900 dark:text-white">Cobrar Pedido</h1>
-                <a href="{{ route('admin.orders.index') }}"
+                <a href="{{ $backUrl ?? route('admin.orders.index') }}"
                     class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">
                     <i class="fas fa-arrow-left text-xs"></i>
-                    Volver
+                    Volver a pedidos
                 </a>
             </div>
         </div>
@@ -1140,7 +1140,9 @@
                     // 
                     showNotification('Error', 'No hay productos en la orden. Serás redirigido a la página de pedidos.', 'error');
                     setTimeout(() => {
-                        window.location.href = "{{ route('admin.orders.index') }}";
+                        const viewId = new URLSearchParams(window.location.search).get('view_id');
+                        let url = viewId ? "{{ route('orders.list') }}?view_id=" + encodeURIComponent(viewId) : "{{ route('admin.orders.index') }}";
+                        window.top.location.href = url;
                     }, 2000);
                     return;
                 }
@@ -1148,7 +1150,9 @@
                 // Validar que todos los items tengan pId
                 const itemsInvalidos = order.items.filter(it => !it.pId && !it.id);
                 if (itemsInvalidos.length > 0) {
-                    window.location.href = "{{ route('admin.orders.index') }}";
+                    const viewId = new URLSearchParams(window.location.search).get('view_id');
+                    let url = viewId ? "{{ route('orders.list') }}?view_id=" + encodeURIComponent(viewId) : "{{ route('admin.orders.index') }}";
+                    window.top.location.href = url;
                     return;
                 }
 
@@ -1277,7 +1281,7 @@
                 if (!order || !Array.isArray(order.items) || order.items.length === 0) {
                     showNotification('Error', 'No hay una orden activa', 'error');
                     setTimeout(() => {
-                        window.location.href = "{{ route('admin.orders.index') }}";
+                        window.top.location.href = "{{ route('admin.orders.index') }}";
                     }, 2000);
                     return;
                 }
@@ -1468,9 +1472,12 @@
 
                         sessionStorage.setItem('flash_success_message', data.message || 'Pedido cobrado correctamente');
                         const viewId = new URLSearchParams(window.location.search).get('view_id');
-                        let url = "{{ route('admin.orders.index') }}";
+                        const fromList = new URLSearchParams(window.location.search).get('from') === 'list';
+                        let url = fromList || viewId
+                            ? "{{ route('orders.list') }}"
+                            : "{{ route('admin.orders.index') }}";
                         if (viewId) url += (url.includes('?') ? '&' : '?') + 'view_id=' + encodeURIComponent(viewId);
-                        window.location.href = url;
+                        window.top.location.href = url;
                     })
                     .catch(err => {
                         const errorMessage = err.message || 'Error al procesar la venta';
