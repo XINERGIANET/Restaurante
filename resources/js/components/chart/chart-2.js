@@ -3,8 +3,9 @@ export const initChartTwo = () => {
     const chartElement = document.querySelector('#chartTwo');
 
     if (chartElement) {
+        const occupancyRate = window.dashboardData?.occupancyData?.rate || 0;
         const chartTwoOptions = {
-            series: [75.55],
+            series: [occupancyRate],
             colors: ["#465FFF"],
             chart: {
                 fontFamily: "Outfit, sans-serif",

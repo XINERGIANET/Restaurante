@@ -8,9 +8,11 @@ use Illuminate\View\Component;
 
 class MonthlyTarget extends Component
 {
-    public function __construct()
+    public $occupancyData;
+
+    public function __construct($occupancyData = [])
     {
-        //
+        $this->occupancyData = $occupancyData;
     }
 
     public function render(): View|Closure|string

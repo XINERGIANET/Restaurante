@@ -8,12 +8,14 @@ use Illuminate\View\Component;
 
 class StatisticsChart extends Component
 {
+    public $dashboardData;
+
     /**
      * Create a new component instance.
      */
-    public function __construct()
+    public function __construct($dashboardData = [])
     {
-        //
+        $this->dashboardData = $dashboardData;
     }
 
     /**

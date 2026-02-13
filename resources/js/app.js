@@ -402,6 +402,9 @@ const initPage = () => {
     if (document.querySelector('#chartThirteen')) {
         import('./components/chart/chart-13').then(module => module.initChartThirteen());
     }
+    if (document.querySelector('#chartBalance')) {
+        import('./components/chart/chart-balance').then(module => module.initChartBalance());
+    }
 
     // Calendar init
     if (document.querySelector('#calendar')) {
