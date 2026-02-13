@@ -243,6 +243,37 @@
             const serverProducts = @json($products ?? []);
             const serverProductBranches = @json($productBranches ?? []);
 
+            function getItemTaxRatePercent(item) {
+                const rate = parseFloat(item?.tax_rate);
+                return !isNaN(rate) && rate >= 0 ? rate : 10;
+            }
+
+            // Los precios del POS incluyen IGV.
+            function calculateTotalsFromItems(items) {
+                let subtotal = 0;
+                let tax = 0;
+                let total = 0;
+
+                (items || []).forEach(item => {
+                    const qty = parseFloat(item.qty) || 0;
+                    const price = parseFloat(item.price) || 0;
+                    const lineTotal = qty * price;
+                    const rate = getItemTaxRatePercent(item) / 100;
+                    const lineSubtotal = rate > 0 ? (lineTotal / (1 + rate)) : lineTotal;
+                    const lineTax = lineTotal - lineSubtotal;
+
+                    subtotal += lineSubtotal;
+                    tax += lineTax;
+                    total += lineTotal;
+                });
+
+                return {
+                    subtotal: Math.round(subtotal * 100) / 100,
+                    tax: Math.round(tax * 100) / 100,
+                    total: Math.round(total * 100) / 100,
+                };
+            }
+
             // Actualizar precios del carrito con los precios actuales del servidor
             function refreshCartPricesFromServer() {
                 if (!currentTable?.items || !serverProductBranches?.length) return;
@@ -254,6 +285,11 @@
                         const newPrice = parseFloat(pb.price);
                         if (!isNaN(newPrice) && newPrice >= 0 && newPrice !== parseFloat(item.price)) {
                             item.price = newPrice;
+                            updated = true;
+                        }
+                        const newTaxRate = parseFloat(pb.tax_rate);
+                        if (!isNaN(newTaxRate) && newTaxRate >= 0 && newTaxRate !== parseFloat(item.tax_rate)) {
+                            item.tax_rate = newTaxRate;
                             updated = true;
                         }
                     }
@@ -377,6 +413,9 @@
                 if (existing) {
                     // Si existe, solo aumentar la cantidad
                     existing.qty++;
+                    if (existing.tax_rate === undefined || existing.tax_rate === null) {
+                        existing.tax_rate = parseFloat(productBranch.tax_rate ?? 10);
+                    }
                 } else {
                     // Si no existe, agregarlo como nuevo item
 
@@ -385,6 +424,7 @@
                         name: prod.name || 'Sin nombre',
                         qty: 1,
                         price: price,
+                        tax_rate: parseFloat(productBranch.tax_rate ?? 10),
                         note: ""
                     });
                 }
@@ -470,8 +510,10 @@
                         container.appendChild(row);
                     });
                 }
-                const tax = subtotal * 0.10;
-                const total = subtotal + tax;
+                const totals = calculateTotalsFromItems(currentTable.items || []);
+                const tax = totals.tax;
+                const total = totals.total;
+                subtotal = totals.subtotal;
 
                 const subtotalEl = document.getElementById('ticket-subtotal');
                 const taxEl = document.getElementById('ticket-tax');
@@ -495,14 +537,10 @@
 
             function processOrder() {
                 const items = currentTable.items || [];
-                let subtotal = 0;
-                items.forEach(item => {
-                    const qty = parseFloat(item.qty) || 0;
-                    const price = parseFloat(item.price) || 0;
-                    subtotal += qty * price;
-                });
-                const tax = Math.round(subtotal * 0.10 * 100) / 100;
-                const total = Math.round((subtotal + tax) * 100) / 100;
+                const totals = calculateTotalsFromItems(items);
+                const subtotal = totals.subtotal;
+                const tax = totals.tax;
+                const total = totals.total;
 
                 const order = {
                     items: items,
@@ -562,14 +600,10 @@
                     }
                     return;
                 }
-                let subtotal = 0;
-                items.forEach(item => {
-                    const qty = parseFloat(item.qty) || 0;
-                    const price = parseFloat(item.price) || 0;
-                    subtotal += qty * price;
-                });
-                const tax = Math.round(subtotal * 0.10 * 100) / 100;
-                const total = Math.round((subtotal + tax) * 100) / 100;
+                const totals = calculateTotalsFromItems(items);
+                const subtotal = totals.subtotal;
+                const tax = totals.tax;
+                const total = totals.total;
                 const payload = {
                     items: items,
                     table_id: currentTable.table_id ?? currentTable.id,
