@@ -294,13 +294,15 @@
                 </div>
             </div>
 
-            <div class="mt-4 rounded-xl border border-gray-200 bg-white overflow-visible dark:border-gray-800 dark:bg-white/[0.03]">
-                <div class="max-w-full overflow-x-auto custom-scrollbar">
-                    <table class="w-full min-w-[1200px]">
-                        <thead>
-                            <tr>
-                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="w-12 px-4 py-4 text-center first:rounded-tl-xl">
-                                    <p class="font-semibold text-white text-theme-xs uppercase">#</p>
+            {{-- TABLA --}}
+            <div
+                class="table-responsive mt-4 rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+                <div class="max-w-full">
+                    <table class="w-full min-w-[880px]">
+                        <thead style="background-color: #63B7EC; color: #FFFFFF;">
+                            <tr class="text-white">
+                                <th class="px-5 py-3 text-center sm:px-6 sticky-left-header">
+                                    <p class="font-medium text-theme-xs dark:text-white">Orden</p>
                                 </th>
                                 <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
                                     <p class="font-semibold text-white text-theme-xs uppercase">Numero</p>

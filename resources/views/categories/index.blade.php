@@ -141,11 +141,11 @@
                 </div>
             </div>
 
-            <div class="mt-4 rounded-xl border border-gray-200 bg-white overflow-visible dark:border-gray-800 dark:bg-white/[0.03]">
-                <table class="w-full">
+            <div class="table-responsive mt-4 rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+                <table class="w-full min-w-max">
                     <thead>
                         <tr class="text-white">
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6 first:rounded-tl-xl transition-colors">
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6 first:rounded-tl-xl sticky-left-header transition-colors">
                                 <p class="font-semibold text-white text-theme-xs">Imagen</p>
                             </th>
                             <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
@@ -162,7 +162,7 @@
                     <tbody>
                         @forelse ($categories as $category)
                             <tr class="border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-white/5">
-                                 <td class="px-6 py-4 whitespace-nowrap">
+                                 <td class="px-6 py-4 whitespace-nowrap sticky-left">
                                     <div class="flex items-center">
                                         @if($category->image)
                                             <img class="h-12 w-12 object-cover rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm" 

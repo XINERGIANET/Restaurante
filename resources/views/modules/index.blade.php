@@ -153,11 +153,11 @@
         </div>
 
         {{-- TABLA --}}
-        <div class="mt-4 rounded-xl border border-gray-200 bg-white overflow-visible dark:border-gray-800 dark:bg-white/[0.03]">
-                <table class="w-full">
+        <div class="table-responsive mt-4 rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+                <table class="w-full min-w-[880px]">
                     <thead>
                         <tr class="text-white">
-                            <th style="background-color: #63B7EC;" class="px-3 py-3 text-left sm:px-6 first:rounded-tl-xl sticky left-0 z-20 w-16 max-w-[64px] sm:w-auto sm:max-w-none shadow-[2px_0_5px_rgba(0,0,0,0.1)]">
+                            <th style="background-color: #63B7EC;" class="px-3 py-3 text-left sm:px-6 first:rounded-tl-xl sticky-left-header">
                                 <p class="font-semibold text-gray-100 text-theme-xs truncate">Orden</p>
                             </th>
                             <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6"><p class="font-semibold text-gray-100 text-theme-xs uppercase">Nombre</p></th>
@@ -169,7 +169,7 @@
                     <tbody>
                         @forelse ($modules as $module)
                             <tr class="group/row border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-white/5">
-                                <td class="px-3 py-4 sm:px-6 sticky left-0 z-10 bg-white dark:bg-[#121212] group-hover/row:bg-gray-50 dark:group-hover/row:bg-gray-800 shadow-[2px_0_5px_rgba(0,0,0,0.05)] w-16 max-w-[64px] sm:w-auto sm:max-w-none text-center">
+                                <td class="px-3 py-4 sm:px-6 sticky-left text-center">
                                     <span class="font-bold text-gray-700 dark:text-gray-200 text-xs text-center block">#{{ $module->order_num }}</span>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">

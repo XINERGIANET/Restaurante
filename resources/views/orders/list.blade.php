@@ -107,30 +107,30 @@
                     @if ($topOperations->isNotEmpty())
                         @foreach ($topOperations as $operation)
                             @php
-                                $topColor = $operation->color ?: '#3B82F6';
+                                $topColor = $operation->color ?: '#22c55e';
                                 $topTextColor = '#FFFFFF';
                                 $topStyle = "background-color: {$topColor}; color: {$topTextColor};";
                                 $topActionUrl = $resolveActionUrl($operation->action ?? '', null, $operation);
                             @endphp
-                            <x-ui.link-button size="md" variant="primary" style="{{ $topStyle }}" href="{{ $topActionUrl }}">
+                            <x-ui.link-button size="md" variant="primary" style="{{ $topStyle }}" href="{{ $topActionUrl }}" class="flex-1 sm:flex-none shadow-sm hover:shadow-md transition-all duration-200 active:scale-95 border-none">
                                 <i class="{{ $operation->icon }}"></i>
-                                <span>{{ $operation->name }}</span>
+                                <span class="font-medium">{{ $operation->name }}</span>
                             </x-ui.link-button>
                         @endforeach
                     @else
-                        <x-ui.link-button size="md" variant="primary" style="background-color: #12f00e; color: #111827;" href="{{ route('admin.orders.index', $viewId ? ['view_id' => $viewId] : []) }}">
+                        <x-ui.link-button size="md" variant="primary" style="background-color: #22c55e; color: #FFFFFF;" href="{{ route('admin.orders.index', $viewId ? ['view_id' => $viewId] : []) }}" class="flex-1 sm:flex-none shadow-sm hover:shadow-md transition-all duration-200 active:scale-95 border-none">
                             <i class="ri-restaurant-line"></i>
-                            <span>Salones de pedidos</span>
+                            <span class="font-medium">Salones de pedidos</span>
                         </x-ui.link-button>
                     @endif
                 </div>
             </div>
 
-            <div class="mt-4 rounded-xl border border-gray-200 bg-white overflow-visible dark:border-gray-800 dark:bg-white/[0.03]">
-                <table class="w-full">
+            <div class="table-responsive mt-4 rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+                <table class="w-full min-w-[880px]">
                     <thead>
                         <tr class="text-white">
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6 first:rounded-tl-xl">
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6 first:rounded-tl-xl sticky-left-header">
                                 <p class="font-semibold text-white text-theme-xs uppercase">Numero</p>
                             </th>
                             <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
@@ -156,7 +156,7 @@
                     <tbody>
                         @forelse ($orders as $order)
                             <tr class="border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-white/5">
-                                <td class="px-5 py-4 sm:px-6">
+                                <td class="px-5 py-4 sm:px-6 sticky-left">
                                     <p class="font-medium text-gray-800 text-theme-sm dark:text-white/90">{{ $order->movement?->number ?? '-' }}</p>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">

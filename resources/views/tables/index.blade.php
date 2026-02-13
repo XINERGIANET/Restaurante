@@ -142,11 +142,11 @@
                 </div>
             </div>
 
-            <div class="mt-4 rounded-xl border border-gray-200 bg-white overflow-hidden dark:border-gray-800 dark:bg-white/[0.03]">
-                <table class="w-full">
+            <div class="mt-4 table-responsive rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+                <table class="w-full min-w-max">
                     <thead>
                         <tr class="border-b border-gray-100 dark:border-gray-800">
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6 first:rounded-tl-xl">
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6 first:rounded-tl-xl sticky-left-header">
                                 <p class="font-medium text-white text-theme-xs dark:text-white">Nombre</p>
                             </th>
                             <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
@@ -172,7 +172,7 @@
                     <tbody>
                         @forelse ($tables as $table)
                             <tr class="border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-white/5">
-                                <td class="px-5 py-4 sm:px-6">
+                                <td class="px-5 py-4 sm:px-6 sticky-left">
                                     <p class="font-medium text-gray-800 text-theme-sm dark:text-white/90">{{ $table->name }}</p>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">

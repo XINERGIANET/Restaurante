@@ -162,13 +162,16 @@
                     <tbody>
                         @forelse ($sales as $sale)
                             <tr class="border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-white/5">
-                                <td class="px-2 py-4 text-center">
-                                    <button type="button"
-                                        @click="openRow === {{ $sale->id }} ? openRow = null : openRow = {{ $sale->id }}"
-                                        class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-500 text-white transition hover:bg-brand-600 dark:bg-brand-500 dark:text-white">
-                                        <i class="ri-add-line" x-show="openRow !== {{ $sale->id }}"></i>
-                                        <i class="ri-subtract-line" x-show="openRow === {{ $sale->id }}"></i>
-                                    </button>
+                                <td class="px-4 py-4 sm:px-6 sticky-left">
+                                    <div class="flex items-center gap-2">
+                                        <button type="button"
+                                            @click="openRow === {{ $sale->id }} ? openRow = null : openRow = {{ $sale->id }}"
+                                            class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-500 text-white transition hover:bg-brand-600">
+                                            <i class="ri-add-line" x-show="openRow !== {{ $sale->id }}"></i>
+                                            <i class="ri-subtract-line" x-show="openRow === {{ $sale->id }}"></i>
+                                        </button>
+                                        <p class="font-medium text-gray-800 text-theme-sm dark:text-white/90">{{ $sale->id }}</p>
+                                    </div>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
                                     <p class="font-medium text-gray-800 text-theme-sm dark:text-white/90">  {{ strtoupper(substr($sale->documentType->name, 0, 1)) }}{{ $sale->salesMovement->series }}-{{ $sale->number }}</p>

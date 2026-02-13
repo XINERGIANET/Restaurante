@@ -173,9 +173,8 @@
                 </div>
             </div>
 
-            <div
-                class="mt-4 rounded-xl border border-gray-200 bg-white overflow-visible dark:border-gray-800 dark:bg-white/[0.03]">
-                <table class="w-full">
+            <div class="table-responsive mt-4 rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+                <table class="w-full min-w-max">
                     <thead>
                         <tr class="text-white">
                             <th style="background-color: #63B7EC; color: #FFFFFF;" class="w-12 px-4 py-4 text-center first:rounded-tl-xl"></th>
@@ -203,7 +202,7 @@
                         @forelse ($products as $product)
                             <tr
                                 class="border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-white/5">
-                                <td class="px-4 py-4 text-center">
+                                <td class="px-4 py-4 text-center sticky-left">
                                     <button type="button"
                                         @click="openRow === {{ $product->id }} ? openRow = null : openRow = {{ $product->id }}"
                                         class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-500 text-white transition hover:bg-brand-600 dark:bg-brand-500 dark:text-white">
