@@ -137,7 +137,6 @@
                         @endforelse
                     </tbody>
                 </table>
-            </div>
         </div>
     </x-common.component-card>
 </div>
