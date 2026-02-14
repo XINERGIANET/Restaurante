@@ -271,9 +271,6 @@
                     <x-ui.button size="md" variant="primary" type="submit" class="flex-1 sm:flex-none h-11 px-6 shadow-sm hover:shadow-md transition-all duration-200 active:scale-95" style="background-color: #244BB3; border-color: #244BB3;">
                         <i class="ri-search-line text-gray-100"></i>
                         <span class="font-medium text-gray-100">Buscar</span>
-                    <x-ui.button size="md" variant="primary" type="submit" class="flex-1 sm:flex-none h-11 px-6 shadow-sm hover:shadow-md transition-all duration-200 active:scale-95" style="background-color: #244BB3; border-color: #244BB3;">
-                        <i class="ri-search-line text-gray-100"></i>
-                        <span class="font-medium text-gray-100">Buscar</span>
                     </x-ui.button>
                     <x-ui.link-button size="md" variant="outline" href="" class="flex-1 sm:flex-none h-11 px-6 border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200">
                         <i class="ri-refresh-line"></i>
@@ -291,7 +288,6 @@
             </div>
         </div>
 
-        <!-- Total de recetas -->
         <div class="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div class="flex items-center gap-2 text-sm text-gray-500">
                 <span>Total de recetas</span>
@@ -315,15 +311,40 @@
                         <span><i class="ri-fire-line"></i> {{ $recipe->preparation_method ?? '--' }}</span>
                     </div>
                     <h5 class="recipe-title">{{ $recipe->name }}</h5>
-                    <p class="recipe-description">
-                        {{ $recipe->description ?? 'Sin descripción' }}
+                    
+                    <p class="recipe-description" title="{{ $recipe->description }}">
+                        {{ \Illuminate\Support\Str::limit($recipe->description ?? 'Sin descripción', 70, '...') }}
                     </p>
                     <div class="recipe-footer">
                         <div class="price-info">
                             <span class="price-label">Costo Insumos</span>
                             <span class="price-value">S/ {{ number_format($recipe->cost_total, 2) }}</span>
                         </div>
-                        <a href="{{ route('recipe-book.show', $recipe) }}" class="btn-view-recipe">Ver Ficha</a>
+                        
+                        <div class="flex items-center gap-1">
+                            <a href="{{ route('recipe-book.show', ['recipe' => $recipe, 'view_id' => request('view_id')]) }}"
+                            class="p-2 rounded-full text-blue-500 hover:bg-blue-50 hover:text-blue-700 transition-colors" 
+                            title="Ver Ficha">
+                                <i class="ri-eye-line text-lg"></i>
+                            </a>
+
+                            <a href="{{ route('recipe-book.edit', ['recipe' => $recipe, 'view_id' => request('view_id')]) }}"
+                            class="p-2 rounded-full text-amber-500 hover:bg-amber-50 hover:text-amber-700 transition-colors" 
+                            title="Editar">
+                                <i class="ri-pencil-line text-lg"></i>
+                            </a>
+
+                            <form action="{{ route('recipe-book.destroy', $recipe) }}" method="POST" class="inline-block" 
+                                onsubmit="return confirm('¿Estás seguro de querer eliminar esta receta?');">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" 
+                                        class="p-2 rounded-full text-red-500 hover:bg-red-50 hover:text-red-700 transition-colors" 
+                                        title="Eliminar">
+                                    <i class="ri-delete-bin-line text-lg"></i>
+                                </button>
+                            </form>
+                        </div>
                     </div>
                 </div>
             </div>
