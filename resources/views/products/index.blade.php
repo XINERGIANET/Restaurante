@@ -6,25 +6,24 @@
         window.productBranchData = {
             @php
                 $branchId = session('branch_id');
+                $items = [];
+                foreach ($products as $product) {
+                    $pb = $product->productBranches->where('branch_id', $branchId)->first();
+                    if ($pb) {
+                        $items[] = $product->id . ': ' . json_encode([
+                            'stock' => (float) $pb->stock,
+                            'price' => (float) $pb->price,
+                            'tax_rate_id' => $pb->tax_rate_id,
+                            'stock_minimum' => (float) ($pb->stock_minimum ?? 0),
+                            'stock_maximum' => (float) ($pb->stock_maximum ?? 0),
+                            'minimum_sell' => (float) ($pb->minimum_sell ?? 0),
+                            'minimum_purchase' => (float) ($pb->minimum_purchase ?? 0),
+                        ]);
+                    }
+                }
             @endphp
-            @foreach ($products as $product)
-                @php
-                    $productBranch = $product->productBranches->where('branch_id', $branchId)->first();
-                @endphp
-                @if($productBranch)
-                    {{ $product->id }}: {
-                        stock: {{ $productBranch->stock }},
-                        price: {{ $productBranch->price }},
-                        tax_rate_id: {{ $productBranch->tax_rate_id }},
-                        stock_minimum: {{ $productBranch->stock_minimum }},
-                        stock_maximum: {{ $productBranch->stock_maximum }},
-                        minimum_sell: {{ $productBranch->minimum_sell ?? 0 }},
-                        minimum_purchase: {{ $productBranch->minimum_purchase ?? 0 }}
-                    },
-                @endif
-            @endforeach
+            {!! implode(",\n            ", $items) !!}
         };
-        
     </script>
 
     <div x-data="{

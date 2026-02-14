@@ -7,26 +7,26 @@
         ingredients: {{ \Illuminate\Support\Js::from(old('ingredients', data_get($recipe, 'ingredients') ?? [])) }},
         product_list: {{ \Illuminate\Support\Js::from($ingredientsList ?? []) }}, // Usamos ?? [] por seguridad
 
-        addIngredient() {
-            this.ingredients.push({
-                product_id: '',
-                unit_id: '',
-                quantity: 1,
-                notes: '',
-                unit_cost: 0,
-                order: this.ingredients.length
-            });
-        },
+    addIngredient() {
+        this.ingredients.push({
+            product_id: '',
+            unit_id: '',
+            quantity: 1,
+            notes: '',
+            unit_cost: 0,
+            order: this.ingredients.length
+        });
+    },
 
-        removeIngredient(index) {
-            this.ingredients.splice(index, 1);
-        },
+    removeIngredient(index) {
+        this.ingredients.splice(index, 1);
+    },
 
-        calculateTotalCost() {
-            return this.ingredients.reduce((total, item) => {
-                return total + (parseFloat(item.quantity || 0) * parseFloat(item.unit_cost || 0));
-            }, 0).toFixed(2);
-        },
+    calculateTotalCost() {
+        return this.ingredients.reduce((total, item) => {
+            return total + (parseFloat(item.quantity || 0) * parseFloat(item.unit_cost || 0));
+        }, 0).toFixed(2);
+    },
 
         isProductSelected(productId) {
             return this.ingredients.some(i => i.product_id == productId);
@@ -36,7 +36,8 @@
     <div class="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
         <div class="border-b border-gray-100 px-6 py-4 bg-gray-50/50 dark:border-gray-700 dark:bg-gray-800">
             <h3 class="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <span class="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300">
+                <span
+                    class="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300">
                     <i class="ri-file-list-3-fill"></i>
                 </span>
                 Información de la Receta
@@ -54,7 +55,7 @@
                 </div>
             </div>
         @endif
-        
+
         <div class="p-6">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
@@ -85,9 +86,7 @@
                             this.open = false;
                         }
                     }'
-                    @mousedown.outside="open = false"
-                    @keydown.escape.window="open = false"
-                    >
+                    @mousedown.outside="open = false" @keydown.escape.window="open = false">
                     <label class="mb-2 block text-sm font-semibold text-gray-700 dark:text-gray-300">
                         Producto a Producir <span class="text-red-500">*</span>
                     </label>
@@ -111,22 +110,18 @@
                             <i class="ri-arrow-down-s-line transition-transform duration-200" :class="{'rotate-180': open}"></i>
                         </div>
 
-                        <ul 
-                            x-show="open" 
-                            x-transition.opacity
+                        <ul x-show="open" x-transition.opacity
                             class="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-xl border border-gray-200 bg-white py-1 shadow-xl ring-1 ring-black ring-opacity-5 focus:outline-none dark:bg-gray-800 dark:border-gray-700"
-                            style="display: none;"
-                        >
+                            style="display: none;">
                             <li x-show="filtered.length === 0" class="px-4 py-3 text-sm text-gray-500">
                                 No se encontraron productos.
                             </li>
 
                             <template x-for="p in filtered" :key="p.id">
-                                <li 
-                                    @mousedown.prevent="select(p)"
-                                    class="cursor-pointer select-none px-4 py-2.5 text-sm text-gray-800 hover:bg-blue-50 hover:text-blue-700 dark:text-white dark:hover:bg-gray-700 transition-colors flex justify-between items-center"
-                                >
-                                    <span x-text="p.description" :class="{'font-bold text-blue-600': selectedId == p.id}"></span>
+                                <li @mousedown.prevent="select(p)"
+                                    class="cursor-pointer select-none px-4 py-2.5 text-sm text-gray-800 hover:bg-blue-50 hover:text-blue-700 dark:text-white dark:hover:bg-gray-700 transition-colors flex justify-between items-center">
+                                    <span x-text="p.description"
+                                        :class="{ 'font-bold text-blue-600': selectedId == p.id }"></span>
                                     <span class="text-xs text-gray-400 font-mono" x-text="p.code"></span>
                                 </li>
                             </template>
@@ -158,13 +153,14 @@
                 </div>
 
                 <div>
-                    <label class="mb-2 block text-sm font-semibold text-gray-700 dark:text-gray-300">Rendimiento Final</label>
-                    
-                    <div class="flex items-center" 
+                    <label class="mb-2 block text-sm font-semibold text-gray-700 dark:text-gray-300">Rendimiento
+                        Final</label>
+
+                    <div class="flex items-center"
                         x-data='{ 
                             open: false, 
                             search: "", 
-                            selectedUnitId: "{{ old("yield_unit_id", data_get($recipe, "yield_unit_id")) }}",
+                            selectedUnitId: "{{ old('yield_unit_id', data_get($recipe, 'yield_unit_id')) }}",
                             units: @json($units ?? []),
 
                             init() {
@@ -216,18 +212,13 @@
                                 <i class="ri-arrow-down-s-line transition-transform duration-200" :class="{'rotate-180': open}"></i>
                             </div>
 
-                            <ul 
-                                x-show="open" 
-                                x-transition.opacity
+                            <ul x-show="open" x-transition.opacity
                                 class="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-xl border border-gray-200 bg-white py-1 shadow-xl ring-1 ring-black ring-opacity-5 focus:outline-none dark:bg-gray-800 dark:border-gray-700"
-                                style="display: none;"
-                            >
+                                style="display: none;">
                                 <template x-for="u in filtered" :key="u.id">
-                                    <li 
-                                        @mousedown.prevent="select(u)"
+                                    <li @mousedown.prevent="select(u)"
                                         class="cursor-pointer select-none px-4 py-2.5 text-sm text-gray-800 hover:bg-blue-50 hover:text-blue-700 dark:text-white dark:hover:bg-gray-700 transition-colors"
-                                        :class="{'bg-blue-50 text-blue-700 font-bold': selectedUnitId == u.id}"
-                                    >
+                                        :class="{ 'bg-blue-50 text-blue-700 font-bold': selectedUnitId == u.id }">
                                         <span x-text="u.description"></span>
                                     </li>
                                 </template>
@@ -259,11 +250,14 @@
         </div>
     </div>
 
-    <div class="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800 overflow-hidden">
-        
-        <div class="flex items-center justify-between border-b border-gray-100 bg-gray-50/50 px-6 py-4 dark:border-gray-700 dark:bg-gray-800">
+    <div
+        class="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800 overflow-hidden">
+
+        <div
+            class="flex items-center justify-between border-b border-gray-100 bg-gray-50/50 px-6 py-4 dark:border-gray-700 dark:bg-gray-800">
             <h3 class="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <span class="flex items-center justify-center w-8 h-8 rounded-lg bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-300">
+                <span
+                    class="flex items-center justify-center w-8 h-8 rounded-lg bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-300">
                     <i class="ri-restaurant-2-fill"></i>
                 </span>
                 Ingredientes y Costos
@@ -277,7 +271,8 @@
         </div>
 
         <div class="p-6">
-            <div class="hidden md:grid md:grid-cols-12 gap-4 mb-3 px-2 text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+            <div
+                class="hidden md:grid md:grid-cols-12 gap-4 mb-3 px-2 text-[11px] font-bold text-gray-400 uppercase tracking-wider">
                 <div class="col-span-5">Insumo / Producto</div>
                 <div class="col-span-2">Cantidad</div>
                 <div class="col-span-2">Costo Unit.</div>
@@ -409,18 +404,18 @@
                             <label class="md:hidden text-xs font-bold text-gray-500 mb-1 block">Total</label>
                             <div class="relative">
                                 <span class="absolute left-3 top-2.5 text-gray-400 text-xs font-bold">S/</span>
-                                <input 
-                                    type="text" 
-                                    readonly
-                                    :value="( (parseFloat(ingredient.quantity)||0) * (parseFloat(ingredient.unit_cost)||0) ).toFixed(2)"
-                                    class="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 pl-9 px-3 text-sm font-bold text-gray-700 focus:outline-none cursor-default dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
-                                >
+                                <input type="text" readonly
+                                    :value="((parseFloat(row.quantity) || 0) * (parseFloat(row.unit_cost) || 0))
+                                    .toFixed(2)"
+                                    class="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 pl-9 px-3 text-sm font-bold text-gray-700 focus:outline-none cursor-default dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
                             </div>
                         </div>
 
                         @if(!$isReadonly)
                         <div class="col-span-1 md:col-span-1 flex justify-center">
-                            <button type="button" @click="removeIngredient(index)" class="flex items-center justify-center w-8 h-8 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors" title="Eliminar fila">
+                            <button type="button" @click="removeIngredient(index)"
+                                class="flex items-center justify-center w-8 h-8 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors"
+                                title="Eliminar fila">
                                 <i class="ri-delete-bin-line text-lg"></i>
                             </button>
                         </div>
@@ -429,7 +424,8 @@
                     </div>
                 </template>
 
-                <div x-show="ingredients.length === 0" class="flex flex-col items-center justify-center py-12 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50/50 dark:border-gray-700 dark:bg-gray-900/20">
+                <div x-show="ingredients.length === 0"
+                    class="flex flex-col items-center justify-center py-12 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50/50 dark:border-gray-700 dark:bg-gray-900/20">
                     <div class="p-4 bg-white rounded-full shadow-sm mb-3 dark:bg-gray-800">
                         <i class="ri-shopping-basket-2-line text-3xl text-blue-500"></i>
                     </div>

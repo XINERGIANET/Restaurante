@@ -332,6 +332,12 @@ class OrderController extends Controller
         // Obtener todos los productos para poder mostrar sus nombres cuando se carga desde localStorage
         $products = Product::pluck('description', 'id')->toArray();
         
+        $viewId = $request->input('view_id');
+        $fromList = $request->input('from') === 'list';
+        $backUrl = ($fromList || $viewId)
+            ? route('orders.list', $viewId ? ['view_id' => $viewId] : [])
+            : route('admin.orders.index', $viewId ? ['view_id' => $viewId] : []);
+
         return view('orders.charge', [
             'documentTypes' => $documentTypes,
             'paymentMethods' => $paymentMethods,
@@ -339,8 +345,8 @@ class OrderController extends Controller
             'cards' => $cards,
             'draftOrder' => $draftOrder,
             'pendingAmount' => $pendingAmount,
-            'products' => $products, // Mapa de ID => descripción
-            
+            'products' => $products,
+            'backUrl' => $backUrl,
         ]);
     }
 
@@ -795,15 +801,14 @@ class OrderController extends Controller
 
     private function resolveActiveCashRegisterId(int $branchId): int
     {
+        // cash_registers no tiene branch_id; branch_id viene de session para movimientos/shifts
         $cashRegisterId = CashRegister::query()
-            ->where('branch_id', $branchId)
             ->where('status', 'A')
             ->orderBy('id')
             ->value('id');
 
         if (!$cashRegisterId) {
             $cashRegisterId = CashRegister::query()
-                ->where('branch_id', $branchId)
                 ->orderBy('id')
                 ->value('id');
         }
