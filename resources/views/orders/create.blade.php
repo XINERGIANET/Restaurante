@@ -592,7 +592,7 @@
 
             function processOrderPayment() {
                 const items = currentTable.items || [];
-                if (items.length === 0) {
+                if (items.length ===     0) {
                     if (typeof showNotification === 'function') {
                         showNotification('Error', 'Agrega productos a la orden antes de cobrar.', 'error');
                     } else {
@@ -627,18 +627,19 @@
                         },
                         body: JSON.stringify(payload)
                     })
+
                     .then(async (response) => {
                         const ct = response.headers.get('content-type');
                         if (ct && ct.includes('application/json')) {
                             return response.json();
                         }
-                        throw new Error(response.status === 419 ? 'Sesión expirada. Recarga la página.' : (response.status === 401 ? 'Debes iniciar sesión.' : 'Error del servidor. Intenta de nuevo.'));
+                        throw new Error(response.status === 419 ? 'Sesión expirada. Recarga la página.' : (response.status === 401 ? 'Debes iniciar sesión.' : (response.status === 500 ? 'Error al procesar el cobro de pedido. Intenta de nuevo.' : 'Error del servidor. Intenta de nuevo.' + response.statusText)));
                     })
                     .then(data => {
                         if (data && data.success && data.movement_id) {
                             const url = new URL("{{ route('admin.orders.charge') }}", window.location.origin);
                             url.searchParams.set('movement_id', data.movement_id);
-                            sessionStorage.setItem('flash_success_message', data.message || 'Pedido cobrado correctamente');
+                                sessionStorage.setItem('flash_success_message', data.message || 'Cobro de pedido procesado correctamente');
                             window.location.href = url.toString();
                         } else {
                             if (typeof showNotification === 'function') {
@@ -652,9 +653,9 @@
                     .catch(error => {
                         console.error('Error:', error);
                         if (typeof showNotification === 'function') {
-                            showNotification('Error', 'Error al procesar el pago.', 'error');
+                            showNotification('Error', 'Error al procesar el cobro de pedido.', 'error');
                         } else {
-                            alert('Error al procesar el pago.');
+                            alert('Error al procesar el cobro de pedido.');
                         }
                     });
             }

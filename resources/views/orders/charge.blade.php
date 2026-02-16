@@ -43,8 +43,8 @@
             </div>
 
             {{-- Columna Derecha: Pago (Sticky) --}}
-            <div
-                class="flex flex-col gap-3 lg:sticky lg:top-4 h-fit max-h-[calc(100vh-80px)] overflow-y-auto custom-scrollbar">
+            <div class="flex flex-col gap-3 lg:sticky lg:top-4 lg:max-h-[calc(100vh-80px)] min-h-0">
+                <div class="flex-1 min-h-0 overflow-y-auto space-y-3 custom-scrollbar">
                 {{-- Totales --}}
                 <div
                     class="rounded-lg border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100 p-3 dark:border-blue-800 dark:from-blue-900/20 dark:to-blue-800/20">
@@ -133,8 +133,9 @@
                     <textarea id="sale-notes" rows="2" placeholder="Ej: Cliente pagó con billete de 50..."
                         class="w-full rounded-lg border border-gray-300 bg-gray-50 px-2.5 py-1.5 text-xs text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400"></textarea>
                 </div>
+                </div>
 
-                {{-- Botón Confirmar (Siempre visible) --}}
+                {{-- Botón Confirmar (Siempre visible, fuera del scroll) --}}
                 <button type="button" id="confirm-btn"
                     class="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:bg-blue-700 active:scale-95 dark:bg-blue-700 dark:hover:bg-blue-800 shrink-0">
                     <i class="fas fa-check-circle mr-1.5"></i>
@@ -178,7 +179,7 @@
                                             {{ $paymentMethod->description }}
                                         </div>
                                     </div>
-                                    <i class="fas fa-check-circle text-sm hidden text-blue-600 dark:text-blue-400"></i>
+                                    <i class="fas fa-check-circle text-sm hidden text-blue-600 dark:text-blue-400"> </i>
                                 </div>
                             </button>
                         @endforeach
@@ -1400,8 +1401,8 @@
                     notes: document.getElementById('sale-notes')?.value || '',
                 };
                 
-                // Si es un borrador, agregar el movement_id para actualizar en lugar de crear
-                if (order.id && order.status === 'draft') {
+                // Siempre enviar movement_id cuando la orden viene del servidor (cobrar desde listado)
+                if (order.id) {
                     payload.movement_id = order.id;
                 }
 
@@ -1470,7 +1471,7 @@
                         // Eliminar la clave activa
                         localStorage.removeItem(ACTIVE_ORDER_KEY_STORAGE);
 
-                        sessionStorage.setItem('flash_success_message', data.message || 'Pedido cobrado correctamente');
+                        sessionStorage.setItem('flash_success_message', data.message || 'Cobro de pedido procesado correctamente');
                         const viewId = new URLSearchParams(window.location.search).get('view_id');
                         const fromList = new URLSearchParams(window.location.search).get('from') === 'list';
                         let url = fromList || viewId
@@ -1480,10 +1481,22 @@
                         window.top.location.href = url;
                     })
                     .catch(err => {
-                        const errorMessage = err.message || 'Error al procesar la venta';
-                        showNotification('Error', errorMessage, 'error');
-                        this.disabled = false;
-                        this.textContent = originalText;
+                        const errorMessage = err.message || 'Error al procesar el cobro de pedido';
+                        const successMsg = 'Cobro de pedido procesado correctamente';
+                        if (errorMessage === successMsg || errorMessage.includes('procesado correctamente')) {
+                            // El cobro fue exitoso pero falló la redirección; mostrar éxito y redirigir
+                            showNotification('Éxito', successMsg, 'success');
+                            sessionStorage.setItem('flash_success_message', successMsg);
+                            const viewId = new URLSearchParams(window.location.search).get('view_id');
+                            const fromList = new URLSearchParams(window.location.search).get('from') === 'list';
+                            let url = fromList || viewId ? "{{ route('orders.list') }}" : "{{ route('admin.orders.index') }}";
+                            if (viewId) url += (url.includes('?') ? '&' : '?') + 'view_id=' + encodeURIComponent(viewId);
+                            window.top.location.href = url;
+                        } else {
+                            showNotification('Error', errorMessage, 'error');
+                            this.disabled = false;
+                            this.textContent = originalText;
+                        }
                     });
             });
         });
