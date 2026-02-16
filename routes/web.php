@@ -389,6 +389,7 @@ Route::middleware('auth')->group(function () {
 
     //Recetario
     Route::resource('/cocina/recetario', RecipeBookController::class)
-        ->names('recipe-book'); 
+        ->names('recipe-book')
+        ->parameters(['recetario' => 'recipe']); 
 });
 

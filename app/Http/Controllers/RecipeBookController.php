@@ -93,7 +93,6 @@ class RecipeBookController extends Controller
         ));
     }
 
-
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -171,75 +170,91 @@ class RecipeBookController extends Controller
         }
     }
 
-
-
-
-
-
-    public function show(Recipe $recipe)
+    public function edit(Request $request, Recipe $recipe)
     {
-        // Seguridad: Verificar que sea de mi empresa
-        if ($recipe->company_id !== Auth::user()->company_id) {
-            abort(403, 'No autorizado');
-        }
-        
-        $recipe->load(['ingredients.product', 'ingredients.unit', 'branch', 'product']);
-        return view('recipe_book.show', compact('recipe'));
-    }
-
-    public function edit(Recipe $recipe)
-    {
-        if ($recipe->company_id !== Auth::user()->company_id) {
-            abort(403, 'No autorizado');
-        }
-
+        $viewId = $request->input('view_id');
         $categories = Category::all();
         $units = Unit::all();
-        
-        // CORRECCIÓN BOOLEANA AQUÍ TAMBIÉN
+        $currentBranchId = session('branch_id');         
+        $companyId = Branch::where('id', $currentBranchId)->value('company_id');
+        $companyBranchIds = Branch::where('company_id', $companyId)->pluck('id');        
         $products = Product::where('recipe', true)
-                           ->orderBy('description')
-                           ->get();
-                           
-        // Sucursales para editar el alcance
+                            ->orderBy('description')
+                            ->get();
+        $productsForRecipe = Product::whereHas('branches', function ($query) use ($companyBranchIds) {
+                $query->whereIn('branches.id', $companyBranchIds);
+            })
+            ->where('recipe', true)
+            ->whereNotIn('id', function($subquery) use ($companyId, $recipe) {
+                $subquery->select('product_id')
+                            ->from('recipes')
+                            ->where('company_id', $companyId)
+                            ->where('id', '!=', $recipe->id); 
+            })
+            ->distinct()
+            ->orderBy('description')
+            ->get();
         $branches = Branch::where('company_id', Auth::user()->company_id)->get();
+        $currentBranchId = session('branch_id');
+        $companyId = Branch::where('id', $currentBranchId)->value('company_id');
+        $companyBranchIds = Branch::where('company_id', $companyId)->pluck('id');
 
-        return view('recipe_book.edit', compact('recipe', 'categories', 'units', 'products', 'branches'));
+        $ingredientsList = Product::whereHas('branches', function ($query) use ($companyBranchIds) {
+                $query->whereIn('branches.id', $companyBranchIds);
+            })
+            ->with(['branches' => function($query) use ($currentBranchId) {
+                $query->where('branches.id', $currentBranchId);
+            }])
+            ->where('type', 'INGREDENT')
+            ->orderBy('description')
+            ->get()
+            ->map(function ($product) {
+                $branch = $product->branches->first();
+                $product->current_price = ($branch && $branch->pivot) ? $branch->pivot->price : 0;
+                return $product;
+            });
+
+        $recipe->load('ingredients.product'); 
+
+        return view('recipe_book.edit', compact(
+            'recipe', 
+            'categories', 
+            'units', 
+            'products', 
+            'branches', 
+            'ingredientsList',
+            'productsForRecipe',
+            'viewId'
+        ));
     }
 
     public function update(Request $request, Recipe $recipe)
     {
-        if ($recipe->company_id !== Auth::user()->company_id) {
-            abort(403, 'No autorizado');
-        }
-
         $validated = $request->validate([
-            // Permitimos cambiar el alcance (branch_id) pero no el producto padre ni empresa
-            'branch_id'  => 'nullable|exists:branches,id', 
-            
-            'code' => 'required|string|unique:recipes,code,' . $recipe->id,
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'category_id' => 'required|exists:categories,id',
-            'yield_unit_id' => 'required|exists:units,id',
-            'yield_quantity' => 'required|numeric|min:0.01',
-            'preparation_time' => 'nullable|integer|min:0',
+            'yield_unit_id'      => 'required|exists:units,id',
+            'yield_quantity'     => 'required|numeric|min:0.01',
+            'status'             => 'required|in:A,I',
+            'preparation_time'   => 'nullable|integer|min:0',
             'preparation_method' => 'nullable|string',
-            'status' => 'required|in:A,I',
-            'notes' => 'nullable|string',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'ingredients' => 'nullable|array',
-            // ... validaciones de items internas igual que store ...
-             'ingredients.*.product_id' => 'required', // simplificado para el ejemplo
-             'ingredients.*.quantity' => 'required|numeric',
-             'ingredients.*.unit_id' => 'required',
-             'ingredients.*.unit_cost' => 'required|numeric',
-             'ingredients.*.notes' => 'nullable',
+            'description'        => 'nullable|string',
+            'notes'              => 'nullable|string',            
+            'image'              => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048', 
+            
+            // Ingredientes
+            'ingredients'        => 'required|array|min:1',
+            'ingredients.*.product_id' => 'required|exists:products,id',
+            'ingredients.*.quantity'   => 'required|numeric|min:0.0001',
+            'ingredients.*.unit_cost'  => 'required|numeric|min:0',
+            'ingredients.*.notes'      => 'nullable|string',
         ]);
 
         DB::beginTransaction();
 
         try {
+            $totalCost = collect($request->ingredients)->sum(function($item) {
+                return (float)$item['quantity'] * (float)$item['unit_cost'];
+            });
+
             if ($request->hasFile('image')) {
                 if ($recipe->image) {
                     Storage::disk('public')->delete($recipe->image);
@@ -248,34 +263,25 @@ class RecipeBookController extends Controller
             }
 
             $recipe->update([
-                'branch_id' => $validated['branch_id'] ?? null, // Actualizar alcance
-                'code' => $validated['code'],
-                'name' => $validated['name'],
-                'description' => $validated['description'],
-                'category_id' => $validated['category_id'],
-                'yield_unit_id' => $validated['yield_unit_id'],
-                'yield_quantity' => $validated['yield_quantity'],
-                'preparation_time' => $validated['preparation_time'],
+                'yield_unit_id'      => $validated['yield_unit_id'],
+                'yield_quantity'     => $validated['yield_quantity'],
+                'preparation_time'   => $validated['preparation_time'],
                 'preparation_method' => $validated['preparation_method'],
-                'status' => $validated['status'],
-                'notes' => $validated['notes'],
-                // No actualizamos image aquí si no cambió, Laravel lo maneja
+                'description'        => $validated['description'],
+                'status'             => $validated['status'],
+                'notes'              => $validated['notes'],
+                'cost_total'         => $totalCost, 
             ]);
 
-            // Re-guardar ingredientes
-            $recipe->ingredients()->delete();
+            $recipe->ingredients()->delete(); // Borra los viejos
             
-            if (isset($validated['ingredients']) && !empty($validated['ingredients'])) {
-                $this->saveIngredients($recipe, $validated['ingredients']);
-            } else {
-                // Si borraron todos los ingredientes, el costo es 0
-                $recipe->update(['cost_total' => 0]);
-            }
+            $this->saveIngredients($recipe->id, $validated['ingredients']);
 
             DB::commit();
 
-            return redirect()->route('recipe-book.show', $recipe)
-                           ->with('success', 'Receta actualizada exitosamente');
+            return redirect()->route('recipe-book.index', ['view_id' => $request->input('view_id')])
+                 ->with('success', 'Receta actualizada exitosamente');
+
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->withInput()->with('error', 'Error al actualizar: ' . $e->getMessage());
@@ -284,10 +290,6 @@ class RecipeBookController extends Controller
 
     public function destroy(Recipe $recipe)
     {
-        if ($recipe->company_id !== Auth::user()->company_id) {
-            abort(403);
-        }
-        
         try {
             if ($recipe->image && Storage::disk('public')->exists($recipe->image)) {
                 Storage::disk('public')->delete($recipe->image);
@@ -297,5 +299,63 @@ class RecipeBookController extends Controller
         } catch (\Exception $e) {
             return back()->with('error', 'Error: ' . $e->getMessage());
         }
+    }
+
+    public function show(Request $request, Recipe $recipe)
+    {
+        $viewId = $request->input('view_id');
+        $categories = Category::all();
+        $units = Unit::all();
+        $currentBranchId = session('branch_id');         
+        $companyId = Branch::where('id', $currentBranchId)->value('company_id');
+        $companyBranchIds = Branch::where('company_id', $companyId)->pluck('id');        
+        $products = Product::where('recipe', true)
+                            ->orderBy('description')
+                            ->get();
+        $productsForRecipe = Product::whereHas('branches', function ($query) use ($companyBranchIds) {
+                $query->whereIn('branches.id', $companyBranchIds);
+            })
+            ->where('recipe', true)
+            ->whereNotIn('id', function($subquery) use ($companyId, $recipe) {
+                $subquery->select('product_id')
+                            ->from('recipes')
+                            ->where('company_id', $companyId)
+                            ->where('id', '!=', $recipe->id); 
+            })
+            ->distinct()
+            ->orderBy('description')
+            ->get();
+        $branches = Branch::where('company_id', Auth::user()->company_id)->get();
+        $currentBranchId = session('branch_id');
+        $companyId = Branch::where('id', $currentBranchId)->value('company_id');
+        $companyBranchIds = Branch::where('company_id', $companyId)->pluck('id');
+
+        $ingredientsList = Product::whereHas('branches', function ($query) use ($companyBranchIds) {
+                $query->whereIn('branches.id', $companyBranchIds);
+            })
+            ->with(['branches' => function($query) use ($currentBranchId) {
+                $query->where('branches.id', $currentBranchId);
+            }])
+            ->where('type', 'INGREDENT')
+            ->orderBy('description')
+            ->get()
+            ->map(function ($product) {
+                $branch = $product->branches->first();
+                $product->current_price = ($branch && $branch->pivot) ? $branch->pivot->price : 0;
+                return $product;
+            });
+
+        $recipe->load('ingredients.product'); 
+
+        return view('recipe_book.show', compact(
+            'recipe', 
+            'categories', 
+            'units', 
+            'products', 
+            'branches', 
+            'ingredientsList',
+            'productsForRecipe',
+            'viewId'
+        ));
     }
 }
