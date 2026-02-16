@@ -368,7 +368,15 @@
                                         <x-ui.badge variant="light" color="{{ $isIngreso ? 'success' : 'error' }}">{{ $isIngreso ? 'Ingreso' : 'Egreso' }}</x-ui.badge>
                                     </td>
                                     <td class="px-3 py-4 sm:px-4 align-middle">
-                                        <x-ui.badge variant="light" color="warning" class="text-[10px]">{{ $conceptName }}</x-ui.badge>
+                                        <x-ui.badge 
+                                            variant="light" 
+                                            :color="
+                                                str_contains(strtolower($conceptName), 'apertura') ? 'blue' : 
+                                                (str_contains(strtolower($conceptName), 'cierre') ? 'danger' : 'warning')
+                                            " 
+                                            class="text-[10px]">
+                                            {{ $conceptName }}
+                                        </x-ui.badge>
                                     </td>
                                     <td class="px-3 py-4 sm:px-4 align-middle">
                                         <p class="font-bold text-gray-800 text-theme-sm dark:text-white/90">S/ {{ number_format($movement->cashMovement?->total ?? 0, 2) }}</p>
@@ -439,9 +447,7 @@
                                         <div class="mx-auto w-full max-w-xl space-y-1 text-center text-gray-800 dark:text-gray-200">
                                             <div class="grid grid-cols-2 border-b border-gray-200 py-2 dark:border-gray-700"><span class="font-semibold">Persona</span><span>{{ $movement->person_name ?: '-' }}</span></div>
                                             <div class="grid grid-cols-2 border-b border-gray-200 py-2 dark:border-gray-700"><span class="font-semibold">Responsable</span><span>{{ $movement->responsible_name ?: '-' }}</span></div>
-                                            <div class="grid grid-cols-2 border-b border-gray-200 py-2 dark:border-gray-700"><span class="font-semibold">Moneda</span><span>{{ $movement->cashMovement?->currency ?: 'PEN' }}</span></div>
-                                            <div class="grid grid-cols-2 border-b border-gray-200 py-2 dark:border-gray-700"><span class="font-semibold">Origen</span><span>{{ $movement->movement?->movementType?->description ?? '-' }} - {{ strtoupper(substr($movement->movement?->documentType?->name , 0, 1))?? '-' }}{{ $movement->movement?->salesMovement->series }}-{{ $movement->number }}</span></div>
-                                            <div class="grid grid-cols-2 border-b border-gray-200 py-2 dark:border-gray-700"><span class="font-semibold">T. cambio</span><span>{{ number_format((float) ($movement->cashMovement?->exchange_rate ?? 1), 3) }}</span></div>
+                                            <div class="grid grid-cols-2 border-b border-gray-200 py-2 dark:border-gray-700"><span class="font-semibold">Origen</span><span>{{ $movement->movement?->movementType?->description ?? '-' }} - {{ strtoupper(substr($movement->movement?->documentType?->name , 0, 1))?? '-' }}{{ $movement->movement?->salesMovement?->series }}-{{ $movement->number }}</span></div>
                                             <div class="grid grid-cols-2 py-2"><span class="font-semibold">Comentario</span><span>{{ $movement->comment ?: '-' }}</span></div>
                                         </div>
                                     </td>
