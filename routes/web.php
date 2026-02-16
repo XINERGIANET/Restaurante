@@ -182,6 +182,9 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/Pedidos/cancelar', [OrderController::class, 'cancelOrder'])
         ->name('admin.orders.cancelOrder');
+
+    Route::post('/Pedidos/abrir-mesa', [OrderController::class, 'openTable'])
+        ->name('admin.orders.openTable');
     // dashboard pages
     Route::get('/', [\App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
 

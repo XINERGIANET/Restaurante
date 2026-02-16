@@ -47,8 +47,9 @@
         </nav>
     </div>
 
-    <div class="flex items-stretch w-full bg-slate-100 fade-in h-full pb-10" style="--brand:#3B82F6;">
-        <main class="flex-1 flex flex-col min-w-0">
+    <div class="rounded-2xl border border-gray-200 dark:border-gray-300 overflow-hidden bg-white dark:bg-gray-900 fade-in" style="--brand:#3B82F6;">
+        <div class="flex items-stretch w-full bg-white dark:bg-gray-800/50 min-h-[calc(100vh-12rem)] pb-10">
+        <main class="flex-1 flex flex-col min-w-0 bg-white dark:bg-gray-900/50">
             <header class="h-20 px-6 flex items-center justify-between bg-white border-b border-gray-200 shadow-sm z-10">
                 <div class="flex items-center gap-4">
                     <button onclick="goBack()" 
@@ -96,7 +97,7 @@
                 </div>
             </header>
 
-            <div class="p-6 bg-[#F3F4F6]">                
+            <div class="p-6 bg-white">                
                 <div class="flex items-center justify-between mb-4">                    
                     <h3 class="font-bold text-base">Categoría</h3>
                     <div class="w-64 hidden md:block relative">
@@ -116,7 +117,7 @@
         </main>
 
         <aside
-            class=" flex-none flex flex-col shadow-2xl overflow-hidden">
+            class="flex-none flex flex-col shadow-2xl overflow-hidden w-[350px] bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700">
 
             {{-- Header Carrito --}}
             <div class="h-16 px-6 border-b border-gray-200 bg-white flex justify-between items-center shrink-0 gap-2">
@@ -132,7 +133,7 @@
             <div id="cart-container" class="flex-1 overflow-y-auto p-5 space-y-3 bg-white"></div>
 
             {{-- Footer Totales --}}
-            <div class="p-6 bg-slate-100 border-t border-gray-300 shadow-[0_-5px_25px_rgba(0,0,0,0.05)] shrink-0">
+            <div class="p-6 bg-white border-t border-gray-300">
                 <div class="space-y-3 mb-5 text-sm">
                     <div class="flex justify-between text-gray-500 font-medium">
                         <span>Subtotal</span>
@@ -148,11 +149,7 @@
                         <span class="text-3xl font-black text-blue-600" id="ticket-total">$0.00</span>
                     </div>
                 </div>
-                <div class="grid grid-cols-2 gap-2">
-                    <button onclick="processOrder()"
-                        class="py-1.5 rounded-xl border border-gray-300 bg-white text-gray-700 font-bold hover:bg-gray-50 shadow-sm transition-all">
-                        Guardar
-                    </button>
+                <div class="grid grid-cols-1 gap-2">
                     <button onclick="processOrderPayment()"
                         class="py-1.5 px-2 rounded-xl bg-blue-600 text-white font-bold shadow-lg shadow-blue-500/30 hover:bg-blue-700 active:scale-95 transition-all flex justify-center items-center gap-2">
                         <span>Cobrar</span> <i class="fas fa-check-circle"></i>
@@ -160,6 +157,7 @@
                 </div>
             </div>
         </aside>
+        </div>
     </div>
 
     <div id="notification" class="fixed top-24 right-8 z-50 max-w-sm opacity-0 pointer-events-none transition-opacity duration-300" aria-live="polite"></div>
@@ -183,6 +181,7 @@
             let db = JSON.parse(localStorage.getItem('restaurantDB'));
             if (!db) db = {};
             let activeKey = `table-{{ $table->id }}`;
+            let autoSaveTimer = null;
             // Si la mesa está libre en el servidor, no restaurar borrador local: así no se muestran
             // productos en una mesa que aún no se abrió (no se guardó pedido).
             const tableIsFree = (serverTable.status || '').toLowerCase() === 'libre';
@@ -193,6 +192,18 @@
             }
 
             function init() {
+                // Marcar la mesa como ocupada al abrir la vista
+                const tableId = currentTable.table_id ?? currentTable.id ?? {{ $table->id }};
+                fetch('{{ route('admin.orders.openTable') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ table_id: tableId })
+                }).catch(() => {});
+
                 // Inicializar datos de la mesa
                 if (document.getElementById('pos-table-name')) {
                     document.getElementById('pos-table-name').innerText = currentTable.name ||
@@ -213,6 +224,9 @@
                 refreshCartPricesFromServer();
                 renderProducts();
                 renderTicket();
+                if (currentTable.items && currentTable.items.length > 0) {
+                    setTimeout(scheduleAutoSave, 800);
+                }
             }
 
             // Función para escapar HTML y prevenir XSS
@@ -601,7 +615,54 @@
                     currentTable.isActive = true;
                     db[activeKey] = currentTable;
                     localStorage.setItem('restaurantDB', JSON.stringify(db));
+                    if (currentTable.items && currentTable.items.length > 0) {
+                        scheduleAutoSave();
+                    }
                 }
+            }
+
+            function scheduleAutoSave() {
+                if (autoSaveTimer) clearTimeout(autoSaveTimer);
+                autoSaveTimer = setTimeout(autoSaveToServer, 1500);
+            }
+
+            function autoSaveToServer() {
+                autoSaveTimer = null;
+                const items = currentTable.items || [];
+                if (items.length === 0) return;
+                const totals = calculateTotalsFromItems(items);
+                const order = {
+                    items: items,
+                    table_id: currentTable.table_id ?? currentTable.id,
+                    area_id: currentTable.area_id ?? null,
+                    subtotal: totals.subtotal,
+                    tax: totals.tax,
+                    total: totals.total,
+                    people_count: currentTable.people_count ?? 0,
+                    contact_phone: currentTable.contact_phone ?? null,
+                    delivery_address: currentTable.delivery_address ?? null,
+                    delivery_time: currentTable.delivery_time ?? null,
+                    delivery_amount: currentTable.delivery_amount ?? 0,
+                    order_movement_id: currentTable.order_movement_id ?? null,
+                };
+                fetch('{{ route('admin.orders.process') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(order)
+                })
+                .then(res => res.headers.get('content-type')?.includes('application/json') ? res.json() : Promise.reject(new Error('Respuesta inválida')))
+                .then(data => {
+                    if (data && data.success) {
+                        if (data.order_movement_id) currentTable.order_movement_id = data.order_movement_id;
+                        if (data.movement_id) currentTable.movement_id = data.movement_id;
+                        saveDB();
+                    }
+                })
+                .catch(() => {});
             }
 
             function processOrder() {

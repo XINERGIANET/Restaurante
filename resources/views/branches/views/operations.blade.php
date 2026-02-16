@@ -18,7 +18,7 @@
                 ['label' => $view->name . ' | Operaciones']
             ]"
         />
-
+        {{-- CARD OPERACIONES --}}
         <x-common.component-card
             title="Operaciones de {{ $view->name }}"
             desc="Operaciones asignadas en la sucursal {{ $branch->legal_name }}."
@@ -87,6 +87,7 @@
                 </div>
             </div>
 
+            {{-- TABLA OPERACIONES --}}
             <div class="mt-4 rounded-xl border border-gray-200 bg-white overflow-visible dark:border-gray-800 dark:bg-white/[0.03]">
                 <table class="w-full">
                     <thead>
@@ -176,6 +177,7 @@
                 </table>
             </div>
 
+            {{-- PAGINACION --}}
             <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div class="text-sm text-gray-500">
                     Mostrando
@@ -189,8 +191,9 @@
                     {{ $operations->links() }}
                 </div>
             </div>
+            
         </x-common.component-card>
-
+        {{-- MODAL ASIGNAR OPERACIONES --}}
         <x-ui.modal x-data="{ open: false }" @open-assign-operations-modal.window="open = true" @close-assign-operations-modal.window="open = false" :isOpen="false" :showCloseButton="false" class="max-w-3xl">
             <div class="p-6 sm:p-8">
                 <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -282,5 +285,6 @@
                 </form>
             </div>
         </x-ui.modal>
+
     </div>
 @endsection

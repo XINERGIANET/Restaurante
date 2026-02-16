@@ -296,45 +296,45 @@
 
             {{-- TABLA --}}
             <div
-                class="table-responsive mt-4 rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+                class="table-responsive mt-4 overflow-x-auto max-w-full rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
                 <div class="max-w-full">
-                    <table class="w-max min-w-[880px]">
+                    <table class="w-full min-w-full">
                         <thead style="background-color: #63B7EC; color: #FFFFFF;">
                             <tr class="text-white" >
                                 <th class="px-5 py-3 text-center sm:px-6 sticky-left-header">
                                     <p class="font-medium text-theme-xs dark:text-white">Orden</p>
                                 </th>
-                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                                <th  class="px-5 py-3 text-left sm:px-6">
                                     <p class="font-semibold text-white text-theme-xs uppercase">Numero</p>
                                 </th>
-                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                                <th  class="px-5 py-3 text-left sm:px-6">
                                     <p class="font-semibold text-white text-theme-xs uppercase">Tipo</p>
                                 </th>
-                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                                <th  class="px-5 py-3 text-left sm:px-6">
                                     <p class="font-semibold text-white text-theme-xs uppercase">Concepto</p>
                                 </th>
-                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                                <th  class="px-5 py-3 text-left sm:px-6">
                                     <p class="font-semibold text-white text-theme-xs uppercase">Total</p>
                                 </th>
-                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                                <th  class="px-5 py-3 text-left sm:px-6">
                                     <p class="font-semibold text-white text-theme-xs uppercase">Fecha</p>
                                 </th>
-                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                                <th  class="px-5 py-3 text-left sm:px-6">
                                     <p class="font-semibold text-white text-theme-xs uppercase">Usuario</p>
                                 </th>
-                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="hidden lg:table-cell px-5 py-3 text-left sm:px-6">
+                                <th  class="hidden lg:table-cell px-5 py-3 text-left sm:px-6">
                                     <p class="font-semibold text-white text-theme-xs uppercase">Caja</p>
                                 </th>
-                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="hidden xl:table-cell px-5 py-3 text-left sm:px-6">
+                                <th  class="hidden xl:table-cell px-5 py-3 text-left sm:px-6">
                                     <p class="font-semibold text-white text-theme-xs uppercase">Turno</p>
                                 </th>
-                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                                <th  class="px-5 py-3 text-left sm:px-6">
                                     <p class="font-semibold text-white text-theme-xs uppercase">Situacion</p>
                                 </th>
-                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                                <th  class="px-5 py-3 text-left sm:px-6">
                                     <p class="font-semibold text-white text-theme-xs uppercase">Metodos de pago</p>
                                 </th>
-                                <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-right sm:px-6 last:rounded-tr-xl">
+                                <th  class="px-5 py-3 text-right sm:px-6 last:rounded-tr-xl">
                                     <p class="font-semibold text-white text-theme-xs uppercase">Operaciones</p>
                                 </th>
                             </tr>
@@ -353,7 +353,7 @@
                                         ->implode(' | ');
                                 @endphp
                                 <tbody x-data="{ expanded: false }">
-                                 <tr class="border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-white/5 align-top">
+                                <tr class="border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-white/5 align-top">
                                     <td class="px-3 py-4 text-center sticky-left">
                                         <button type="button" @click="expanded = !expanded"
                                             class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-500 text-white transition hover:bg-brand-600 dark:bg-brand-500 dark:text-white">
@@ -461,6 +461,7 @@
                                 </tbody>
                             @endforelse
                     </table>
+                </div>
             </div>
             <div class="mt-4">{{ $movements->links() }}</div>
 

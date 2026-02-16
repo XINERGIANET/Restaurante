@@ -929,7 +929,34 @@ class OrderController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Mesa liberada correctamente',
+            'message' => 'Mesa cerrada correctamente',
+        ]);
+    }
+
+    public function openTable(Request $request)
+    {
+        $tableId = $request->input('table_id');
+        if (!$tableId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Mesa no encontrada',
+            ], 404);
+        }
+        $table = Table::find($tableId);
+        if (!$table) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Mesa no encontrada',
+            ], 404);
+        }
+
+        $table->situation = 'ocupada';
+        $table->opened_at = $table->opened_at ?? now();
+        $table->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Mesa abierta',
         ]);
     }
 }
