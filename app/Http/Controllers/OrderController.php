@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Http\Controllers;
+
 use App\Models\Area;
 use App\Models\Branch;
 use App\Models\Card;
@@ -81,7 +82,7 @@ class OrderController extends Controller
             ->when($branchId, function ($query) use ($branchId) {
                 $query->where('branch_id', $branchId);
             })
-            
+
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
                     $inner->whereHas('movement', function ($movementQuery) use ($search) {
@@ -91,13 +92,13 @@ class OrderController extends Controller
                                 ->orWhere('user_name', 'ILIKE', "%{$search}%");
                         });
                     })
-                    ->orWhere('status', 'ILIKE', "%{$search}%");
+                        ->orWhere('status', 'ILIKE', "%{$search}%");
                 });
             })
             ->orderByDesc('id')
             ->paginate($perPage)
             ->withQueryString();
-      
+
         return view('orders.list', [
             'orders' => $orders,
             'search' => $search,
@@ -182,31 +183,31 @@ class OrderController extends Controller
         $profileId = session('profile_id');
         $personId = session('person_id');
         $userId = session('user_id');
-        
+
         $user = User::find($userId);
         $person = Person::find($personId);
         $profile = Profile::find($profileId);
         $branch = Branch::find($branchId);
-        
+
         // Buscar la mesa y cargar su área relacionada
         $table = Table::with('area')->find($tableId);
-        
+
         if (!$table) {
             abort(404, 'Mesa no encontrada');
         }
-        
+
         // Obtener el área de la relación de la mesa o buscar por área_id si no está relacionada
         $area = $table->area;
         if (!$area && $request->has('area_id')) {
             $area = Area::find($request->query('area_id'));
         }
-        
+
         $products = Product::where('type', 'PRODUCT')
             ->with('category')
             ->get()
-            ->map(function($product) use ($table, $tableId, $branchId) {
+            ->map(function ($product) use ($table, $tableId, $branchId) {
                 $imageUrl = ($product->image && !empty($product->image))
-                    ? asset('storage/' . $product->image) 
+                    ? asset('storage/' . $product->image)
                     : null;
                 return [
                     'id' => $product->id,
@@ -217,11 +218,11 @@ class OrderController extends Controller
                     'branch_id' => $branchId
                 ];
             });
-        
+
         $productBranches = ProductBranch::where('branch_id', $branchId)
             ->with(['product', 'taxRate'])
             ->get()
-            ->map(function($productBranch) {
+            ->map(function ($productBranch) {
                 $taxRatePct = $productBranch->taxRate ? (float) $productBranch->taxRate->tax_rate : null;
                 return [
                     'id' => $productBranch->id,
@@ -233,7 +234,7 @@ class OrderController extends Controller
             });
         $categories = Category::orderBy('description')->get();
         $units = Unit::orderBy('description')->get();
-        
+
         return view('orders.create', [
             'user' => $user,
             'person' => $person,
@@ -251,26 +252,37 @@ class OrderController extends Controller
     public function charge(Request $request)
     {
 
+        $saleOrOrderTypeIds = MovementType::query()
+            ->where(function ($q) {
+                $q->where('description', 'like', '%venta%')
+                    ->orWhere('description', 'like', '%sale%')
+                    ->orWhere('description', 'like', '%pedido%')
+                    ->orWhere('description', 'like', '%orden%');
+            })
+            ->pluck('id')
+            ->unique()
+            ->values()
+            ->all();
         $documentTypes = DocumentType::query()
             ->orderBy('name')
-            ->where('movement_type_id', 2)
+            ->whereIn('movement_type_id', !empty($saleOrOrderTypeIds) ? $saleOrOrderTypeIds : [2])
             ->get(['id', 'name']);
-        
+
         $paymentMethods = PaymentMethod::query()
             ->where('status', true)
             ->orderBy('order_num')
             ->get(['id', 'description', 'order_num']);
-        
+
         $paymentGateways = PaymentGateways::query()
             ->where('status', true)
             ->orderBy('order_num')
             ->get(['id', 'description', 'order_num']);
-        
+
         $cards = Card::query()
             ->where('status', true)
             ->orderBy('order_num')
             ->get(['id', 'description', 'type', 'icon', 'order_num']);
-        
+
         // Si se pasa un movement_id, cargar la orden pendiente (pedido o venta)
         $draftOrder = null;
         $pendingAmount = 0;
@@ -328,10 +340,10 @@ class OrderController extends Controller
                 ];
             }
         }
-        
+
         // Obtener todos los productos para poder mostrar sus nombres cuando se carga desde localStorage
         $products = Product::pluck('description', 'id')->toArray();
-        
+
         $viewId = $request->input('view_id');
         $fromList = $request->input('from') === 'list';
         $backUrl = ($fromList || $viewId)
@@ -384,9 +396,9 @@ class OrderController extends Controller
             // Si hay mesa, buscar pedido pendiente existente para actualizar en lugar de crear uno nuevo
             $existingOrderMovement = $tableId
                 ? OrderMovement::where('table_id', $tableId)
-                    ->whereIn('status', ['PENDIENTE', 'P'])
-                    ->orderByDesc('id')
-                    ->first()
+                ->whereIn('status', ['PENDIENTE', 'P'])
+                ->orderByDesc('id')
+                ->first()
                 : null;
 
             if ($existingOrderMovement && !empty($items)) {
@@ -442,8 +454,8 @@ class OrderController extends Controller
                     'responsible_name' => $user?->name ?? 'Sistema',
                     'comment' => 'Pedido desde punto de venta',
                     'status' => 'A',
-                    'movement_type_id' => 5,
-                    'document_type_id' => 11,
+                    'movement_type_id' => $movementType->id,
+                    'document_type_id' => $documentType->id,
                     'branch_id' => $branchId,
                     'parent_movement_id' => null,
                 ]);
@@ -478,39 +490,39 @@ class OrderController extends Controller
                 }
             }
 
-        foreach ($items as $rawItem) {
-            $productId = $rawItem['product_id'] ?? $rawItem['pId'] ?? null;
-            $product = $productId ? Product::find($productId) : null;
+            foreach ($items as $rawItem) {
+                $productId = $rawItem['product_id'] ?? $rawItem['pId'] ?? null;
+                $product = $productId ? Product::find($productId) : null;
 
-            $qty = (float) ($rawItem['quantity'] ?? $rawItem['qty'] ?? 1);
-            $price = (float) ($rawItem['price'] ?? 0);
-            $amount = $qty * $price;
+                $qty = (float) ($rawItem['quantity'] ?? $rawItem['qty'] ?? 1);
+                $price = (float) ($rawItem['price'] ?? 0);
+                $amount = $qty * $price;
 
-            $unitId = $rawItem['unit_id'] ?? ($product?->unit_id ?? null);
-            if (!$unitId) {
-                $unitId = Unit::query()->value('id'); // unidad por defecto
+                $unitId = $rawItem['unit_id'] ?? ($product?->unit_id ?? null);
+                if (!$unitId) {
+                    $unitId = Unit::query()->value('id'); // unidad por defecto
+                }
+
+                $code = $rawItem['code'] ?? ($product?->code ?? (string) $productId);
+                $description = $rawItem['description'] ?? ($product?->description ?? ($rawItem['name'] ?? 'Producto'));
+
+                OrderMovementDetail::create([
+                    'order_movement_id' => $orderMovement->id,
+                    'product_id' => $productId,
+                    'code' => $code,
+                    'description' => $description,
+                    'product_snapshot' => $product ? $product->toArray() : null,
+                    'unit_id' => $unitId,
+                    'tax_rate_id' => $rawItem['tax_rate_id'] ?? null,
+                    'tax_rate_snapshot' => $rawItem['tax_rate_snapshot'] ?? null,
+                    'quantity' => $qty,
+                    'amount' => $amount,
+                    'branch_id' => $branchId,
+                    'comment' => $rawItem['note'] ?? null,
+                ]);
             }
 
-            $code = $rawItem['code'] ?? ($product?->code ?? (string) $productId);
-            $description = $rawItem['description'] ?? ($product?->description ?? ($rawItem['name'] ?? 'Producto'));
-
-            OrderMovementDetail::create([
-                'order_movement_id' => $orderMovement->id,
-                'product_id' => $productId,
-                'code' => $code,
-                'description' => $description,
-                'product_snapshot' => $product ? $product->toArray() : null,
-                'unit_id' => $unitId,
-                'tax_rate_id' => $rawItem['tax_rate_id'] ?? null,
-                'tax_rate_snapshot' => $rawItem['tax_rate_snapshot'] ?? null,
-                'quantity' => $qty,
-                'amount' => $amount,
-                'branch_id' => $branchId,
-                'comment' => $rawItem['note'] ?? null,
-            ]);
-        }
-
-        DB::commit();
+            DB::commit();
 
             if ($request->expectsJson()) {
                 return response()->json([
@@ -520,7 +532,6 @@ class OrderController extends Controller
                     'order_movement_id' => $orderMovement->id,
                 ]);
             }
-
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Error al procesar pedido', [
@@ -568,10 +579,15 @@ class OrderController extends Controller
 
                 $orderBaseMovement = Movement::find($orderMovement->movement_id);
                 if ($orderBaseMovement) {
-                    $orderBaseMovement->update([
+                    $updateData = [
                         'status' => 'A',
                         'moved_at' => now(),
-                    ]);
+                    ];
+                    $requestDocumentTypeId = $request->input('document_type_id');
+                    if ($requestDocumentTypeId && DocumentType::where('id', $requestDocumentTypeId)->exists()) {
+                        $updateData['document_type_id'] = (int) $requestDocumentTypeId;
+                    }
+                    $orderBaseMovement->update($updateData);
                 }
 
                 $paymentConcept = $this->resolveOrderPaymentConcept();
@@ -698,6 +714,14 @@ class OrderController extends Controller
                 }
 
                 DB::commit();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Cobro de pedido procesado correctamente',
+                    'movement_id' => $orderMovement?->movement_id,
+                    'order_movement_id' => $orderMovement?->id,
+                    'cash_movement_id' => $cashEntryMovement?->id,
+                ]);
             } catch (\Throwable $e) {
                 DB::rollBack();
                 Log::error('Error al procesar cobro de pedido', [
@@ -712,20 +736,10 @@ class OrderController extends Controller
             }
         }
 
-        try {
-            return response()->json([
-                'success' => true,
-                'message' => 'Pedido cobrado correctamente',
-                'movement_id' => $orderMovement?->movement_id,
-                'order_movement_id' => $orderMovement?->id,
-                'cash_movement_id' => $cashEntryMovement?->id,
-            ]);
-        } catch (\Throwable $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al procesar el pago',
-            ], 500);
-        }
+        return response()->json([
+            'success' => false,
+            'message' => 'No se encontró un pedido pendiente para esta mesa. Guarda el pedido antes de cobrar.',
+        ], 404);
     }
 
     private function generateOrderMovementNumber(int $branchId, int $movementTypeId, int $documentTypeId): string
@@ -735,23 +749,34 @@ class OrderController extends Controller
             ->where('movement_type_id', $movementTypeId)
             ->where('document_type_id', $documentTypeId)
             ->lockForUpdate();
-
         $lastCorrelative = 0;
         $numbers = $query->pluck('number');
+
         foreach ($numbers as $number) {
             $raw = trim((string) $number);
             if ($raw === '') {
                 continue;
             }
+
             if (preg_match('/^\d+$/', $raw) === 1) {
                 $value = (int) $raw;
+                if ($value > $lastCorrelative) {
+                    $lastCorrelative = $value;
+                }
+                continue;
+            }
+
+            if (preg_match('/(\d+)-\d{4}$/', $raw, $matches) === 1) {
+                $value = (int) $matches[1];
                 if ($value > $lastCorrelative) {
                     $lastCorrelative = $value;
                 }
             }
         }
 
-        return str_pad((string) ($lastCorrelative + 1), 8, '0', STR_PAD_LEFT);
+        $nextCorrelative = $lastCorrelative + 1;
+
+        return str_pad((string) $nextCorrelative, 8, '0', STR_PAD_LEFT);
     }
 
     private function resolveCashMovementTypeId(): int
@@ -902,6 +927,7 @@ class OrderController extends Controller
 
         $table->situation = 'libre';
         $table->opened_at = null;
+
         $table->save();
 
         return response()->json([
@@ -910,4 +936,3 @@ class OrderController extends Controller
         ]);
     }
 }
-
