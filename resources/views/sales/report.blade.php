@@ -47,7 +47,7 @@
                 <div
                     class="shrink-0 border-t border-gray-200 pt-4 lg:border-t-0 lg:border-l lg:border-gray-200 lg:pl-6 lg:pt-0">
                     <button type="button"
-                        class="inline-flex h-10 items-center justify-center gap-1.5 rounded-lg bg-orange-600 px-4 text-sm font-medium text-white shadow-sm hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2">
+                        class="inline-flex h-10 items-center justify-center gap-1.5 rounded-lg bg-red-500 text-white     px-4 text-sm font-medium shadow-sm hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2">
                         <i class="ri-file-pdf-line"></i> Descargar PDF
                     </button>
                 </div>

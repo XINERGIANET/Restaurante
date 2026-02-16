@@ -32,10 +32,20 @@ class SalesController extends Controller
 
     public function index(Request $request)
     {
-        $search = $request->input('search');
+        $branchId = session('branch_id'); 
+        $profileId = session('profile_id') ?? $request->user()?->profile_id;
         $viewId = $request->input('view_id');
-        $branchId = $request->session()->get('branch_id');
-        $profileId = $request->session()->get('profile_id') ?? $request->user()?->profile_id;
+        $search = $request->input('search');
+        $dateFrom = $request->input('date_from');
+        $dateTo = $request->input('date_to');
+        $personId = $request->input('person_id');
+        $documentTypeId = $request->input('document_type_id');
+        $perPage = (int) $request->input('per_page', 10);
+        $allowedPerPage = [10, 20, 50, 100];
+        if (!in_array($perPage, $allowedPerPage, true)) {
+            $perPage = 10;
+        }
+
         $operaciones = collect();
         if ($viewId && $branchId && $profileId) {
             $operaciones = Operation::query()
@@ -61,32 +71,73 @@ class SalesController extends Controller
                 ->get();
         }
 
-        $perPage = (int) $request->input('per_page', 10);
-        $allowedPerPage = [10, 20, 50, 100];
-        if (!in_array($perPage, $allowedPerPage, true)) {
-            $perPage = 10;
+        $documentTypes = DocumentType::query()
+            ->where('movement_type_id', 2)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        $query = Movement::query()
+            ->with(['branch', 'person', 'movementType', 'documentType', 'salesMovement'])
+            ->where('movement_type_id', 2) 
+            ->where('branch_id', $branchId)
+            ->whereHas('salesMovement');
+
+        if ($documentTypeId !== null && $documentTypeId !== '' && is_numeric($documentTypeId)) {
+            $query->where('document_type_id', (int) $documentTypeId);
         }
 
-        $sales = Movement::query()
-            ->with(['branch', 'person', 'movementType', 'documentType', 'salesMovement'])
-            ->where('movement_type_id', 2) //2 es venta
-            ->when($search, function ($query) use ($search) {
-                $query->where(function ($inner) use ($search) {
-                    $inner->where('number', 'ILIKE', "%{$search}%")
-                        ->orWhere('person_name', 'ILIKE', "%{$search}%")
-                        ->orWhere('user_name', 'ILIKE', "%{$search}%");
-                });
-            })
-            ->orderByDesc('id')
+        if ($search !== null && $search !== '') {
+            $query->where(function ($inner) use ($search) {
+                $inner->where('number', 'like', "%{$search}%")
+                    ->orWhere('person_name', 'like', "%{$search}%")
+                    ->orWhere('user_name', 'like', "%{$search}%");
+            });
+        }
+
+        // Filtros Adicionales
+        if ($personId !== null && $personId !== '') {
+            $query->where('person_id', $personId);
+        }
+        if ($dateFrom !== null && $dateFrom !== '') {
+            $query->where('moved_at', '>=', $dateFrom);
+        }
+        if ($dateTo !== null && $dateTo !== '') {
+            $query->where('moved_at', '<=', $dateTo);
+        }
+
+        $sales = $query->orderBy('moved_at', 'desc') 
             ->paginate($perPage)
             ->withQueryString();
-        
-        return view('sales.index', [
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true, 
+                'sales' => $sales, 
+                'pagination' => [
+                    'current_page' => $sales->currentPage(),
+                    'last_page' => $sales->lastPage(),
+                    'per_page' => $sales->perPage(),
+                    'total' => $sales->total(),
+                ]
+            ]);
+        }
+
+        $viewData = [
             'sales' => $sales,
             'search' => $search,
             'perPage' => $perPage,
+            'allowedPerPage' => $allowedPerPage,
             'operaciones' => $operaciones,
-        ] + $this->getFormData());
+            'viewId' => $viewId,
+            'branchId' => $branchId,
+            'dateFrom' => $dateFrom,
+            'dateTo' => $dateTo,
+            'documentTypeId' => $documentTypeId,
+            'documentTypes' => $documentTypes,
+            'personId' => $personId,
+        ];
+
+        return view('sales.index', $viewData);
     }
 
     public function create()

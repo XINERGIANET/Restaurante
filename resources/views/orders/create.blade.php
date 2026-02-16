@@ -7,7 +7,13 @@
         <div class="flex items-center gap-2">
             <span class="text-gray-500 dark:text-gray-400"><i class="ri-restaurant-fill"></i></span>
             <h2 class="text-xl font-semibold text-gray-800 dark:text-white/90">
-                Salones de Pedidos
+                <div class="flex items-center gap-2">
+                    <h2 class="text-xl font-bold text-slate-800">
+                        Mesa <span id="pos-table-name">{{ $table->name ?? $table->id }}</span>
+                    </h2>
+                    <span id="pos-table-area"
+                        class="text-[10px] font-bold px-2 py-0.5 bg-gray-100 text-gray-500 rounded uppercase tracking-wider border border-gray-200">--</span>
+                </div>
             </h2>
         </div>
         <nav>
@@ -26,7 +32,7 @@
                 <li>
                     <a class="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400"
                         href="{{ route('admin.orders.index') }}">
-                        crear orden
+                        Crear orden
                         <svg class="stroke-current" width="17" height="16" viewBox="0 0 17 16" fill="none"
                             xmlns="http://www.w3.org/2000/svg">
                             <path d="M6.0765 12.667L10.2432 8.50033L6.0765 4.33366" stroke="" stroke-width="1.2"
@@ -40,86 +46,85 @@
             </ol>
         </nav>
     </div>
-    {{-- 
-        CAMBIO 1: Contenedor Principal
-        - Quitamos 'h-[calc...]' y 'overflow-hidden'.
-        - Usamos 'min-h-screen' y 'items-start' para permitir scroll natural.
-    --}}
+
     <div class="flex items-stretch w-full bg-slate-100 fade-in h-full pb-10" style="--brand:#3B82F6;">
-
-        {{-- ================= SECCIÓN IZQUIERDA: MENÚ (FLUJO NATURAL) ================= --}}
-        {{-- CAMBIO 2: Quitamos 'h-full', 'overflow-y-auto' y 'relative' para que crezca con el contenido --}}
         <main class="flex-1 flex flex-col min-w-0">
-
-            {{-- Header (Se mueve con la página) --}}
             <header class="h-20 px-6 flex items-center justify-between bg-white border-b border-gray-200 shadow-sm z-10">
                 <div class="flex items-center gap-4">
-                    <button onclick="goBack()"
-                        class="h-10 w-10 rounded-lg bg-gray-50 border border-gray-200 text-gray-500 hover:text-blue-600 hover:border-blue-600 transition-colors flex items-center justify-center">
-                        <i class="fas fa-arrow-left"></i>
+                    <button onclick="goBack()" 
+                        title="Volver atrás"
+                        class="h-10 w-10 rounded-lg bg-gray-50 border border-gray-200 text-gray-500 hover:text-blue-600 hover:border-blue-600 transition-colors flex items-center justify-center shadow-sm">
+                        <i class="ri-arrow-left-line text-xl"></i>
                     </button>
-                    <div>
-                        <div class="flex items-center gap-2">
-                            <h2 class="text-xl font-bold text-slate-800">
-                                Mesa <span id="pos-table-name" class="text-blue-600">{{ $table->name ?? $table->id }}</span>
-                            </h2>
-                            <span id="pos-table-area"
-                                class="text-[10px] font-bold px-2 py-0.5 bg-gray-100 text-gray-500 rounded uppercase tracking-wider border border-gray-200">--</span>
-                        </div>
-                        <div class="flex flex-col text-xs mt-0.5 text-gray-500 font-medium">
-                            <div class="flex items-center">
-                                <span class="inline-block w-14 text-gray-400">Mozo:</span>
-                                <span id="pos-waiter-name"
-                                    class="text-slate-700 font-semibold truncate max-w-[150px]">{{ $user?->name ?? 'Sin asignar' }}</span>
+
+                    <div class="flex items-center gap-6 text-sm text-gray-500 font-medium">
+                        <div class="flex items-center gap-2 group">
+                            <span class="text-gray-400">Mozo:</span>
+                            <div class="relative flex items-center">
+                                <select onchange="changeWaiter(this.value)"
+                                    class="appearance-none bg-transparent border-none p-0 pr-2 text-slate-700 font-bold cursor-pointer focus:ring-0 text-sm truncate max-w-[120px]">
+                                    <option value="{{ $user?->id }}" selected>{{ $user?->name ?? 'Sin asignar' }}</option>
+                                </select>
                             </div>
-                            <div class="flex items-center">
-                                <span class="inline-block w-14 text-gray-400">Cliente:</span>
-                                <span id="pos-client-name"
-                                    class="text-slate-700 font-semibold truncate max-w-[150px]">{{ $person?->name ?? 'Sin cliente' }}</span>
+                        </div>
+
+                        <div class="h-4 w-px bg-gray-300"></div>
+
+                        <div class="flex items-center gap-2 group">
+                            <span class="text-gray-400">Cliente:</span>
+                            <div class="relative flex items-center">
+                                <select onchange="changeClient(this.value)"
+                                    class="appearance-none bg-transparent border-none p-0 pr-2 text-slate-700 font-bold cursor-pointer focus:ring-0 text-sm truncate max-w-[150px]">
+                                    <option value="{{ $person?->id }}" selected>{{ $person?->name ?? 'Público General' }}</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="h-4 w-px bg-gray-300"></div>
+
+                        <div class="flex items-center gap-2 group">
+                            <span class="text-gray-400">Personas:</span>
+                            <div class="relative flex items-center">
+                                <input type="number" 
+                                    value="{{ $diners ?? 1 }}" 
+                                    min="1" 
+                                    onchange="updateDiners(this.value)"
+                                    class="w-10 border-none bg-transparent p-0 text-center text-slate-700 font-bold focus:ring-0 text-sm appearance-none">
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="w-64 hidden md:block relative">
-                    <input type="text" placeholder="Buscar..."
-                        class="w-full pl-9 pr-4 py-2 bg-gray-100 border-transparent focus:bg-white focus:border-blue-500 focus:ring-0 rounded-lg text-sm transition-all">
-                    <i class="fas fa-search absolute left-3 top-2.5 text-gray-400 text-xs"></i>
-                </div>
             </header>
 
-            {{-- Grid de Productos (Crece hacia abajo infinitamente) --}}
-            {{-- CAMBIO 3: Quitamos 'flex-1 overflow-y-auto' --}}
-            <div class="p-6 bg-[#F3F4F6]">
-                <h3 class="font-bold text-slate-700 mb-4 text-base">Categoría: General</h3>
+            <div class="p-6 bg-[#F3F4F6]">                
+                <div class="flex items-center justify-between mb-4">                    
+                    <h3 class="font-bold text-base">Categoría</h3>
+                    <div class="w-64 hidden md:block relative">
+                        <input type="text" placeholder="Buscar..."
+                            class="w-full pl-9 pr-4 py-2 bg-white border-transparent focus:border-blue-1000 focus:ring-0 rounded-lg text-sm shadow-sm transition-all">
+                        <i class="fas fa-search absolute left-3 top-2.5 text-gray-1000 text-xs"></i>
+                    </div>
+                </div>
+
+                <div id="categories-grid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-8">
+                </div>
+                
                 <div id="products-grid"
                     style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; width: 100%;">
-                    {{-- JS llenará esto --}}
                 </div>
             </div>
         </main>
 
-        {{-- ================= SECCIÓN DERECHA: CARRITO (STICKY / PEGAJOSO) ================= --}}
-        {{-- 
-            CAMBIO 4: Configuración Sticky
-            - 'sticky top-0': Hace que la barra se pegue al techo cuando haces scroll.
-            - 'h-screen': Ocupa todo el alto de la ventana visible.
-            - 'overflow-hidden': Para manejar su propio scroll interno si la lista de items es muy larga.
-        --}}
         <aside
-            class="w-[400px] max-w-[600px]
-            flex-none
-            h-full
-            bg-white border-l border-gray-300
-            flex flex-col shadow-2xl
-            overflow-hidden">
+            class=" flex-none flex flex-col shadow-2xl overflow-hidden">
 
             {{-- Header Carrito --}}
             <div class="h-16 px-6 border-b border-gray-200 bg-white flex justify-between items-center shrink-0 gap-2">
                 <h3 class="text-xl font-bold text-slate-800">Orden Actual</h3>
-                <button onclick="cancelOrder()"
+                <button onclick="cancelOrder()" 
+                    title="Cancelar orden"
                     class="py-2.5 px-3 rounded-lg border border-gray-300 bg-red-500 text-white font-semibold text-xs hover:bg-red-600 shadow-sm transition-all">
-                    <i class="ri-close-line"></i>
-                    Cancelar
+                    <i class="ri-delete-bin-line"></i>
                 </button>
             </div>
 
@@ -157,10 +162,8 @@
         </aside>
     </div>
 
-    {{-- Notificación (éxito, error, etc.) --}}
     <div id="notification" class="fixed top-24 right-8 z-50 max-w-sm opacity-0 pointer-events-none transition-opacity duration-300" aria-live="polite"></div>
 
-    {{-- SCRIPTS (envueltos en IIFE para evitar redeclaración al re-render Livewire) --}}
     <script>
         (function() {
             @php
@@ -297,6 +300,72 @@
                 if (updated) saveDB();
             }
 
+            let selectedCategoryId = null;
+
+            function renderCategories() {
+                const grid = document.getElementById('categories-grid');
+                if (!grid) return; 
+                
+                grid.innerHTML = '';
+
+                if (!serverCategories || serverCategories.length === 0) {
+                    grid.innerHTML = '<div class="col-span-full text-center text-gray-500 py-4">No hay categorías</div>';
+                    return;
+                }
+
+                serverCategories.forEach(cat => {
+                    const el = document.createElement('div');
+                    
+                    el.className = "group cursor-pointer transition-transform duration-200 hover:scale-105";
+
+                    // Lógica del Clic: Filtrar productos
+                    el.onclick = function(e) {
+                        e.preventDefault();
+                        
+                        // Actualizar ID seleccionado
+                        selectedCategoryId = cat.id; 
+                        
+                        // Llamar a tu función de filtrado (Asumo que tienes una o la crearás)
+                        // filterProductsByCategory(cat.id); 
+                        console.log('Filtrando por categoría:', cat.name);
+                        
+                        // Opcional: Volver a renderizar categorías si quieres marcar la activa visualmente
+                        renderCategories(); 
+                    };
+
+                    const categoryName = escapeHtml(cat.name || 'Sin nombre');
+                    const imageUrl = getImageUrl(cat.img); // Usamos tu misma función de imágenes
+                    
+                    // Lógica para resaltar si está activa (Borde azul más grueso si está seleccionada)
+                    const isActive = selectedCategoryId === cat.id;
+                    const activeClass = isActive 
+                        ? 'ring-2 ring-blue-600 border-blue-600 dark:border-blue-500' 
+                        : 'border-gray-300 dark:border-slate-700/50 hover:border-blue-500';
+
+                    el.innerHTML = `
+                        <div class="rounded-lg overflow-hidden p-3 dark:bg-slate-800/40 shadow-md hover:shadow-xl border ${activeClass} hover:shadow-blue-500/10 transition-all duration-200 hover:-translate-y-1 backdrop-blur-sm h-full flex flex-col">
+                            
+                            <div class="relative aspect-square overflow-hidden dark:bg-slate-700/30 rounded-lg border border-gray-300 dark:border-slate-600/30 shadow-sm">
+                                <img src="${imageUrl}" 
+                                    alt="${categoryName}" 
+                                    class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                                    loading="lazy"
+                                    onerror="this.onerror=null; this.src=getImageUrl(null)">
+                                
+                                </div>
+                            
+                            <div class="mt-3 flex flex-col gap-1 text-center">
+                                <h4 class="font-bold text-gray-900 dark:text-white text-sm line-clamp-2 leading-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                                    ${categoryName}
+                                </h4>
+                            </div>
+                        </div>
+                    `;
+                    
+                    grid.appendChild(el);
+                });
+            }
+            
             function renderProducts() {
                 const grid = document.getElementById('products-grid');
                 grid.innerHTML = '';
@@ -334,31 +403,31 @@
                     const imageUrl = getImageUrl(prod.img);
 
                     el.innerHTML = `
-            <div class="rounded-lg overflow-hidden p-3  dark:bg-slate-800/40 shadow-md hover:shadow-xl border border-gray-300 dark:border-slate-700/50 hover:border-blue-500 dark:hover:border-blue-500 hover:shadow-blue-500/10 transition-all duration-200 hover:-translate-y-1 backdrop-blur-sm">
-                <div class="relative aspect-square overflow-hidden  dark:bg-slate-700/30 rounded-lg border border-gray-300 dark:border-slate-600/30 shadow-sm">
-                    <img src="${imageUrl}" 
-                        alt="${productName}" 
-                        class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
-                        loading="lazy"
-                        onerror="this.onerror=null; this.src=getImageUrl(null)">
-                    
-                    <span class="absolute top-3 right-3 z-10">
-                        <span class="px-2.5 py-1 bg-blue-600 dark:bg-blue-500 rounded-lg text-sm font-bold shadow-lg shadow-blue-500/40 dark:shadow-blue-500/20 backdrop-blur-sm border border-blue-400/50 dark:border-blue-400/30 text-white">
-                            $${parseFloat(productBranch.price).toFixed(2)}
-                        </span>
-                    </span>
-                </div>
-                
-                <div class="mt-3 flex flex-col gap-1">
-                    <h4 class="font-semibold text-gray-900 dark:text-white text-sm line-clamp-2 leading-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                        ${productName}
-                    </h4>
-                    <h6 class="text-xs text-gray-600 dark:text-gray-400">
-                        ${productCategory}
-                    </h6>
-                </div>
-            </div>
-        `;
+                        <div class="rounded-lg overflow-hidden p-3  dark:bg-slate-800/40 shadow-md hover:shadow-xl border border-gray-300 dark:border-slate-700/50 hover:border-blue-500 dark:hover:border-blue-500 hover:shadow-blue-500/10 transition-all duration-200 hover:-translate-y-1 backdrop-blur-sm">
+                            <div class="relative aspect-square overflow-hidden  dark:bg-slate-700/30 rounded-lg border border-gray-300 dark:border-slate-600/30 shadow-sm">
+                                <img src="${imageUrl}" 
+                                    alt="${productName}" 
+                                    class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                                    loading="lazy"
+                                    onerror="this.onerror=null; this.src=getImageUrl(null)">
+                                
+                                <span class="absolute top-3 right-3 z-10">
+                                    <span class="px-2.5 py-1 bg-blue-600 dark:bg-blue-500 rounded-lg text-sm font-bold shadow-lg shadow-blue-500/40 dark:shadow-blue-500/20 backdrop-blur-sm border border-blue-400/50 dark:border-blue-400/30 text-white">
+                                        $${parseFloat(productBranch.price).toFixed(2)}
+                                    </span>
+                                </span>
+                            </div>
+                            
+                            <div class="mt-3 flex flex-col gap-1">
+                                <h4 class="font-semibold text-gray-900 dark:text-white text-sm line-clamp-2 leading-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                                    ${productName}
+                                </h4>
+                                <h6 class="text-xs text-gray-600 dark:text-gray-400">
+                                    ${productCategory}
+                                </h6>
+                            </div>
+                        </div>
+                    `;
                     grid.appendChild(el);
                     productsRendered++;
                 });

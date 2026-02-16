@@ -188,15 +188,12 @@ class OrderController extends Controller
         $person = Person::find($personId);
         $profile = Profile::find($profileId);
         $branch = Branch::find($branchId);
-
-        // Buscar la mesa y cargar su área relacionada
         $table = Table::with('area')->find($tableId);
 
         if (!$table) {
             abort(404, 'Mesa no encontrada');
         }
 
-        // Obtener el área de la relación de la mesa o buscar por área_id si no está relacionada
         $area = $table->area;
         if (!$area && $request->has('area_id')) {
             $area = Area::find($request->query('area_id'));

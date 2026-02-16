@@ -68,38 +68,48 @@
                     @if ($viewId)
                         <input type="hidden" name="view_id" value="{{ $viewId }}">
                     @endif
-                    <div class="w-full sm:w-24">
-                        <select
-                            name="per_page"
-                            class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-3 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
-                            onchange="this.form.submit()"
-                        >
-                            @foreach ([10, 20, 50, 100] as $size)
-                                <option value="{{ $size }}" @selected($perPage == $size)>{{ $size }} / página</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="relative flex-1">
-                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-                            <i class="ri-search-line"></i>
-                        </span>
-                        <input
-                            type="text"
-                            name="search"
-                            value="{{ $search }}"
-                            placeholder="Buscar por numero, persona o usuario"
-                            class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 pl-12 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
-                        />
-                    </div>
-                    <div class="flex flex-wrap gap-2">
-                        <x-ui.button size="md" variant="primary" type="submit" class="flex-1 sm:flex-none h-11 px-6 shadow-sm hover:shadow-md transition-all duration-200 active:scale-95" style="background-color: #244BB3; border-color: #244BB3;">
-                            <i class="ri-search-line text-gray-100"></i>
-                            <span class="font-medium text-gray-100">Buscar</span>
-                        </x-ui.button>
-                        <x-ui.link-button size="md" variant="outline" href="{{ route('admin.sales.index', $viewId ? ['view_id' => $viewId] : []) }}" class="flex-1 sm:flex-none h-11 px-6 border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200">
-                            <i class="ri-refresh-line"></i>
-                            <span class="font-medium">Limpiar</span>
-                        </x-ui.link-button>
+                    <div>
+                        <div class="w-full sm:w-24">
+                            <select
+                                name="per_page"
+                                class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-3 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+                                onchange="this.form.submit()">
+                                @foreach ([10, 20, 50, 100] as $size)
+                                    <option value="{{ $size }}" @selected($perPage == $size)>{{ $size }} / página</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="relative flex-1">
+                            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                                <i class="ri-search-line"></i>
+                            </span>
+                            <input
+                                type="text"
+                                name="search"
+                                value="{{ $search }}"
+                                placeholder="Buscar por numero, persona o usuario"
+                                class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 pl-12 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
+                            />
+                        </div>
+                        <div>
+                            <select name="document_type_id"
+                                class="h-11 w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-white">
+                                <option value="">Tipo Doc.</option>
+                                @foreach ($documentTypes ?? [] as $dt)
+                                    <option value="{{ $dt->id }}" @selected(($documentTypeId ?? '') == $dt->id)>{{ $dt->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>            
+                        <div class="flex flex-wrap gap-2">
+                            <x-ui.button size="md" variant="primary" type="submit" class="flex-1 sm:flex-none h-11 px-6 shadow-sm hover:shadow-md transition-all duration-200 active:scale-95" style="background-color: #244BB3; border-color: #244BB3;">
+                                <i class="ri-search-line text-gray-100"></i>
+                                <span class="font-medium text-gray-100">Buscar</span>
+                            </x-ui.button>
+                            <x-ui.link-button size="md" variant="outline" href="{{ route('admin.sales.index', $viewId ? ['view_id' => $viewId] : []) }}" class="flex-1 sm:flex-none h-11 px-6 border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200">
+                                <i class="ri-refresh-line"></i>
+                                <span class="font-medium">Limpiar</span>
+                            </x-ui.link-button>
+                        </div>
                     </div>
                 </form>
 
