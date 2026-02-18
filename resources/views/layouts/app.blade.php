@@ -380,13 +380,3 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
     @stack('scripts')
 
 </html>
-
-
-
-
-
-
-
-
-
-

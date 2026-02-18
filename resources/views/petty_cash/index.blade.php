@@ -144,7 +144,7 @@
             }
         }
 
-        // Abrir el modal
+        $dispatch('update-combobox-options', { options: Alpine.raw(currentConcepts) });
         open = true; 
     ">
 
@@ -158,6 +158,9 @@
                     @if ($viewId)
                         <input type="hidden" name="view_id" value="{{ $viewId }}">
                     @endif
+                    
+                    <x-ui.per-page-selector :per-page="$perPage" />
+
                     <div class="w-full flex-1 relative">
                         <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
                             {!! $SearchIcon !!}
@@ -270,30 +273,7 @@
                     @endif
                 </div>
             </div>
-
-            <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <form method="GET" class="flex items-center gap-2 text-sm text-gray-600">
-                    @if ($viewId)
-                        <input type="hidden" name="view_id" value="{{ $viewId }}">
-                    @endif
-                    @if (request('search'))
-                        <input type="hidden" name="search" value="{{ request('search') }}">
-                    @endif
-                    <input type="hidden" name="cash_register_id" value="{{ $selectedBoxId }}">
-                    <span>Registros por pagina:</span>
-                    <select name="per_page" onchange="this.form.submit()"
-                        class="h-9 rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
-                        @foreach ([10, 20, 50, 100] as $size)
-                            <option value="{{ $size }}" @selected(($perPage ?? 10) == $size)>{{ $size }}</option>
-                        @endforeach
-                    </select>
-                </form>
-                <div class="flex items-center gap-2 text-sm text-gray-500">
-                    <span>Total</span>
-                    <x-ui.badge size="sm" variant="light" color="info">{{ $movements->total() }}</x-ui.badge>
-                </div>
-            </div>
-
+            
             {{-- TABLA --}}
             <div
                 class="table-responsive mt-4 rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
@@ -339,21 +319,21 @@
                                 </th>
                             </tr>
                         </thead>
-                            @forelse ($movements as $movement)
-                                @php
-                                    $docName = $movement->documentType?->name ?? 'General';
-                                    $conceptName = $movement->cashMovement?->paymentConcept?->description ?? '-';
-                                    $isIngreso = stripos($docName, 'ingreso') !== false;
-                                    $movementStatus = (string) ($movement->status ?? '1');
-                                    $isActive = in_array($movementStatus, ['1', 'A'], true);
-                                    $paymentSummary = collect($movement->cashMovement?->details ?? [])
-                                        ->groupBy('payment_method')
-                                        ->map(fn($items, $method) => trim(($method ?: 'Metodo') . ': ' . number_format($items->sum('amount'), 2)))
-                                        ->values()
-                                        ->implode(' | ');
-                                @endphp
-                                <tbody x-data="{ expanded: false }">
-                                 <tr class="border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-white/5 align-top">
+                        @forelse ($movements as $movement)
+                            @php
+                                $docName = $movement->documentType?->name ?? 'General';
+                                $conceptName = $movement->cashMovement?->paymentConcept?->description ?? '-';
+                                $isIngreso = stripos($docName, 'ingreso') !== false;
+                                $movementStatus = (string) ($movement->status ?? '1');
+                                $isActive = in_array($movementStatus, ['1', 'A'], true);
+                                $paymentSummary = collect($movement->cashMovement?->details ?? [])
+                                    ->groupBy('payment_method')
+                                    ->map(fn($items, $method) => trim(($method ?: 'Metodo') . ': ' . number_format($items->sum('amount'), 2)))
+                                    ->values()
+                                    ->implode(' | ');
+                            @endphp
+                            <tbody x-data="{ expanded: false }">
+                                <tr class="border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-white/5 align-top">
                                     <td class="px-3 py-4 text-center sticky-left">
                                         <button type="button" @click="expanded = !expanded"
                                             class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-500 text-white transition hover:bg-brand-600 dark:bg-brand-500 dark:text-white">
@@ -452,14 +432,14 @@
                                         </div>
                                     </td>
                                 </tr>
-                                </tbody>
-                            @empty
-                                <tbody>
-                                    <tr>
-                                        <td colspan="12" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">No hay movimientos registrados.</td>
-                                    </tr>
-                                </tbody>
-                            @endforelse
+                            </tbody>
+                        @empty
+                            <tbody>
+                                <tr>
+                                    <td colspan="12" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">No hay movimientos registrados.</td>
+                                </tr>
+                            </tbody>
+                        @endforelse
                     </table>
             </div>
             <div class="mt-4">{{ $movements->links() }}</div>

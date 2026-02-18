@@ -103,16 +103,9 @@
                     @if ($viewId)
                         <input type="hidden" name="view_id" value="{{ $viewId }}">
                     @endif
-                    <div class="w-full sm:w-24">
-                        <select name="per_page"
-                            class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-3 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
-                            onchange="this.form.submit()">
-                            @foreach ([10, 20, 50, 100] as $size)
-                                <option value="{{ $size }}" @selected($perPage == $size)>{{ $size }} /
-                                    pagina</option>
-                            @endforeach
-                        </select>
-                    </div>
+                    
+                    <x-ui.per-page-selector :per-page="$perPage" />
+                    
                     <div class="relative flex-1">
                         <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
                             <i class="ri-search-line"></i>
@@ -161,6 +154,13 @@
                             <span>Nuevo producto</span>
                         </x-ui.button>
                     @endif
+                </div>
+            </div>
+
+            <div class="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div class="flex items-center gap-2 text-sm text-gray-500">
+                    <span>Total</span>
+                    <x-ui.badge size="sm" variant="light" color="info">{{ $products->total() }}</x-ui.badge>
                 </div>
             </div>
 
@@ -222,19 +222,6 @@
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
                                     <div class="flex items-center justify-end gap-2">
-
-                                        {{-- <div class="relative group">
-                                            <x-ui.button size="icon" type="button"
-                                                @click="$dispatch('open-product-branch-modal', { productId: {{ $product->id }} })"
-                                                className="bg-blue-500 text-white hover:bg-blue-600 ring-0 rounded-full"
-                                                style="border-radius: 100%; background-color: #2493fb; color: #111827;"
-                                                aria-label="Agregar a sucursal">
-                                                <i class="ri-store-line"></i>
-                                            </x-ui.button>
-                                            <span
-                                                class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50"
-                                                style="transition-delay: 0.5s;">Agregar a sucursal</span>
-                                        </div> --}}
                                         @if ($rowOperations->isNotEmpty())
                                             @foreach ($rowOperations as $operation)
                                                 @php

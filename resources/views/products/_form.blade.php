@@ -75,35 +75,27 @@
             </div>
 
             <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Categoría</label>
-                <select
-                    name="category_id"
-                    required
-                    class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
-                >
-                    <option value="">Seleccione categoría</option>
-                    @foreach ($categories as $category)
-                        <option value="{{ $category->id }}" @selected(old('category_id', $product->category_id ?? '') == $category->id)>
-                            {{ $category->description }}
-                        </option>
-                    @endforeach
-                </select>
+                <x-form.select.combobox 
+                    label="Categoría" 
+                    :required="true"
+                    :options="$categories"    
+                    name="category_id"        
+                    x-model="categoryId"      
+                    placeholder="Seleccione categoría"
+                    icon="ri-layout-grid-line" 
+                />
             </div>
 
             <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Unidad base</label>
-                <select
-                    name="base_unit_id"
-                    required
-                    class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
-                >
-                    <option value="">Seleccione unidad</option>
-                    @foreach ($units as $unit)
-                        <option value="{{ $unit->id }}" @selected(old('base_unit_id', $product->base_unit_id ?? '') == $unit->id)>
-                            {{ $unit->description }}
-                        </option>
-                    @endforeach
-                </select>
+                <x-form.select.combobox 
+                    label="Unidad base"
+                    :required="true"
+                    :options="$units"    
+                    name="base_unit_id"        
+                    x-model="baseUnitId"      
+                    placeholder="Seleccione la unidad"
+                    icon="ri-ruler-2-line"
+                />
             </div>
 
             <div>
@@ -300,20 +292,15 @@
             </div>
 
             <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Proveedor</label>
-                <select
-                    name="supplier_id"
-                    class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
-                >
-                    <option value="">Seleccione proveedor</option>
-                    @if(isset($suppliers))
-                        @foreach ($suppliers as $supplier)
-                            <option value="{{ $supplier->id }}" @selected(old('supplier_id', $productBranch->supplier_id ?? '') == $supplier->id)>
-                                {{ $supplier->description }}
-                            </option>
-                        @endforeach
-                    @endif
-                </select>
+                <x-form.select.combobox 
+                    label="Proveedor" 
+                    :required="false" 
+                    :options="$suppliers ?? []" 
+                    name="supplier_id"          
+                    x-model="supplierId"        
+                    placeholder="Seleccione proveedor"
+                    icon="ri-truck-line"        
+                />
             </div>
         </div>
     </div>

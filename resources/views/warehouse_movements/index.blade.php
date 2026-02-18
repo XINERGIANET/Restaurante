@@ -83,17 +83,9 @@
                     @if ($viewId)
                         <input type="hidden" name="view_id" value="{{ $viewId }}">
                     @endif
-                    <div class="w-auto flex-none">
-                        <label class="mb-1.5 block text-xs font-medium text-gray-500 sm:hidden">Por página</label>
-                        <select name="per_page"
-                            class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-3 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
-                            onchange="this.form.submit()">
-                            @foreach ([10, 20, 50, 100] as $size)
-                                <option value="{{ $size }}" @selected($perPage == $size)>{{ $size }} /
-                                    página</option>
-                            @endforeach
-                        </select>
-                    </div>
+                    
+                    <x-ui.per-page-selector :per-page="$perPage" />
+
                     <div class="flex-1 min-w-0">
                         <label class="mb-1.5 block text-xs font-medium text-gray-500 sm:hidden">Buscar</label>
                         <div class="relative">
@@ -152,6 +144,14 @@
                     </x-ui.link-button>
                 @endif
             </div>
+
+            <div class="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div class="flex items-center gap-2 text-sm text-gray-500">
+                    <span>Total</span>
+                    <x-ui.badge size="sm" variant="light" color="info">{{ $warehouseMovements->total() }}</x-ui.badge>
+                </div>
+            </div>
+
             <div class="table-responsive mt-4 rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
                     <table class="w-full min-w-[1100px]">
                         <thead style="background-color: #63B7EC; color: #FFFFFF;">
