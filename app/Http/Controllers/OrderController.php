@@ -408,7 +408,7 @@ class OrderController extends Controller
         $fromList = $request->input('from') === 'list';
         $backUrl = ($fromList || $viewId)
             ? route('orders.list', $viewId ? ['view_id' => $viewId] : [])
-            : route('admin.orders.index', $viewId ? ['view_id' => $viewId] : []);
+            : route('orders.index', $viewId ? ['view_id' => $viewId] : []);
 
         return view('orders.charge', [
             'documentTypes' => $documentTypes,
@@ -424,6 +424,30 @@ class OrderController extends Controller
         ]);
     }
 
+    public function moveTable(Request $request){
+        $tableId = $request->input('table_id');
+        $areaId = $request->input('area_id');
+        $branchId = session('branch_id');
+        $user = $request->user();
+
+        $table = Table::find($tableId);
+        $area = Area::find($areaId);
+        
+        try{
+            $table->update([
+                'area_id' => $areaId,
+            ]);
+            return response()->json([
+                'success' => true,
+                'message' => 'Mesa movida correctamente',
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
     public function processOrder(Request $request)
     {
         $items = $request->input('items', []);
@@ -608,7 +632,7 @@ class OrderController extends Controller
                 ], 500);
             }
 
-            return redirect()->route('admin.orders.index')->with('error', 'Error al procesar el pedido');
+            return redirect()->route('orders.index')->with('error', 'Error al procesar el pedido');
         }
     }
 

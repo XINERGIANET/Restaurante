@@ -64,10 +64,12 @@
                                                         x-text="table.waiter || '-'"></p>
                                                 </div>
                                                 <div class="flex min-w-0 flex-1">
-                                                    <p class="font-semibold text-sm text-gray-500 dark:text-gray-400 shrink-0">
+                                                    <p
+                                                        class="font-semibold text-sm text-gray-500 dark:text-gray-400 shrink-0">
                                                         Cliente:</p>
                                                     <p class="font-medium text-gray-800 text-sm dark:text-white/90 ml-1"
-                                                        x-text="(table.client && table.client !== 'Público General') ? table.client : 'Público'"></p>
+                                                        x-text="(table.client && table.client !== 'Público General') ? table.client : 'Público'">
+                                                    </p>
                                                 </div>
                                             </div>
                                         </div>
@@ -105,20 +107,18 @@
 
                                     {{-- Botones --}}
                                     <template x-if="table && table.situation === 'ocupada'">
-                                        <div class="border-blue-500 dark:border-blue-700 pt-3 flex justify-end gap-2 items-center">
+                                        <div
+                                            class="border-blue-500 dark:border-blue-700 pt-3 flex justify-end gap-2 items-center">
                                             <button type="button" @click.stop="chargeTable(table)" title="Cobrar"
                                                 class="inline-flex items-center justify-center bg-green-500 hover:bg-green-600 active:bg-green-700 text-white py-1.5 px-3 rounded-lg transition shadow-sm hover:shadow w-9">
                                                 <i class="ri-bank-card-line text-white"></i>
                                             </button>
-                                            <button type="button"
-                                                @click.stop="moveTable(table)"
+                                            <button type="button" @click.stop="$dispatch('open-move-table-modal')"
                                                 title="Mover mesa"
                                                 class="inline-flex items-center justify-center bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white py-1.5 px-3 rounded-lg transition shadow-sm hover:shadow w-9">
                                                 <i class="ri-drag-move-2-line text-white"></i>
                                             </button>
-                                            <button type="button"
-                                                @click.stop="closeTable(table)"
-                                                title="Cerrar mesa"
+                                            <button type="button" @click.stop="closeTable(table)" title="Cerrar mesa"
                                                 class="inline-flex items-center justify-center bg-red-400 hover:bg-red-600 active:bg-red-700 text-white py-1.5 px-3 rounded-lg transition shadow-sm hover:shadow w-9">
                                                 <i class="ri-close-circle-line text-white"></i>
                                             </button>
@@ -143,6 +143,71 @@
         </div>
     </div>
 
+    @php
+        $areaOptions = collect($areas ?? [])
+            ->map(
+                fn($a) => [
+                    'id' => is_array($a) ? $a['id'] ?? null : $a->id,
+                    'description' => is_array($a) ? $a['name'] ?? '' : $a->name ?? '',
+                ],
+            )
+            ->values()
+            ->all();
+        $tableOptions = collect($tables ?? [])
+            ->map(
+                fn($t) => [
+                    'id' => is_array($t) ? $t['id'] ?? null : $t->id,
+                    'description' => is_array($t) ? $t['name'] ?? '' : $t->name ?? '',
+                    'area_id' => is_array($t) ? $t['area_id'] ?? null : $t->area_id,
+                ],
+            )
+            ->values()
+            ->all();
+        $initialAreaId = $areaOptions[0]['id'] ?? null;
+        $tableOptionsInitial = collect($tableOptions)
+            ->when($initialAreaId, fn($q) => $q->where('area_id', $initialAreaId))
+            ->values()
+            ->all();
+    @endphp
+    <x-ui.modal
+        x-data="moveTableModal()"
+        x-effect="if (open) { syncAreaOptions(); updateTables(); }"
+        @open-move-table-modal.window="open = true"
+        @close-move-table-modal.window="open = false"
+        :isOpen="false"
+        :showCloseButton="false"
+        :scrollable="false"
+        class="max-w-3xl">
+        <div class="p-6 sm:p-8">
+            <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div class="flex items-center gap-4">
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Mover mesa</h3>
+                    <i class="ri-drag-move-2-line text-2xl text-blue-500"></i>
+                </div>
+                <button type="button" @click="open = false"
+                    class="flex h-11 w-11 items-center justify-center rounded-full bg-gray-100 text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">
+                    <i class="ri-close-line text-xl"></i>
+                </button>
+            </div>
+        </div>
+        <div class="p-6">
+            <div class="flex flex-col gap-4">
+                <div class="flex flex-col gap-2">
+                    <x-form.select.combobox x-model="currentAreaId" label="Área" :options="$areaOptions" name="area_id" />
+                </div>
+                <div class="flex flex-col gap-2">
+                    <x-form.select.combobox x-model="tableId" label="Mesa" :options="$tableOptionsInitial" name="table_id" />
+                </div>
+            </div>
+            <div class="mt-4">
+                <button type="button" @click="moveTable"
+                    class="bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white py-1.5 px-3 rounded-lg transition shadow-sm hover:shadow ">
+                    <i class="ri-arrow-right-line text-white"></i>
+                    Mover
+                </button>
+            </div>
+        </div>
+    </x-ui.modal>
     {{-- SCRIPT LÃ“GICA --}}
     <script>
         @php
@@ -161,11 +226,51 @@
             }
             window.__posSystemRegistered = true;
 
+            const moveTableInitialAreaId = @json($initialAreaId);
+            const moveTableAllTables = @json($tableOptions);
+            const moveTableAllAreas = @json($areaOptions);
+            Alpine.data('moveTableModal', () => ({
+                open: false,
+                currentAreaId: moveTableInitialAreaId,
+                tableId: null,
+                allTables: Array.isArray(moveTableAllTables) ? moveTableAllTables : [],
+                allAreaOptions: Array.isArray(moveTableAllAreas) ? moveTableAllAreas : [],
+                init() {
+                    this.syncAreaOptions();
+                    this.updateTables();
+                    this.$watch('currentAreaId', () => {
+                        this.tableId = null;
+                        this.$nextTick(() => this.updateTables());
+                    });
+                },
+                syncAreaOptions() {
+                    window.dispatchEvent(new CustomEvent('update-combobox-options', {
+                        detail: { name: 'area_id', options: this.allAreaOptions }
+                    }));
+                },
+                updateTables() {
+                    const areaId = this.currentAreaId;
+                    const options = (areaId != null && areaId !== '')
+                        ? this.allTables.filter(t => String(t.area_id) === String(areaId))
+                        : this.allTables;
+                    window.dispatchEvent(new CustomEvent('update-combobox-options', {
+                        detail: { name: 'table_id', options }
+                    }));
+                },
+                moveTable() {
+                    if (!this.tableId) return;
+                    this.open = false;
+                    if (typeof window.__posRefreshTables === 'function') {
+                        window.__posRefreshTables();
+                    }
+                }
+            }));
+
             Alpine.data('posSystem', () => {
                 const areasData = @json($areasData);
                 const tablesData = @json($tablesData);
                 const firstAreaId = @json($firstAreaId);
-                const cancelOrderUrl = @json(route('admin.orders.cancelOrder'));
+                const cancelOrderUrl = @json(route('orders.cancelOrder'));
                 const calculateInitialFilteredTables = () => {
                     try {
                         const areas = Array.isArray(areasData) ? areasData : [];
@@ -193,9 +298,9 @@
                     areas: Array.isArray(areasData) ? areasData : [],
                     tables: Array.isArray(tablesData) ? tablesData : [],
                     currentAreaId: firstAreaId ? Number(firstAreaId) : null,
-                    createUrl: @json(route('admin.orders.create')),
-                    chargeUrl: @json(route('admin.orders.charge')),
-                    tablesDataUrl: @json(route('admin.orders.tablesData')),
+                    createUrl: @json(route('orders.create')),
+                    chargeUrl: @json(route('orders.charge')),
+                    tablesDataUrl: @json(route('orders.tablesData')),
                     cancelOrderUrl: cancelOrderUrl,
                     cancelOrderToken: @json(csrf_token()),
                     filteredTables: safeFilteredTables,
@@ -203,7 +308,10 @@
                     async refreshTables() {
                         try {
                             const res = await fetch(this.tablesDataUrl, {
-                                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+                                headers: {
+                                    'Accept': 'application/json',
+                                    'X-Requested-With': 'XMLHttpRequest'
+                                }
                             });
                             if (!res.ok) return;
                             const data = await res.json();
@@ -232,7 +340,9 @@
                             this.updateFilteredTables();
                         });
                         const self = this;
-                        window.__posRefreshTables = function() { self.refreshTables(); };
+                        window.__posRefreshTables = function() {
+                            self.refreshTables();
+                        };
                     },
 
                     updateFilteredTables() {
@@ -286,12 +396,8 @@
                             const url = new URL(this.chargeUrl, window.location.origin);
                             url.searchParams.set('movement_id', table.movement_id);
                             url.searchParams.set('table_id', table.id);
-                            console.log(url.toString());
-                            if (window.Turbo && typeof window.Turbo.visit === 'function') {
-                                window.Turbo.visit(url.toString(), { action: 'advance' });
-                            } else {
-                                window.location.href = url.toString();
-                            }
+                            // Navegación completa para que el servidor reciba movement_id/table_id y devuelva la orden con productos (Turbo puede cachear y no enviar params)
+                            window.location.href = url.toString();
                         } else {
                             this.openTable(table);
                         }
@@ -321,19 +427,22 @@
                             formData.append('_token', this.cancelOrderToken);
 
                             fetch(this.cancelOrderUrl, {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'X-CSRF-TOKEN': this.cancelOrderToken,
-                                    'Accept': 'application/json',
-                                    'X-Requested-With': 'XMLHttpRequest',
-                                },
-                                body: JSON.stringify({ table_id: table.id }),
-                            })
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'X-CSRF-TOKEN': this.cancelOrderToken,
+                                        'Accept': 'application/json',
+                                        'X-Requested-With': 'XMLHttpRequest',
+                                    },
+                                    body: JSON.stringify({
+                                        table_id: table.id
+                                    }),
+                                })
                                 .then(res => res.json())
                                 .then(data => {
                                     if (data.success) {
-                                        const idx = this.tables.findIndex(t => t.id == table.id);
+                                        const idx = this.tables.findIndex(t => t.id == table
+                                        .id);
                                         if (idx !== -1) {
                                             this.tables[idx] = {
                                                 ...this.tables[idx],
@@ -350,12 +459,13 @@
                                             toast: true,
                                             position: 'bottom-end',
                                             icon: 'success',
-                                            title: data.message || 'Mesa cerrada correctamente',
+                                            title: data.message ||
+                                                'Mesa cerrada correctamente',
                                             showConfirmButton: false,
                                             timer: 3500,
                                             timerProgressBar: true
                                         });
-                                        window.location.reload();
+                                        // Sin reload: la mesa ya se actualizó en this.tables y updateFilteredTables()
                                     } else if (data && data.message) {
                                         Swal.fire({
                                             toast: true,
@@ -387,14 +497,15 @@
             });
         };
 
-        
+
         registerPosSystem();
         document.addEventListener('alpine:init', registerPosSystem);
         document.addEventListener('turbo:load', registerPosSystem);
         document.addEventListener('turbo:render', registerPosSystem);
         document.addEventListener('turbo:load', function() {
             const path = window.location.pathname || '';
-            if (path.indexOf('/Pedidos') !== -1 && path.indexOf('/cobrar') === -1 && path.indexOf('/crear') === -1 && path.indexOf('/reporte') === -1) {
+            if (path.indexOf('/Pedidos') !== -1 && path.indexOf('/cobrar') === -1 && path.indexOf('/crear') === -
+                1 && path.indexOf('/reporte') === -1) {
                 if (typeof window.__posRefreshTables === 'function') {
                     setTimeout(window.__posRefreshTables, 100);
                 }

@@ -116,19 +116,19 @@ Route::middleware('auth')->group(function () {
         ->names('admin.sales')
         ->parameters(['ventas' => 'sale'])
         ->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
-    Route::get('/admin/ventas/pdf', [SalesController::class, 'exportPdf'])->name('admin.sales.pdf');
+    Route::get('/admin/ventas/pdf', [SalesController::class, 'exportPdf'])->name('sales.pdf');
 
     // POS: vista de cobro (antes era modal)
     Route::get('/admin/ventas/cobrar', [SalesController::class, 'charge'])
-        ->name('admin.sales.charge');
+        ->name('sales.charge');
 
     // POS: procesar venta (usado por resources/views/sales/create.blade.php)
     Route::post('/admin/ventas/procesar', [SalesController::class, 'processSale'])
-        ->name('admin.sales.process');
+        ->name('sales.process');
 
     // POS: guardar venta como borrador/pendiente
     Route::post('/admin/ventas/borrador', [SalesController::class, 'saveDraft'])
-        ->name('admin.sales.draft');
+        ->name('sales.draft');
 
     Route::get('/admin/ventas/reporte', [SalesController::class, 'reportSales'])
         ->name('sales.report');
@@ -142,11 +142,11 @@ Route::middleware('auth')->group(function () {
         ->parameters(['tipos-documento' => 'documentType'])
         ->only(['index', 'store', 'edit', 'update', 'destroy']);
     Route::resource('/admin/herramientas/categorias', CategoryController::class)
-        ->names('admin.categories')
+        ->names('categories')
         ->parameters(['categorias' => 'category'])
         ->only(['index', 'store', 'edit', 'update', 'destroy']);
     Route::resource('/admin/herramientas/productos', ProductController::class)
-        ->names('admin.products')
+        ->names('products')
         ->parameters(['productos' => 'product'])
         ->only(['index', 'store', 'edit', 'update', 'destroy']);
 
@@ -164,30 +164,28 @@ Route::middleware('auth')->group(function () {
         ->name('kardex.index');
     //Rutas de ordenes
     Route::get('/Pedidos/mesas-data', [OrderController::class, 'tablesData'])
-        ->name('admin.orders.tablesData');
+        ->name('orders.tablesData');
     Route::resource('/Pedidos', OrderController::class)
-        ->names('admin.orders')
+        ->names('orders')
         ->parameters(['orders' => 'order'])
         ->only(['index', 'create']); // Solo incluir los métodos que existen
 
     Route::get('/Pedidos/reporte', [OrderController::class, 'list'])
-        ->name('orders.list');
-
-  
+        ->name('orders.list');  
     Route::get('/Pedidos/cobrar', [OrderController::class, 'charge'])
-        ->name('admin.orders.charge');
+        ->name('orders.charge');
 
     Route::post('/Pedidos/procesar', [OrderController::class, 'processOrder'])
-        ->name('admin.orders.process');
+        ->name('orders.process');
 
     Route::post('/Pedidos/procesar-pago', [OrderController::class, 'processOrderPayment'])
-        ->name('admin.orders.processOrderPayment');
+        ->name('orders.processOrderPayment');
 
     Route::post('/Pedidos/cancelar', [OrderController::class, 'cancelOrder'])
-        ->name('admin.orders.cancelOrder');
+        ->name('orders.cancelOrder');
 
     Route::post('/Pedidos/abrir-mesa', [OrderController::class, 'openTable'])
-        ->name('admin.orders.openTable');
+        ->name('orders.openTable');
     // dashboard pages
     Route::get('/', [\App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
 

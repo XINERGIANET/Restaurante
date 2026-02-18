@@ -1,4 +1,4 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 
 @php
     use Illuminate\Support\HtmlString;
@@ -292,13 +292,11 @@
                             @endforelse
                         </tbody>
                     </table>
-                </div>
             </div>
 
             <div class="mt-4">
                 {{ $operations->links() }}
             </div>
-        </x-common.component-card>
 
 
         <x-ui.modal x-data="{ open: false }" @open-create-modal.window="open = true" @close-create-modal.window="open = false" :isOpen="false" :showCloseButton="false" class="max-w-3xl">
@@ -343,8 +341,9 @@
             </div>
         </x-ui.modal>
 
+        </x-common.component-card>
     </div>
-
+@endsection
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
@@ -385,4 +384,3 @@
     document.addEventListener('turbo:load', bindDeleteSweetAlert);
 </script>
 @endpush
-@endsection

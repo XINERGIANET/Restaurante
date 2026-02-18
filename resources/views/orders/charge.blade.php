@@ -6,7 +6,7 @@
         <div class="mb-4">
             <div class="flex items-center justify-between">
                 <h1 class="text-xl font-bold text-gray-900 dark:text-white">Cobrar Pedido</h1>
-                <a href="{{ $backUrl ?? route('admin.orders.index') }}"
+                <a id="back-to-orders-link" href="{{ $backUrl ?? route('orders.index') }}"
                     class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">
                     <i class="fas fa-arrow-left text-xs"></i>
                     Volver a pedidos
@@ -400,7 +400,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             const tableId = @json($table?->id ?? null);
             const movementId = @json($movement?->id ?? null);
-            const tableUrlTemplate = @json(route('admin.orders.charge', ['table_id' => ':table_id', 'movement_id' => ':movement_id']));
+            const tableUrlTemplate = @json(route('orders.charge', ['table_id' => ':table_id', 'movement_id' => ':movement_id']));
             const tableUrl = tableUrlTemplate
                 .replace(encodeURIComponent(':table_id'), String(tableId ?? ''))
                 .replace(encodeURIComponent(':movement_id'), String(movementId ?? ''));
@@ -424,6 +424,20 @@
             const closeCardModal = document.getElementById('close-card-modal');
             const cancelCardSelection = document.getElementById('cancel-card-selection');
             const confirmCardSelection = document.getElementById('confirm-card-selection');
+            // Enlace "Volver a pedidos": solo navegar, nunca disparar cobro
+            const backToOrdersLink = document.getElementById('back-to-orders-link');
+            if (backToOrdersLink) {
+                backToOrdersLink.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    // No mostrar "cobrado exitosamente" al volver sin cobrar
+                    try { sessionStorage.removeItem('flash_success_message'); } catch (_) {}
+                    const href = this.getAttribute('href');
+                    if (href && href !== '#') {
+                        window.location.href = href;
+                    }
+                });
+            }
             // Estos se actualizarán cuando se abra el modal
             let gatewayButtons = document.querySelectorAll('.gateway-btn');
             let cardButtons = document.querySelectorAll('.card-btn');
@@ -1148,7 +1162,7 @@
                     showNotification('Error', 'No hay productos en la orden. Serás redirigido a la página de pedidos.', 'error');
                     setTimeout(() => {
                         const viewId = new URLSearchParams(window.location.search).get('view_id');
-                        let url = viewId ? "{{ route('orders.list') }}?view_id=" + encodeURIComponent(viewId) : "{{ route('admin.orders.index') }}";
+                        let url = viewId ? "{{ route('orders.list') }}?view_id=" + encodeURIComponent(viewId) : "{{ route('orders.index') }}";
                         window.top.location.href = url;
                     }, 2000);
                     return;
@@ -1158,7 +1172,7 @@
                 const itemsInvalidos = order.items.filter(it => !it.pId && !it.id);
                 if (itemsInvalidos.length > 0) {
                     const viewId = new URLSearchParams(window.location.search).get('view_id');
-                    let url = viewId ? "{{ route('orders.list') }}?view_id=" + encodeURIComponent(viewId) : "{{ route('admin.orders.index') }}";
+                    let url = viewId ? "{{ route('orders.list') }}?view_id=" + encodeURIComponent(viewId) : "{{ route('orders.index') }}";
                     window.top.location.href = url;
                     return;
                 }
@@ -1288,7 +1302,7 @@
                 if (!order || !Array.isArray(order.items) || order.items.length === 0) {
                     showNotification('Error', 'No hay una orden activa', 'error');
                     setTimeout(() => {
-                        window.top.location.href = "{{ route('admin.orders.index') }}";
+                        window.top.location.href = "{{ route('orders.index') }}";
                     }, 2000);
                     return;
                 }
@@ -1417,7 +1431,7 @@
                 this.textContent = 'Procesando...';
 
 
-                fetch('{{ route('admin.orders.processOrderPayment') }}', {
+                fetch('{{ route('orders.processOrderPayment') }}', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -1482,7 +1496,7 @@
                         const fromList = new URLSearchParams(window.location.search).get('from') === 'list';
                         let url = fromList || viewId
                             ? "{{ route('orders.list') }}"
-                            : "{{ route('admin.orders.index') }}";
+                            : "{{ route('orders.index') }}";
                         if (viewId) url += (url.includes('?') ? '&' : '?') + 'view_id=' + encodeURIComponent(viewId);
                         window.top.location.href = url;
                     })
@@ -1495,7 +1509,7 @@
                             sessionStorage.setItem('flash_success_message', successMsg);
                             const viewId = new URLSearchParams(window.location.search).get('view_id');
                             const fromList = new URLSearchParams(window.location.search).get('from') === 'list';
-                            let url = fromList || viewId ? "{{ route('orders.list') }}" : "{{ route('admin.orders.index') }}";
+                            let url = fromList || viewId ? "{{ route('orders.list') }}" : "{{ route('orders.index') }}";
                             if (viewId) url += (url.includes('?') ? '&' : '?') + 'view_id=' + encodeURIComponent(viewId);
                             window.top.location.href = url;
                         } else {

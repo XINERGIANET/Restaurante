@@ -20,8 +20,7 @@
 
         // ESCUCHADOR DE EVENTO: Aquí recibimos la orden del padre
         updateOptions(newOptions) {
-            console.log('Combobox recibiendo datos:', newOptions); // Para depurar
-            this.allOptions = newOptions;
+            this.allOptions = Array.isArray(newOptions) ? newOptions : [];
             this.value = null; 
             this.query = '';
         },
@@ -59,7 +58,11 @@
     {{ $attributes->whereStartsWith('x-model') }} 
     
     {{-- ESCUCHAMOS EL EVENTO DEL PADRE --}}
-    @update-combobox-options.window="updateOptions($event.detail.options)"
+    @update-combobox-options.window="
+        if (!$event.detail || !$event.detail.options) return;
+        if (($event.detail.name || '') !== @js($name ?? '')) return;
+        updateOptions($event.detail.options)
+    "
 
     class="space-y-1.5 relative"
     x-on:mousedown.document="if (!$el.contains($event.target)) closeDropdown()"
@@ -100,8 +103,8 @@
 
         <div x-show="open" 
              x-transition.opacity.duration.200ms
-             class="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800"
-             style="display: none;">
+             class="absolute z-50 mt-1 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800"
+             style="display: none; max-height: 7.5rem;">
             
             <ul class="py-1">
                 <template x-for="item in filteredOptions" :key="item.id">

@@ -225,7 +225,7 @@
                                         </div>
                                         <p class="text-base font-semibold text-gray-700 dark:text-gray-200">No hay pedidos registrados.</p>
                                         <p class="text-gray-500">Crea el primer pedido desde Salones de pedidos.</p>
-                                        <x-ui.link-button size="sm" variant="primary" href="{{ route('admin.orders.index', $viewId ? ['view_id' => $viewId] : []) }}">
+                                        <x-ui.link-button size="sm" variant="primary" href="{{ route('orders.index', $viewId ? ['view_id' => $viewId] : []) }}">
                                             <i class="ri-add-line"></i>
                                             <span>Ir a pedidos</span>
                                         </x-ui.link-button>

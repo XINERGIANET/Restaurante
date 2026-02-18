@@ -29,7 +29,7 @@
                 </li>
                 <li class="min-w-0">
                     <a class="inline-flex items-center gap-1 sm:gap-1.5 text-gray-500 dark:text-gray-400 truncate max-w-[120px] sm:max-w-none"
-                        href="{{ route('admin.orders.index') }}">
+                        href="{{ route('orders.index') }}">
                         <span class="truncate">Salones de Pedidos</span>
                         <svg class="stroke-current" width="17" height="16" viewBox="0 0 17 16" fill="none"
                             xmlns="http://www.w3.org/2000/svg">
@@ -191,7 +191,7 @@
             function init() {
                 // Marcar la mesa como ocupada al abrir la vista
                 const tableId = currentTable.table_id ?? currentTable.id ?? {{ $table->id }};
-                fetch('{{ route('admin.orders.openTable') }}', {
+                fetch('{{ route('orders.openTable') }}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -640,7 +640,7 @@
                     delivery_amount: currentTable.delivery_amount ?? 0,
                     order_movement_id: currentTable.order_movement_id ?? null,
                 };
-                fetch('{{ route('admin.orders.process') }}', {
+                fetch('{{ route('orders.process') }}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -681,7 +681,7 @@
                     delivery_amount: currentTable.delivery_amount ?? 0,
                     order_movement_id: currentTable.order_movement_id ?? null,
                 };
-                fetch('{{ route('admin.orders.process') }}', {
+                fetch('{{ route('orders.process') }}', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -702,13 +702,7 @@
                     .then(data => {
                         if (data && data.success) {
                             sessionStorage.setItem('flash_success_message', data.message);
-                            if (data.movement_id) {
-                                const url = new URL("{{ route('admin.orders.charge') }}", window.location.origin);
-                                url.searchParams.set('movement_id', data.movement_id);
-                                window.location.href = url.toString();
-                            } else {
-                                window.location.href = "{{ route('admin.orders.index') }}";
-                            }
+                            window.location.href = "{{ route('orders.index') }}";
                         } else {
                             console.error('Error al guardar:', data);
                             sessionStorage.setItem('flash_error_message', data?.message );
@@ -748,7 +742,7 @@
                     delivery_time: currentTable.delivery_time ?? null,
                     delivery_amount: currentTable.delivery_amount ?? 0,
                 };
-                fetch('{{ route('admin.orders.processOrderPayment') }}', {
+                fetch('{{ route('orders.processOrderPayment') }}', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -768,7 +762,7 @@
                     })
                     .then(data => {
                         if (data && data.success && data.movement_id) {
-                            const url = new URL("{{ route('admin.orders.charge') }}", window.location.origin);
+                            const url = new URL("{{ route('orders.charge') }}", window.location.origin);
                             url.searchParams.set('movement_id', data.movement_id);
                                 sessionStorage.setItem('flash_success_message', data.message || 'Cobro de pedido procesado correctamente');
                             window.location.href = url.toString();
@@ -793,8 +787,8 @@
 
             function releaseTableAndGoBack() {
                 const tableId = currentTable?.table_id ?? currentTable?.id ?? {{ $table->id }};
-                const url = "{{ route('admin.orders.cancelOrder') }}";
-                const indexUrl = "{{ route('admin.orders.index') }}";
+                const url = "{{ route('orders.cancelOrder') }}";
+                const indexUrl = "{{ route('orders.index') }}";
                 const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
                 fetch(url, {
