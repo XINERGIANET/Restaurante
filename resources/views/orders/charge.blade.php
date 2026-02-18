@@ -398,6 +398,12 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            const tableId = @json($table?->id ?? null);
+            const movementId = @json($movement?->id ?? null);
+            const tableUrlTemplate = @json(route('admin.orders.charge', ['table_id' => ':table_id', 'movement_id' => ':movement_id']));
+            const tableUrl = tableUrlTemplate
+                .replace(encodeURIComponent(':table_id'), String(tableId ?? ''))
+                .replace(encodeURIComponent(':movement_id'), String(movementId ?? ''));
             // Documentos disponibles (se cargarán desde el servidor)
             const documentTypes = @json($documentTypes ?? []);
             const paymentMethods = @json($paymentMethods ?? []);
@@ -1002,13 +1008,13 @@
             let order = null;
             let notificationTimeout = null;
             
-            // Si hay un borrador del servidor, usarlo
-            if (draftOrderFromServer && draftOrderFromServer.items && draftOrderFromServer.items.length > 0) {
+            // Si hay un borrador del servidor (p. ej. al cobrar desde la mesa), usarlo
+            if (draftOrderFromServer && draftOrderFromServer.id) {
                 order = {
                     id: draftOrderFromServer.id,
                     number: draftOrderFromServer.number,
                     clientName: draftOrderFromServer.clientName || 'Público General',
-                    items: draftOrderFromServer.items,
+                    items: Array.isArray(draftOrderFromServer.items) ? draftOrderFromServer.items : [],
                     status: 'draft',
                     notes: draftOrderFromServer.notes || '',
                     pendingAmount: draftOrderFromServer.pendingAmount || 0

@@ -3,7 +3,7 @@
 @section('title', 'Punto de Venta')
 
 @section('content')
-    <div>
+    <div class="flex flex-col gap-4 rounded-2xl border border-gray-200 bg-white dark:bg-gray-900 p-5">
         <x-common.page-breadcrumb pageTitle="Salones de Pedidos" />
         <div x-data="posSystem()" x-cloak
             class="flex flex-col min-h-[calc(100vh-9rem)] w-full font-sans text-slate-800 dark:text-white"
@@ -105,13 +105,20 @@
 
                                     {{-- Botones --}}
                                     <template x-if="table && table.situation === 'ocupada'">
-                                        <div
-                                            class="border-blue-500 dark:border-blue-700 pt-3 flex justify-end gap-2 items-center">
-                                            <button type="button" @click.stop="openTable(table)"
+                                        <div class="border-blue-500 dark:border-blue-700 pt-3 flex justify-end gap-2 items-center">
+                                            <button type="button" @click.stop="chargeTable(table)" title="Cobrar"
+                                                class="inline-flex items-center justify-center bg-green-500 hover:bg-green-600 active:bg-green-700 text-white py-1.5 px-3 rounded-lg transition shadow-sm hover:shadow w-9">
+                                                <i class="ri-bank-card-line text-white"></i>
+                                            </button>
+                                            <button type="button"
+                                                @click.stop="moveTable(table)"
+                                                title="Mover mesa"
                                                 class="inline-flex items-center justify-center bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white py-1.5 px-3 rounded-lg transition shadow-sm hover:shadow w-9">
                                                 <i class="ri-drag-move-2-line text-white"></i>
                                             </button>
-                                            <button type="button" @click.stop="closeTable(table)"
+                                            <button type="button"
+                                                @click.stop="closeTable(table)"
+                                                title="Cerrar mesa"
                                                 class="inline-flex items-center justify-center bg-red-400 hover:bg-red-600 active:bg-red-700 text-white py-1.5 px-3 rounded-lg transition shadow-sm hover:shadow w-9">
                                                 <i class="ri-close-circle-line text-white"></i>
                                             </button>
@@ -158,7 +165,7 @@
                 const areasData = @json($areasData);
                 const tablesData = @json($tablesData);
                 const firstAreaId = @json($firstAreaId);
-
+                const cancelOrderUrl = @json(route('admin.orders.cancelOrder'));
                 const calculateInitialFilteredTables = () => {
                     try {
                         const areas = Array.isArray(areasData) ? areasData : [];
@@ -187,9 +194,30 @@
                     tables: Array.isArray(tablesData) ? tablesData : [],
                     currentAreaId: firstAreaId ? Number(firstAreaId) : null,
                     createUrl: @json(route('admin.orders.create')),
-                    cancelOrderUrl: @json(route('admin.orders.cancelOrder')),
+                    chargeUrl: @json(route('admin.orders.charge')),
+                    tablesDataUrl: @json(route('admin.orders.tablesData')),
+                    cancelOrderUrl: cancelOrderUrl,
                     cancelOrderToken: @json(csrf_token()),
                     filteredTables: safeFilteredTables,
+
+                    async refreshTables() {
+                        try {
+                            const res = await fetch(this.tablesDataUrl, {
+                                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+                            });
+                            if (!res.ok) return;
+                            const data = await res.json();
+                            if (data.tables && Array.isArray(data.tables)) {
+                                this.tables = data.tables;
+                            }
+                            if (data.areas && Array.isArray(data.areas)) {
+                                this.areas = data.areas;
+                            }
+                            this.updateFilteredTables();
+                        } catch (e) {
+                            console.warn('No se pudo actualizar mesas:', e);
+                        }
+                    },
 
                     init() {
                         if (this.currentAreaId) {
@@ -199,9 +227,12 @@
                             this.currentAreaId = Number(this.areas[0].id);
                         }
                         this.updateFilteredTables();
+                        this.refreshTables();
                         this.$watch('currentAreaId', () => {
                             this.updateFilteredTables();
                         });
+                        const self = this;
+                        window.__posRefreshTables = function() { self.refreshTables(); };
                     },
 
                     updateFilteredTables() {
@@ -250,35 +281,71 @@
                         }
                     },
 
+                    chargeTable(table) {
+                        if (table && table.movement_id) {
+                            const url = new URL(this.chargeUrl, window.location.origin);
+                            url.searchParams.set('movement_id', table.movement_id);
+                            url.searchParams.set('table_id', table.id);
+                            console.log(url.toString());
+                            if (window.Turbo && typeof window.Turbo.visit === 'function') {
+                                window.Turbo.visit(url.toString(), { action: 'advance' });
+                            } else {
+                                window.location.href = url.toString();
+                            }
+                        } else {
+                            this.openTable(table);
+                        }
+                    },
+
+
                     closeTable(table) {
-                        const formData = new FormData();
-                        formData.append('table_id', table.id);
-                        formData.append('_token', this.cancelOrderToken);
-                        fetch(this.cancelOrderUrl, {
+                        if (!window.Swal) {
+                            return;
+                        }
+                        Swal.fire({
+                            title: '¿Estás seguro de querer cerrar la mesa?',
+                            text: 'Esta acción no se puede deshacer.',
+                            icon: 'warning',
+                            showCancelButton: true,
+                            confirmButtonText: 'Sí, cerrar',
+                            cancelButtonText: 'Cancelar',
+                            reverseButtons: true,
+                        }).then((result) => {
+                            if (!result.isConfirmed) {
+                                // Usuario canceló: no hacer nada
+                                return;
+                            }
+
+                            const formData = new FormData();
+                            formData.append('table_id', table.id);
+                            formData.append('_token', this.cancelOrderToken);
+
+                            fetch(this.cancelOrderUrl, {
                                 method: 'POST',
-                                body: formData,
                                 headers: {
-                                    'X-Requested-With': 'XMLHttpRequest',
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': this.cancelOrderToken,
                                     'Accept': 'application/json',
-                                }
+                                    'X-Requested-With': 'XMLHttpRequest',
+                                },
+                                body: JSON.stringify({ table_id: table.id }),
                             })
-                            .then(res => res.json())
-                            .then(data => {
-                                if (data.success) {
-                                    const idx = this.tables.findIndex(t => t.id == table.id);
-                                    if (idx !== -1) {
-                                        this.tables[idx] = {
-                                            ...this.tables[idx],
-                                            situation: 'libre',
-                                            total: 0,
-                                            elapsed: null,
-                                            waiter: null,
-                                            client: null,
-                                            diners: 0
-                                        };
-                                        this.updateFilteredTables();
-                                    }
-                                    if (window.Swal) {
+                                .then(res => res.json())
+                                .then(data => {
+                                    if (data.success) {
+                                        const idx = this.tables.findIndex(t => t.id == table.id);
+                                        if (idx !== -1) {
+                                            this.tables[idx] = {
+                                                ...this.tables[idx],
+                                                situation: 'libre',
+                                                total: 0,
+                                                elapsed: null,
+                                                waiter: null,
+                                                client: null,
+                                                diners: 0
+                                            };
+                                            this.updateFilteredTables();
+                                        }
                                         Swal.fire({
                                             toast: true,
                                             position: 'bottom-end',
@@ -288,20 +355,31 @@
                                             timer: 3500,
                                             timerProgressBar: true
                                         });
+                                        window.location.reload();
+                                    } else if (data && data.message) {
+                                        Swal.fire({
+                                            toast: true,
+                                            position: 'bottom-end',
+                                            icon: 'error',
+                                            title: data.message,
+                                            showConfirmButton: false,
+                                            timer: 3500,
+                                            timerProgressBar: true
+                                        });
                                     }
-                                } else if (window.Swal && data.message) {
+                                })
+                                .catch(() => {
                                     Swal.fire({
                                         toast: true,
                                         position: 'bottom-end',
                                         icon: 'error',
-                                        title: data.message,
+                                        title: 'Error al cerrar la mesa.',
                                         showConfirmButton: false,
                                         timer: 3500,
                                         timerProgressBar: true
                                     });
-                                }
-                            })
-                            .catch(() => {});
+                                });
+                        });
                     },
                 };
 
@@ -309,10 +387,19 @@
             });
         };
 
+        
         registerPosSystem();
         document.addEventListener('alpine:init', registerPosSystem);
         document.addEventListener('turbo:load', registerPosSystem);
         document.addEventListener('turbo:render', registerPosSystem);
+        document.addEventListener('turbo:load', function() {
+            const path = window.location.pathname || '';
+            if (path.indexOf('/Pedidos') !== -1 && path.indexOf('/cobrar') === -1 && path.indexOf('/crear') === -1 && path.indexOf('/reporte') === -1) {
+                if (typeof window.__posRefreshTables === 'function') {
+                    setTimeout(window.__posRefreshTables, 100);
+                }
+            }
+        });
     </script>
 
     @push('scripts')

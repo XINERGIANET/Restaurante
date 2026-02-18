@@ -162,6 +162,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/herramientas/kardex', [KardexController::class, 'index'])
         ->name('kardex.index');
     //Rutas de ordenes
+    Route::get('/Pedidos/mesas-data', [OrderController::class, 'tablesData'])
+        ->name('admin.orders.tablesData');
     Route::resource('/Pedidos', OrderController::class)
         ->names('admin.orders')
         ->parameters(['orders' => 'order'])

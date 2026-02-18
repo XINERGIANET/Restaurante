@@ -3,21 +3,19 @@
 @section('title', 'Punto de Venta')
 
 @section('content')
-    <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
-        <div class="flex items-center gap-2">
-            <span class="text-gray-500 dark:text-gray-400"><i class="ri-restaurant-fill"></i></span>
-            <h2 class="text-xl font-semibold text-gray-800 dark:text-white/90">
-                <div class="flex items-center gap-2">
-                    <h2 class="text-xl font-bold text-slate-800">
-                        Mesa <span id="pos-table-name">{{ $table->name ?? $table->id }}</span>
-                    </h2>
-                    <span id="pos-table-area"
-                        class="text-[10px] font-bold px-2 py-0.5 bg-gray-100 text-gray-500 rounded uppercase tracking-wider border border-gray-200">--</span>
-                </div>
-            </h2>
+    <div class="flex flex-wrap items-center justify-between gap-2 sm:gap-3 mb-4 sm:mb-6">
+        <div class="flex items-center gap-2 min-w-0">
+            <span class="text-gray-500 dark:text-gray-400 shrink-0"><i class="ri-restaurant-fill"></i></span>
+            <div class="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                <h2 class="text-base sm:text-xl font-bold text-slate-800 dark:text-white truncate">
+                    Mesa <span id="pos-table-name">{{ $table->name ?? $table->id }}</span>
+                </h2>
+                <span id="pos-table-area"
+                    class="text-[10px] font-bold px-1.5 sm:px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded uppercase tracking-wider border border-gray-200 dark:border-gray-600 shrink-0">--</span>
+            </div>
         </div>
-        <nav>
-            <ol class="flex items-center gap-1.5">
+        <nav class="min-w-0">
+            <ol class="flex flex-wrap items-center gap-1 sm:gap-1.5 text-xs sm:text-sm">
                 <li>
                     <a class="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400"
                         href="{{ url('/') }}">
@@ -29,10 +27,10 @@
                         </svg>
                     </a>
                 </li>
-                <li>
-                    <a class="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400"
+                <li class="min-w-0">
+                    <a class="inline-flex items-center gap-1 sm:gap-1.5 text-gray-500 dark:text-gray-400 truncate max-w-[120px] sm:max-w-none"
                         href="{{ route('admin.orders.index') }}">
-                        Crear orden
+                        <span class="truncate">Salones de Pedidos</span>
                         <svg class="stroke-current" width="17" height="16" viewBox="0 0 17 16" fill="none"
                             xmlns="http://www.w3.org/2000/svg">
                             <path d="M6.0765 12.667L10.2432 8.50033L6.0765 4.33366" stroke="" stroke-width="1.2"
@@ -40,101 +38,96 @@
                         </svg>
                     </a>
                 </li>
-                <li class="text-sm text-gray-800 dark:text-white/90">
+                <li class="text-gray-800 dark:text-white/90 truncate max-w-[140px] sm:max-w-none">
                     Mesa {{ str_pad($table->name ?? $table->id, 2, '0', STR_PAD_LEFT) }} | Crear pedido
                 </li>
             </ol>
         </nav>
     </div>
 
-    <div class="rounded-2xl border border-gray-200 dark:border-gray-300 overflow-hidden bg-white dark:bg-gray-900 fade-in" style="--brand:#3B82F6;">
-        <div class="flex items-stretch w-full bg-white dark:bg-gray-800/50 min-h-[calc(100vh-12rem)] pb-10">
-        <main class="flex-1 flex flex-col min-w-0 bg-white dark:bg-gray-900/50">
-            <header class="h-20 px-6 flex items-center justify-between bg-white border-b border-gray-200 shadow-sm z-10">
-                <div class="flex items-center gap-4">
+    <div class="rounded-2xl border border-gray-200 dark:border-gray-300 overflow-hidden bg-blue-50 dark:bg-gray-900 fade-in max-w-full">
+        <div class="flex flex-col lg:flex-row items-stretch w-full max-w-full bg-white dark:bg-gray-800/50 min-h-[calc(100vh-180px)] sm:min-h-[calc(100vh-12rem)] pb-6 sm:pb-10 min-w-0">
+        <main class="w-full lg:flex-1 flex flex-col min-w-0 min-h-0 bg-white dark:bg-gray-900/50 lg:min-h-0">
+            <header class="min-h-14 sm:h-20 py-4 px-3 sm:py-0 sm:px-6 flex items-center justify-between gap-2 sm:gap-4 dark:bg-gray-800/50 border-b border-gray-200 shadow-sm z-10 bg-gray-300 flex-wrap sm:flex-nowrap">
+                <div class="flex items-center gap-2 sm:gap-4 min-w-0">
                     <button onclick="goBack()" 
                         title="Volver atrás"
-                        class="h-10 w-10 rounded-lg bg-gray-50 border border-gray-200 text-gray-500 hover:text-blue-600 hover:border-blue-600 transition-colors flex items-center justify-center shadow-sm">
-                        <i class="ri-arrow-left-line text-xl"></i>
+                        class="h-9 w-9 sm:h-10 sm:w-10 rounded-lg bg-gray-50 border border-gray-200 text-gray-500 hover:text-blue-600 hover:border-blue-600 transition-colors flex items-center justify-center shadow-sm shrink-0">
+                        <i class="ri-arrow-left-line text-lg sm:text-xl"></i>
                     </button>
 
-                    <div class="flex items-center gap-6 text-sm text-gray-500 font-medium">
-                        <div class="flex items-center gap-2 group">
-                            <span class="text-gray-400">Mozo:</span>
-                            <div class="relative flex items-center">
+                    <div class="flex items-center gap-2 sm:gap-4 md:gap-6 text-xs sm:text-sm text-gray-500 font-medium min-w-0">
+                        <div class="flex items-center gap-1 sm:gap-2 group min-w-0">
+                            <span class="text-gray-500 dark:text-gray-400 shrink-0">Mozo:</span>
+                            <div class="relative flex items-center min-w-0">
                                 <select onchange="changeWaiter(this.value)"
-                                    class="appearance-none bg-transparent border-none p-0 pr-2 text-slate-700 font-bold cursor-pointer focus:ring-0 text-sm truncate max-w-[120px]">
+                                    class="min-w-0 w-16 sm:w-24 md:min-w-[100px] md:max-w-[140px] py-1 px-2 sm:px-3 bg-white dark:bg-slate-700/80 border border-gray-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 font-semibold text-xs sm:text-sm cursor-pointer focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-500/40 focus:border-blue-400 outline-none shadow-sm appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%22%236b7280%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22M6%208l4%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1rem] sm:bg-[length:1.25rem] bg-[right_0.2rem_center] sm:bg-[right_0.25rem_center] bg-no-repeat truncate">
                                     <option value="{{ $user?->id }}" selected>{{ $user?->name ?? 'Sin asignar' }}</option>
                                 </select>
                             </div>
                         </div>
 
-                        <div class="h-4 w-px bg-gray-300"></div>
+                        <div class="h-3 sm:h-4 w-px bg-gray-300 dark:bg-slate-600 shrink-0"></div>
 
-                        <div class="flex items-center gap-2 group">
-                            <span class="text-gray-400">Cliente:</span>
-                            <div class="relative flex items-center">
+                        <div class="flex items-center gap-1 sm:gap-2 group min-w-0">
+                            <span class="text-gray-500 dark:text-gray-400 shrink-0">Cliente:</span>
+                            <div class="relative flex items-center min-w-0">
                                 <select onchange="changeClient(this.value)"
-                                    class="appearance-none bg-transparent border-none p-0 pr-2 text-slate-700 font-bold cursor-pointer focus:ring-0 text-sm truncate max-w-[150px]">
+                                    class="min-w-0 w-20 sm:w-28 md:min-w-[110px] md:max-w-[180px] py-1 px-2 sm:px-3 bg-white dark:bg-slate-700/80 border border-gray-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 font-semibold text-xs sm:text-sm cursor-pointer focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-500/40 focus:border-blue-400 outline-none shadow-sm appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%226b7280%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22M6%208l4%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1rem] sm:bg-[length:1.25rem] bg-[right_0.2rem_center] sm:bg-[right_0.25rem_center] bg-no-repeat truncate">
                                     <option value="{{ $person?->id }}" selected>{{ $person?->name ?? 'Público General' }}</option>
                                 </select>
                             </div>
                         </div>
 
-                        <div class="h-4 w-px bg-gray-300"></div>
+                        <div class="h-3 sm:h-4 w-px bg-gray-300 dark:bg-slate-600 shrink-0"></div>
 
-                        <div class="flex items-center gap-2 group">
-                            <span class="text-gray-400">Personas:</span>
+                        <div class="flex items-center gap-1 sm:gap-2 group min-w-0">
+                            <span class="text-gray-500 dark:text-gray-400 shrink-0">Personas:</span>
                             <div class="relative flex items-center">
                                 <input type="number" 
                                     value="{{ $diners ?? 1 }}" 
                                     min="1" 
                                     onchange="updateDiners(this.value)"
-                                    class="w-10 border-none bg-transparent p-0 text-center text-slate-700 font-bold focus:ring-0 text-sm appearance-none">
+                                    class="w-8 sm:w-10 py-1 px-1 text-center text-xs sm:text-sm bg-white dark:bg-slate-700/80 border border-gray-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 font-semibold focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-500/40 focus:border-blue-400 outline-none shadow-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
                             </div>
                         </div>
                     </div>
                 </div>
             </header>
 
-            <div class="p-6 bg-white">                
-                <div class="flex items-center justify-between mb-4">                    
-                    <h3 class="font-bold text-base">Categoría</h3>
-                    <div class="w-64 hidden md:block relative">
+            <div class="p-3 sm:p-5 md:p-6 w-full bg-white flex flex-col flex-1 min-h-0">                
+                <div class="flex items-center justify-end mb-3 sm:mb-4 shrink-0">
+                    <div class="w-40 sm:w-56 md:w-64 relative">
                         <input type="text" placeholder="Buscar..."
-                            class="w-full pl-9 pr-4 py-2 bg-white border-transparent focus:border-blue-1000 focus:ring-0 rounded-lg text-sm shadow-sm transition-all">
-                        <i class="fas fa-search absolute left-3 top-2.5 text-gray-1000 text-xs"></i>
+                            class="w-full pl-8 pr-3 py-2 text-sm bg-white border border-gray-200 dark:border-slate-600 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-200 transition-all">
+                        <i class="fas fa-search absolute left-2.5 sm:left-3 top-2.5 text-gray-400 text-xs"></i>
                     </div>
                 </div>
 
-                <div id="categories-grid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-8">
-                </div>
-                
-                <div id="products-grid"
-                    style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; width: 100%;">
+                <div class="flex flex-row gap-3 sm:gap-6 flex-1 min-h-0 min-w-0">
+                    <div class="flex flex-col border-r p-3 border-gray-300 w-1/4 min-w-[200px] sm:min-w-0 shrink-0 min-h-0" style="min-width: 28%">
+                        <h3 class="font-bold text-sm sm:text-base text-slate-800 dark:text-white mb-2 sm:mb-3 px-2 sm:px-4 shrink-0">Categoría</h3>
+                        <div id="categories-grid" class="grid grid-cols-1 gap-2 sm:gap-3 p-2 sm:p-4 overflow-y-auto min-h-0 flex-1 content-start">
+                        </div>
+                    </div>
+                    <div class="flex flex-col flex-1 min-h-0 min-w-0" style="min-width: 72%;">
+                        <h3 class="font-bold text-sm sm:text-base text-slate-800 dark:text-white mb-2 sm:mb-3 shrink-0">Productos</h3>
+                        <div id="products-grid" class="p-2 sm:p-4 md:p-5 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2 sm:gap-4 overflow-y-auto min-h-0 flex-1 content-start">
+                        </div>
+                    </div>
                 </div>
             </div>
         </main>
 
         <aside
-            class="flex-none flex flex-col shadow-2xl overflow-hidden w-[350px] bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700">
-
-            {{-- Header Carrito --}}
-            <div class="h-16 px-6 border-b border-gray-200 bg-white flex justify-between items-center shrink-0 gap-2">
-                <h3 class="text-xl font-bold text-slate-800">Orden Actual</h3>
-                <button onclick="cancelOrder()" 
-                    title="Cancelar orden"
-                    class="py-2.5 px-3 rounded-lg border border-gray-300 bg-red-500 text-white font-semibold text-xs hover:bg-red-600 shadow-sm transition-all">
-                    <i class="ri-delete-bin-line"></i>
-                </button>
+            class="flex flex-col shadow-2xl overflow-hidden w-[350px] sm:w-[320px] md:w-[350px] shrink-0 bg-blue-50 dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 min-h-0" style="min-height: 550px;">
+            <div class="h-14 sm:h-16 px-3 sm:px-6 flex items-center justify-between shadow-sm bg-white dark:bg-gray-800">
+                <h3 class="text-base sm:text-lg font-bold text-slate-800 dark:text-white">Orden Actual</h3>
             </div>
+            <div id="cart-container" class="flex-1 overflow-y-auto p-3 sm:p-5 space-y-2 sm:space-y-3 bg-white dark:bg-gray-900/50 min-h-0"></div>
 
-            {{-- Lista Items (Scroll interno solo para el carrito) --}}
-            <div id="cart-container" class="flex-1 overflow-y-auto p-5 space-y-3 bg-white"></div>
-
-            {{-- Footer Totales --}}
-            <div class="p-6 bg-white border-t border-gray-300">
-                <div class="space-y-3 mb-5 text-sm">
+            <div class="shrink-0 p-4 sm:p-6 pt-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
+                <div class="space-y-2 sm:space-y-3 mb-4 sm:mb-5 text-xs sm:text-sm">
                     <div class="flex justify-between text-gray-500 font-medium">
                         <span>Subtotal</span>
                         <span class="text-slate-700" id="ticket-subtotal">$0.00</span>
@@ -143,16 +136,20 @@
                         <span>Impuestos</span>
                         <span class="text-slate-700" id="ticket-tax">$0.00</span>
                     </div>
-                    <div class="border-t border-dashed border-gray-300 my-2"></div>
+                    <div class="border-t border-dashed border-gray-300 dark:border-gray-600 my-2"></div>
                     <div class="flex justify-between items-center">
-                        <span class="text-lg font-bold text-slate-800">Total a Pagar</span>
-                        <span class="text-3xl font-black text-blue-600" id="ticket-total">$0.00</span>
+                        <span class="text-base sm:text-lg font-bold text-slate-800 dark:text-white">Total a Pagar</span>
+                        <span class="text-xl sm:text-3xl font-black text-blue-600" id="ticket-total">$0.00</span>
                     </div>
                 </div>
-                <div class="grid grid-cols-1 gap-2">
+                <div class="grid grid-cols-2 gap-1.5 sm:gap-2">
+                    <button onclick="processOrder()"
+                        class="py-1.5 px-2 rounded-xl bg-gray-500 text-white font-bold text-xs sm:text-sm shadow-lg hover:bg-gray-600 active:scale-95 transition-all flex justify-center items-center gap-1 sm:gap-2">
+                        <span>Guardar</span> <i class="ri-save-line text-sm sm:text-base"></i>
+                    </button>
                     <button onclick="processOrderPayment()"
-                        class="py-1.5 px-2 rounded-xl bg-blue-600 text-white font-bold shadow-lg shadow-blue-500/30 hover:bg-blue-700 active:scale-95 transition-all flex justify-center items-center gap-2">
-                        <span>Cobrar</span> <i class="fas fa-check-circle"></i>
+                        class="py-1.5 px-2 rounded-xl bg-blue-600 text-white font-bold text-xs sm:text-sm shadow-lg hover:bg-blue-700 active:scale-95 transition-all flex justify-center items-center gap-1 sm:gap-2">
+                        <span>Cobrar</span> <i class="ri-check-line text-sm sm:text-base"></i>
                     </button>
                 </div>
             </div>
@@ -222,6 +219,7 @@
                         "{{ $person?->name ?? 'Sin cliente' }}";
                 }
                 refreshCartPricesFromServer();
+                renderCategories();
                 renderProducts();
                 renderTicket();
                 if (currentTable.items && currentTable.items.length > 0) {
@@ -256,9 +254,10 @@
                 return imagePath;
             }
 
-            // Datos de productos y productBranches desde el servidor
+            // Datos de productos, categorías y productBranches desde el servidor
             const serverProducts = @json($products ?? []);
             const serverProductBranches = @json($productBranches ?? []);
+            const serverCategories = @json(collect($categories ?? [])->map(fn($c) => ['id' => $c->id, 'name' => $c->description ?? '', 'img' => $c->image ? asset('storage/' . $c->image) : null])->values()->all());
 
             function getItemTaxRatePercent(item) {
                 const rate = parseFloat(item?.tax_rate);
@@ -332,19 +331,12 @@
                     
                     el.className = "group cursor-pointer transition-transform duration-200 hover:scale-105";
 
-                    // Lógica del Clic: Filtrar productos
+                    // Lógica del Clic: Filtrar productos por categoría
                     el.onclick = function(e) {
                         e.preventDefault();
-                        
-                        // Actualizar ID seleccionado
-                        selectedCategoryId = cat.id; 
-                        
-                        // Llamar a tu función de filtrado (Asumo que tienes una o la crearás)
-                        // filterProductsByCategory(cat.id); 
-                        console.log('Filtrando por categoría:', cat.name);
-                        
-                        // Opcional: Volver a renderizar categorías si quieres marcar la activa visualmente
-                        renderCategories(); 
+                        selectedCategoryId = cat.id;
+                        renderCategories();
+                        renderProducts();
                     };
 
                     const categoryName = escapeHtml(cat.name || 'Sin nombre');
@@ -357,18 +349,15 @@
                         : 'border-gray-300 dark:border-slate-700/50 hover:border-blue-500';
 
                     el.innerHTML = `
-                        <div class="rounded-lg overflow-hidden p-3 dark:bg-slate-800/40 shadow-md hover:shadow-xl border ${activeClass} hover:shadow-blue-500/10 transition-all duration-200 hover:-translate-y-1 backdrop-blur-sm h-full flex flex-col">
-                            
-                            <div class="relative aspect-square overflow-hidden dark:bg-slate-700/30 rounded-lg border border-gray-300 dark:border-slate-600/30 shadow-sm">
+                        <div class="flex flex-row items-center gap-3 rounded-lg overflow-hidden p-1 dark:bg-slate-800/40 shadow-md hover:shadow-xl border ${activeClass} hover:shadow-blue-500/10 transition-all duration-200 hover:-translate-y-1 backdrop-blur-sm h-full">
+                            <div class="relative w-14 h-14 shrink-0 overflow-hidden dark:bg-slate-700/30 rounded-lg border border-gray-300 dark:border-slate-600/30 shadow-sm">
                                 <img src="${imageUrl}" 
                                     alt="${categoryName}" 
                                     class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
                                     loading="lazy"
                                     onerror="this.onerror=null; this.src=getImageUrl(null)">
-                                
-                                </div>
-                            
-                            <div class="mt-3 flex flex-col gap-1 text-center">
+                            </div>
+                            <div class="flex-1 min-w-0 flex flex-col gap-1 justify-center text-left">
                                 <h4 class="font-bold text-gray-900 dark:text-white text-sm line-clamp-2 leading-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                                     ${categoryName}
                                 </h4>
@@ -390,8 +379,13 @@
                     return;
                 }
 
+                // Filtrar por categoría seleccionada (si hay una)
+                const productsToShow = selectedCategoryId == null
+                    ? serverProducts
+                    : serverProducts.filter(p => p.category_id == selectedCategoryId);
+
                 let productsRendered = 0;
-                serverProducts.forEach(prod => {
+                productsToShow.forEach(prod => {
                     const productBranch = serverProductBranches.find(p => p.product_id === prod.id || p.id === prod.id);
                     if (!productBranch) return;
 
@@ -447,8 +441,9 @@
                 });
 
                 if (productsRendered === 0) {
-                    grid.innerHTML =
-                        '<div class="col-span-full text-center text-gray-500 py-8">No hay productos disponibles para esta sucursal</div>';
+                    grid.innerHTML = selectedCategoryId != null
+                        ? '<div class="col-span-full text-center text-gray-500 py-8">No hay productos en esta categoría</div>'
+                        : '<div class="col-span-full text-center text-gray-500 py-8">No hay productos disponibles para esta sucursal</div>';
                 }
 
             }
@@ -707,7 +702,13 @@
                     .then(data => {
                         if (data && data.success) {
                             sessionStorage.setItem('flash_success_message', data.message);
-                            window.location.href = "{{ route('admin.orders.index') }}";
+                            if (data.movement_id) {
+                                const url = new URL("{{ route('admin.orders.charge') }}", window.location.origin);
+                                url.searchParams.set('movement_id', data.movement_id);
+                                window.location.href = url.toString();
+                            } else {
+                                window.location.href = "{{ route('admin.orders.index') }}";
+                            }
                         } else {
                             console.error('Error al guardar:', data);
                             sessionStorage.setItem('flash_error_message', data?.message );
@@ -802,18 +803,29 @@
                             'Content-Type': 'application/json',
                             'X-CSRF-TOKEN': csrf,
                             'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
                         },
-                        body: JSON.stringify({
-                            table_id: tableId
-                        }),
+                        body: JSON.stringify({ table_id: tableId }),
                     })
                     .then(async (r) => {
                         if (r.headers.get('content-type')?.includes('application/json')) {
                             return r.json();
                         }
+                        return null;
                     })
-                    .then(() => {
-                        /* mesa liberada o ya estaba libre */ })
+                    .then((data) => {
+                        // Limpiar borrador local de esta mesa para que no reaparezca como guardada
+                        if (db && activeKey && db[activeKey]) {
+                            delete db[activeKey];
+                            localStorage.setItem('restaurantDB', JSON.stringify(db));
+                        }
+                        if (currentTable) {
+                            currentTable.items = [];
+                            currentTable.order_movement_id = null;
+                            currentTable.movement_id = null;
+                            currentTable.isActive = false;
+                        }
+                    })
                     .catch(() => {
                         /* seguir igual, redirigir */ })
                     .finally(() => {
@@ -828,11 +840,8 @@
             }
 
             function goBack() {
-                releaseTableAndGoBack();
-            }
-
-            function cancelOrder() {
-                releaseTableAndGoBack();
+                // Guardar en el servidor y volver al listado
+                processOrder();
             }
 
             // Inicializar cuando el DOM esté listo
@@ -868,7 +877,6 @@
             window.updateQty = updateQty;
             window.saveNote = saveNote;
             window.getImageUrl = getImageUrl;
-            window.cancelOrder = cancelOrder;
             window.goBack = goBack;
             window.processOrder = processOrder;
             window.processOrderPayment = processOrderPayment;

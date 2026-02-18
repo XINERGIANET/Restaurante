@@ -157,6 +157,7 @@ class OrderController extends Controller
                 'client' => $orderMovement?->movement?->person_name ?? '-',
                 'total' => $totalWithTax,
                 'order_movement_id' => $orderMovement?->id ?? null,
+                'movement_id' => $orderMovement?->movement_id ?? null,
                 'elapsed' => $elapsed,
             ];
         })->values();
@@ -174,6 +175,56 @@ class OrderController extends Controller
             'tables' => $tablesPayload,
             'user' => $request->user(),
         ]);
+    }
+
+    public function tablesData(Request $request)
+    {
+        $branchId = session('branch_id');
+        $areas = Area::query()
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+            ->orderBy('id')
+            ->get(['id', 'name']);
+        $tables = Table::query()
+            ->when($areas->isNotEmpty(), fn($q) => $q->whereIn('area_id', $areas->pluck('id')))
+            ->when($branchId && $areas->isEmpty(), fn($q) => $q->whereRaw('1 = 0'))
+            ->orderBy('name')
+            ->get(['id', 'name', 'area_id', 'capacity', 'situation', 'opened_at']);
+        $tablesPayload = $tables->map(function (Table $table) {
+            $elapsed = '--:--';
+            if ($table->opened_at instanceof \DateTimeInterface) {
+                $elapsed = $table->opened_at->format('H:i');
+            } elseif (!empty($table->opened_at)) {
+                $elapsed = (string) $table->opened_at;
+            }
+            $rawSituation = $table->situation ?? 'libre';
+            $situation = strtolower((string) $rawSituation);
+            if ($situation !== 'libre' && $situation !== 'ocupada') {
+                $situation = (in_array($rawSituation, ['PENDIENTE', 'OCUPADA', 'ocupada', 'Pendiente'], true)) ? 'ocupada' : 'libre';
+            }
+            $orderMovement = OrderMovement::with('movement')
+                ->where('table_id', $table->id)
+                ->whereIn('status', ['PENDIENTE', 'P'])
+                ->orderByDesc('id')
+                ->first();
+            $totalAmount = $orderMovement ? (float) $orderMovement->subtotal : 0;
+            $taxAmount = $orderMovement ? (float) ($orderMovement->tax ?? 0) : 0;
+            $totalWithTax = round($totalAmount + $taxAmount, 2);
+            return [
+                'id' => $table->id,
+                'name' => $table->name,
+                'area_id' => (int) $table->area_id,
+                'situation' => $situation,
+                'diners' => (int) ($table->capacity ?? 0),
+                'waiter' => $orderMovement?->movement?->user_name ?? '-',
+                'client' => $orderMovement?->movement?->person_name ?? '-',
+                'total' => $totalWithTax,
+                'order_movement_id' => $orderMovement?->id ?? null,
+                'movement_id' => $orderMovement?->movement_id ?? null,
+                'elapsed' => $elapsed,
+            ];
+        })->values();
+        $areasArray = $areas->map(fn($area) => ['id' => (int) $area->id, 'name' => $area->name])->values();
+        return response()->json(['tables' => $tablesPayload, 'areas' => $areasArray]);
     }
 
     public function create(Request $request)
@@ -211,6 +262,7 @@ class OrderController extends Controller
                     'name' => $product->description,
                     'img' => $imageUrl,
                     'category' => $product->category ? $product->category->description : 'Sin categoría',
+                    'category_id' => $product->category_id,
                     'table_id' => $tableId,
                     'branch_id' => $branchId
                 ];
@@ -283,19 +335,30 @@ class OrderController extends Controller
         // Si se pasa un movement_id, cargar la orden pendiente (pedido o venta)
         $draftOrder = null;
         $pendingAmount = 0;
+        $movement = null;
+        $table = null;
+
         if ($request->has('movement_id')) {
-            $movement = Movement::with(['salesMovement.details.product', 'cashMovement', 'orderMovement.details'])
+            $movement = Movement::with(['salesMovement.details.product', 'cashMovement', 'orderMovement.details', 'orderMovement.table'])
                 ->where('id', $request->movement_id)
                 ->whereIn('status', ['P', 'A'])
                 ->first();
 
-            // Pedido: OrderMovement + detalles
-            if ($movement && $movement->orderMovement && $movement->orderMovement->details) {
+            if ($movement && $movement->orderMovement) {
+                $table = $movement->orderMovement->table;
+            }
+            if (!$table && $request->filled('table_id')) {
+                $table = Table::find($request->table_id);
+            }
+
+            // Pedido: OrderMovement + detalles (aunque items estén vacíos)
+            if ($movement && $movement->orderMovement) {
                 $om = $movement->orderMovement;
+                $details = $om->details ?? collect();
                 $draftOrder = [
                     'id' => $movement->id,
                     'number' => $movement->number,
-                    'items' => $om->details->map(function ($detail) {
+                    'items' => $details->map(function ($detail) {
                         return [
                             'pId' => $detail->product_id,
                             'name' => $detail->description ?? 'Producto #' . $detail->product_id,
@@ -356,6 +419,8 @@ class OrderController extends Controller
             'pendingAmount' => $pendingAmount,
             'products' => $products,
             'backUrl' => $backUrl,
+            'movement' => $movement,
+            'table' => $table,
         ]);
     }
 
