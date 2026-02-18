@@ -71,7 +71,6 @@ class PettyCashController extends Controller
                 ->distinct()
                 ->get();
         }
-   // dd($viewId, $branchId, $profileId, $operaciones);
         $cashRegisters = CashRegister::where('status', '1')->orderBy('number', 'asc')->get();
         $selectedBoxId = $cash_register_id;
 

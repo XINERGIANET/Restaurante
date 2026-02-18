@@ -26,6 +26,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
+use Barryvdh\Snappy\Facades\SnappyPdf as PDF;
 
 class SalesController extends Controller
 {
@@ -1142,75 +1143,61 @@ class SalesController extends Controller
         ];
     }
 
-    public function reportSales(Request $request)
+    public function exportPdf(Request $request)
     {
-        $branchId = session('branch_id');
+        $branchId = session('branch_id'); 
         $search = $request->input('search');
         $dateFrom = $request->input('date_from');
         $dateTo = $request->input('date_to');
-        $perPage = (int) $request->input('per_page', 10);
-        $allowedPerPage = [10, 20, 50, 100];
-        if (!in_array($perPage, $allowedPerPage, true)) {
-            $perPage = 10;
-        }
-        $personId = $request->input('person_id');
         $documentTypeId = $request->input('document_type_id');
+        $personId = $request->input('person_id');
+
         $query = Movement::query()
             ->with(['branch', 'person', 'movementType', 'documentType', 'salesMovement'])
-            ->where('movement_type_id', 2)
+            ->where('movement_type_id', 2) 
             ->where('branch_id', $branchId)
             ->whereHas('salesMovement');
-        if ($documentTypeId !== null && $documentTypeId !== '' && is_numeric($documentTypeId)) {
+
+        // Aplicación de filtros
+        if ($documentTypeId && is_numeric($documentTypeId)) {
             $query->where('document_type_id', (int) $documentTypeId);
         }
-        if ($search !== null && $search !== '') {
+        if ($search) {
             $query->where(function ($inner) use ($search) {
                 $inner->where('number', 'like', "%{$search}%")
                     ->orWhere('person_name', 'like', "%{$search}%")
                     ->orWhere('user_name', 'like', "%{$search}%");
             });
         }
-        if ($personId !== null && $personId !== '') {
-            $query->where('person_id', $personId);
-        }
-        if ($dateFrom !== null && $dateFrom !== '') {
-            $query->where('moved_at', '>=', $dateFrom);
-        }
-        if ($dateTo !== null && $dateTo !== '') {
-            $query->where('moved_at', '<=', $dateTo);
-        }
-        $sales = $query->orderBy('moved_at', 'desc')->paginate($perPage)->withQueryString();
+        if ($dateFrom) $query->where('moved_at', '>=', $dateFrom);
+        if ($dateTo) $query->where('moved_at', '<=', $dateTo);
 
-        if ($request->wantsJson() || $request->ajax()) {
-            return response()->json(['success' => true, 'sales' => $sales, 'pagination' => [
-                'current_page' => $sales->currentPage(),
-                'last_page' => $sales->lastPage(),
-                'per_page' => $sales->perPage(),
-                'total' => $sales->total(),
-            ]]);
+        $sales = $query->orderBy('moved_at', 'desc')->get();
+
+        try {
+            $pdf = PDF::loadView('sales.pdfs.pdf_report', compact('sales', 'dateFrom', 'dateTo'));
+            
+            $pdf->setPaper('a4')
+                ->setOption('margin-bottom', 10)
+                ->setOption('encoding', 'utf-8')
+                ->setOption('enable-local-file-access', true);
+
+            // Obtenemos el contenido binario del PDF
+            $output = $pdf->output();
+
+            // Devolvemos la respuesta forzando los headers
+            return response($output, 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'attachment; filename="Reporte_Ventas.pdf"',
+                'Content-Length' => strlen($output),
+            ]);
+
+        } catch (\Exception $e) {
+            // Esto es vital para ver por qué falla en Windows
+            dd("ERROR REAL: " . $e->getMessage());
         }
-
-        $viewId = $request->input('view_id');
-
-        $documentTypes = DocumentType::query()
-            ->where('movement_type_id', 2)
-            ->orderBy('name')
-            ->get(['id', 'name']);
-
-        return view('sales.report', [
-            'branchId' => $branchId,
-            'search' => $search,
-            'dateFrom' => $dateFrom,
-            'dateTo' => $dateTo,
-            'documentTypeId' => $documentTypeId,
-            'documentTypes' => $documentTypes,
-            'perPage' => $perPage,
-            'allowedPerPage' => $allowedPerPage,
-            'sales' => $sales,
-            'viewId' => $viewId,
-        ]);
     }
-
+    
     /**
      * Genera numero de venta en formato correlativo simple: 00000127.
      * Mantiene compatibilidad leyendo tambien numeros historicos con formato antiguo.

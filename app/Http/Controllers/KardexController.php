@@ -6,10 +6,13 @@ use App\Models\Branch;
 use App\Models\Product;
 use App\Models\SalesMovementDetail;
 use App\Models\WarehouseMovementDetail;
+use App\Models\DocumentType;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class KardexController extends Controller
 {
+
     public function index(Request $request)
     {
         $viewId = $request->input('view_id');
@@ -17,43 +20,95 @@ class KardexController extends Controller
         $branchId = $request->session()->get('branch_id');
         $dateFrom = $request->input('date_from') ?? now()->startOfMonth()->format('Y-m-d');
         $dateTo = $request->input('date_to') ?? now()->format('Y-m-d');
+        
+        $sourceFilter = $request->input('source') ?? 'all'; 
+        $typeFilter = $request->input('movement_type') ?? 'all';
+
+        $perPage = (int) $request->input('per_page', 10);
+        $allowedPerPage = [10, 20, 50, 100];
+        if (!in_array($perPage, $allowedPerPage, true)) {
+            $perPage = 10;
+        }
 
         $products = Product::where('kardex', 'S')->with('baseUnit')->orderBy('description')->get();
-        $product = ($productId && $productId !== 'all' && is_numeric($productId)) ? Product::find($productId) : null;
         $branch = $branchId ? Branch::find($branchId) : null;
-        $movements = collect();
+        $movementsCollection = collect(); 
         $showAllProducts = ($productId === 'all');
 
         if ($showAllProducts) {
-            $productIds = $this->getProductIdsWithMovements(
-                $branchId ? (int) $branchId : null,
-                $dateFrom,
-                $dateTo
-            );
+            $productIds = $this->getProductIdsWithMovements($branchId ? (int) $branchId : null, $dateFrom, $dateTo);
             $productIds = array_values(array_intersect($productIds, $products->pluck('id')->all()));
-            $productMap = Product::whereIn('id', $productIds)->get()->keyBy('id');
-            foreach ($productIds as $pid) {
-                $rows = $this->buildKardexMovements($pid, $branchId ? (int) $branchId : null, $dateFrom, $dateTo);
-                $p = $productMap->get($pid);
-                foreach ($rows as $r) {
-                    $r['product_code'] = $p?->code ?? '-';
-                    $r['product_description'] = $p?->description ?? '-';
-                    $movements->push($r);
+            
+            if (!empty($productIds)) {
+                $productMap = Product::whereIn('id', $productIds)->get()->keyBy('id');
+
+                foreach ($productIds as $pid) {
+                    $rows = $this->buildKardexMovements($pid, $branchId ? (int) $branchId : null, $dateFrom, $dateTo);
+                    
+                    $p = $productMap->get($pid);
+                    foreach ($rows as $r) {
+                        $r['product_code'] = $p?->code ?? '-';
+                        $r['product_description'] = $p?->description ?? '-';
+                        $movementsCollection->push($r);
+                    }
                 }
+                $movementsCollection = $movementsCollection->sortBy([
+                    ['date', 'desc'], 
+                    ['product_code', 'asc']
+                ])->values();
             }
-            $movements = $movements->sortBy(['date', 'product_code'])->values();
-        } elseif ($product) {
-            $movements = $this->buildKardexMovements(
-                (int) $productId,
-                $branchId ? (int) $branchId : null,
-                $dateFrom,
-                $dateTo
-            );
+
+        } elseif ($productId && is_numeric($productId)) {
+            $data = $this->buildKardexMovements((int) $productId, $branchId ? (int) $branchId : null, $dateFrom, $dateTo);
+            $movementsCollection = collect($data);
         }
+
+        if ($sourceFilter !== 'all') {
+            $movementsCollection = $movementsCollection->filter(function ($m) use ($sourceFilter) {
+                $typeLower = strtolower($m['type'] ?? '');
+                $isSale = str_contains($typeLower, 'boleta') || 
+                        str_contains($typeLower, 'factura') ||
+                        str_contains($typeLower, 'nota') ||
+                        str_contains($typeLower, 'ticket');
+
+                if ($sourceFilter === 'sales') return $isSale;
+                if ($sourceFilter === 'warehouse') return !$isSale && ($m['type'] ?? '') !== 'Saldo inicial';
+                return true;
+            });
+        }
+
+        $availableTypes = $movementsCollection->pluck('type')
+            ->unique()
+            ->filter(fn($t) => $t !== 'Saldo inicial')
+            ->sort()
+            ->values();
+
+        if ($typeFilter !== 'all') {
+            $movementsCollection = $movementsCollection->filter(function ($m) use ($typeFilter) {
+                return ($m['type'] ?? '') === $typeFilter;
+            });
+        }
+
+        $currentPage = LengthAwarePaginator::resolveCurrentPage();
+        $currentResults = $movementsCollection->slice(($currentPage - 1) * $perPage, $perPage)->all();
+        
+        $movements = new LengthAwarePaginator(
+            $currentResults,
+            $movementsCollection->count(),
+            $perPage,
+            $currentPage,
+            [
+                'path' => $request->url(),
+                'query' => $request->query(), 
+            ]
+        );
 
         return view('kardex.index', compact(
             'viewId', 'productId', 'branchId', 'dateFrom', 'dateTo',
-            'products', 'product', 'branch', 'movements', 'showAllProducts'
+            'products', 'branch', 'movements', 'showAllProducts', 
+            'sourceFilter', 'typeFilter', 
+            'availableTypes',
+            'perPage' 
         ));
     }
 

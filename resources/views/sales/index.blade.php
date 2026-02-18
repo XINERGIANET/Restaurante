@@ -63,79 +63,99 @@
         <x-common.page-breadcrumb pageTitle="Ventas" />
 
         <x-common.component-card title="Listado de ventas" desc="Gestiona las ventas registradas.">
-            <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-                <form method="GET" class="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
+            <div class="flex flex-col gap-4">
+                <form method="GET" class="w-full flex flex-col gap-4">
                     @if ($viewId)
                         <input type="hidden" name="view_id" value="{{ $viewId }}">
                     @endif
-                    <div>
-                        <div class="w-full sm:w-24">
-                            <select
-                                name="per_page"
-                                class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-3 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
-                                onchange="this.form.submit()">
-                                @foreach ([10, 20, 50, 100] as $size)
-                                    <option value="{{ $size }}" @selected($perPage == $size)>{{ $size }} / página</option>
-                                @endforeach
-                            </select>
+
+                    <div class="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-4">
+                        <div class="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center flex-wrap">
+
+                            <x-ui.per-page-selector :per-page="$perPage" />
+
+                            <div class="relative flex-1 min-w-[200px]">
+                                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                                    <i class="ri-search-line"></i>
+                                </span>
+                                <input type="text" name="search" value="{{ $search }}" placeholder="Buscar..."
+                                    class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 pl-12 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90" />
+                            </div>
+                            <div class="w-full sm:w-auto">
+                                <select name="document_type_id"
+                                    class="h-11 w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-white">
+                                    <option value="">Tipo Doc.</option>
+                                    @foreach ($documentTypes ?? [] as $dt)
+                                        <option value="{{ $dt->id }}" @selected(($documentTypeId ?? '') == $dt->id)>{{ $dt->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="flex gap-2">
+                                <x-ui.button size="md" variant="primary" type="submit"
+                                    class="h-11 px-6 shadow-sm hover:shadow-md transition-all duration-200 active:scale-95"
+                                    style="background-color: #244BB3; border-color: #244BB3;">
+                                    <i class="ri-search-line text-gray-100"></i>
+                                    <span class="font-medium text-gray-100 hidden sm:inline">Buscar</span>
+                                </x-ui.button>
+                                <x-ui.link-button size="md" variant="outline"
+                                    href="{{ route('admin.sales.index', $viewId ? ['view_id' => $viewId] : []) }}"
+                                    class="h-11 px-6 border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200">
+                                    <i class="ri-refresh-line"></i>
+                                    <span class="font-medium hidden sm:inline">Limpiar</span>
+                                </x-ui.link-button>
+                            </div>
                         </div>
-                        <div class="relative flex-1">
-                            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-                                <i class="ri-search-line"></i>
-                            </span>
-                            <input
-                                type="text"
-                                name="search"
-                                value="{{ $search }}"
-                                placeholder="Buscar por numero, persona o usuario"
-                                class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 pl-12 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
-                            />
-                        </div>
-                        <div>
-                            <select name="document_type_id"
-                                class="h-11 w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-white">
-                                <option value="">Tipo Doc.</option>
-                                @foreach ($documentTypes ?? [] as $dt)
-                                    <option value="{{ $dt->id }}" @selected(($documentTypeId ?? '') == $dt->id)>{{ $dt->name }}</option>
+
+                        <div class="flex-shrink-0">
+                            @if ($topOperations->isNotEmpty())
+                                @foreach ($topOperations as $operation)
+                                    @php
+                                        $topColor = $operation->color ?: '#3B82F6';
+                                        $topTextColor = str_contains($operation->action ?? '', 'sales.create')
+                                            ? '#111827'
+                                            : '#FFFFFF';
+                                        $topStyle = "background-color: {$topColor}; color: {$topTextColor};";
+                                        $topActionUrl = $resolveActionUrl($operation->action ?? '', null, $operation);
+                                    @endphp
+                                    <x-ui.link-button size="md" variant="primary" style="{{ $topStyle }}"
+                                        href="{{ $topActionUrl }}" class="h-11">
+                                        <i class="{{ $operation->icon }}"></i>
+                                        <span>{{ $operation->name }}</span>
+                                    </x-ui.link-button>
                                 @endforeach
-                            </select>
-                        </div>            
-                        <div class="flex flex-wrap gap-2">
-                            <x-ui.button size="md" variant="primary" type="submit" class="flex-1 sm:flex-none h-11 px-6 shadow-sm hover:shadow-md transition-all duration-200 active:scale-95" style="background-color: #244BB3; border-color: #244BB3;">
-                                <i class="ri-search-line text-gray-100"></i>
-                                <span class="font-medium text-gray-100">Buscar</span>
-                            </x-ui.button>
-                            <x-ui.link-button size="md" variant="outline" href="{{ route('admin.sales.index', $viewId ? ['view_id' => $viewId] : []) }}" class="flex-1 sm:flex-none h-11 px-6 border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200">
-                                <i class="ri-refresh-line"></i>
-                                <span class="font-medium">Limpiar</span>
-                            </x-ui.link-button>
+                            @else
+                                <x-ui.link-button size="md" variant="primary" style="background-color: #12f00e; color: #111827;"
+                                    href="{{ route('admin.sales.create', $viewId ? ['view_id' => $viewId] : []) }}" class="h-11">
+                                    <i class="ri-add-line"></i>
+                                    <span>Nueva Venta</span>
+                                </x-ui.link-button>
+                            @endif
                         </div>
                     </div>
-                </form>
 
-                <div class="flex flex-wrap items-center gap-2">
-                    @if ($topOperations->isNotEmpty())
-                        @foreach ($topOperations as $operation)
-                            @php
-                                $topColor = $operation->color ?: '#3B82F6';
-                                $topTextColor = str_contains($operation->action ?? '', 'sales.create') ? '#111827' : '#FFFFFF';
-                                $topStyle = "background-color: {$topColor}; color: {$topTextColor};";
-                                $topActionUrl = $resolveActionUrl($operation->action ?? '', null, $operation);
-                            @endphp
-                            <x-ui.link-button size="md" variant="primary" style="{{ $topStyle }}" href="{{ $topActionUrl }}">
-                                <i class="{{ $operation->icon }}"></i>
-                                <span>{{ $operation->name }}</span>
-                            </x-ui.link-button>
-                        @endforeach
-                    @else
-                        <x-ui.link-button size="md" variant="primary" style="background-color: #12f00e; color: #111827;" href="{{ route('admin.sales.create', $viewId ? ['view_id' => $viewId] : []) }}">
-                            <i class="ri-add-line"></i>
-                            <span>Nueva venta</span>
-                        </x-ui.link-button>
-                    @endif
-                </div>
+                    <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 w-full">
+                        <div class="flex flex-wrap gap-4 items-end">
+                            <div class="w-full sm:w-auto">
+                                <x-form.date-picker name="date_from" label="Desde" :defaultDate="$dateFrom" dateFormat="Y-m-d" class="h-11" />
+                            </div>
+                            <div class="w-full sm:w-auto">
+                                <x-form.date-picker name="date_to" label="Hasta" :defaultDate="$dateTo" dateFormat="Y-m-d" class="h-11" />
+                            </div>
+                        </div>
+
+                        <div class="flex-shrink-0">
+                            <button type="button" 
+                                    onclick="descargarPdf()"
+                                    class="inline-flex h-11 items-center justify-center gap-1.5 rounded-lg bg-red-500 text-white px-4 text-sm font-medium shadow-sm hover:bg-red-700 transition-all">
+                                <i class="ri-file-pdf-line"></i> 
+                                <span>Descargar PDF</span>
+                            </button>
+                        </div>
+                    </button>
+                    </div>
+                </form>                    
             </div>
-
+            
             <div x-data="{ openRow: null }" class="table-responsive mt-4 rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
                 <table class="w-full min-w-[1100px]">
                     <thead>
@@ -450,6 +470,24 @@
         showFlashToast();
         document.addEventListener('turbo:load', showFlashToast);
     })();
+
+    function descargarPdf() {
+        const search = document.querySelector('[name="search"]')?.value || '';
+        const dateFrom = document.querySelector('[name="date_from"]')?.value || '';
+        const dateTo = document.querySelector('[name="date_to"]')?.value || '';
+        const docType = document.querySelector('[name="document_type_id"]')?.value || '';
+        const perPage = document.querySelector('[name="per_page"]')?.value || '10';
+        const baseUrl = "{{ route('admin.sales.pdf') }}";
+        const params = new URLSearchParams({
+            search: search,
+            date_from: dateFrom,
+            date_to: dateTo,
+            document_type_id: docType,
+            per_page: perPage
+        });
+
+        window.open(`${baseUrl}?${params.toString()}`, '_blank');
+    }
     </script>
     @endpush
 @endsection

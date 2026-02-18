@@ -75,17 +75,9 @@
                     @if ($viewId)
                         <input type="hidden" name="view_id" value="{{ $viewId }}">
                     @endif
-                    <div class="w-full sm:w-24">
-                        <select
-                            name="per_page"
-                            class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-3 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
-                            onchange="this.form.submit()"
-                        >
-                            @foreach ([10, 20, 50, 100] as $size)
-                                <option value="{{ $size }}" @selected($perPage == $size)>{{ $size }} / pagina</option>
-                            @endforeach
-                        </select>
-                    </div>
+                
+                    <x-ui.per-page-selector :per-page="$perPage" />
+
                     <div class="relative flex-1">
                         <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
                             <i class="ri-search-line"></i>
@@ -138,6 +130,13 @@
                             <span>Nueva categoria</span>
                         </x-ui.button>
                     @endif
+                </div>
+            </div>
+
+            <div class="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div class="flex items-center gap-2 text-sm text-gray-500">
+                    <span>Total</span>
+                    <x-ui.badge size="sm" variant="light" color="info">{{ $categories->total() }}</x-ui.badge>
                 </div>
             </div>
 
