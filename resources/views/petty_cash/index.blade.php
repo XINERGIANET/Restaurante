@@ -4,6 +4,7 @@
     use Illuminate\Support\HtmlString;
     use Illuminate\Support\Js;
     use Illuminate\Support\Facades\Route;
+    use \Illuminate\Support\Str;
 
     // --- ICONOS ---
     $SearchIcon = new HtmlString(
@@ -14,10 +15,31 @@
     );
 
     $viewId = request('view_id');
+    
     $operacionesCollection = collect($operaciones ?? []);
-    $topOperations = $operacionesCollection->where('type', 'T');
+    $rawTopOperations = $operacionesCollection->where('type', 'T');
+    $topOperations = $rawTopOperations->filter(function($op) use ($hasOpening) {
+        $name = strtolower($op->name ?? '');
+        $action = strtolower($op->action ?? '');
+        
+        $esApertura = str_contains($name, 'apertura') || str_contains($action, 'apertura');
+        $esMovimiento = str_contains($name, 'ingreso') || str_contains($name, 'egreso') || 
+                        str_contains($name, 'cierre') || str_contains($name, 'cerrar') ||
+                        str_contains($action, 'ingreso') || str_contains($action, 'egreso') || 
+                        str_contains($action, 'cierre');
+
+        if ($hasOpening) {
+            if ($esApertura) return false;
+        } else {
+            if ($esMovimiento) return false;
+        }
+        
+        return true; 
+    });
+
     $rowOperations = $operacionesCollection->where('type', 'R');
 
+    // --- Helpers de URL y Color ---
     $resolveActionUrl = function ($action, $movement = null, $operation = null) use ($viewId, $selectedBoxId) {
         if (!$action) {
             return '#';
@@ -106,54 +128,44 @@
         listIngresos: {{ Js::from($conceptsIngreso) }},
         listEgresos: {{ Js::from($conceptsEgreso) }},
         currentConcepts: []
-    }" {{-- LÓGICA DEL EVENTO --}}
+        }" 
         @open-movement-modal.window="
-        let conceptText = $event.detail.concept || ''; 
-        let receivedId = String($event.detail.docId);
-        
-        // Resetear formulario
-        formConcept = conceptText;
-        formAmount = ''; 
-        formConceptId = ''; 
-        formDocId = receivedId;
-
-        // Filtrar listas según si es Ingreso o Egreso
-        if (receivedId === refIngresoId) {
+            let conceptText = $event.detail.concept || ''; 
+            let receivedId = String($event.detail.docId);
             
-            if (conceptText === 'Apertura de caja') {
-                // Caso: APERTURA -> Solo mostramos conceptos que digan 'apertura'
-                currentConcepts = listIngresos.filter(c => c.description.toLowerCase().includes('apertura'));
-                // Auto-seleccionar el primero si existe
-                if (currentConcepts.length > 0) formConceptId = currentConcepts[0].id;
-            } else {
-                // Caso: INGRESO NORMAL -> Ocultamos lo que diga 'apertura'
-                currentConcepts = listIngresos.filter(c => !c.description.toLowerCase().includes('apertura'));
-            }
-        }
-        
-        else {
-            
-            if (conceptText === 'Cierre de caja') {
-                // Caso: CIERRE -> Solo mostramos conceptos que digan 'cierre'
-                currentConcepts = listEgresos.filter(c => c.description.toLowerCase().includes('cierre'));
-                // Auto-seleccionar el primero si existe
-                if (currentConcepts.length > 0) formConceptId = currentConcepts[0].id;
-            } else {
-                // Caso: EGRESO NORMAL -> Ocultamos lo que diga 'cierre'
-                currentConcepts = listEgresos.filter(c => !c.description.toLowerCase().includes('cierre'));
-            }
-        }
+            // Resetear formulario
+            formConcept = conceptText;
+            formAmount = ''; 
+            formConceptId = ''; 
+            formDocId = receivedId;
 
-        $dispatch('update-combobox-options', { options: Alpine.raw(currentConcepts) });
-        open = true; 
-    ">
+            // Filtrar listas según si es Ingreso o Egreso
+            if (receivedId === refIngresoId) {
+                if (conceptText === 'Apertura de caja') {
+                    currentConcepts = listIngresos.filter(c => c.description.toLowerCase().includes('apertura'));
+                    if (currentConcepts.length > 0) formConceptId = currentConcepts[0].id;
+                } else {
+                    currentConcepts = listIngresos.filter(c => !c.description.toLowerCase().includes('apertura'));
+                }
+            } else {
+                if (conceptText === 'Cierre de caja') {
+                    currentConcepts = listEgresos.filter(c => c.description.toLowerCase().includes('cierre'));
+                    if (currentConcepts.length > 0) formConceptId = currentConcepts[0].id;
+                } else {
+                    currentConcepts = listEgresos.filter(c => !c.description.toLowerCase().includes('cierre'));
+                }
+            }
+
+            // Forzar actualización del componente hijo (combobox)
+            $dispatch('update-combobox-options', { options: Alpine.raw(currentConcepts) });
+            open = true; 
+        ">
 
         <x-common.page-breadcrumb pageTitle="Movimientos de Caja" />
 
         <x-common.component-card title="Gestión de Movimientos" desc="Control de ingresos, egresos y traslados de fondos.">
 
             <div class="flex flex-col gap-5">
-                {{-- FILTROS --}}
                 <form method="GET" class="flex w-full flex-col gap-3 sm:flex-row sm:items-center">
                     @if ($viewId)
                         <input type="hidden" name="view_id" value="{{ $viewId }}">
@@ -205,8 +217,9 @@
                     </div>
                 </form>
 
-                {{-- BOTONERA --}}
+                {{-- BOTONERA DINÁMICA (CORREGIDA) --}}
                 <div class="flex flex-wrap gap-3 border-t border-gray-100 pt-4 dark:border-gray-800">
+                    {{-- Si hay botones (filtrados), los mostramos --}}
                     @if ($topOperations->isNotEmpty())
                         @foreach ($topOperations as $operation)
                             @php
@@ -214,26 +227,35 @@
                                 $topColor = $operation->color ?: '#3B82F6';
                                 $topStyle = "background-color: {$topColor}; color: {$topTextColor};";
                                 $topAction = $operation->action ?? '';
-                                $topActionUrl = $resolveActionUrl($topAction, null, $operation);
-                                $topActionLower = mb_strtolower($topAction);
+                                
+                                // Detección de tipos
                                 $topNameLower = mb_strtolower($operation->name ?? '');
+                                $topActionLower = mb_strtolower($topAction);
+                                
+                                $isIncomeOp = Str::contains($topNameLower, ['ingreso', 'income']) || 
+                                            Str::contains($topActionLower, ['ingreso', 'income']);
+                                            
+                                $isExpenseOp = Str::contains($topNameLower, ['egreso', 'gasto', 'expense']) || 
+                                            Str::contains($topActionLower, ['egreso', 'gasto', 'expense']);
+                                            
+                                $isOpenOp = Str::contains($topNameLower, ['apertura', 'open', 'abrir']) || 
+                                            Str::contains($topActionLower, ['apertura', 'open', 'abrir']);
+                                            
+                                $isCloseOp = Str::contains($topNameLower, ['cierre', 'cerrar', 'close']) || 
+                                            Str::contains($topActionLower, ['cierre', 'cerrar', 'close']);
 
-                                $isCreateLike = str_contains($topAction, 'create') || str_contains($topAction, 'store');
-                                $isIncomeOp = str_contains($topActionLower, 'ingreso') || str_contains($topNameLower, 'ingreso');
-                                $isExpenseOp = str_contains($topActionLower, 'egreso') || str_contains($topNameLower, 'egreso');
-                                $isOpenOp = str_contains($topActionLower, 'apertura') || str_contains($topNameLower, 'apertura');
-                                $isCloseOp = str_contains($topActionLower, 'cierre')
-                                    || str_contains($topNameLower, 'cierre')
-                                    || str_contains($topActionLower, 'cerrar')
-                                    || str_contains($topNameLower, 'cerrar')
-                                    || str_contains($topActionLower, 'close')
-                                    || str_contains($topNameLower, 'close');
+                                $isCreateLike = Str::contains($topActionLower, ['create', 'store']);
 
-                                // En caja chica estas operaciones deben abrir modal, no navegar.
                                 $isPettyCashModalOp = $isCreateLike || $isIncomeOp || $isExpenseOp || $isOpenOp || $isCloseOp;
+                                
+                                // Datos para el modal
                                 $modalDocId = ($isExpenseOp || $isCloseOp) ? $egresoDocId : $ingresoDocId;
                                 $modalConcept = $isOpenOp ? 'Apertura de caja' : ($isCloseOp ? 'Cierre de caja' : '');
+                                
+                                // URL (si no es modal)
+                                $topActionUrl = $isPettyCashModalOp ? '#' : $resolveActionUrl($topAction, null, $operation);
                             @endphp
+
                             @if ($isPettyCashModalOp)
                                 <x-ui.button size="md" variant="primary" type="button" style="{{ $topStyle }}"
                                     @click="$dispatch('open-movement-modal', { concept: '{{ $modalConcept }}', docId: '{{ $modalDocId }}' })">
@@ -247,6 +269,7 @@
                                 </x-ui.link-button>
                             @endif
                         @endforeach
+
                     @else
                         @if (!$hasOpening)
                             <x-ui.button size="md" variant="primary" style="background-color: #3B82F6; color: #FFFFFF;"
@@ -273,7 +296,7 @@
                     @endif
                 </div>
             </div>
-            
+
             {{-- TABLA --}}
             <div
                 class="table-responsive mt-4 rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
@@ -294,7 +317,7 @@
                                     <p class="font-semibold text-white text-theme-xs uppercase">Concepto</p>
                                 </th>
                                 <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
-                                    <p class="font-semibold text-white text-theme-xs uppercase">Total</p>
+                                    <p class="font-semibold text-white text-theme-xs uppercase">Total (S/.)</p>
                                 </th>
                                 <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
                                     <p class="font-semibold text-white text-theme-xs uppercase">Fecha</p>
@@ -359,7 +382,7 @@
                                         </x-ui.badge>
                                     </td>
                                     <td class="px-3 py-4 sm:px-4 align-middle">
-                                        <p class="font-bold text-gray-800 text-theme-sm dark:text-white/90">S/ {{ number_format($movement->cashMovement?->total ?? 0, 2) }}</p>
+                                        <p class="font-bold text-gray-800 text-theme-sm dark:text-white/90">{{ number_format($movement->cashMovement?->total ?? 0, 2) }}</p>
                                     </td>
                                     <td class="px-3 py-4 sm:px-4 align-middle">
                                         <div>
@@ -441,8 +464,21 @@
                             </tbody>
                         @endforelse
                     </table>
+                </div>
             </div>
-            <div class="mt-4">{{ $movements->links() }}</div>
+            <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div class="text-sm text-gray-500">
+                    Mostrando
+                    <span class="font-semibold text-gray-700 dark:text-gray-200">{{ $movements->firstItem() ?? 0 }}</span>
+                    -
+                    <span class="font-semibold text-gray-700 dark:text-gray-200">{{ $movements->lastItem() ?? 0 }}</span>
+                    de
+                    <span class="font-semibold text-gray-700 dark:text-gray-200">{{ $movements->total() }}</span>
+                </div>
+                <div>
+                    {{ $movements->links() }}
+                </div>
+            </div>
 
         </x-common.component-card>
 
