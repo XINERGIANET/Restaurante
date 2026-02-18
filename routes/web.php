@@ -116,6 +116,7 @@ Route::middleware('auth')->group(function () {
         ->names('admin.sales')
         ->parameters(['ventas' => 'sale'])
         ->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
+    Route::get('/admin/ventas/pdf', [SalesController::class, 'exportPdf'])->name('admin.sales.pdf');
 
     // POS: vista de cobro (antes era modal)
     Route::get('/admin/ventas/cobrar', [SalesController::class, 'charge'])
