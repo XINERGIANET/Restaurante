@@ -29,7 +29,7 @@ class ProductBranchController extends Controller
                 'currentBranch' => $currentBranch,
                 'taxRates' => $taxRates,
                 'isEdit' => true,
-                'updateRoute' => route('admin.product_branches.update', $productBranch)
+                'updateRoute' => route('product_branches.update', $productBranch)
             ]);
         }
         
@@ -39,7 +39,7 @@ class ProductBranchController extends Controller
             'currentBranch' => $currentBranch,
             'taxRates' => $taxRates,
             'isEdit' => false,
-            'storeRoute' => route('admin.products.product_branches.store', $product)
+            'storeRoute' => route('products.product_branches.store', $product)
         ]);
     }
 
@@ -49,7 +49,7 @@ class ProductBranchController extends Controller
         $branchId = session('branch_id');
         
         if (!$branchId) {
-            return redirect()->route('admin.products.index', $viewId ? ['view_id' => $viewId] : [])
+            return redirect()->route('products.index', $viewId ? ['view_id' => $viewId] : [])
                 ->with('error', 'No se pudo determinar la sucursal. Por favor, inicia sesión nuevamente.');
         }
 
@@ -76,7 +76,7 @@ class ProductBranchController extends Controller
             $validated['unit_sale'] = $validated['unit_sale'] ?? 'N';
 
             $productBranch->update($validated);
-            return redirect()->route('admin.products.index', $viewId ? ['view_id' => $viewId] : [])
+            return redirect()->route('products.index', $viewId ? ['view_id' => $viewId] : [])
                 ->with('status', 'Producto actualizado en sucursal correctamente. Stock: ' . $validated['stock'] . ', Precio: $' . number_format($validated['price'], 2));
         }
 
@@ -110,7 +110,7 @@ class ProductBranchController extends Controller
         $data['duration_minutes'] = 0.0;
 
         ProductBranch::create($data);
-        return redirect()->route('admin.products.index', $viewId ? ['view_id' => $viewId] : [])
+        return redirect()->route('products.index', $viewId ? ['view_id' => $viewId] : [])
             ->with('status', 'Producto agregado a sucursal correctamente. Stock: ' . $data['stock'] . ', Precio: $' . number_format($data['price'], 2));
     }
 
@@ -140,7 +140,7 @@ class ProductBranchController extends Controller
         $data['unit_sale'] = $data['unit_sale'] ?? 'N';
 
         $productBranch->update($data);
-        return redirect()->route('admin.products.index', $viewId ? ['view_id' => $viewId] : [])->with('status', 'Producto actualizado en sucursal correctamente.');
+        return redirect()->route('products.index', $viewId ? ['view_id' => $viewId] : [])->with('status', 'Producto actualizado en sucursal correctamente.');
     }
 
     public function edit(ProductBranch $productBranch)
@@ -154,7 +154,7 @@ class ProductBranchController extends Controller
         $productId = $request->input('product_id');
         
         if (!$productId) {
-            return redirect()->route('admin.products.index', $viewId ? ['view_id' => $viewId] : [])
+            return redirect()->route('products.index', $viewId ? ['view_id' => $viewId] : [])
                 ->withErrors(['product_id' => 'El ID del producto es requerido.']);
         }
         

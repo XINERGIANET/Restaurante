@@ -95,7 +95,7 @@
                             <i class="ri-search-line text-gray-100"></i>
                             <span class="font-medium text-gray-100">Buscar</span>
                         </x-ui.button>
-                        <x-ui.link-button size="md" variant="outline" href="{{ route('admin.categories.index', $viewId ? ['view_id' => $viewId] : []) }}" class="flex-1 sm:flex-none h-11 px-6 border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200">
+                        <x-ui.link-button size="md" variant="outline" href="{{ route('categories.index', $viewId ? ['view_id' => $viewId] : []) }}" class="flex-1 sm:flex-none h-11 px-6 border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200">
                             <i class="ri-refresh-line"></i>
                             <span class="font-medium">Limpiar</span>
                         </x-ui.link-button>
@@ -245,7 +245,7 @@
                                                 <x-ui.link-button
                                                     size="icon"
                                                     variant="edit"
-                                                    href="{{ route('admin.categories.edit', array_merge([$category], $viewId ? ['view_id' => $viewId] : [])) }}"
+                                                    href="{{ route('categories.edit', array_merge([$category], $viewId ? ['view_id' => $viewId] : [])) }}"
                                                     className="bg-warning-500 text-white hover:bg-warning-600 ring-0 rounded-xl"
                                                     style="background-color: #FBBF24; color: #111827;"
                                                     aria-label="Editar"
@@ -256,7 +256,7 @@
                                             </div>
                                             <form
                                                 method="POST"
-                                                action="{{ route('admin.categories.destroy', array_merge([$category], $viewId ? ['view_id' => $viewId] : [])) }}"
+                                                action="{{ route('categories.destroy', array_merge([$category], $viewId ? ['view_id' => $viewId] : [])) }}"
                                                 class="relative group js-swal-delete"
                                                 data-swal-title="Eliminar categoria?"
                                                 data-swal-text="Se eliminara {{ $category->description }}. Esta accion no se puede deshacer."
@@ -352,7 +352,7 @@
                     </div>
                 @endif
 
-                <form method="POST" action="{{ route('admin.categories.store') }}" class="space-y-6" enctype="multipart/form-data">
+                <form method="POST" action="{{ route('categories.store') }}" class="space-y-6" enctype="multipart/form-data">
                     @csrf
                     @if ($viewId)
                         <input type="hidden" name="view_id" value="{{ $viewId }}">

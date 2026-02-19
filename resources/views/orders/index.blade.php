@@ -113,7 +113,7 @@
                                                 class="inline-flex items-center justify-center bg-green-500 hover:bg-green-600 active:bg-green-700 text-white py-1.5 px-3 rounded-lg transition shadow-sm hover:shadow w-9">
                                                 <i class="ri-bank-card-line text-white"></i>
                                             </button>
-                                            <button type="button" @click.stop="$dispatch('open-move-table-modal')"
+                                            <button type="button" @click.stop="$dispatch('open-move-table-modal', { table: table })"
                                                 title="Mover mesa"
                                                 class="inline-flex items-center justify-center bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white py-1.5 px-3 rounded-lg transition shadow-sm hover:shadow w-9">
                                                 <i class="ri-drag-move-2-line text-white"></i>
@@ -156,9 +156,10 @@
         $tableOptions = collect($tables ?? [])
             ->map(
                 fn($t) => [
-                    'id' => is_array($t) ? $t['id'] ?? null : $t->id,
+                    'id'          => is_array($t) ? $t['id'] ?? null : $t->id,
                     'description' => is_array($t) ? $t['name'] ?? '' : $t->name ?? '',
-                    'area_id' => is_array($t) ? $t['area_id'] ?? null : $t->area_id,
+                    'area_id'     => is_array($t) ? $t['area_id'] ?? null : $t->area_id,
+                    'situation'   => is_array($t) ? ($t['situation'] ?? 'libre') : ($t->situation ?? 'libre'),
                 ],
             )
             ->values()
@@ -169,28 +170,24 @@
             ->values()
             ->all();
     @endphp
-    <x-ui.modal
-        x-data="moveTableModal()"
-        x-effect="if (open) { syncAreaOptions(); updateTables(); }"
-        @open-move-table-modal.window="open = true"
-        @close-move-table-modal.window="open = false"
-        :isOpen="false"
-        :showCloseButton="false"
-        :scrollable="false"
-        class="max-w-3xl">
-        <div class="p-6 sm:p-8">
-            <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div class="flex items-center gap-4">
+    <x-ui.modal x-data="moveTableModal()" x-effect="if (open) { syncAreaOptions(); updateTables(); }"
+        @open-move-table-modal.window="open = true; tableId = null; if ($event.detail && $event.detail.table) { sourceTableId = $event.detail.table.id; sourceTableName = $event.detail.table.name || 'Mesa'; } $nextTick(() => updateTables())"
+        @close-move-table-modal.window="open = false" :isOpen="false"
+        :showCloseButton="false" :scrollable="false" class="max-w-3xl">
+        <div class="p-3">
+            <div class="flex flex-col p-3 gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div class="flex flex-col gap-0.5">
                     <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Mover mesa</h3>
-                    <i class="ri-drag-move-2-line text-2xl text-blue-500"></i>
+                    <p x-show="sourceTableId" class="text-sm text-gray-500 dark:text-gray-400">Mesa a mover: <span x-text="sourceTableName"></span> #<span x-text="sourceTableId"></span></p>
                 </div>
+                <i class="ri-drag-move-2-line text-2xl text-blue-500"></i>
                 <button type="button" @click="open = false"
                     class="flex h-11 w-11 items-center justify-center rounded-full bg-gray-100 text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">
                     <i class="ri-close-line text-xl"></i>
                 </button>
             </div>
         </div>
-        <div class="p-6">
+        <div class="p-5">
             <div class="flex flex-col gap-4">
                 <div class="flex flex-col gap-2">
                     <x-form.select.combobox x-model="currentAreaId" label="Área" :options="$areaOptions" name="area_id" />
@@ -229,10 +226,14 @@
             const moveTableInitialAreaId = @json($initialAreaId);
             const moveTableAllTables = @json($tableOptions);
             const moveTableAllAreas = @json($areaOptions);
+            const moveTableUrl = @json(route('orders.moveTable'));
+            const moveTableCsrf = @json(csrf_token());
             Alpine.data('moveTableModal', () => ({
                 open: false,
                 currentAreaId: moveTableInitialAreaId,
                 tableId: null,
+                sourceTableId: null,
+                sourceTableName: 'Mesa',
                 allTables: Array.isArray(moveTableAllTables) ? moveTableAllTables : [],
                 allAreaOptions: Array.isArray(moveTableAllAreas) ? moveTableAllAreas : [],
                 init() {
@@ -248,20 +249,57 @@
                         detail: { name: 'area_id', options: this.allAreaOptions }
                     }));
                 },
+                // Solo mesas libres, excluyendo la mesa origen
                 updateTables() {
                     const areaId = this.currentAreaId;
-                    const options = (areaId != null && areaId !== '')
-                        ? this.allTables.filter(t => String(t.area_id) === String(areaId))
-                        : this.allTables;
+                    const srcId  = this.sourceTableId;
+                    let options = this.allTables.filter(t =>
+                        String(t.situation ?? '').toLowerCase() !== 'ocupada' &&
+                        String(t.id) !== String(srcId)
+                    );
+                    if (areaId != null && areaId !== '') {
+                        options = options.filter(t => String(t.area_id) === String(areaId));
+                    }
                     window.dispatchEvent(new CustomEvent('update-combobox-options', {
                         detail: { name: 'table_id', options }
                     }));
                 },
-                moveTable() {
-                    if (!this.tableId) return;
-                    this.open = false;
-                    if (typeof window.__posRefreshTables === 'function') {
-                        window.__posRefreshTables();
+                async moveTable() {
+                    if (!this.sourceTableId) {
+                        if (window.Swal) Swal.fire({ icon: 'warning', title: 'Error', text: 'No se ha seleccionado ninguna mesa para mover.' });
+                        return;
+                    }
+                    if (!this.tableId) {
+                        if (window.Swal) Swal.fire({ icon: 'warning', title: 'Error', text: 'Selecciona una mesa destino libre.' });
+                        return;
+                    }
+                    try {
+                        const res = await fetch(moveTableUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': moveTableCsrf,
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            },
+                            body: JSON.stringify({
+                                table_id:     this.sourceTableId,
+                                new_table_id: this.tableId,
+                            })
+                        });
+                        const data = await res.json().catch(() => ({}));
+                        if (data.success) {
+                            this.open = false;
+                            if (window.Swal) {
+                                Swal.fire({ toast: true, position: 'bottom-end', icon: 'success', title: data.message || 'Pedido movido correctamente', showConfirmButton: false, timer: 3000, timerProgressBar: true });
+                            }
+                            if (typeof window.__posRefreshTables === 'function') window.__posRefreshTables();
+                        } else {
+                            const msg = data.message || 'No se pudo mover el pedido.';
+                            if (window.Swal) Swal.fire({ icon: 'error', title: 'Error', text: msg });
+                        }
+                    } catch (e) {
+                        if (window.Swal) Swal.fire({ icon: 'error', title: 'Error', text: 'Error de conexión. Intenta de nuevo.' });
                     }
                 }
             }));
@@ -396,8 +434,12 @@
                             const url = new URL(this.chargeUrl, window.location.origin);
                             url.searchParams.set('movement_id', table.movement_id);
                             url.searchParams.set('table_id', table.id);
-                            // Navegación completa para que el servidor reciba movement_id/table_id y devuelva la orden con productos (Turbo puede cachear y no enviar params)
-                            window.location.href = url.toString();
+                            url.searchParams.set('_t', Date.now());
+                            if (window.Turbo && typeof window.Turbo.visit === 'function') {
+                                window.Turbo.visit(url.toString(), { action: 'advance' });
+                            } else {
+                                window.location.href = url.toString();
+                            }
                         } else {
                             this.openTable(table);
                         }
@@ -442,7 +484,7 @@
                                 .then(data => {
                                     if (data.success) {
                                         const idx = this.tables.findIndex(t => t.id == table
-                                        .id);
+                                            .id);
                                         if (idx !== -1) {
                                             this.tables[idx] = {
                                                 ...this.tables[idx],
@@ -495,6 +537,7 @@
 
                 return componentData;
             });
+
         };
 
 

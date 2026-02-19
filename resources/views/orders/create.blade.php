@@ -52,8 +52,9 @@
                 <div class="flex items-center gap-2 sm:gap-4 min-w-0">
                     <button onclick="goBack()" 
                         title="Volver atrás"
-                        class="h-9 w-9 sm:h-10 sm:w-10 rounded-lg bg-gray-50 border border-gray-200 text-gray-500 hover:text-blue-600 hover:border-blue-600 transition-colors flex items-center justify-center shadow-sm shrink-0">
+                        class="h-9 sm:h-10 px-2 rounded-lg bg-gray-50 border border-gray-200 text-gray-500 hover:text-blue-600 hover:border-blue-600 transition-colors flex items-center justify-center shadow-sm shrink-0">
                         <i class="ri-arrow-left-line text-lg sm:text-xl"></i>
+                        Volver a mesa
                     </button>
 
                     <div class="flex items-center gap-2 sm:gap-4 md:gap-6 text-xs sm:text-sm text-gray-500 font-medium min-w-0">
@@ -104,15 +105,15 @@
                     </div>
                 </div>
 
-                <div class="flex flex-row gap-3 sm:gap-6 flex-1 min-h-0 min-w-0">
-                    <div class="flex flex-col border-r p-3 border-gray-300 w-1/4 min-w-[200px] sm:min-w-0 shrink-0 min-h-0" style="min-width: 28%">
-                        <h3 class="font-bold text-sm sm:text-base text-slate-800 dark:text-white mb-2 sm:mb-3 px-2 sm:px-4 shrink-0">Categoría</h3>
-                        <div id="categories-grid" class="grid grid-cols-1 gap-2 sm:gap-3 p-2 sm:p-4 overflow-y-auto min-h-0 flex-1 content-start">
+                <div class="flex flex-col flex-1 min-h-0 min-w-0">
+                    <div class="shrink-0 border-b border-gray-300 px-2 sm:px-4 pb-2">
+                        <h3 class="font-bold text-sm sm:text-base text-slate-800 dark:text-white mb-2 shrink-0">Categoría</h3>
+                        <div id="categories-grid" class="flex flex-row flex-wrap gap-1.5 sm:gap-2 overflow-x-auto pb-1">
                         </div>
                     </div>
-                    <div class="flex flex-col flex-1 min-h-0 min-w-0" style="min-width: 72%;">
-                        <h3 class="font-bold text-sm sm:text-base text-slate-800 dark:text-white mb-2 sm:mb-3 shrink-0">Productos</h3>
-                        <div id="products-grid" class="p-2 sm:p-4 md:p-5 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2 sm:gap-4 overflow-y-auto min-h-0 flex-1 content-start">
+                    <div class="flex-1 min-h-0 min-w-0 pt-2 sm:pt-3">
+                        <h3 class="font-bold text-sm sm:text-base text-slate-800 dark:text-white mb-2 sm:mb-3 px-2 sm:px-4 shrink-0">Productos</h3>
+                        <div id="products-grid" class="px-2 sm:px-4 md:px-5 pb-2 grid grid-cols-3 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-6 gap-2 sm:gap-4 overflow-y-auto min-h-0 flex-1 content-start">
                         </div>
                     </div>
                 </div>
@@ -174,18 +175,33 @@
                 ];
             @endphp
             const serverTable = @json($serverTableData);
+            const startFresh = @json($startFresh ?? false);
+            // IDs del pedido pendiente que viene directo del servidor (fuente de verdad)
+            const serverOrderMovementId = @json($pendingOrderMovementId ?? null);
+            const serverMovementId = @json($pendingMovementId ?? null);
 
             let db = JSON.parse(localStorage.getItem('restaurantDB'));
             if (!db) db = {};
             let activeKey = `table-{{ $table->id }}`;
             let autoSaveTimer = null;
-            // Si la mesa está libre en el servidor, no restaurar borrador local: así no se muestran
-            // productos en una mesa que aún no se abrió (no se guardó pedido).
+
+            // Si la mesa no tiene pedido pendiente (startFresh) o está libre: pedido nuevo, borrar borrador
             const tableIsFree = (serverTable.status || '').toLowerCase() === 'libre';
-            let currentTable = (!tableIsFree && db[activeKey]) ? db[activeKey] : serverTable;
-            if (tableIsFree && db[activeKey]) {
+            const useFreshOrder = startFresh || tableIsFree;
+            if (useFreshOrder && db[activeKey]) {
                 delete db[activeKey];
                 localStorage.setItem('restaurantDB', JSON.stringify(db));
+            }
+
+            let currentTable = (useFreshOrder || !db[activeKey]) ? serverTable : db[activeKey];
+            // Siempre sincronizar order_movement_id y movement_id con el servidor para evitar duplicados
+            if (serverOrderMovementId) {
+                currentTable.order_movement_id = serverOrderMovementId;
+                currentTable.movement_id = serverMovementId;
+            } else {
+                // No hay pedido pendiente en servidor: asegurar que no usamos un ID viejo del localStorage
+                currentTable.order_movement_id = null;
+                currentTable.movement_id = null;
             }
 
             function init() {
@@ -322,16 +338,25 @@
                 grid.innerHTML = '';
 
                 if (!serverCategories || serverCategories.length === 0) {
-                    grid.innerHTML = '<div class="col-span-full text-center text-gray-500 py-4">No hay categorías</div>';
+                    grid.innerHTML = '<div class="text-center text-gray-500 py-2 text-sm w-full">No hay categorías</div>';
                     return;
                 }
 
                 serverCategories.forEach(cat => {
-                    const el = document.createElement('div');
-                    
-                    el.className = "group cursor-pointer transition-transform duration-200 hover:scale-105";
+                    const el = document.createElement('button');
+                    const categoryName = escapeHtml(cat.name || 'Sin nombre');
+                    const imageUrl = getImageUrl(cat.img);
+                    const isActive = selectedCategoryId === cat.id;
 
-                    // Lógica del Clic: Filtrar productos por categoría
+                    el.type = 'button';
+                    el.className = [
+                        'inline-flex items-center gap-2 px-2.5 py-1.5 rounded-full text-xs sm:text-sm font-semibold',
+                        'border transition-all duration-150 whitespace-nowrap cursor-pointer shrink-0',
+                        isActive
+                            ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                            : 'bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-slate-600 hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400'
+                    ].join(' ');
+
                     el.onclick = function(e) {
                         e.preventDefault();
                         selectedCategoryId = cat.id;
@@ -339,32 +364,12 @@
                         renderProducts();
                     };
 
-                    const categoryName = escapeHtml(cat.name || 'Sin nombre');
-                    const imageUrl = getImageUrl(cat.img); // Usamos tu misma función de imágenes
-                    
-                    // Lógica para resaltar si está activa (Borde azul más grueso si está seleccionada)
-                    const isActive = selectedCategoryId === cat.id;
-                    const activeClass = isActive 
-                        ? 'ring-2 ring-blue-600 border-blue-600 dark:border-blue-500' 
-                        : 'border-gray-300 dark:border-slate-700/50 hover:border-blue-500';
-
                     el.innerHTML = `
-                        <div class="flex flex-row items-center gap-3 rounded-lg overflow-hidden p-1 dark:bg-slate-800/40 shadow-md hover:shadow-xl border ${activeClass} hover:shadow-blue-500/10 transition-all duration-200 hover:-translate-y-1 backdrop-blur-sm h-full">
-                            <div class="relative w-14 h-14 shrink-0 overflow-hidden dark:bg-slate-700/30 rounded-lg border border-gray-300 dark:border-slate-600/30 shadow-sm">
-                                <img src="${imageUrl}" 
-                                    alt="${categoryName}" 
-                                    class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
-                                    loading="lazy"
-                                    onerror="this.onerror=null; this.src=getImageUrl(null)">
-                            </div>
-                            <div class="flex-1 min-w-0 flex flex-col gap-1 justify-center text-left">
-                                <h4 class="font-bold text-gray-900 dark:text-white text-sm line-clamp-2 leading-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                                    ${categoryName}
-                                </h4>
-                            </div>
-                        </div>
+                        <img src="${imageUrl}" alt="${categoryName}"
+                            class="w-6 h-6 rounded-full object-cover shrink-0 border ${isActive ? 'border-blue-300' : 'border-gray-200 dark:border-slate-600'}"
+                            onerror="this.onerror=null; this.src=getImageUrl(null)">
+                        <span>${categoryName}</span>
                     `;
-                    
                     grid.appendChild(el);
                 });
             }
@@ -616,6 +621,26 @@
                 }
             }
 
+            function goToIndexWithTurbo() {
+                const url = "{{ route('orders.index') }}?_=" + Date.now();
+                if (window.Turbo && typeof window.Turbo.visit === 'function') {
+                    window.Turbo.visit(url, { action: 'replace' });
+                } else {
+                    window.location.href = url;
+                }
+            }
+
+            function isMesaYaCobradaMessage(msg) {
+                if (!msg || typeof msg !== 'string') return false;
+                const m = msg.toLowerCase();
+                return m.indexOf('ya fue cobrada') !== -1 || m.indexOf('ya fue cobrado') !== -1;
+            }
+
+            // Limpiar auto-guardado al navegar con Turbo para no dispararlo en otra página
+            document.addEventListener('turbo:before-visit', function() {
+                if (autoSaveTimer) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
+            });
+
             function scheduleAutoSave() {
                 if (autoSaveTimer) clearTimeout(autoSaveTimer);
                 autoSaveTimer = setTimeout(autoSaveToServer, 1500);
@@ -655,6 +680,10 @@
                         if (data.order_movement_id) currentTable.order_movement_id = data.order_movement_id;
                         if (data.movement_id) currentTable.movement_id = data.movement_id;
                         saveDB();
+                    } else if (data && isMesaYaCobradaMessage(data.message)) {
+                        if (typeof showNotification === 'function') {
+                            showNotification('Aviso', data.message || 'Esta mesa ya fue cobrada.', 'info');
+                        }
                     }
                 })
                 .catch(() => {});
@@ -702,22 +731,28 @@
                     .then(data => {
                         if (data && data.success) {
                             sessionStorage.setItem('flash_success_message', data.message);
-                            window.location.href = "{{ route('orders.index') }}";
+                            goToIndexWithTurbo();
+                        } else if (data && isMesaYaCobradaMessage(data.message)) {
+                            if (typeof showNotification === 'function') {
+                                showNotification('Aviso', data.message || 'Esta mesa ya fue cobrada.', 'info');
+                            } else {
+                                alert(data.message || 'Esta mesa ya fue cobrada.');
+                            }
                         } else {
                             console.error('Error al guardar:', data);
-                            sessionStorage.setItem('flash_error_message', data?.message );
+                            sessionStorage.setItem('flash_error_message', data?.message || 'Error al guardar.');
                         }
                     })
-                            .catch(error => {
-                                console.error('Error:', error);
-                                sessionStorage.setItem('flash_error_message', 'Error al guardar el pedido. Revisa la consola.');
-                            });
+                    .catch(error => {
+                        console.error('Error:', error);
+                        sessionStorage.setItem('flash_error_message', 'Error al guardar el pedido. Revisa la consola.');
+                    });
 
             }
 
             function processOrderPayment() {
                 const items = currentTable.items || [];
-                if (items.length ===     0) {
+                if (items.length === 0) {
                     if (typeof showNotification === 'function') {
                         showNotification('Error', 'Agrega productos a la orden antes de cobrar.', 'error');
                     } else {
@@ -725,6 +760,9 @@
                     }
                     return;
                 }
+                // Cancelar auto-guardado pendiente para evitar que dispare después de navegar y cree duplicados
+                if (autoSaveTimer) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
+
                 const totals = calculateTotalsFromItems(items);
                 const subtotal = totals.subtotal;
                 const tax = totals.tax;
@@ -741,8 +779,10 @@
                     delivery_address: currentTable.delivery_address ?? null,
                     delivery_time: currentTable.delivery_time ?? null,
                     delivery_amount: currentTable.delivery_amount ?? 0,
+                    order_movement_id: currentTable.order_movement_id ?? null,
                 };
-                fetch('{{ route('orders.processOrderPayment') }}', {
+                // Guardar el pedido (solo persiste, NO finaliza) y navegar a cobrar
+                fetch('{{ route('orders.process') }}', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -764,8 +804,12 @@
                         if (data && data.success && data.movement_id) {
                             const url = new URL("{{ route('orders.charge') }}", window.location.origin);
                             url.searchParams.set('movement_id', data.movement_id);
-                                sessionStorage.setItem('flash_success_message', data.message || 'Cobro de pedido procesado correctamente');
-                            window.location.href = url.toString();
+                            url.searchParams.set('_t', Date.now());
+                            if (window.Turbo && typeof window.Turbo.visit === 'function') {
+                                window.Turbo.visit(url.toString(), { action: 'advance' });
+                            } else {
+                                window.location.href = url.toString();
+                            }
                         } else {
                             if (typeof showNotification === 'function') {
                                 showNotification('Error', data?.message || 'No se pudo procesar. Intenta de nuevo.',

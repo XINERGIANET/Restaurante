@@ -397,7 +397,13 @@
     </style>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        // Evitar mostrar "cobrado exitosamente" al entrar a cobrar (p. ej. por Turbo o sesión anterior)
+        try { sessionStorage.removeItem('flash_success_message'); } catch (_) {}
+        var chargePageInitialized = false;
+        document.addEventListener('turbo:before-render', function() { chargePageInitialized = false; });
+        function initChargePage() {
+            if (chargePageInitialized) return;
+            chargePageInitialized = true;
             const tableId = @json($table?->id ?? null);
             const movementId = @json($movement?->id ?? null);
             const tableUrlTemplate = @json(route('orders.charge', ['table_id' => ':table_id', 'movement_id' => ':movement_id']));
@@ -424,17 +430,20 @@
             const closeCardModal = document.getElementById('close-card-modal');
             const cancelCardSelection = document.getElementById('cancel-card-selection');
             const confirmCardSelection = document.getElementById('confirm-card-selection');
-            // Enlace "Volver a pedidos": solo navegar, nunca disparar cobro
+            // Enlace "Volver a pedidos": solo navegar, nunca disparar cobro (Turbo para no recargar pestaña)
             const backToOrdersLink = document.getElementById('back-to-orders-link');
             if (backToOrdersLink) {
                 backToOrdersLink.addEventListener('click', function(e) {
                     e.preventDefault();
                     e.stopPropagation();
-                    // No mostrar "cobrado exitosamente" al volver sin cobrar
                     try { sessionStorage.removeItem('flash_success_message'); } catch (_) {}
                     const href = this.getAttribute('href');
                     if (href && href !== '#') {
-                        window.location.href = href;
+                        if (window.Turbo && typeof window.Turbo.visit === 'function') {
+                            window.Turbo.visit(href, { action: 'advance' });
+                        } else {
+                            window.location.href = href;
+                        }
                     }
                 });
             }
@@ -1022,7 +1031,7 @@
             let order = null;
             let notificationTimeout = null;
             
-            // Si hay un borrador del servidor (p. ej. al cobrar desde la mesa), usarlo
+            // Si hay un borrador del servidor (p. ej. al cobrar desde la mesa), usarlo (subtotal/tax/total del pedido para coincidir con la tarjeta)
             if (draftOrderFromServer && draftOrderFromServer.id) {
                 order = {
                     id: draftOrderFromServer.id,
@@ -1031,7 +1040,10 @@
                     items: Array.isArray(draftOrderFromServer.items) ? draftOrderFromServer.items : [],
                     status: 'draft',
                     notes: draftOrderFromServer.notes || '',
-                    pendingAmount: draftOrderFromServer.pendingAmount || 0
+                    pendingAmount: draftOrderFromServer.pendingAmount || 0,
+                    subtotal: draftOrderFromServer.subtotal != null ? Number(draftOrderFromServer.subtotal) : null,
+                    tax: draftOrderFromServer.tax != null ? Number(draftOrderFromServer.tax) : null,
+                    total: draftOrderFromServer.total != null ? Number(draftOrderFromServer.total) : null
                 };
             } else {
                 // Si no, intentar cargar desde localStorage
@@ -1203,8 +1215,10 @@
 
                 document.getElementById('items-list').innerHTML = rows;
 
-                const tax = subtotal * 0.10;
-                const total = subtotal + tax;
+                // Usar totales del pedido si vienen del servidor (así coincide con la tarjeta de la mesa); si no, recalcular
+                let tax = order.tax != null ? order.tax : (subtotal * 0.10);
+                let total = order.total != null ? order.total : (subtotal + tax);
+                if (order.subtotal != null) subtotal = order.subtotal;
 
                 document.getElementById('subtotal').textContent = fmtMoney(subtotal);
                 document.getElementById('tax').textContent = fmtMoney(tax);
@@ -1425,6 +1439,10 @@
                 if (order.id) {
                     payload.movement_id = order.id;
                 }
+                // Enviar table_id para que el backend libere la mesa correctamente
+                if (tableId) {
+                    payload.table_id = tableId;
+                }
 
                 this.disabled = true;
                 const originalText = this.textContent;
@@ -1498,20 +1516,29 @@
                             ? "{{ route('orders.list') }}"
                             : "{{ route('orders.index') }}";
                         if (viewId) url += (url.includes('?') ? '&' : '?') + 'view_id=' + encodeURIComponent(viewId);
-                        window.top.location.href = url;
+                        url += (url.includes('?') ? '&' : '?') + '_=' + Date.now();
+                        if (window.Turbo && typeof window.Turbo.visit === 'function') {
+                            window.Turbo.visit(url, { action: 'replace' });
+                        } else {
+                            window.top.location.href = url;
+                        }
                     })
                     .catch(err => {
                         const errorMessage = err.message || 'Error al procesar el cobro de pedido';
                         const successMsg = 'Cobro de pedido procesado correctamente';
                         if (errorMessage === successMsg || errorMessage.includes('procesado correctamente')) {
-                            // El cobro fue exitoso pero falló la redirección; mostrar éxito y redirigir
                             showNotification('Éxito', successMsg, 'success');
                             sessionStorage.setItem('flash_success_message', successMsg);
                             const viewId = new URLSearchParams(window.location.search).get('view_id');
                             const fromList = new URLSearchParams(window.location.search).get('from') === 'list';
                             let url = fromList || viewId ? "{{ route('orders.list') }}" : "{{ route('orders.index') }}";
                             if (viewId) url += (url.includes('?') ? '&' : '?') + 'view_id=' + encodeURIComponent(viewId);
-                            window.top.location.href = url;
+                            url += (url.includes('?') ? '&' : '?') + '_=' + Date.now();
+                            if (window.Turbo && typeof window.Turbo.visit === 'function') {
+                                window.Turbo.visit(url, { action: 'replace' });
+                            } else {
+                                window.top.location.href = url;
+                            }
                         } else {
                             showNotification('Error', errorMessage, 'error');
                             this.disabled = false;
@@ -1519,6 +1546,10 @@
                         }
                     });
             });
+        }
+        document.addEventListener('DOMContentLoaded', initChargePage);
+        document.addEventListener('turbo:load', function() {
+            if (document.getElementById('back-to-orders-link')) initChargePage();
         });
     </script>
 @endsection

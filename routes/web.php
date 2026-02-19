@@ -133,31 +133,31 @@ Route::middleware('auth')->group(function () {
     Route::get('/admin/ventas/reporte', [SalesController::class, 'reportSales'])
         ->name('sales.report');
 
-    Route::resource('/admin/herramientas/tipos-movimiento', MovementTypeController::class)
+    Route::resource('/products/tipos-movimiento', MovementTypeController::class)
         ->names('admin.movement-types')
         ->parameters(['tipos-movimiento' => 'movementType'])
         ->only(['index', 'store', 'edit', 'update', 'destroy']);
-    Route::resource('/admin/herramientas/tipos-documento', DocumentTypeController::class)
+    Route::resource('/products/tipos-documento', DocumentTypeController::class)
         ->names('admin.document-types')
         ->parameters(['tipos-documento' => 'documentType'])
         ->only(['index', 'store', 'edit', 'update', 'destroy']);
-    Route::resource('/admin/herramientas/categorias', CategoryController::class)
+    Route::resource('/products/categorias', CategoryController::class)
         ->names('categories')
         ->parameters(['categorias' => 'category'])
         ->only(['index', 'store', 'edit', 'update', 'destroy']);
-    Route::resource('/admin/herramientas/productos', ProductController::class)
+    Route::resource('/products/productos', ProductController::class)
         ->names('products')
         ->parameters(['productos' => 'product'])
         ->only(['index', 'store', 'edit', 'update', 'destroy']);
 
-    Route::get('/admin/herramientas/productos/{product}/product-branches/create', [ProductBranchController::class, 'create'])
-        ->name('admin.products.product_branches.create');
-    Route::post('/admin/herramientas/productos/{product}/product-branches', [ProductBranchController::class, 'store'])
-        ->name('admin.products.product_branches.store');
-    Route::post('/admin/herramientas/product-branches/store', [ProductBranchController::class, 'storeGeneric'])
-        ->name('admin.product_branches.store_generic');
-    Route::put('/admin/herramientas/product-branches/{productBranch}', [ProductBranchController::class, 'update'])
-        ->name('admin.product_branches.update');
+    Route::get('/products/productos/{product}/product-branches/create', [ProductBranchController::class, 'create'])
+        ->name('products.product_branches.create');
+    Route::post('/products/productos/{product}/product-branches', [ProductBranchController::class, 'store'])
+        ->name('products.product_branches.store');
+    Route::post('/products/product-branches/store', [ProductBranchController::class, 'storeGeneric'])
+        ->name('product_branches.store_generic');
+    Route::put('/products/product-branches/{productBranch}', [ProductBranchController::class, 'update'])
+        ->name('product_branches.update');
 
     //Kardex
     Route::get('/herramientas/kardex', [KardexController::class, 'index'])
@@ -186,6 +186,9 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/Pedidos/abrir-mesa', [OrderController::class, 'openTable'])
         ->name('orders.openTable');
+
+    Route::post('/Pedidos/mover-mesa', [OrderController::class, 'moveTable'])
+        ->name('orders.moveTable');
     // dashboard pages
     Route::get('/', [\App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
 

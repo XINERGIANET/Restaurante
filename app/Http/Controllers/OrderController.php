@@ -170,11 +170,15 @@ class OrderController extends Controller
             ];
         })->values();
 
-        return view('orders.index', [
+        $response = response()->view('orders.index', [
             'areas' => $areasArray,
             'tables' => $tablesPayload,
             'user' => $request->user(),
+            'turboCacheControl' => 'no-cache',
         ]);
+        $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+        $response->headers->set('Pragma', 'no-cache');
+        return $response;
     }
 
     public function tablesData(Request $request)
@@ -224,7 +228,10 @@ class OrderController extends Controller
             ];
         })->values();
         $areasArray = $areas->map(fn($area) => ['id' => (int) $area->id, 'name' => $area->name])->values();
-        return response()->json(['tables' => $tablesPayload, 'areas' => $areasArray]);
+        return response()
+            ->json(['tables' => $tablesPayload, 'areas' => $areasArray])
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+            ->header('Pragma', 'no-cache');
     }
 
     public function create(Request $request)
@@ -284,7 +291,15 @@ class OrderController extends Controller
         $categories = Category::orderBy('description')->get();
         $units = Unit::orderBy('description')->get();
 
-        return view('orders.create', [
+        // Pedido pendiente activo para esta mesa (si existe, lo cargamos para no duplicar)
+        $pendingOrder = OrderMovement::with('movement')
+            ->where('table_id', $table->id)
+            ->whereIn('status', ['PENDIENTE', 'P'])
+            ->orderByDesc('id')
+            ->first();
+        $startFresh = !$pendingOrder;
+
+        $response = response()->view('orders.create', [
             'user' => $user,
             'person' => $person,
             'profile' => $profile,
@@ -295,7 +310,14 @@ class OrderController extends Controller
             'productBranches' => $productBranches,
             'categories' => $categories,
             'units' => $units,
+            'startFresh' => $startFresh,
+            'pendingOrderMovementId' => $pendingOrder?->id,
+            'pendingMovementId' => $pendingOrder?->movement_id,
+            'turboCacheControl' => 'no-cache',
         ]);
+        $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+        $response->headers->set('Pragma', 'no-cache');
+        return $response;
     }
 
     public function charge(Request $request)
@@ -351,10 +373,13 @@ class OrderController extends Controller
                 $table = Table::find($request->table_id);
             }
 
-            // Pedido: OrderMovement + detalles (aunque items estén vacíos)
+            // Pedido: OrderMovement + detalles (subtotal/tax/total del pedido para que la vista de cobro no recalcule y coincida con la tarjeta de la mesa)
             if ($movement && $movement->orderMovement) {
                 $om = $movement->orderMovement;
                 $details = $om->details ?? collect();
+                $omSubtotal = (float) $om->subtotal;
+                $omTax = (float) ($om->tax ?? 0);
+                $omTotal = (float) ($om->total ?? ($omSubtotal + $omTax));
                 $draftOrder = [
                     'id' => $movement->id,
                     'number' => $movement->number,
@@ -370,6 +395,9 @@ class OrderController extends Controller
                     'clientName' => $movement->person_name ?? 'Público General',
                     'notes' => $movement->comment ?? '',
                     'pendingAmount' => $pendingAmount,
+                    'subtotal' => round($omSubtotal, 2),
+                    'tax' => round($omTax, 2),
+                    'total' => round($omTotal, 2),
                 ];
             }
             // Venta: SalesMovement + detalles
@@ -421,27 +449,80 @@ class OrderController extends Controller
             'backUrl' => $backUrl,
             'movement' => $movement,
             'table' => $table,
+            'turboCacheControl' => 'no-cache',
         ]);
     }
 
-    public function moveTable(Request $request){
-        $tableId = $request->input('table_id');
-        $areaId = $request->input('area_id');
-        $branchId = session('branch_id');
-        $user = $request->user();
+    public function moveTable(Request $request)
+    {
+        $sourceTableId  = $request->input('table_id');       // mesa origen (ocupada)
+        $destTableId    = $request->input('new_table_id');   // mesa destino (libre)
 
-        $table = Table::find($tableId);
-        $area = Area::find($areaId);
-        
-        try{
-            $table->update([
-                'area_id' => $areaId,
-            ]);
+        if (!$sourceTableId || !$destTableId) {
             return response()->json([
-                'success' => true,
-                'message' => 'Mesa movida correctamente',
+                'success' => false,
+                'message' => 'Debes seleccionar una mesa destino.',
+            ], 422);
+        }
+
+        if ((int) $sourceTableId === (int) $destTableId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'La mesa destino debe ser diferente a la mesa origen.',
+            ], 422);
+        }
+
+        $sourceTable = Table::find($sourceTableId);
+        $destTable   = Table::find($destTableId);
+
+        if (!$sourceTable) {
+            return response()->json(['success' => false, 'message' => 'Mesa origen no encontrada.'], 404);
+        }
+        if (!$destTable) {
+            return response()->json(['success' => false, 'message' => 'Mesa destino no encontrada.'], 404);
+        }
+
+        $destSituation = strtolower(trim((string) ($destTable->situation ?? '')));
+        if ($destSituation === 'ocupada') {
+            return response()->json([
+                'success' => false,
+                'message' => 'La mesa destino ya está ocupada.',
+            ], 422);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // Transferir el pedido pendiente de la mesa origen a la mesa destino
+            OrderMovement::where('table_id', $sourceTableId)
+                ->whereIn('status', ['PENDIENTE', 'P'])
+                ->update([
+                    'table_id' => $destTableId,
+                    'area_id'  => $destTable->area_id,
+                ]);
+
+            // Liberar mesa origen
+            Table::where('id', $sourceTableId)->update([
+                'situation' => 'libre',
+                'opened_at' => null,
+            ]);
+
+            // Ocupar mesa destino (conservar opened_at si ya tenía)
+            $destOpenedAt = $destTable->opened_at ?? now();
+            Table::where('id', $destTableId)->update([
+                'situation' => 'ocupada',
+                'opened_at' => $destOpenedAt,
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'success'       => true,
+                'message'       => 'Pedido movido a la mesa ' . ($destTable->name ?? $destTableId),
+                'new_table_id'  => $destTableId,
             ]);
         } catch (\Throwable $e) {
+            DB::rollBack();
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
@@ -479,13 +560,49 @@ class OrderController extends Controller
         DB::beginTransaction();
 
         try {
-            // Si hay mesa, buscar pedido pendiente existente para actualizar en lugar de crear uno nuevo
-            $existingOrderMovement = $tableId
-                ? OrderMovement::where('table_id', $tableId)
-                ->whereIn('status', ['PENDIENTE', 'P'])
-                ->orderByDesc('id')
-                ->first()
-                : null;
+            // Prioridad 1: si el front envía order_movement_id, actualizar ese pedido (evita crear duplicado al auto-guardar)
+            $existingOrderMovement = null;
+            if ($request->filled('order_movement_id')) {
+                $byId = OrderMovement::where('id', (int) $request->order_movement_id)
+                    ->whereIn('status', ['PENDIENTE', 'P'])
+                    ->first();
+                if ($byId && ($tableId === null || (int) $byId->table_id === (int) $tableId)) {
+                    $existingOrderMovement = $byId;
+                }
+            }
+            // Prioridad 2: si no, buscar por mesa
+            if (!$existingOrderMovement && $tableId) {
+                $existingOrderMovement = OrderMovement::where('table_id', $tableId)
+                    ->whereIn('status', ['PENDIENTE', 'P'])
+                    ->orderByDesc('id')
+                    ->first();
+            }
+
+            // Si ya hay pedido pendiente en la mesa pero items vacío: no crear duplicado (p. ej. al guardar sin productos al ir a cobrar)
+            if ($existingOrderMovement && empty($items)) {
+                DB::commit();
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Pedido pendiente en la mesa.',
+                        'movement_id' => $existingOrderMovement->movement_id,
+                        'order_movement_id' => $existingOrderMovement->id,
+                    ]);
+                }
+                return redirect()->route('orders.index')->with('status', 'Pedido pendiente en la mesa.');
+            }
+
+            // Mesa concreta pero sin items y sin pedido previo: no crear pedido vacío
+            if ($tableId && empty($items)) {
+                DB::rollBack();
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Agregue productos al pedido.',
+                    ], 422);
+                }
+                return redirect()->back()->with('error', 'Agregue productos al pedido.');
+            }
 
             if ($existingOrderMovement && !empty($items)) {
                 // ACTUALIZAR pedido existente
@@ -568,12 +685,11 @@ class OrderController extends Controller
 
             // Marcar la mesa como ocupada
             if ($tableId) {
-                $table = Table::find($tableId);
-                if ($table) {
-                    $table->situation = 'ocupada';
-                    $table->opened_at = $table->opened_at ?? now();
-                    $table->save();
-                }
+                $existingOpenedAt = Table::where('id', $tableId)->value('opened_at');
+                Table::where('id', $tableId)->update([
+                    'situation' => 'ocupada',
+                    'opened_at' => $existingOpenedAt ?? now(),
+                ]);
             }
 
             foreach ($items as $rawItem) {
@@ -788,15 +904,13 @@ class OrderController extends Controller
                     }
                 }
 
-                // Al cobrar, liberar la mesa
+                // Al cobrar, liberar la mesa (update directo para asegurar que se persiste)
                 $tableIdToFree = $tableId ?? $orderMovement->table_id;
                 if ($tableIdToFree) {
-                    $table = Table::find($tableIdToFree);
-                    if ($table) {
-                        $table->situation = 'libre';
-                        $table->opened_at = null;
-                        $table->save();
-                    }
+                    Table::where('id', $tableIdToFree)->update([
+                        'situation' => 'libre',
+                        'opened_at' => null,
+                    ]);
                 }
 
                 DB::commit();
@@ -1011,10 +1125,10 @@ class OrderController extends Controller
                 'finished_at' => now(),
             ]);
 
-        $table->situation = 'libre';
-        $table->opened_at = null;
-
-        $table->save();
+        Table::where('id', $table->id)->update([
+            'situation' => 'libre',
+            'opened_at' => null,
+        ]);
 
         return response()->json([
             'success' => true,
@@ -1039,9 +1153,10 @@ class OrderController extends Controller
             ], 404);
         }
 
-        $table->situation = 'ocupada';
-        $table->opened_at = $table->opened_at ?? now();
-        $table->save();
+        Table::where('id', $table->id)->update([
+            'situation' => 'ocupada',
+            'opened_at' => $table->opened_at ?? now(),
+        ]);
 
         return response()->json([
             'success' => true,
