@@ -81,7 +81,7 @@ class CategoryController extends Controller
         $viewId = $request->input('view_id');
 
         return redirect()
-            ->route('admin.categories.index', $viewId ? ['view_id' => $viewId] : [])
+            ->route('categories.index', $viewId ? ['view_id' => $viewId] : [])
             ->with('status', 'Categoria creada correctamente.');
     }
 
@@ -115,7 +115,7 @@ class CategoryController extends Controller
         $viewId = $request->input('view_id');
 
         return redirect()
-            ->route('admin.categories.index', $viewId ? ['view_id' => $viewId] : [])
+            ->route('categories.index', $viewId ? ['view_id' => $viewId] : [])
             ->with('status', 'Categoria actualizada correctamente.');
     }
 
@@ -125,7 +125,7 @@ class CategoryController extends Controller
         $viewId = $request->input('view_id');
 
         return redirect()
-            ->route('admin.categories.index', $viewId ? ['view_id' => $viewId] : [])
+            ->route('categories.index', $viewId ? ['view_id' => $viewId] : [])
             ->with('status', 'Categoria eliminada correctamente.');
     }
 }

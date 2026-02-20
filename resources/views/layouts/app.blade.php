@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="turbo-cache-control" content="{{ session('status') || session('error') ? 'no-cache' : 'no-preview' }}">
+<meta name="turbo-cache-control" content="{{ $turboCacheControl ?? (session('status') || session('error') ? 'no-cache' : 'no-preview') }}">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <title>{{ $title ?? 'Dashboard' }} | Xinergia FOOD</title>
@@ -236,13 +236,13 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
             @include('layouts.app-header')
             <!-- app header end -->
             
-            <main class="flex-1 p-4 mx-auto w-full max-w-(--breakpoint-2xl) md:p-6 flex flex-col min-w-0 overflow-hidden">
-                <div class="flex-1">
+            <main class="flex-1 p-4 w-full md:p-6 flex flex-col min-w-0 overflow-hidden">
+                <div class="flex-1 min-w-0 w-full">
                     @yield('content')
                 </div>
             </main>
 
-            <footer class="border-t border-gray-100 bg-white px-6 py-2 dark:border-gray-800 dark:bg-gray-900 shadow-sm transition-colors duration-300">
+            <footer class="shrink-0 border-t border-gray-100 bg-white px-6 py-2 dark:border-gray-800 dark:bg-gray-900 shadow-sm transition-colors duration-300">
                 <div class="flex items-center justify-center gap-2">
                     <div class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
                         <span class="font-medium">Derechos de autor &copy; {{ date('Y') }}</span>

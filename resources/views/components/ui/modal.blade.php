@@ -1,6 +1,7 @@
 @props([
     'isOpen' => false,
     'showCloseButton' => true,
+    'scrollable' => true,
 ])
 
 @php
@@ -25,7 +26,7 @@
     </div>
 
     <!-- Modal Content -->
-    <div @click.stop class="relative flex w-full max-h-[90vh] flex-col overflow-hidden rounded-3xl bg-[#F4F6FA] dark:bg-gray-900 {{ $attributes->get('class') }}"
+    <div @click.stop class="relative flex w-full flex-col rounded-3xl bg-[#F4F6FA] dark:bg-gray-900 {{ $scrollable ? 'max-h-[90vh] overflow-hidden' : '' }} {{ $attributes->get('class') }}"
         x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 transform scale-95"
         x-transition:enter-end="opacity-100 transform scale-100" x-transition:leave="transition ease-in duration-200"
         x-transition:leave-start="opacity-100 transform scale-100"
@@ -45,7 +46,7 @@
         @endif
 
         <!-- Modal Body -->
-        <div class="min-h-0 flex-1 overflow-y-auto">
+        <div class="min-h-0 flex-1 {{ $scrollable ? 'overflow-y-auto' : 'overflow-visible' }}">
             {{ $slot }}
         </div>
     </div>

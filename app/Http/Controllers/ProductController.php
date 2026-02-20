@@ -140,7 +140,7 @@ class ProductController extends Controller
         $viewId = $request->input('view_id');
         
         return redirect()
-            ->route('admin.products.index', $viewId ? ['view_id' => $viewId] : [])
+            ->route('products.index', $viewId ? ['view_id' => $viewId] : [])
             ->with('status', 'Producto creado correctamente.');
     }
 
@@ -217,7 +217,7 @@ class ProductController extends Controller
         $viewId = $request->input('view_id');
         
         return redirect()
-            ->route('admin.products.index', $viewId ? ['view_id' => $viewId] : [])
+            ->route('products.index', $viewId ? ['view_id' => $viewId] : [])
             ->with('status', 'Producto actualizado correctamente.');
     }
 
@@ -232,7 +232,7 @@ class ProductController extends Controller
         $viewId = $request->input('view_id');
 
         return redirect()
-            ->route('admin.products.index', $viewId ? ['view_id' => $viewId] : [])
+            ->route('products.index', $viewId ? ['view_id' => $viewId] : [])
             ->with('status', 'Producto eliminado correctamente.');
     }
 

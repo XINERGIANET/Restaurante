@@ -6,7 +6,7 @@
         <div class="mb-4">
             <div class="flex items-center justify-between">
                 <h1 class="text-xl font-bold text-gray-900 dark:text-white">Cobrar Pedido</h1>
-                <a href="{{ $backUrl ?? route('admin.orders.index') }}"
+                <a id="back-to-orders-link" href="{{ $backUrl ?? route('orders.index') }}"
                     class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">
                     <i class="fas fa-arrow-left text-xs"></i>
                     Volver a pedidos
@@ -397,10 +397,16 @@
     </style>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        // Evitar mostrar "cobrado exitosamente" al entrar a cobrar (p. ej. por Turbo o sesión anterior)
+        try { sessionStorage.removeItem('flash_success_message'); } catch (_) {}
+        var chargePageInitialized = false;
+        document.addEventListener('turbo:before-render', function() { chargePageInitialized = false; });
+        function initChargePage() {
+            if (chargePageInitialized) return;
+            chargePageInitialized = true;
             const tableId = @json($table?->id ?? null);
             const movementId = @json($movement?->id ?? null);
-            const tableUrlTemplate = @json(route('admin.orders.charge', ['table_id' => ':table_id', 'movement_id' => ':movement_id']));
+            const tableUrlTemplate = @json(route('orders.charge', ['table_id' => ':table_id', 'movement_id' => ':movement_id']));
             const tableUrl = tableUrlTemplate
                 .replace(encodeURIComponent(':table_id'), String(tableId ?? ''))
                 .replace(encodeURIComponent(':movement_id'), String(movementId ?? ''));
@@ -424,6 +430,23 @@
             const closeCardModal = document.getElementById('close-card-modal');
             const cancelCardSelection = document.getElementById('cancel-card-selection');
             const confirmCardSelection = document.getElementById('confirm-card-selection');
+            // Enlace "Volver a pedidos": solo navegar, nunca disparar cobro (Turbo para no recargar pestaña)
+            const backToOrdersLink = document.getElementById('back-to-orders-link');
+            if (backToOrdersLink) {
+                backToOrdersLink.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    try { sessionStorage.removeItem('flash_success_message'); } catch (_) {}
+                    const href = this.getAttribute('href');
+                    if (href && href !== '#') {
+                        if (window.Turbo && typeof window.Turbo.visit === 'function') {
+                            window.Turbo.visit(href, { action: 'advance' });
+                        } else {
+                            window.location.href = href;
+                        }
+                    }
+                });
+            }
             // Estos se actualizarán cuando se abra el modal
             let gatewayButtons = document.querySelectorAll('.gateway-btn');
             let cardButtons = document.querySelectorAll('.card-btn');
@@ -1008,7 +1031,7 @@
             let order = null;
             let notificationTimeout = null;
             
-            // Si hay un borrador del servidor (p. ej. al cobrar desde la mesa), usarlo
+            // Si hay un borrador del servidor (p. ej. al cobrar desde la mesa), usarlo (subtotal/tax/total del pedido para coincidir con la tarjeta)
             if (draftOrderFromServer && draftOrderFromServer.id) {
                 order = {
                     id: draftOrderFromServer.id,
@@ -1017,7 +1040,10 @@
                     items: Array.isArray(draftOrderFromServer.items) ? draftOrderFromServer.items : [],
                     status: 'draft',
                     notes: draftOrderFromServer.notes || '',
-                    pendingAmount: draftOrderFromServer.pendingAmount || 0
+                    pendingAmount: draftOrderFromServer.pendingAmount || 0,
+                    subtotal: draftOrderFromServer.subtotal != null ? Number(draftOrderFromServer.subtotal) : null,
+                    tax: draftOrderFromServer.tax != null ? Number(draftOrderFromServer.tax) : null,
+                    total: draftOrderFromServer.total != null ? Number(draftOrderFromServer.total) : null
                 };
             } else {
                 // Si no, intentar cargar desde localStorage
@@ -1148,7 +1174,7 @@
                     showNotification('Error', 'No hay productos en la orden. Serás redirigido a la página de pedidos.', 'error');
                     setTimeout(() => {
                         const viewId = new URLSearchParams(window.location.search).get('view_id');
-                        let url = viewId ? "{{ route('orders.list') }}?view_id=" + encodeURIComponent(viewId) : "{{ route('admin.orders.index') }}";
+                        let url = viewId ? "{{ route('orders.list') }}?view_id=" + encodeURIComponent(viewId) : "{{ route('orders.index') }}";
                         window.top.location.href = url;
                     }, 2000);
                     return;
@@ -1158,7 +1184,7 @@
                 const itemsInvalidos = order.items.filter(it => !it.pId && !it.id);
                 if (itemsInvalidos.length > 0) {
                     const viewId = new URLSearchParams(window.location.search).get('view_id');
-                    let url = viewId ? "{{ route('orders.list') }}?view_id=" + encodeURIComponent(viewId) : "{{ route('admin.orders.index') }}";
+                    let url = viewId ? "{{ route('orders.list') }}?view_id=" + encodeURIComponent(viewId) : "{{ route('orders.index') }}";
                     window.top.location.href = url;
                     return;
                 }
@@ -1189,8 +1215,10 @@
 
                 document.getElementById('items-list').innerHTML = rows;
 
-                const tax = subtotal * 0.10;
-                const total = subtotal + tax;
+                // Usar totales del pedido si vienen del servidor (así coincide con la tarjeta de la mesa); si no, recalcular
+                let tax = order.tax != null ? order.tax : (subtotal * 0.10);
+                let total = order.total != null ? order.total : (subtotal + tax);
+                if (order.subtotal != null) subtotal = order.subtotal;
 
                 document.getElementById('subtotal').textContent = fmtMoney(subtotal);
                 document.getElementById('tax').textContent = fmtMoney(tax);
@@ -1288,7 +1316,7 @@
                 if (!order || !Array.isArray(order.items) || order.items.length === 0) {
                     showNotification('Error', 'No hay una orden activa', 'error');
                     setTimeout(() => {
-                        window.top.location.href = "{{ route('admin.orders.index') }}";
+                        window.top.location.href = "{{ route('orders.index') }}";
                     }, 2000);
                     return;
                 }
@@ -1411,13 +1439,17 @@
                 if (order.id) {
                     payload.movement_id = order.id;
                 }
+                // Enviar table_id para que el backend libere la mesa correctamente
+                if (tableId) {
+                    payload.table_id = tableId;
+                }
 
                 this.disabled = true;
                 const originalText = this.textContent;
                 this.textContent = 'Procesando...';
 
 
-                fetch('{{ route('admin.orders.processOrderPayment') }}', {
+                fetch('{{ route('orders.processOrderPayment') }}', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -1482,22 +1514,31 @@
                         const fromList = new URLSearchParams(window.location.search).get('from') === 'list';
                         let url = fromList || viewId
                             ? "{{ route('orders.list') }}"
-                            : "{{ route('admin.orders.index') }}";
+                            : "{{ route('orders.index') }}";
                         if (viewId) url += (url.includes('?') ? '&' : '?') + 'view_id=' + encodeURIComponent(viewId);
-                        window.top.location.href = url;
+                        url += (url.includes('?') ? '&' : '?') + '_=' + Date.now();
+                        if (window.Turbo && typeof window.Turbo.visit === 'function') {
+                            window.Turbo.visit(url, { action: 'replace' });
+                        } else {
+                            window.top.location.href = url;
+                        }
                     })
                     .catch(err => {
                         const errorMessage = err.message || 'Error al procesar el cobro de pedido';
                         const successMsg = 'Cobro de pedido procesado correctamente';
                         if (errorMessage === successMsg || errorMessage.includes('procesado correctamente')) {
-                            // El cobro fue exitoso pero falló la redirección; mostrar éxito y redirigir
                             showNotification('Éxito', successMsg, 'success');
                             sessionStorage.setItem('flash_success_message', successMsg);
                             const viewId = new URLSearchParams(window.location.search).get('view_id');
                             const fromList = new URLSearchParams(window.location.search).get('from') === 'list';
-                            let url = fromList || viewId ? "{{ route('orders.list') }}" : "{{ route('admin.orders.index') }}";
+                            let url = fromList || viewId ? "{{ route('orders.list') }}" : "{{ route('orders.index') }}";
                             if (viewId) url += (url.includes('?') ? '&' : '?') + 'view_id=' + encodeURIComponent(viewId);
-                            window.top.location.href = url;
+                            url += (url.includes('?') ? '&' : '?') + '_=' + Date.now();
+                            if (window.Turbo && typeof window.Turbo.visit === 'function') {
+                                window.Turbo.visit(url, { action: 'replace' });
+                            } else {
+                                window.top.location.href = url;
+                            }
                         } else {
                             showNotification('Error', errorMessage, 'error');
                             this.disabled = false;
@@ -1505,6 +1546,10 @@
                         }
                     });
             });
+        }
+        document.addEventListener('DOMContentLoaded', initChargePage);
+        document.addEventListener('turbo:load', function() {
+            if (document.getElementById('back-to-orders-link')) initChargePage();
         });
     </script>
 @endsection

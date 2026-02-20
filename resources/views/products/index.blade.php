@@ -119,7 +119,7 @@
                             <i class="ri-search-line text-gray-100"></i>
                             <span class="font-medium text-gray-100">Buscar</span>
                         </x-ui.button>
-                        <x-ui.link-button size="md" variant="outline" href="{{ route('admin.products.index', $viewId ? ['view_id' => $viewId] : []) }}" class="flex-1 sm:flex-none h-11 px-6 border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200">
+                        <x-ui.link-button size="md" variant="outline" href="{{ route('products.index', $viewId ? ['view_id' => $viewId] : []) }}" class="flex-1 sm:flex-none h-11 px-6 border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200">
                             <i class="ri-refresh-line"></i>
                             <span class="font-medium">Limpiar</span>
                         </x-ui.link-button>
@@ -462,7 +462,7 @@
                     </div>
                 @endif
 
-                <form method="POST" action="{{ route('admin.products.store') }}" enctype="multipart/form-data" class="flex w-full flex-col min-h-0 space-y-6">
+                <form method="POST" action="{{ route('products.store') }}" enctype="multipart/form-data" class="flex w-full flex-col min-h-0 space-y-6">
                     @csrf
                     @if ($viewId)
                         <input type="hidden" name="view_id" value="{{ $viewId }}">

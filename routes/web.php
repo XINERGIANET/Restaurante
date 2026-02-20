@@ -118,78 +118,79 @@ Route::middleware('auth')->group(function () {
         ->names('admin.sales')
         ->parameters(['ventas' => 'sale'])
         ->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
-    Route::get('/admin/ventas/pdf', [SalesController::class, 'exportPdf'])->name('admin.sales.pdf');
+    Route::get('/admin/ventas/pdf', [SalesController::class, 'exportPdf'])->name('sales.pdf');
 
     // POS: vista de cobro (antes era modal)
     Route::get('/admin/ventas/cobrar', [SalesController::class, 'charge'])
-        ->name('admin.sales.charge');
+        ->name('sales.charge');
 
     // POS: procesar venta (usado por resources/views/sales/create.blade.php)
     Route::post('/admin/ventas/procesar', [SalesController::class, 'processSale'])
-        ->name('admin.sales.process');
+        ->name('sales.process');
 
     // POS: guardar venta como borrador/pendiente
     Route::post('/admin/ventas/borrador', [SalesController::class, 'saveDraft'])
-        ->name('admin.sales.draft');
+        ->name('sales.draft');
 
     Route::get('/admin/ventas/reporte', [SalesController::class, 'reportSales'])
         ->name('sales.report');
 
-    Route::resource('/admin/herramientas/tipos-movimiento', MovementTypeController::class)
+    Route::resource('/products/tipos-movimiento', MovementTypeController::class)
         ->names('admin.movement-types')
         ->parameters(['tipos-movimiento' => 'movementType'])
         ->only(['index', 'store', 'edit', 'update', 'destroy']);
-    Route::resource('/admin/herramientas/tipos-documento', DocumentTypeController::class)
+    Route::resource('/products/tipos-documento', DocumentTypeController::class)
         ->names('admin.document-types')
         ->parameters(['tipos-documento' => 'documentType'])
         ->only(['index', 'store', 'edit', 'update', 'destroy']);
-    Route::resource('/admin/herramientas/categorias', CategoryController::class)
-        ->names('admin.categories')
+    Route::resource('/products/categorias', CategoryController::class)
+        ->names('categories')
         ->parameters(['categorias' => 'category'])
         ->only(['index', 'store', 'edit', 'update', 'destroy']);
-    Route::resource('/admin/herramientas/productos', ProductController::class)
-        ->names('admin.products')
+    Route::resource('/products/productos', ProductController::class)
+        ->names('products')
         ->parameters(['productos' => 'product'])
         ->only(['index', 'store', 'edit', 'update', 'destroy']);
 
-    Route::get('/admin/herramientas/productos/{product}/product-branches/create', [ProductBranchController::class, 'create'])
-        ->name('admin.products.product_branches.create');
-    Route::post('/admin/herramientas/productos/{product}/product-branches', [ProductBranchController::class, 'store'])
-        ->name('admin.products.product_branches.store');
-    Route::post('/admin/herramientas/product-branches/store', [ProductBranchController::class, 'storeGeneric'])
-        ->name('admin.product_branches.store_generic');
-    Route::put('/admin/herramientas/product-branches/{productBranch}', [ProductBranchController::class, 'update'])
-        ->name('admin.product_branches.update');
+    Route::get('/products/productos/{product}/product-branches/create', [ProductBranchController::class, 'create'])
+        ->name('products.product_branches.create');
+    Route::post('/products/productos/{product}/product-branches', [ProductBranchController::class, 'store'])
+        ->name('products.product_branches.store');
+    Route::post('/products/product-branches/store', [ProductBranchController::class, 'storeGeneric'])
+        ->name('product_branches.store_generic');
+    Route::put('/products/product-branches/{productBranch}', [ProductBranchController::class, 'update'])
+        ->name('product_branches.update');
 
     //Kardex
     Route::get('/herramientas/kardex', [KardexController::class, 'index'])
         ->name('kardex.index');
     //Rutas de ordenes
     Route::get('/Pedidos/mesas-data', [OrderController::class, 'tablesData'])
-        ->name('admin.orders.tablesData');
+        ->name('orders.tablesData');
     Route::resource('/Pedidos', OrderController::class)
         ->names('admin.orders')
         ->parameters(['orders' => 'order'])
         ->only(['index', 'create']); // Solo incluir los métodos que existen
 
     Route::get('/Pedidos/reporte', [OrderController::class, 'list'])
-        ->name('orders.list');
-
-  
+        ->name('orders.list');  
     Route::get('/Pedidos/cobrar', [OrderController::class, 'charge'])
-        ->name('admin.orders.charge');
+        ->name('orders.charge');
 
     Route::post('/Pedidos/procesar', [OrderController::class, 'processOrder'])
-        ->name('admin.orders.process');
+        ->name('orders.process');
 
     Route::post('/Pedidos/procesar-pago', [OrderController::class, 'processOrderPayment'])
-        ->name('admin.orders.processOrderPayment');
+        ->name('orders.processOrderPayment');
 
     Route::post('/Pedidos/cancelar', [OrderController::class, 'cancelOrder'])
-        ->name('admin.orders.cancelOrder');
+        ->name('orders.cancelOrder');
 
     Route::post('/Pedidos/abrir-mesa', [OrderController::class, 'openTable'])
-        ->name('admin.orders.openTable');
+        ->name('orders.openTable');
+
+    Route::post('/Pedidos/mover-mesa', [OrderController::class, 'moveTable'])
+        ->name('orders.moveTable');
     // dashboard pages
     Route::get('/', [\App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
 
