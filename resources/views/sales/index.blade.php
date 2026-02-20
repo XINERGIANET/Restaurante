@@ -98,7 +98,7 @@
                                     <span class="font-medium text-gray-100 hidden sm:inline">Buscar</span>
                                 </x-ui.button>
                                 <x-ui.link-button size="md" variant="outline"
-                                    href="{{ route('admin.sales.index', $viewId ? ['view_id' => $viewId] : []) }}"
+                                    href="{{ route('sales.index', $viewId ? ['view_id' => $viewId] : []) }}"
                                     class="h-11 px-6 border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200">
                                     <i class="ri-refresh-line"></i>
                                     <span class="font-medium hidden sm:inline">Limpiar</span>
@@ -125,7 +125,7 @@
                                 @endforeach
                             @else
                                 <x-ui.link-button size="md" variant="primary" style="background-color: #12f00e; color: #111827;"
-                                    href="{{ route('admin.sales.create', $viewId ? ['view_id' => $viewId] : []) }}" class="h-11">
+                                    href="{{ route('sales.create', $viewId ? ['view_id' => $viewId] : []) }}" class="h-11">
                                     <i class="ri-add-line"></i>
                                     <span>Nueva Venta</span>
                                 </x-ui.link-button>
@@ -302,7 +302,7 @@
                                                     <x-ui.link-button
                                                         size="icon"
                                                         variant="primary"
-                                                        href="{{ route('admin.sales.charge', array_merge(['movement_id' => $sale->id], $viewId ? ['view_id' => $viewId] : [])) }}"
+                                                        href="{{ route('sales.charge', array_merge(['movement_id' => $sale->id], $viewId ? ['view_id' => $viewId] : [])) }}"
                                                         className="bg-success-500 text-white hover:bg-success-600 ring-0 rounded-full"
                                                         style="border-radius: 100%; background-color: #10B981; color: #FFFFFF;"
                                                         aria-label="Cobrar"
@@ -316,7 +316,7 @@
                                                 <x-ui.link-button
                                                     size="icon"
                                                     variant="edit"
-                                                    href="{{ route('admin.sales.edit', array_merge([$sale], $viewId ? ['view_id' => $viewId] : [])) }}"
+                                                    href="{{ route('sales.edit', array_merge([$sale], $viewId ? ['view_id' => $viewId] : [])) }}"
                                                     className="bg-warning-500 text-white hover:bg-warning-600 ring-0 rounded-full"
                                                     style="border-radius: 100%; background-color: #FBBF24; color: #111827;"
                                                     aria-label="Editar"

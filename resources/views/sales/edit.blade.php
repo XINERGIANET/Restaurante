@@ -8,9 +8,9 @@
             open: true,
             close() {
                 if (window.Turbo && typeof window.Turbo.visit === 'function') {
-                    window.Turbo.visit('{{ route('admin.sales.index', request('view_id') ? ['view_id' => request('view_id')] : []) }}', { action: 'replace' });
+                    window.Turbo.visit('{{ route('sales.index', request('view_id') ? ['view_id' => request('view_id')] : []) }}', { action: 'replace' });
                 } else {
-                    window.location.href = '{{ route('admin.sales.index', request('view_id') ? ['view_id' => request('view_id')] : []) }}';
+                    window.location.href = '{{ route('sales.index', request('view_id') ? ['view_id' => request('view_id')] : []) }}';
                 }
             }
         }"
@@ -30,8 +30,8 @@
                     </div>
                 </div>
                 <a
-                    href="{{ route('admin.sales.index', request('view_id') ? ['view_id' => request('view_id')] : []) }}"
-                    onclick="if (window.Turbo && typeof window.Turbo.visit === 'function') { window.Turbo.visit('{{ route('admin.sales.index', request('view_id') ? ['view_id' => request('view_id')] : []) }}', { action: 'replace' }); return false; }"
+                    href="{{ route('sales.index', request('view_id') ? ['view_id' => request('view_id')] : []) }}"
+                    onclick="if (window.Turbo && typeof window.Turbo.visit === 'function') { window.Turbo.visit('{{ route('sales.index', request('view_id') ? ['view_id' => request('view_id')] : []) }}', { action: 'replace' }); return false; }"
                     class="flex h-11 w-11 items-center justify-center rounded-full bg-gray-100 text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
                     aria-label="Cerrar"
                 >
@@ -45,7 +45,7 @@
                 </div>
             @endif
 
-            <form method="POST" action="{{ route('admin.sales.update', $sale) }}" class="space-y-6">
+            <form method="POST" action="{{ route('sales.update', $sale) }}" class="space-y-6">
                 @csrf
                 @method('PUT')
                 @if (request('view_id'))
@@ -62,8 +62,8 @@
                     <x-ui.link-button
                         size="md"
                         variant="outline"
-                        href="{{ route('admin.sales.index', request('view_id') ? ['view_id' => request('view_id')] : []) }}"
-                        onclick="if (window.Turbo && typeof window.Turbo.visit === 'function') { window.Turbo.visit('{{ route('admin.sales.index', request('view_id') ? ['view_id' => request('view_id')] : []) }}', { action: 'replace' }); return false; }"
+                        href="{{ route('sales.index', request('view_id') ? ['view_id' => request('view_id')] : []) }}"
+                        onclick="if (window.Turbo && typeof window.Turbo.visit === 'function') { window.Turbo.visit('{{ route('sales.index', request('view_id') ? ['view_id' => request('view_id')] : []) }}', { action: 'replace' }); return false; }"
                     >
                         <i class="ri-close-line"></i>
                         <span>Cancelar</span>

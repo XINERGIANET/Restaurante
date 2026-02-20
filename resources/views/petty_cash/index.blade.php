@@ -209,7 +209,7 @@
                             <span class="font-medium text-gray-100">Buscar</span>
                         </x-ui.button>
                         <x-ui.link-button size="md" variant="outline"
-                            href="{{ route('admin.petty-cash.index', array_merge(['cash_register_id' => $selectedBoxId], $viewId ? ['view_id' => $viewId] : [])) }}"
+                            href="{{ route('petty-cash.index', array_merge(['cash_register_id' => $selectedBoxId], $viewId ? ['view_id' => $viewId] : [])) }}"
                             class="flex-1 sm:flex-none h-11 px-4 border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200">
                             <i class="ri-refresh-line"></i>
                             <span class="font-medium">Limpiar</span>
@@ -493,7 +493,7 @@
                 </div>
 
                 <form method="POST"
-                    action="{{ route('admin.petty-cash.store', ['cash_register_id' => $selectedBoxId]) }}"
+                    action="{{ route('petty-cash.store', ['cash_register_id' => $selectedBoxId]) }}"
                     class="space-y-6">
                     @csrf
                     @if ($viewId)

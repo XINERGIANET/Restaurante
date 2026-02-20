@@ -12,7 +12,7 @@
     x-data="{ 
         open: true,
         redirectToIndex() {
-            window.location.href = '{{ route('admin.petty-cash.index', array_merge(['cash_register_id' => $cash_register_id], !empty($viewId) ? ['view_id' => $viewId] : [])) }}';
+            window.location.href = '{{ route('petty-cash.index', array_merge(['cash_register_id' => $cash_register_id], !empty($viewId) ? ['view_id' => $viewId] : [])) }}';
         }
     }"
     x-init="$watch('open', value => { if (!value) redirectToIndex(); })"

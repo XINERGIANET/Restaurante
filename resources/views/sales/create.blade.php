@@ -3,8 +3,8 @@
 @section('content')
     @php
         $viewId = request('view_id');
-        $salesIndexUrl = route('admin.sales.index', $viewId ? ['view_id' => $viewId] : []);
-        $salesChargeUrl = route('admin.sales.charge', $viewId ? ['view_id' => $viewId] : []);
+        $salesIndexUrl = route('sales.index', $viewId ? ['view_id' => $viewId] : []);
+        $salesChargeUrl = route('sales.charge', $viewId ? ['view_id' => $viewId] : []);
     @endphp
     {{-- Breadcrumb --}}
     <div class=" flex flex-wrap items-center justify-between gap-3 mb-4">
@@ -568,7 +568,7 @@
                 notes: 'Venta guardada como borrador - pendiente de pago'
             };
 
-            fetch(@json(route('admin.sales.draft')), {
+            fetch(@json(route('sales.draft')), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

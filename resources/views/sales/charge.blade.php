@@ -1279,7 +1279,7 @@
                 if (!sale || !Array.isArray(sale.items) || sale.items.length === 0) {
                     showNotification('Error', 'No hay una orden activa', 'error');
                     setTimeout(() => {
-                        window.location.href = "{{ route('admin.sales.index') }}";
+                        window.location.href = "{{ route('sales.index') }}";
                     }, 2000);
                     return;
                 }
@@ -1366,7 +1366,7 @@
 
                         sessionStorage.setItem('flash_success_message', data.message || 'Venta cobrada correctamente');
                         const viewId = new URLSearchParams(window.location.search).get('view_id');
-                        let url = "{{ route('admin.sales.index') }}";
+                        let url = "{{ route('sales.index') }}";
                         if (viewId) url += (url.includes('?') ? '&' : '?') + 'view_id=' + encodeURIComponent(viewId);
                         window.location.href = url;
                     })
