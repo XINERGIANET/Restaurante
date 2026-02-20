@@ -36,6 +36,8 @@ use App\Http\Controllers\KardexController;
 use App\Http\Controllers\RecipeBookController;
 use App\Http\Controllers\UnitController;
 use App\Http\Controllers\WarehouseMovementController;
+use App\Http\Controllers\ShiftCashController;
+
 
 Route::prefix('restaurante')->name('restaurant.')->group(function () {
     Route::view('/', 'restaurant.home', ['title' => 'Xinergia Restaurante'])->name('home');
@@ -112,14 +114,14 @@ Route::middleware('auth')->group(function () {
         ->names('admin.roles')
         ->parameters(['roles' => 'role'])
         ->only(['index', 'store', 'edit', 'update', 'destroy']);
-    Route::resource('/admin/ventas', SalesController::class)
-        ->names('admin.sales')
+    Route::resource('/ventas', SalesController::class)
+        ->names('sales')
         ->parameters(['ventas' => 'sale'])
         ->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
     Route::get('/admin/ventas/pdf', [SalesController::class, 'exportPdf'])->name('sales.pdf');
 
     // POS: vista de cobro (antes era modal)
-    Route::get('/admin/ventas/cobrar', [SalesController::class, 'charge'])
+    Route::get('/ventas/cobrar', [SalesController::class, 'charge'])
         ->name('sales.charge');
 
     // POS: procesar venta (usado por resources/views/sales/create.blade.php)
@@ -163,12 +165,13 @@ Route::middleware('auth')->group(function () {
     Route::get('/herramientas/kardex', [KardexController::class, 'index'])
         ->name('kardex.index');
     //Rutas de ordenes
-    Route::get('/Pedidos/mesas-data', [OrderController::class, 'tablesData'])
-        ->name('orders.tablesData');
     Route::resource('/Pedidos', OrderController::class)
         ->names('orders')
         ->parameters(['orders' => 'order'])
         ->only(['index', 'create']); // Solo incluir los métodos que existen
+
+    Route::get('/Pedidos/mesas-data', [OrderController::class, 'tablesData'])
+        ->name('orders.tablesData');
 
     Route::get('/Pedidos/reporte', [OrderController::class, 'list'])
         ->name('orders.list');  
@@ -189,7 +192,8 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/Pedidos/mover-mesa', [OrderController::class, 'moveTable'])
         ->name('orders.moveTable');
-    // dashboard pages
+    
+    // Dashboard pages
     Route::get('/', [\App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
 
     // calender pages
@@ -310,7 +314,6 @@ Route::middleware('auth')->group(function () {
         ->names('admin.units')
         ->parameters(['unidades' => 'unit']);
 
-
     // Areas
     Route::resource('/areas', AreaController::class)
         ->names('areas')
@@ -354,9 +357,9 @@ Route::middleware('auth')->group(function () {
 
     //Caja chica
     Route::get('/caja/caja-chica', [PettyCashController::class, 'redirectBase'])
-        ->name('admin.petty-cash.base');
-    Route::get('/caja/caja-chica/{cash_register_id}/{movement}', [PettyCashController::class, 'show'])->name('admin.petty-cash.show');
-    Route::group(['prefix' => 'caja/caja-chica/{cash_register_id}', 'as' => 'admin.petty-cash.'], function () {
+        ->name('petty-cash.base');
+    Route::get('/caja/caja-chica/{cash_register_id}/{movement}', [PettyCashController::class, 'show'])->name('petty-cash.show');
+    Route::group(['prefix' => 'caja/caja-chica/{cash_register_id}', 'as' => 'petty-cash.'], function () {
         Route::get('/', [PettyCashController::class, 'index'])->name('index');
         Route::post('/', [PettyCashController::class, 'store'])->name('store');
         Route::get('/{movement}/edit', [PettyCashController::class, 'edit'])->name('edit');
@@ -369,6 +372,11 @@ Route::middleware('auth')->group(function () {
         ->names('boxes')
         ->parameters(['cajas' => 'box']);
 
+    // Turno por caja
+    Route::resource('/caja/turno-caja', ShiftCashController::class)
+        ->names('shift-cash')
+        ->parameters(['turno-caja' => 'shiftCash']);
+
     //tasa de impuesto
     Route::resource('/admin/herramientas/tasas-impuesto', TaxRateController::class)
         ->names('admin.tax_rates')
@@ -378,7 +386,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('/admin/herramientas/movimientos_almacen', WarehouseMovementController::class)
         ->names('warehouse_movements')
         ->parameters(['movimientos_almacen' => 'warehouseMovement'])
-        ->only(['index', 'store', 'show', 'edit', 'update']); // Solo incluir los métodos que existen
+        ->only(['index', 'store', 'show', 'edit', 'update']); 
 
     Route::get('/admin/herramientas/movimientos-almacen/entrada', [WarehouseMovementController::class, 'input'])
         ->name('warehouse_movements.input');

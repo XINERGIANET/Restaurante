@@ -20,6 +20,11 @@ class CashShiftRelation extends Model
         'branch_id',
     ];
 
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class);
+    }
+    
     public function cashMovementStart()
     {
         return $this->belongsTo(CashMovements::class, 'cash_movement_start_id');
@@ -28,5 +33,32 @@ class CashShiftRelation extends Model
     public function cashMovementEnd()
     {
         return $this->belongsTo(CashMovements::class, 'cash_movement_end_id');
+    }
+
+    public function movements()
+    {
+        return $this->hasMany(CashMovements::class, 'shift_id');
+    }
+
+    public function getTotalIngresosAttribute()
+    {
+        return $this->movements
+            ->where('id', '!=', $this->cash_movement_start_id) 
+            ->where('id', '!=', $this->cash_movement_end_id)   
+            ->flatMap(function ($movement) {
+                return $movement->details->where('type', 'I'); 
+            })
+            ->sum('amount');
+    }
+
+    public function getTotalEgresosAttribute()
+    {
+        return $this->movements
+            ->where('id', '!=', $this->cash_movement_start_id)
+            ->where('id', '!=', $this->cash_movement_end_id)
+            ->flatMap(function ($movement) {
+                return $movement->details->where('type', 'E');
+            })
+            ->sum('amount');
     }
 }

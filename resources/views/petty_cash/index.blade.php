@@ -459,7 +459,13 @@
                         @empty
                             <tbody>
                                 <tr>
-                                    <td colspan="12" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">No hay movimientos registrados.</td>
+                                    <td colspan="12" class="px-6 py-12 text-center text-gray-500">
+                                        @if(!$hasOpening)
+                                            La caja se encuentra cerrada. Realice una apertura para ver movimientos.
+                                        @else
+                                            No hay movimientos en el turno actual.
+                                        @endif
+                                    </td>
                                 </tr>
                             </tbody>
                         @endforelse
