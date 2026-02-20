@@ -295,14 +295,14 @@
                 const data = await response.json();
 
                 if (response.ok && data.success) {
-                    alert('Salida de productos guardada correctamente');
+                    sessionStorage.setItem('flash_success_message', data.message || 'Salida de productos guardada correctamente');
                     goBack();
                 } else {
-                    alert('Error: ' + (data.message || 'No se pudo guardar la salida'));
+                    sessionStorage.setItem('flash_error_message', data.message || 'No se pudo guardar la salida');
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert('Error al guardar la salida de productos');
+                sessionStorage.setItem('flash_error_message', 'Error al guardar la salida de productos');
             }
         }
 

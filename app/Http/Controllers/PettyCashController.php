@@ -135,10 +135,13 @@ class PettyCashController extends Controller
                 $query->where('cash_register_id', $selectedBoxId);
             });
 
-        if (!$hasOpening) {
-            $movementsQuery->whereRaw('1 = 0');
-        } elseif ($lastOpeningMovement) {
+        // Mostrar movimientos desde la última apertura (activa o cerrada).
+        // Cuando se registre una nueva apertura, $lastOpeningMovement apuntará a la nueva
+        // y la lista se vacía sola mostrando solo los movimientos del nuevo turno.
+        if ($lastOpeningMovement) {
             $movementsQuery->where('movements.id', '>=', $lastOpeningMovement->id);
+        } else {
+            $movementsQuery->whereRaw('1 = 0');
         }
 
         $movements = $movementsQuery->when($search, function ($query, $search) {
@@ -152,6 +155,150 @@ class PettyCashController extends Controller
             ->orderBy('movements.id', 'desc')
             ->paginate($perPage)
             ->withQueryString();
+
+        // Balance real del turno activo: suma de ingresos menos suma de egresos
+        $currentBalance = 0;
+        $currentTurnBreakdown = [];
+        $currentTurnSummary = ['ventas' => 0, 'ingresos' => 0, 'egresos' => 0];
+
+        if ($hasOpening && $lastOpeningMovement) {
+            $currentTurnMovementIds = Movement::query()
+                ->whereHas('cashMovement', function ($q) use ($selectedBoxId) {
+                    $q->where('cash_register_id', $selectedBoxId);
+                })
+                ->where('id', '>=', $lastOpeningMovement->id)
+                ->pluck('id');
+            $currentTurnCashMovementIds = CashMovements::whereIn('movement_id', $currentTurnMovementIds)->pluck('id');
+
+            // Solo efectivo: balance = ingresos en efectivo - egresos en efectivo
+            $detailsEfectivo = CashMovementDetail::with('cashMovement.paymentConcept')
+                ->whereIn('cash_movement_id', $currentTurnCashMovementIds)
+                ->where('payment_method', 'Efectivo')
+                ->get();
+            $efectivoIngresos = $detailsEfectivo->filter(fn ($d) => ($d->cashMovement?->paymentConcept?->type ?? '') === 'I')->sum('amount');
+            $efectivoEgresos = $detailsEfectivo->filter(fn ($d) => ($d->cashMovement?->paymentConcept?->type ?? '') === 'E')->sum('amount');
+            $currentBalance = round((float) $efectivoIngresos - (float) $efectivoEgresos, 2);
+
+            // Desglose por método de pago: especificar Yape, Plin, etc. en billetera; tarjeta y banco cuando aplique
+            $allDetailsForBreakdown = CashMovementDetail::with('cashMovement.paymentConcept')
+                ->whereIn('cash_movement_id', $currentTurnCashMovementIds)
+                ->get();
+            $labelForDetail = function ($d) {
+                $pm = trim($d->payment_method ?? '');
+                if ($pm === 'Efectivo') {
+                    return 'Efectivo';
+                }
+                if (stripos($pm, 'Billetera') !== false && !empty(trim($d->digital_wallet ?? ''))) {
+                    return trim($d->digital_wallet);
+                }
+                if ((stripos($pm, 'Tarjeta') !== false || stripos($pm, 'Crédito') !== false) && !empty(trim($d->card ?? ''))) {
+                    return trim($d->card);
+                }
+                if (stripos($pm, 'Transferencia') !== false && !empty(trim($d->bank ?? ''))) {
+                    return trim($d->bank);
+                }
+                return $pm ?: 'Otro';
+            };
+            $byLabel = $allDetailsForBreakdown->groupBy($labelForDetail);
+            $currentTurnBreakdown = $byLabel->map(function ($items, $label) {
+                $ingresos = round($items->filter(fn ($d) => ($d->cashMovement?->paymentConcept?->type ?? '') === 'I')->sum('amount'), 2);
+                $egresos = round($items->filter(fn ($d) => ($d->cashMovement?->paymentConcept?->type ?? '') === 'E')->sum('amount'), 2);
+                return [
+                    'method'   => $label,
+                    'ingresos' => $ingresos,
+                    'egresos'  => $egresos,
+                    'saldo'    => round($ingresos - $egresos, 2),
+                ];
+            })->filter(fn ($row) => $row['ingresos'] > 0 || $row['egresos'] > 0)->values()->all();
+
+            // Resumen del turno: solo lo que entró/salió en efectivo (ventas, ingresos, egresos)
+            $currentTurnMovements = CashMovements::with(['movement.movementType', 'paymentConcept', 'details'])
+                ->where('cash_register_id', $selectedBoxId)
+                ->whereHas('movement', function ($q) use ($lastOpeningMovement) {
+                    $q->where('id', '>=', $lastOpeningMovement->id);
+                })
+                ->get();
+            foreach ($currentTurnMovements as $cm) {
+                $efectivoAmount = (float) $cm->details->where('payment_method', 'Efectivo')->sum('amount');
+                if ($efectivoAmount <= 0) {
+                    continue;
+                }
+                $type = $cm->paymentConcept?->type ?? '';
+                $desc = strtolower($cm->paymentConcept?->description ?? '');
+                if (str_contains($desc, 'apertura')) {
+                    continue;
+                }
+                if (str_contains($desc, 'cierre')) {
+                    continue;
+                }
+                if (($cm->movement->movement_type_id ?? 0) == 2 || str_contains($desc, 'venta')) {
+                    $currentTurnSummary['ventas'] += $efectivoAmount;
+                } elseif ($type === 'I') {
+                    $currentTurnSummary['ingresos'] += $efectivoAmount;
+                } elseif ($type === 'E') {
+                    $currentTurnSummary['egresos'] += $efectivoAmount;
+                }
+            }
+            $currentTurnSummary['ventas'] = round($currentTurnSummary['ventas'], 2);
+            $currentTurnSummary['ingresos'] = round($currentTurnSummary['ingresos'], 2);
+            $currentTurnSummary['egresos'] = round($currentTurnSummary['egresos'], 2);
+        }
+
+        // Total y desglose del último cierre (para prellenar y mostrar detalle al aperturar)
+        $lastClosingTotal = 0;
+        $lastClosingBreakdown = [];
+        $turnSummary = ['ventas' => 0, 'ingresos' => 0, 'egresos' => 0];
+
+        $lastCierreMovement = Movement::query()
+            ->whereHas('cashMovement', function ($query) use ($selectedBoxId) {
+                $query->where('cash_register_id', $selectedBoxId);
+            })
+            ->whereHas('cashMovement.paymentConcept', function ($query) {
+                $query->where('description', 'like', '%Cierre%');
+            })
+            ->with(['cashMovement', 'cashMovement.details'])
+            ->orderBy('id', 'desc')
+            ->first();
+
+        if ($lastCierreMovement && $lastCierreMovement->cashMovement) {
+            $lastClosingTotal = round((float) $lastCierreMovement->cashMovement->total, 2);
+            $lastClosingBreakdown = $lastCierreMovement->cashMovement->details
+                ->groupBy('payment_method')
+                ->map(fn ($items) => round($items->sum('amount'), 2))
+                ->map(fn ($amount, $method) => ['method' => $method ?: 'Otro', 'amount' => $amount])
+                ->values()
+                ->all();
+        }
+
+        if ($lastOpeningMovement && $lastCierreMovement && $lastCierreMovement->id >= $lastOpeningMovement->id) {
+            $movementsInTurn = CashMovements::with(['movement.movementType', 'paymentConcept'])
+                ->where('cash_register_id', $selectedBoxId)
+                ->whereHas('movement', function ($q) use ($lastOpeningMovement, $lastCierreMovement) {
+                    $q->whereBetween('id', [$lastOpeningMovement->id, $lastCierreMovement->id]);
+                })
+                ->get();
+            foreach ($movementsInTurn as $cm) {
+                $total = (float) $cm->total;
+                $type = $cm->paymentConcept?->type ?? '';
+                $desc = strtolower($cm->paymentConcept?->description ?? '');
+                if (str_contains($desc, 'apertura')) {
+                    continue;
+                }
+                if (str_contains($desc, 'cierre')) {
+                    continue;
+                }
+                if (($cm->movement->movement_type_id ?? 0) == 2 || str_contains($desc, 'venta')) {
+                    $turnSummary['ventas'] += $total;
+                } elseif ($type === 'I') {
+                    $turnSummary['ingresos'] += $total;
+                } elseif ($type === 'E') {
+                    $turnSummary['egresos'] += $total;
+                }
+            }
+            $turnSummary['ventas'] = round($turnSummary['ventas'], 2);
+            $turnSummary['ingresos'] = round($turnSummary['ingresos'], 2);
+            $turnSummary['egresos'] = round($turnSummary['egresos'], 2);
+        }
 
         $shifts = Shift::where('branch_id', session('branch_id'))->get();
         $paymentMethods = PaymentMethod::where('status', true)->orderBy('order_num', 'asc')->get();
@@ -178,7 +325,13 @@ class PettyCashController extends Controller
             'digitalWallets'  => $digitalWallets,
             'cards'           => $cards,
             'operaciones'     => $operaciones,
-            'perPage'         => $perPage,
+            'perPage'               => $perPage,
+            'currentBalance'        => $currentBalance,
+            'currentTurnBreakdown'  => $currentTurnBreakdown,
+            'currentTurnSummary'    => $currentTurnSummary,
+            'lastClosingTotal'      => $lastClosingTotal,
+            'lastClosingBreakdown'  => $lastClosingBreakdown,
+            'turnSummary'           => $turnSummary,
         ]);
     }
 
@@ -209,6 +362,26 @@ class PettyCashController extends Controller
             'payments.*.payment_method_id' => 'required|exists:payment_methods,id',
             'payments.*.number'  => 'nullable|string|max:100',
         ]);
+
+        // La Apertura de caja siempre se permite (es quien crea el turno activo).
+        // Cualquier otro movimiento requiere un turno activo en esta caja.
+        $concept = PaymentConcept::findOrFail($validated['payment_concept_id']);
+        $isApertura = str_contains(strtolower($concept->description), 'apertura');
+
+        if (!$isApertura) {
+            $hasActiveShift = CashShiftRelation::where('branch_id', session('branch_id'))
+                ->where('status', '1')
+                ->whereHas('cashMovementStart', function ($query) use ($cash_register_id) {
+                    $query->where('cash_register_id', $cash_register_id);
+                })
+                ->exists();
+
+            if (!$hasActiveShift) {
+                return back()
+                    ->withErrors(['error' => 'No hay un turno activo para esta caja. Realice una Apertura de Caja primero.'])
+                    ->withInput();
+            }
+        }
 
         try {
             DB::transaction(function () use ($request, $validated, $cash_register_id) {

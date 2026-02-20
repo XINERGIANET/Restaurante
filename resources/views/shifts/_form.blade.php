@@ -50,13 +50,11 @@
                 <span class="absolute top-1/2 left-0 -translate-y-1/2 border-r border-gray-200 px-3.5 py-3 text-gray-500 dark:border-gray-800 dark:text-gray-400">
                     <i class="ri-time-line"></i>
                 </span>
-                <input
-                    type="time"
+                <x-form.input.time
                     name="start_time"
-                    value="{{ old('start_time', $shift->start_time ?? '') }}"
-                    required
-                    @if(($useAlpine ?? false)) x-model="form.start_time" @endif
-                    class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 pl-[62px] text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+                    :value="old('start_time', $shift->start_time ?? '')"
+                    :required="true"
+                    :useAlpine="($useAlpine ?? false)"
                 />
             </div>
             @error('start_time')
@@ -70,13 +68,11 @@
                 <span class="absolute top-1/2 left-0 -translate-y-1/2 border-r border-gray-200 px-3.5 py-3 text-gray-500 dark:border-gray-800 dark:text-gray-400">
                     <i class="ri-time-fill"></i>
                 </span>
-                <input
-                    type="time"
+                <x-form.input.time
                     name="end_time"
-                    value="{{ old('end_time', $shift->end_time ?? '') }}"
-                    required
-                    @if(($useAlpine ?? false)) x-model="form.end_time" @endif
-                    class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 pl-[62px] text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+                    :value="old('end_time', $shift->end_time ?? '')"
+                    :required="true"
+                    :useAlpine="($useAlpine ?? false)"
                 />
             </div>
             @error('end_time')

@@ -111,7 +111,7 @@
                                 str_starts_with($tipo, 'Entrada') => 'background-color: #d1fae5; color: #065f46; border: 1px solid #10b981;',
                                 str_starts_with($tipo, 'Salida') => 'background-color: #fee2e2; color: #991b1b; border: 1px solid #ef4444;',
                                 $tipo === 'Saldo inicial' => 'background-color: #f1f5f9; color: #334155; border: 1px solid #94a3b8;',
-                                default => 'background-color: #FFA770; color: #ffffff; border: 1px solid #FF6F2E;',
+                                default => 'background-color: #FFD8C2; color: #065f46; border: 1px solid #FF6F2E;',
                             };
                         @endphp
                         <tr class="border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-white/5 {{ $idx % 2 === 0 ? 'bg-white dark:bg-transparent' : 'bg-gray-50/50 dark:bg-white/[0.02]' }}">
@@ -121,7 +121,7 @@
                                 </td>
                             @endif
                             <td class="px-3 py-2.5 text-sm text-center text-gray-800 dark:text-white/90 sm:px-4 whitespace-nowrap">
-                                {{ $m['date'] ?? '-' }}
+                                {{ $m['date'] ? date('d/m/Y H:i', strtotime($m['date'])) : '-' }}
                             </td>
                             <td class="px-3 py-2.5 text-center sm:px-4">
                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium" style="{{ $tipoStyle }}">{{ $tipo }}</span>

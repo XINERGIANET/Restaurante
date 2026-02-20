@@ -68,22 +68,29 @@
     {{-- ========================================================= --}}
 
     <div x-data="{
-        rows: [{ id: 1, methodId: '', methodName: '', amount: '' }],
-    
+        rows: [{ id: 1, methodId: '1', methodName: 'Efectivo', amount: '' }],
+
         addNewRow() {
-            this.rows.push({ id: Date.now(), methodId: '', methodName: '', amount: '' });
+            this.rows.push({ id: Date.now(), methodId: '1', methodName: 'Efectivo', amount: '' });
         },
-    
+
         removeRow(index) {
             if (this.rows.length > 1) {
                 this.rows.splice(index, 1);
             }
         },
-    
+
         get totalAmount() {
             return this.rows.reduce((sum, row) => sum + (parseFloat(row.amount) || 0), 0).toFixed(2);
         }
-    }">
+    }"
+    @fill-apertura-amount.window="
+        const amount = Number($event.detail?.amount || 0).toFixed(2);
+        rows = [{ id: Date.now(), methodId: '1', methodName: 'Efectivo', amount: amount }];
+    "
+    @reset-payment-rows.window="
+        rows = [{ id: Date.now(), methodId: '1', methodName: 'Efectivo', amount: '' }];
+    ">
 
         {{-- HEADER DE PAGOS Y TOTAL --}}
         <div
@@ -95,16 +102,64 @@
                 <p class="text-sm text-gray-500 mt-1">Agrega uno o más métodos para cubrir el monto.</p>
             </div>
 
-            <div class="mt-4 sm:mt-0 text-right bg-brand-50/50 dark:bg-brand-900/10 px-4 py-2 rounded-lg">
-                <span
-                    class="block text-xs text-brand-600 dark:text-brand-400 font-medium uppercase tracking-wider">Total
-                    a Pagar</span>
+            <div class="mt-4 sm:mt-0 text-right px-4 py-2 rounded-lg transition-colors duration-300"
+                :class="formConcept === 'Cierre de caja' ? 'bg-red-50/50 dark:bg-red-900/10' : 'bg-brand-50/50 dark:bg-brand-900/10'">
+                <span class="block text-xs font-medium uppercase tracking-wider transition-colors duration-300"
+                    :class="formConcept === 'Cierre de caja' ? 'text-red-600 dark:text-red-400' : 'text-brand-600 dark:text-brand-400'"
+                    x-text="formConcept === 'Cierre de caja' ? 'Balance del Turno' : 'Total a Pagar'">
+                </span>
                 <span class="block text-2xl font-bold text-gray-900 dark:text-white">
-                    S/. <span x-text="totalAmount"></span>
+                    S/. <span x-text="formConcept === 'Cierre de caja' ? Number(currentBalance).toFixed(2) : totalAmount"></span>
                 </span>
             </div>
         </div>
 
+        {{-- DETALLE DEL TURNO (solo al Cerrar caja) --}}
+        <template x-if="formConcept === 'Cierre de caja' && (currentTurnBreakdown?.length > 0 || (currentTurnSummary?.ventas + currentTurnSummary?.ingresos + currentTurnSummary?.egresos > 0))">
+            <div class="mb-6 rounded-xl border border-red-200 bg-red-50/50 p-4 dark:border-red-900/50 dark:bg-red-900/10">
+                <h4 class="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    <i class="ri-pie-chart-2-line text-red-500"></i>
+                    Detalle del turno (para cierre)
+                </h4>
+                <div class="">
+                    {{-- Por método de pago: tabla compacta --}}
+                    <div class="min-w-0">
+                        <p class="mb-1.5 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Por método de pago</p>
+                        <div class="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800" style="max-height: 14rem;">
+                            <div class="overflow-y-auto">
+                                <table class="w-full text-xs">
+                                    <thead class="sticky top-0 bg-gray-50 dark:bg-gray-800/95 text-left">
+                                        <tr class="border-b border-gray-200 dark:border-gray-700">
+                                            <th class="py-1.5 pl-2 pr-1 font-semibold text-gray-500 dark:text-gray-400">Método</th>
+                                            <th class="py-1.5 px-1 text-right font-semibold text-gray-500 dark:text-gray-400">Ingresos</th>
+                                            <th class="py-1.5 px-1 text-right font-semibold text-gray-500 dark:text-gray-400">Egresos</th>
+                                            <th class="py-1.5 pl-1 pr-2 text-right font-semibold text-gray-500 dark:text-gray-400">Saldo</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <template x-for="item in currentTurnBreakdown || []" :key="item.method">
+                                            <tr class="border-b border-gray-100 dark:border-gray-700/80 last:border-0">
+                                                <td class="py-1.5 pl-2 pr-1">
+                                                    <span class="flex items-center gap-1.5 font-medium text-gray-700 dark:text-gray-300">
+                                                        <i class="text-brand-500 shrink-0 text-sm"
+                                                            :class="item.method === 'Efectivo' ? 'ri-money-dollar-circle-line' : (['Billetera Digital','Yape','Plin'].includes(item.method) ? 'ri-smartphone-line' : (item.method === 'Tarjeta de Crédito/Débito' ? 'ri-bank-card-line' : (item.method === 'Transferencia Bancaria' ? 'ri-bank-line' : 'ri-wallet-3-line')))"></i>
+                                                        <span class="truncate" x-text="item.method"></span>
+                                                    </span>
+                                                </td>
+                                                <td class="py-1.5 px-1 text-right font-medium text-green-600 dark:text-green-400" x-text="'S/. ' + Number(item.ingresos || 0).toFixed(2)"></td>
+                                                <td class="py-1.5 px-1 text-right font-medium text-red-600 dark:text-red-400" x-text="'S/. ' + Number(item.egresos || 0).toFixed(2)"></td>
+                                                <td class="py-1.5 pl-1 pr-2 text-right font-semibold text-gray-900 dark:text-white" x-text="'S/. ' + Number(item.saldo || 0).toFixed(2)"></td>
+                                            </tr>
+                                        </template>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                </div>
+            </div>
+        </template>
 
         {{-- LISTA DE FILAS DE PAGO --}}
         <div class="space-y-4">
@@ -113,7 +168,9 @@
                 {{-- CONTENEDOR DE FILA INDIVIDUAL --}}
                 <div
                     class="relative bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 transition-all hover:border-brand-300 dark:hover:border-brand-700">
-
+                    <p class="mb-3 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400" x-show="formConcept === 'Cierre de caja'">
+                        Monto en caja
+                    </p>
                     {{-- Botón Eliminar (Visible si hay > 1) --}}
                     <template x-if="rows.length > 1">
                         <button type="button" @click="removeRow(index)"
@@ -121,6 +178,7 @@
                             <i class="ri-delete-bin-line text-lg"></i>
                         </button>
                     </template>
+
 
                     <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
 
@@ -146,9 +204,9 @@
                                             'ri-wallet-3-line': row.methodId == ''
                                         }"></i>
 
-                                    <select x-model="row.methodId" {{-- MAGIA AQUÍ: Captura el TEXTO de la opción seleccionada --}}
+                                    <select x-model="row.methodId" 
                                         @change="row.methodName = $event.target.options[$event.target.selectedIndex].text"
-                                        :name="`payments[${index}][payment_method_id]`" required
+                                        :name="`payments[${index}][payment_method_id]`" required 
                                         class="h-11 w-full rounded-lg border-gray-200 bg-white pl-10 pr-8 text-sm text-gray-800 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-dark-900 dark:text-white/90 appearance-none transition-all font-medium">
                                         <option value="">Seleccionar...</option>
                                         <option value="1">Efectivo</option>
@@ -168,6 +226,7 @@
                         </div>
 
                         {{-- 2. MONTO (Ancho MD: 3) --}}
+                        
                         <div
                             class="md:col-span-3 md:pr-8 relative md:before:absolute md:before:right-0 md:before:top-1/2 md:before:-translate-y-1/2 md:before:h-8 md:before:w-px md:before:bg-gray-200 dark:md:before:bg-gray-700">
                             <label
@@ -175,9 +234,13 @@
                             <div class="relative">
                                 <span
                                     class="absolute top-1/2 left-3 -translate-y-1/2 text-gray-500 font-medium">S/.</span>
-                                <input type="number" step="0.00" min="0.00" x-model="row.amount"
-                                    :name="`payments[${index}][amount]`" required
+                                <input type="number" step="0.01" min="0.00"
+                                    x-model="row.amount"
+                                    x-effect="if (formConcept === 'Cierre de caja') row.amount = Number(currentBalance).toFixed(2)"
+                                    :name="`payments[${index}][amount]`"
+                                    required
                                     class="h-11 w-full rounded-lg border-gray-200 bg-white pl-10 pr-4 text-base font-bold text-gray-900 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-dark-900 dark:text-white placeholder:text-gray-300 transition-all"
+                                    :class="formConcept === 'Cierre de caja' ? 'bg-gray-100 text-gray-500' : ''"
                                     placeholder="0.00">
                             </div>
                         </div>
@@ -266,13 +329,21 @@
                             </template>
 
                             {{-- PLACEHOLDER PARA EFECTIVO O SIN SELECCIÓN --}}
-                            <template x-if="row.methodId == '1' || row.methodId == ''">
+                            <template x-if="formConcept === 'Apertura de caja'">
+                                <div class="h-full flex items-center md:justify-center py-2 md:py-0">
+                                    <span class="text-xs text-gray-400 italic inline-flex items-center gap-1">
+                                        <i class="ri-information-line"></i> Datos recuperados de caja anterior.
+                                    </span>
+                                </div>
+                            </template>
+                            <template x-if="formConcept !== 'Apertura de caja'">
                                 <div class="h-full flex items-center md:justify-center py-2 md:py-0">
                                     <span class="text-xs text-gray-400 italic inline-flex items-center gap-1">
                                         <i class="ri-information-line"></i> Sin detalles adicionales requeridos.
                                     </span>
                                 </div>
                             </template>
+                            
 
                         </div>
                     </div>

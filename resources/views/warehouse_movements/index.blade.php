@@ -184,10 +184,10 @@
                                 @php
                                     $movement = $warehouseMovement->movement;
                                     $statusColors = [
-                                        'PENDING' => 'warning',
-                                        'SENT' => 'info',
-                                        'FINALIZED' => 'success',
-                                        'REJECTED' => 'error',
+                                        'PENDIENTE' => 'warning',
+                                        'ENVIADO' => 'info',
+                                        'FINALIZADO' => 'success',
+                                        'RECHAZADO' => 'error',
                                     ];
                                     $statusColor = $statusColors[$warehouseMovement->status] ?? 'info';
                                 @endphp
@@ -219,7 +219,7 @@
                                     </td>
                                     <td class="px-5 py-4 text-center align-middle break-words">
                                         <x-ui.badge variant="light" color="{{ $statusColor }}">
-                                            {{ $warehouseMovement->status ?? 'FINALIZED' }}
+                                            {{ $warehouseMovement->status ?? 'FINALIZADO' }}
                                         </x-ui.badge>
                                     </td>
                                     <td class="px-5 py-4 text-center align-middle break-words">
@@ -340,5 +340,47 @@
             </div>
         </div>
     </div>
+
+    @push('scripts')
+    <script>
+    (function() {
+        function showFlashToasts() {
+            const successMsg = sessionStorage.getItem('flash_success_message');
+            if (successMsg) {
+                sessionStorage.removeItem('flash_success_message');
+                if (window.Swal) {
+                    Swal.fire({
+                        toast: true,
+                        position: 'bottom-end',
+                        icon: 'success',
+                        title: successMsg,
+                        showConfirmButton: false,
+                        timer: 3500,
+                        timerProgressBar: true
+                    });
+                    return;
+                }
+            }
+            const errorMsg = sessionStorage.getItem('flash_error_message');
+            if (errorMsg) {
+                sessionStorage.removeItem('flash_error_message');
+                if (window.Swal) {
+                    Swal.fire({
+                        toast: true,
+                        position: 'bottom-end',
+                        icon: 'error',
+                        title: errorMsg,
+                        showConfirmButton: false,
+                        timer: 4000,
+                        timerProgressBar: true
+                    });
+                }
+            }
+        }
+        showFlashToasts();
+        document.addEventListener('turbo:load', showFlashToasts);
+    })();
+    </script>
+    @endpush
 @endsection
 

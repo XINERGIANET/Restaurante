@@ -6,22 +6,11 @@
 @php
     $cm = $movement->cashMovement;
     $totalAmount = $cm->details->sum('amount');
+    $backUrl = route('petty-cash.index', array_merge(['cash_register_id' => $cash_register_id], !empty($viewId) ? ['view_id' => $viewId] : []));
 @endphp
 
-<x-ui.modal
-    x-data="{ 
-        open: true,
-        redirectToIndex() {
-            window.location.href = '{{ route('petty-cash.index', array_merge(['cash_register_id' => $cash_register_id], !empty($viewId) ? ['view_id' => $viewId] : [])) }}';
-        }
-    }"
-    x-init="$watch('open', value => { if (!value) redirectToIndex(); })"
-    @keydown.escape.window="redirectToIndex()"
-    :isOpen="true"
-    :showCloseButton="false"
-    class="max-w-4xl"
->
-    <div class="p-6 sm:p-8">
+<x-ui.modal :isOpen="true" :showCloseButton="false" class="max-w-4xl">
+    <div class="p-6 sm:p-8" data-back-url="{{ e($backUrl) }}" x-data="{ open: true }" x-init="$watch('open', value => { if (!value) window.location.href = $el.dataset.backUrl })" @keydown.escape.window="window.location.href = $el.dataset.backUrl">
         <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-gray-100 pb-4 dark:border-gray-800">
             <div class="flex items-start gap-4">
                 <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-600 dark:bg-brand-500/10">
@@ -33,9 +22,9 @@
                 </div>
             </div>
 
-            <button type="button" @click="redirectToIndex()" class="h-10 w-10 flex items-center justify-center rounded-full bg-gray-100 text-gray-400 hover:bg-gray-200 transition-all">
+            <a href="{{ $backUrl }}" class="h-10 w-10 flex items-center justify-center rounded-full bg-gray-100 text-gray-400 hover:bg-gray-200 transition-all hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-300" aria-label="Cerrar">
                 <i class="ri-close-line text-xl"></i>
-            </button>
+            </a>
         </div>
 
         <div class="space-y-8">
@@ -126,9 +115,9 @@
             </div>
 
             <div class="flex gap-3 pt-6 border-t border-gray-100 dark:border-gray-800">
-                <x-ui.button type="button" @click="redirectToIndex()" size="lg" variant="primary" class="flex-1 sm:flex-none">
+                <a href="{{ $backUrl }}" class="inline-flex items-center justify-center font-medium gap-2 rounded-xl transition px-5 py-3.5 text-sm bg-brand-500 text-white shadow-theme-xs hover:bg-brand-600 flex-1 sm:flex-none">
                     <i class="ri-arrow-left-line mr-2"></i> Volver
-                </x-ui.button>
+                </a>
             </div>
         </div>
     </div>

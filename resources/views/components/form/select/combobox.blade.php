@@ -18,11 +18,11 @@
             this.$watch('value', () => this.syncQueryFromId());
         },
 
-        // ESCUCHADOR DE EVENTO: Aquí recibimos la orden del padre
+        // ESCUCHADOR DE EVENTO: Aquí recibimos la orden del padre.
+        // No reseteamos value para no pisar el valor por defecto que el padre acaba de asignar (x-model).
         updateOptions(newOptions) {
             this.allOptions = Array.isArray(newOptions) ? newOptions : [];
-            this.value = null; 
-            this.query = '';
+            this.syncQueryFromId();
         },
 
         syncQueryFromId() {

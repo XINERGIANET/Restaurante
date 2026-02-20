@@ -141,6 +141,14 @@ class SalesController extends Controller
         return view('sales.index', $viewData);
     }
 
+    /**
+     * Página de reportes de ventas (mismo listado con filtros y opción de exportar PDF).
+     */
+    public function reportSales(Request $request)
+    {
+        return $this->index($request);
+    }
+
     public function create()
     {
         $branchId = session('branch_id');

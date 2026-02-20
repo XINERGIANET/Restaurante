@@ -207,7 +207,7 @@ class WarehouseMovementController extends Controller
             ]);
 
             $warehouseMovement = WarehouseMovement::create([
-                'status' => 'FINALIZED',
+                'status' => 'FINALIZADO',
                 'movement_id' => $movement->id,
                 'branch_id' => $branchId,
             ]);
@@ -404,7 +404,7 @@ class WarehouseMovementController extends Controller
 
             // Crear WarehouseMovement
             $warehouseMovement = WarehouseMovement::create([
-                'status' => 'FINALIZED',
+                'status' => 'FINALIZADO',
                 'movement_id' => $movement->id,
                 'branch_id' => $branchId,
             ]);

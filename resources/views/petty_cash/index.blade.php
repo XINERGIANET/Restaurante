@@ -127,7 +127,13 @@
         refEgresoId: '{{ $egresoDocId }}',
         listIngresos: {{ Js::from($conceptsIngreso) }},
         listEgresos: {{ Js::from($conceptsEgreso) }},
-        currentConcepts: []
+        currentConcepts: [],
+        currentBalance: {{ $currentBalance }},
+        currentTurnBreakdown: {{ Js::from($currentTurnBreakdown ?? []) }},
+        currentTurnSummary: {{ Js::from($currentTurnSummary ?? ['ventas' => 0, 'ingresos' => 0, 'egresos' => 0]) }},
+        lastClosingTotal: {{ $lastClosingTotal }},
+        lastClosingBreakdown: {{ Js::from($lastClosingBreakdown ?? []) }},
+        turnSummary: {{ Js::from($turnSummary ?? ['ventas' => 0, 'ingresos' => 0, 'egresos' => 0]) }}
         }" 
         @open-movement-modal.window="
             let conceptText = $event.detail.concept || ''; 
@@ -158,6 +164,13 @@
 
             // Forzar actualización del componente hijo (combobox)
             $dispatch('update-combobox-options', { name: 'payment_concept_id', options: Alpine.raw(currentConcepts) });
+            // Prellenar monto de apertura con el total del último cierre
+            if (conceptText === 'Apertura de caja') {
+                $nextTick(() => $dispatch('fill-apertura-amount', { amount: lastClosingTotal }));
+            } else if (conceptText !== 'Cierre de caja') {
+                // Ingreso o Egreso normal: desglose en 0
+                $nextTick(() => $dispatch('reset-payment-rows'));
+            }
             open = true; 
         ">
 
@@ -483,7 +496,7 @@
                             <span x-text="formDocId == ingresoId ? 'Ingreso' : 'Egreso'"></span>
                         </p>
                         <h3 class="mt-2 text-lg font-semibold text-gray-800 dark:text-white/90"
-                            x-text="formDocId == ingresoId ? 'Registrar Ingreso' : 'Registrar Egreso'">
+                            x-text="formConcept === 'Apertura de caja' ? 'Registrar Apertura de caja' : (formConcept === 'Cierre de caja' ? 'Registrar Cierre de caja' : (formDocId == ingresoId ? 'Registrar Ingreso' : 'Registrar Egreso'))">
                         </h3>
                     </div>
                     <div class="flex h-12 w-12 items-center justify-center rounded-2xl transition-colors duration-300"

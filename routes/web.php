@@ -126,11 +126,13 @@ Route::middleware('auth')->group(function () {
 
     // POS: procesar venta (usado por resources/views/sales/create.blade.php)
     Route::post('/admin/ventas/procesar', [SalesController::class, 'processSale'])
-        ->name('sales.process');
+        ->name('sales.process')
+        ->middleware('active.shift');
 
     // POS: guardar venta como borrador/pendiente
     Route::post('/admin/ventas/borrador', [SalesController::class, 'saveDraft'])
-        ->name('sales.draft');
+        ->name('sales.draft')
+        ->middleware('active.shift');
 
     Route::get('/admin/ventas/reporte', [SalesController::class, 'reportSales'])
         ->name('sales.report');
@@ -179,10 +181,12 @@ Route::middleware('auth')->group(function () {
         ->name('orders.charge');
 
     Route::post('/Pedidos/procesar', [OrderController::class, 'processOrder'])
-        ->name('orders.process');
+        ->name('orders.process')
+        ->middleware('active.shift');
 
     Route::post('/Pedidos/procesar-pago', [OrderController::class, 'processOrderPayment'])
-        ->name('orders.processOrderPayment');
+        ->name('orders.processOrderPayment')
+        ->middleware('active.shift');
 
     Route::post('/Pedidos/cancelar', [OrderController::class, 'cancelOrder'])
         ->name('orders.cancelOrder');
