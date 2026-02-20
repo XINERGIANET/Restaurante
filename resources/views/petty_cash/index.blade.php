@@ -157,7 +157,7 @@
             }
 
             // Forzar actualización del componente hijo (combobox)
-            $dispatch('update-combobox-options', { options: Alpine.raw(currentConcepts) });
+            $dispatch('update-combobox-options', { name: 'payment_concept_id', options: Alpine.raw(currentConcepts) });
             open = true; 
         ">
 
