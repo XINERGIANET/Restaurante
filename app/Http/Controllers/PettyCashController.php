@@ -48,6 +48,7 @@ class PettyCashController extends Controller
         $branchId = $request->session()->get('branch_id');
         $profileId = $request->session()->get('profile_id') ?? $request->user()?->profile_id;
         $operaciones = collect();
+        
         if ($viewId && $branchId && $profileId) {
             $operaciones = Operation::query()
                 ->select('operations.*')
@@ -71,6 +72,7 @@ class PettyCashController extends Controller
                 ->distinct()
                 ->get();
         }
+
         $cashRegisters = CashRegister::where('status', '1')->orderBy('number', 'asc')->get();
         $selectedBoxId = $cash_register_id;
 
@@ -78,7 +80,6 @@ class PettyCashController extends Controller
             $selectedBoxId = $cashRegisters->first()->id;
         }
 
-        // --- LÓGICA DE ESTADO DE CAJA (MODIFICADO) ---
         $lastShiftRelation = CashShiftRelation::where('branch_id', session('branch_id'))
             ->whereHas('cashMovementStart', function ($query) use ($selectedBoxId) {
                 $query->where('cash_register_id', $selectedBoxId);
@@ -87,6 +88,17 @@ class PettyCashController extends Controller
             ->first();
 
         $hasOpening = $lastShiftRelation && $lastShiftRelation->status == '1';
+        
+        // Obtenemos directamente la última apertura de esta caja basándonos en los movimientos
+        $lastOpeningMovement = Movement::query()
+            ->whereHas('cashMovement', function ($query) use ($selectedBoxId) {
+                $query->where('cash_register_id', $selectedBoxId);
+            })
+            ->whereHas('cashMovement.paymentConcept', function ($query) {
+                $query->where('description', 'like', '%Apertura%');
+            })
+            ->orderBy('id', 'desc')
+            ->first();
 
         $documentTypes = DocumentType::where('movement_type_id', 4)->get();
 
@@ -109,7 +121,8 @@ class PettyCashController extends Controller
             })
             ->get();
 
-        $movements = Movement::query()
+        $movementsQuery = Movement::query()
+            ->select('movements.*')
             ->with([
                 'documentType',
                 'movementType',
@@ -120,8 +133,15 @@ class PettyCashController extends Controller
             ])
             ->whereHas('cashMovement', function ($query) use ($selectedBoxId) {
                 $query->where('cash_register_id', $selectedBoxId);
-            })
-            ->when($search, function ($query, $search) {
+            });
+
+        if (!$hasOpening) {
+            $movementsQuery->whereRaw('1 = 0');
+        } elseif ($lastOpeningMovement) {
+            $movementsQuery->where('movements.id', '>=', $lastOpeningMovement->id);
+        }
+
+        $movements = $movementsQuery->when($search, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('person_name', 'ILIKE', "%{$search}%")
                         ->orWhere('user_name', 'ILIKE', "%{$search}%")
@@ -129,20 +149,15 @@ class PettyCashController extends Controller
                         ->orWhere('number', 'ILIKE', "%{$search}%");
                 });
             })
-            ->orderBy('moved_at', 'desc')
+            ->orderBy('movements.id', 'desc')
             ->paginate($perPage)
             ->withQueryString();
 
         $shifts = Shift::where('branch_id', session('branch_id'))->get();
-
         $paymentMethods = PaymentMethod::where('status', true)->orderBy('order_num', 'asc')->get();
-
         $banks = Bank::where('status', true)->orderBy('order_num', 'asc')->get();
-
         $paymentGateways = PaymentGateways::where('status', true)->orderBy('order_num', 'asc')->get();
-
         $digitalWallets = DigitalWallet::where('status', true)->orderBy('order_num', 'asc')->get();
-
         $cards = Card::where('status', true)->orderBy('order_num', 'asc')->get();
 
         return view('petty_cash.index', [
@@ -157,7 +172,6 @@ class PettyCashController extends Controller
             'conceptsEgreso'  => $conceptsEgreso,
             'selectedBoxId'   => $selectedBoxId,
             'shifts'          => $shifts,
-
             'paymentMethods'  => $paymentMethods,
             'paymentGateways' => $paymentGateways,
             'banks'           => $banks,

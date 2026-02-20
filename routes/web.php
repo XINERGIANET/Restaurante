@@ -36,6 +36,8 @@ use App\Http\Controllers\KardexController;
 use App\Http\Controllers\RecipeBookController;
 use App\Http\Controllers\UnitController;
 use App\Http\Controllers\WarehouseMovementController;
+use App\Http\Controllers\ShiftCashController;
+
 
 Route::prefix('restaurante')->name('restaurant.')->group(function () {
     Route::view('/', 'restaurant.home', ['title' => 'Xinergia Restaurante'])->name('home');
@@ -368,6 +370,11 @@ Route::middleware('auth')->group(function () {
         ->names('boxes')
         ->parameters(['cajas' => 'box']);
 
+    // Turno por caja
+    Route::resource('/caja/turno-caja', ShiftCashController::class)
+        ->names('shift-cash')
+        ->parameters(['turno-caja' => 'shiftCash']);
+
     //tasa de impuesto
     Route::resource('/admin/herramientas/tasas-impuesto', TaxRateController::class)
         ->names('admin.tax_rates')
@@ -377,7 +384,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('/admin/herramientas/movimientos_almacen', WarehouseMovementController::class)
         ->names('warehouse_movements')
         ->parameters(['movimientos_almacen' => 'warehouseMovement'])
-        ->only(['index', 'store', 'show', 'edit', 'update']); // Solo incluir los métodos que existen
+        ->only(['index', 'store', 'show', 'edit', 'update']); 
 
     Route::get('/admin/herramientas/movimientos-almacen/entrada', [WarehouseMovementController::class, 'input'])
         ->name('warehouse_movements.input');
