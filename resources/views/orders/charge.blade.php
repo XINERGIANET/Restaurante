@@ -1,186 +1,214 @@
 @extends('layouts.app')
 
 @section('content')
-    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4">
-        {{-- Header Compacto --}}
-        <div class="mb-4">
-            <div class="flex items-center justify-between">
-                <h1 class="text-xl font-bold text-gray-900 dark:text-white">Cobrar Pedido</h1>
-                <a id="back-to-orders-link" href="{{ $backUrl ?? route('orders.index') }}"
-                    class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">
-                    <i class="fas fa-arrow-left text-xs"></i>
-                    Volver a pedidos
-                </a>
+    <div class="mx-auto max-w-7xl px-3 sm:px-5 lg:px-7 py-3 sm:py-4">
+
+        {{-- Header --}}
+        <div class="mb-4 flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3 min-w-0">
+                <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-600 shadow-sm shadow-blue-200 dark:shadow-blue-900">
+                    <i class="fas fa-receipt text-white text-sm"></i>
+                </div>
+                <div class="min-w-0">
+                    <h1 class="text-lg font-bold leading-tight text-gray-900 dark:text-white truncate">Cobrar Pedido</h1>
+                    @if($table)
+                        <p class="text-xs text-gray-500 dark:text-gray-400 leading-tight">
+                            Mesa <span class="font-semibold text-gray-700 dark:text-gray-300">{{ $table->name ?? $table->id }}</span>
+                            @if($table->area) · {{ $table->area->name }} @endif
+                        </p>
+                    @endif
+                </div>
             </div>
+            <a id="back-to-orders-link" href="{{ $backUrl ?? route('orders.index') }}"
+                class="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 shadow-sm transition hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">
+                <i class="fas fa-arrow-left text-[10px]"></i>
+                Volver
+            </a>
         </div>
 
-        <div class="grid grid-cols-1 gap-4 lg:grid-cols-3" style="height: calc(100vh - 160px);">
-            {{-- Columna Izquierda: Resumen --}}
+        <div class="grid grid-cols-1 gap-4 lg:grid-cols-3" style="height: calc(100vh - 155px);">
+
+            {{-- ═══════════ COLUMNA IZQUIERDA ═══════════ --}}
             <div class="lg:col-span-2 flex flex-col gap-3 overflow-hidden">
-                {{-- Cliente --}}
-                <div class="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800 shrink-0">
-                    <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Cliente</p>
-                    <p class="mt-0.5 text-base font-semibold text-gray-900 dark:text-white" id="client-name">Público General
-                    </p>
+
+                {{-- Barra de info: cliente + número de orden --}}
+                <div class="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-2.5 dark:border-gray-700 dark:bg-gray-800 shrink-0">
+                    <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 dark:bg-gray-700">
+                        <i class="fas fa-user text-xs text-slate-500 dark:text-gray-400"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-[10px] uppercase tracking-wider font-medium text-gray-400 dark:text-gray-500 leading-none mb-0.5">Cliente</p>
+                        <p class="text-sm font-semibold text-gray-900 dark:text-white truncate" id="client-name">Público General</p>
+                    </div>
+                    @if($movement)
+                        <div class="shrink-0 text-right">
+                            <p class="text-[10px] uppercase tracking-wider font-medium text-gray-400 dark:text-gray-500 leading-none mb-0.5">Orden</p>
+                            <p class="text-xs font-mono font-semibold text-blue-600 dark:text-blue-400">#{{ $movement->number ?? '—' }}</p>
+                        </div>
+                    @endif
                 </div>
 
-                {{-- Productos --}}
-                <div
-                    class="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800 flex-1 flex flex-col min-h-0 overflow-hidden">
-                    <div class="mb-2 flex items-center justify-between shrink-0">
-                        <h2 class="text-base font-semibold text-gray-900 dark:text-white">Productos</h2>
-                        <span
-                            class="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-                            id="items-count">0 items</span>
+                {{-- Lista de productos --}}
+                <div class="rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 flex-1 flex flex-col min-h-0 overflow-hidden">
+                    <div class="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between shrink-0">
+                        <div class="flex items-center gap-2">
+                            <i class="fas fa-shopping-bag text-sm text-gray-400"></i>
+                            <h2 class="text-sm font-semibold text-gray-800 dark:text-white">Detalle del pedido</h2>
+                        </div>
+                        <span class="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-bold text-blue-700 dark:bg-blue-900/50 dark:text-blue-300"
+                            id="items-count">0 ítems</span>
                     </div>
-                    <div id="items-list" class="space-y-1.5 flex-1 overflow-y-auto pr-1 custom-scrollbar">
-                        <div class="rounded-lg border border-dashed border-gray-300 p-6 text-center dark:border-gray-600">
-                            <i class="fas fa-shopping-cart mb-2 text-2xl text-gray-400"></i>
-                            <p class="text-xs text-gray-500 dark:text-gray-400">No hay productos en la orden</p>
+                    <div id="items-list" class="flex-1 overflow-y-auto custom-scrollbar px-3 py-2 space-y-1.5">
+                        <div class="flex flex-col items-center justify-center py-10 text-center">
+                            <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 dark:bg-gray-700">
+                                <i class="fas fa-shopping-cart text-xl text-gray-400"></i>
+                            </div>
+                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">No hay productos en la orden</p>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {{-- Columna Derecha: Pago (Sticky) --}}
+            {{-- ═══════════ COLUMNA DERECHA ═══════════ --}}
             <div class="flex flex-col gap-3 lg:sticky lg:top-4 lg:max-h-[calc(100vh-80px)] min-h-0">
-                <div class="flex-1 min-h-0 overflow-y-auto space-y-3 custom-scrollbar">
-                {{-- Totales --}}
-                <div
-                    class="rounded-lg border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100 p-3 dark:border-blue-800 dark:from-blue-900/20 dark:to-blue-800/20">
-                    <h3 class="mb-2 text-sm font-semibold text-gray-900 dark:text-white">Resumen</h3>
-                    <div class="space-y-1.5">
-                        <div class="flex justify-between text-xs">
-                            <span class="text-gray-600 dark:text-gray-400">Subtotal</span>
-                            <span class="font-semibold text-gray-900 dark:text-white" id="subtotal">S/0.00</span>
-                        </div>
-                        <div class="flex justify-between text-xs">
-                            <span class="text-gray-600 dark:text-gray-400">Impuestos (10%)</span>
-                            <span class="font-semibold text-gray-900 dark:text-white" id="tax">S/0.00</span>
-                        </div>
-                        <div class="border-t border-blue-300 pt-1.5 dark:border-blue-700">
-                            <div class="flex justify-between">
-                                <span class="text-sm font-semibold text-gray-900 dark:text-white">Total</span>
-                                <span class="text-xl font-bold text-blue-600 dark:text-blue-400"
-                                    id="total">S/0.00</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <div class="flex-1 min-h-0 overflow-y-auto space-y-3 custom-scrollbar pr-0.5">
 
-                {{-- Tipo de Documento --}}
-                <div class="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
-                    <label class="mb-2 block text-xs font-semibold text-gray-900 dark:text-white">Tipo de Documento</label>
-                    <div class="grid grid-cols-3 gap-1.5">
-                        @foreach ($documentTypes as $index => $documentType)
-                            <button type="button"
-                                class="doc-type-btn {{ $index === 0 ? 'doc-active' : '' }} w-full rounded-lg border-2 {{ $index === 0 ? 'border-blue-500 bg-blue-50' : 'border-gray-300 bg-gray-50' }} p-2 text-left transition hover:bg-blue-100 dark:border-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600"
-                                data-doc-type="{{ strtolower($documentType->name) }}" data-doc-id="{{ $documentType->id }}">
-                                <div class="flex items-center gap-2">
-                                    <i
-                                        class="fas fa-file-alt text-base {{ $index === 0 ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400' }}"></i>
-                                    <div class="flex-1">
-                                        <div class="text-sm font-semibold text-gray-900 dark:text-white">
-                                            {{ $documentType->name }}</div>
-                                    </div>
-                                    <i
-                                        class="fas fa-check-circle text-sm {{ $index === 0 ? 'text-blue-600 dark:text-blue-400' : 'hidden text-blue-600 dark:text-blue-400' }}"></i>
+                    {{-- Totales --}}
+                    <div class="rounded-xl border border-blue-200 bg-gradient-to-b from-blue-50 to-white p-4 dark:border-blue-800/60 dark:from-blue-950/40 dark:to-gray-800">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400">Resumen</h3>
+                            <i class="fas fa-calculator text-blue-400 text-sm"></i>
+                        </div>
+                        <div class="space-y-2">
+                            <div class="flex justify-between items-center text-sm">
+                                <span class="text-gray-500 dark:text-gray-400">Subtotal</span>
+                                <span class="font-semibold text-gray-800 dark:text-gray-200" id="subtotal">S/0.00</span>
+                            </div>
+                            <div class="flex justify-between items-center text-sm">
+                                <span class="text-gray-500 dark:text-gray-400">Impuestos (10%)</span>
+                                <span class="font-semibold text-gray-800 dark:text-gray-200" id="tax">S/0.00</span>
+                            </div>
+                            <div class="mt-1 pt-2.5 border-t border-blue-200 dark:border-blue-800/60">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-base font-bold text-gray-900 dark:text-white">Total a pagar</span>
+                                    <span class="text-2xl font-extrabold text-blue-600 dark:text-blue-400 tabular-nums" id="total">S/0.00</span>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Tipo de Documento --}}
+                    <div class="rounded-xl border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
+                        <p class="mb-2 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Comprobante</p>
+                        <div class="flex flex-wrap gap-2">
+                            @foreach ($documentTypes as $index => $documentType)
+                                <button type="button"
+                                    class="doc-type-btn {{ $index === 0 ? 'doc-active' : '' }} inline-flex items-center gap-1.5 rounded-lg border-2 px-3 py-1.5 text-xs font-semibold transition
+                                        {{ $index === 0 ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-600' : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:border-blue-500' }}"
+                                    data-doc-type="{{ strtolower($documentType->name) }}"
+                                    data-doc-id="{{ $documentType->id }}">
+                                    <i class="fas fa-file-invoice text-[11px]"></i>
+                                    {{ $documentType->name }}
+                                </button>
+                            @endforeach
+                        </div>
+                        <input type="hidden" id="document-type-id" name="document_type_id"
+                            value="{{ $documentTypes->first()?->id ?? '' }}">
+                    </div>
+
+                    {{-- Métodos de Pago --}}
+                    <div class="rounded-xl border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
+                        <div class="mb-3 flex items-center justify-between">
+                            <p class="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Método de pago</p>
+                            <button type="button" id="add-payment-method-btn"
+                                class="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700 active:scale-95">
+                                <i class="fas fa-plus text-[10px]"></i> Agregar
                             </button>
-                        @endforeach
-                    </div>
-                    <input type="hidden" id="document-type-id" name="document_type_id"
-                        value="{{ $documentTypes->first()?->id ?? '' }}">
-                </div>
+                        </div>
+                        <div id="payment-methods-list" class="space-y-2"></div>
 
-                {{-- Métodos de Pago Múltiples --}}
-                <div class="rounded-lg border border-gray-200 p-3 dark:border-gray-700 dark:bg-gray-800">
-                    <div class="mb-3 flex items-center justify-between">
-                        <label class="block text-sm font-semibold text-gray-900 dark:text-white">Métodos de Pago</label>
-                        <button type="button" id="add-payment-method-btn"
-                            class="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-700">
-                            <i class="fas fa-plus mr-1"></i> Agregar
-                        </button>
-                    </div>
-                    <div id="payment-methods-list" class="space-y-3">
-                        {{-- Los métodos de pago se agregarán dinámicamente aquí --}}
+                        {{-- Resumen de pagos --}}
+                        <div id="payment-summary" class="mt-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 dark:border-gray-600 dark:bg-gray-700/60">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-semibold text-gray-600 dark:text-gray-300">Total pagado</span>
+                                <span class="text-base font-bold text-gray-900 dark:text-white tabular-nums" id="total-paid">S/0.00</span>
                             </div>
-                    {{-- Resumen de pagos --}}
-                    <div id="payment-summary" class="mt-3 rounded-lg border-2 border-gray-200 bg-gray-50 p-3 dark:border-gray-600 dark:bg-gray-700">
-                        <div class="flex justify-between items-center mb-2">
-                            <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">Total pagado:</span>
-                            <span class="text-lg font-bold text-gray-900 dark:text-white" id="total-paid">S/0.00</span>
-                        </div>
-                        <div id="payment-remaining" class="mt-2 hidden rounded-lg bg-orange-50 p-2 dark:bg-orange-900/20">
-                            <div class="flex justify-between items-center">
-                                <span class="text-xs font-semibold text-orange-700 dark:text-orange-400">Falta pagar:</span>
-                                <span class="text-sm font-bold text-orange-700 dark:text-orange-400" id="remaining-amount">S/0.00</span>
+                            <div id="payment-remaining" class="hidden mt-2 rounded-lg bg-orange-50 border border-orange-200 px-3 py-1.5 dark:bg-orange-900/20 dark:border-orange-800/50">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-semibold text-orange-600 dark:text-orange-400">
+                                        <i class="fas fa-exclamation-circle mr-1 text-[10px]"></i>Falta pagar
+                                    </span>
+                                    <span class="text-sm font-bold text-orange-600 dark:text-orange-400 tabular-nums" id="remaining-amount">S/0.00</span>
+                                </div>
                             </div>
-                        </div>
-                        <div id="payment-excess" class="mt-2 hidden rounded-lg bg-green-50 p-2 dark:bg-green-900/20">
-                            <div class="flex justify-between items-center">
-                                <span class="text-xs font-semibold text-green-700 dark:text-green-400">Vuelto a devolver:</span>
-                                <span class="text-sm font-bold text-green-700 dark:text-green-400" id="excess-amount">S/0.00</span>
+                            <div id="payment-excess" class="hidden mt-2 rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-1.5 dark:bg-emerald-900/20 dark:border-emerald-800/50">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                                        <i class="fas fa-check-circle mr-1 text-[10px]"></i>Vuelto
+                                    </span>
+                                    <span class="text-sm font-bold text-emerald-600 dark:text-emerald-400 tabular-nums" id="excess-amount">S/0.00</span>
+                                </div>
                             </div>
                         </div>
                     </div>
+
+                    {{-- Notas --}}
+                    <div class="rounded-xl border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
+                        <label for="sale-notes" class="mb-1.5 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                            <i class="fas fa-sticky-note text-[11px]"></i> Notas <span class="normal-case font-normal text-gray-400">(Opcional)</span>
+                        </label>
+                        <textarea id="sale-notes" rows="2" placeholder="Ej: Cliente pagó con billete de 50..."
+                            class="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-900 placeholder-gray-400 transition focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-500 dark:focus:border-blue-400 dark:focus:bg-gray-700"></textarea>
+                    </div>
+
                 </div>
 
-                {{-- Notas --}}
-                <div class="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
-                    <label for="sale-notes" class="mb-1.5 block text-xs font-semibold text-gray-900 dark:text-white">Notas
-                        (Opcional)</label>
-                    <textarea id="sale-notes" rows="2" placeholder="Ej: Cliente pagó con billete de 50..."
-                        class="w-full rounded-lg border border-gray-300 bg-gray-50 px-2.5 py-1.5 text-xs text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400"></textarea>
-                </div>
-                </div>
-
-                {{-- Botón Confirmar (Siempre visible, fuera del scroll) --}}
+                {{-- Botón Confirmar --}}
                 <button type="button" id="confirm-btn"
-                    class="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:bg-blue-700 active:scale-95 dark:bg-blue-700 dark:hover:bg-blue-800 shrink-0">
-                    <i class="fas fa-check-circle mr-1.5"></i>
+                    class="w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-md shadow-blue-200 transition hover:bg-blue-700 active:scale-[.98] dark:bg-blue-700 dark:shadow-blue-900 dark:hover:bg-blue-600 shrink-0">
+                    <i class="fas fa-check-circle mr-2"></i>
                     Confirmar y Cobrar
                 </button>
             </div>
         </div>
 
-        {{-- Modal para seleccionar método de pago --}}
+        {{-- ═══════════ MODAL: Método de Pago ═══════════ --}}
         <div id="payment-method-selection-modal"
-            class="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-50">
-            <div class="mx-4 w-full max-w-2xl rounded-lg bg-white shadow-xl dark:bg-gray-800">
-                <div class="border-b border-gray-200 px-6 py-4 dark:border-gray-700">
-                    <div class="flex items-center justify-between">
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Seleccionar Método de Pago</h3>
-                        <button type="button" id="close-payment-method-modal"
-                            class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                            <i class="fas fa-times"></i>
-                        </button>
+            class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 backdrop-blur-sm">
+            <div class="mx-4 w-full max-w-xl rounded-2xl bg-white shadow-2xl dark:bg-gray-800">
+                <div class="flex items-center justify-between border-b border-gray-100 px-5 py-4 dark:border-gray-700">
+                    <div class="flex items-center gap-2">
+                        <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/40">
+                            <i class="fas fa-wallet text-blue-600 dark:text-blue-400 text-sm"></i>
+                        </div>
+                        <h3 class="text-base font-bold text-gray-900 dark:text-white">Método de pago</h3>
                     </div>
+                    <button type="button" id="close-payment-method-modal"
+                        class="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-200">
+                        <i class="fas fa-times text-sm"></i>
+                    </button>
                 </div>
-                <div class="px-6 py-4 max-h-[60vh] overflow-y-auto custom-scrollbar">
-                    <div class="grid grid-cols-2 gap-3">
+                <div class="px-5 py-4 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                    <div class="grid grid-cols-2 gap-2.5">
                         @foreach ($paymentMethods as $paymentMethod)
                             @php
-                                $isCard = str_contains(strtolower($paymentMethod->description), 'tarjeta') || 
-                                         str_contains(strtolower($paymentMethod->description), 'card');
-                                $icon = $isCard ? 'fa-credit-card' : 
-                                       (str_contains(strtolower($paymentMethod->description), 'efectivo') || str_contains(strtolower($paymentMethod->description), 'cash') ? 'fa-money-bill-wave' :
-                                       (str_contains(strtolower($paymentMethod->description), 'yape') || str_contains(strtolower($paymentMethod->description), 'plin') ? 'fa-mobile-alt' : 'fa-wallet'));
+                                $desc = strtolower($paymentMethod->description);
+                                $isCard = str_contains($desc, 'tarjeta') || str_contains($desc, 'card');
+                                $icon = $isCard ? 'fa-credit-card'
+                                    : (str_contains($desc, 'efectivo') || str_contains($desc, 'cash') ? 'fa-money-bill-wave'
+                                    : (str_contains($desc, 'yape') || str_contains($desc, 'plin') ? 'fa-mobile-alt'
+                                    : (str_contains($desc, 'transfer') ? 'fa-exchange-alt' : 'fa-wallet')));
                             @endphp
                             <button type="button"
-                                class="pm-selection-btn rounded-lg border-2 border-gray-300 bg-gray-50 p-4 text-left transition hover:bg-blue-50 hover:border-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600"
+                                class="pm-selection-btn group flex items-center gap-3 rounded-xl border-2 border-gray-200 bg-gray-50 p-3.5 text-left transition hover:border-blue-500 hover:bg-blue-50 dark:border-gray-600 dark:bg-gray-700/60 dark:hover:border-blue-500 dark:hover:bg-blue-900/20"
                                 data-method-id="{{ $paymentMethod->id }}"
                                 data-method-name="{{ $paymentMethod->description }}"
                                 data-is-card="{{ $isCard ? '1' : '0' }}">
-                                <div class="flex items-center gap-3">
-                                    <i class="fas {{ $icon }} text-2xl text-gray-600 dark:text-gray-400"></i>
-                                    <div class="flex-1">
-                                        <div class="text-sm font-semibold text-gray-900 dark:text-white">
-                                            {{ $paymentMethod->description }}
-                                        </div>
-                                    </div>
-                                    <i class="fas fa-check-circle text-sm hidden text-blue-600 dark:text-blue-400"> </i>
+                                <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm dark:bg-gray-700 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/40 transition">
+                                    <i class="fas {{ $icon }} text-gray-500 dark:text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition"></i>
                                 </div>
+                                <span class="flex-1 text-sm font-semibold text-gray-800 dark:text-white">{{ $paymentMethod->description }}</span>
+                                <i class="fas fa-check-circle hidden text-blue-600 dark:text-blue-400 text-sm"></i>
                             </button>
                         @endforeach
                     </div>
@@ -188,127 +216,85 @@
             </div>
         </div>
 
-        {{-- Modal para seleccionar pasarela de pago y tarjeta --}}
+        {{-- ═══════════ MODAL: Pasarela y Tarjeta ═══════════ --}}
         <div id="card-selection-modal"
-            class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-50">
-            <div class="mx-4 w-full max-w-md rounded-lg bg-white shadow-xl dark:bg-gray-800">
-                <div class="border-b border-gray-200 px-6 py-4 dark:border-gray-700">
-                    <div class="flex items-center justify-between">
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Seleccionar Pasarela y Tarjeta</h3>
-                        <button type="button" id="close-card-modal"
-                            class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                            <i class="fas fa-times"></i>
-                        </button>
+            class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 backdrop-blur-sm">
+            <div class="mx-4 w-full max-w-lg rounded-2xl bg-white shadow-2xl dark:bg-gray-800">
+                <div class="flex items-center justify-between border-b border-gray-100 px-5 py-4 dark:border-gray-700">
+                    <div class="flex items-center gap-2">
+                        <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/40">
+                            <i class="fas fa-credit-card text-blue-600 dark:text-blue-400 text-sm"></i>
+                        </div>
+                        <h3 class="text-base font-bold text-gray-900 dark:text-white">Pasarela y Tarjeta</h3>
                     </div>
+                    <button type="button" id="close-card-modal"
+                        class="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-200">
+                        <i class="fas fa-times text-sm"></i>
+                    </button>
                 </div>
-                <div class="px-6 py-4">
-                    {{-- Pasarelas de Pago --}}
-                    <div class="mb-4">
-                        <label class="mb-2 block text-sm font-semibold text-gray-900 dark:text-white">
-                            Pasarela de Pago
-                        </label>
-
-                        <div class="flex gap-3 overflow-x-auto custom-scrollbar pb-2">
+                <div class="px-5 py-4 space-y-5">
+                    {{-- Pasarelas --}}
+                    <div>
+                        <p class="mb-2.5 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Pasarela de pago</p>
+                        <div class="flex gap-2 overflow-x-auto custom-scrollbar pb-1">
                             @foreach ($paymentGateways as $gateway)
                                 <button type="button"
-                                    class="gateway-btn min-w-[220px] rounded-lg border-2 border-gray-300 bg-gray-50 p-3 text-left transition hover:bg-blue-50
-                                       dark:border-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600"
+                                    class="gateway-btn inline-flex shrink-0 items-center gap-2 rounded-xl border-2 border-gray-200 bg-gray-50 px-3.5 py-2.5 text-left transition hover:border-blue-500 hover:bg-blue-50 dark:border-gray-600 dark:bg-gray-700/60 dark:hover:border-blue-500 dark:hover:bg-blue-900/20"
                                     data-gateway-id="{{ $gateway->id }}"
                                     data-gateway-name="{{ $gateway->description }}">
-                                    <div class="flex items-center gap-2">
-                                        <i class="fas fa-credit-card text-base text-gray-600 dark:text-gray-400"></i>
-
-                                        <div class="flex-1">
-                                            <div class="text-sm font-semibold text-gray-900 dark:text-white">
-                                                {{ $gateway->description }}
-                                            </div>
-                                        </div>
-
-                                        <i class="fas fa-check-circle text-sm hidden text-blue-600 dark:text-blue-400"></i>
-                                    </div>
+                                    <i class="fas fa-building-columns text-sm text-gray-500 dark:text-gray-400"></i>
+                                    <span class="text-sm font-semibold text-gray-800 dark:text-white whitespace-nowrap">{{ $gateway->description }}</span>
+                                    <i class="fas fa-check-circle hidden text-blue-600 dark:text-blue-400 text-xs"></i>
                                 </button>
                             @endforeach
                         </div>
                     </div>
+
                     {{-- Tarjetas --}}
                     <div>
-                        <label class="mb-3 block text-sm font-semibold text-gray-900 dark:text-white">
-                            Tipo de Tarjeta
-                        </label>
+                        <p class="mb-2.5 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Tipo de tarjeta</p>
 
-                        {{-- Tarjetas de Crédito --}}
-                        <div class="mb-4">
-                            <label class="mb-2 block text-xs font-medium text-gray-600 dark:text-gray-400">
-                                Crédito
-                            </label>
-                            <div class="flex gap-3 overflow-x-auto items-center custom-scrollbar pb-2">
-                                @foreach ($cards as $card)
-                                    @if ($card->type == 'C')
-                                        <button type="button"
-                                            class="card-btn min-w-[220px] rounded-lg border-2 border-gray-300 bg-gray-50 p-3 text-left transition hover:bg-blue-50 dark:border-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600"
-                                            data-card-id="{{ $card->id }}" data-card-name="{{ $card->description }}">
-                                            <div class="flex items-center gap-2">
-                                                @if ($card->icon)
-                                                    <i class="{{ $card->icon }} text-base text-gray-600 dark:text-gray-400"></i>
-                                                @else
-                                                    <i class="fas fa-credit-card text-base text-gray-600 dark:text-gray-400"></i>
-                                                @endif
-                                                <div class="flex-1">
-                                                    <div class="text-sm font-semibold text-gray-900 dark:text-white">
-                                                        {{ $card->description }}
-                                                    </div>
-                                                </div>
-                                                <i class="fas fa-check-circle text-sm hidden text-blue-600 dark:text-blue-400"></i>
-                                            </div>
-                                        </button>
-                                    @endif
+                        @if($cards->where('type', 'C')->count())
+                            <p class="mb-1.5 text-xs font-medium text-gray-400 dark:text-gray-500">Crédito</p>
+                            <div class="flex gap-2 overflow-x-auto custom-scrollbar pb-2 mb-3">
+                                @foreach ($cards->where('type', 'C') as $card)
+                                    <button type="button"
+                                        class="card-btn inline-flex shrink-0 items-center gap-2 rounded-xl border-2 border-gray-200 bg-gray-50 px-3.5 py-2.5 transition hover:border-blue-500 hover:bg-blue-50 dark:border-gray-600 dark:bg-gray-700/60 dark:hover:border-blue-500 dark:hover:bg-blue-900/20"
+                                        data-card-id="{{ $card->id }}" data-card-name="{{ $card->description }}">
+                                        <i class="{{ $card->icon ?: 'fas fa-credit-card' }} text-sm text-gray-500 dark:text-gray-400"></i>
+                                        <span class="text-sm font-semibold text-gray-800 dark:text-white whitespace-nowrap">{{ $card->description }}</span>
+                                        <i class="fas fa-check-circle hidden text-blue-600 dark:text-blue-400 text-xs"></i>
+                                    </button>
                                 @endforeach
                             </div>
-                        </div>
+                        @endif
 
-                        {{-- Tarjetas de Débito --}}
-                        <div>
-                            <label class="mb-2 block text-xs font-medium text-gray-600 dark:text-gray-400">
-                                Débito
-                            </label>
-                            <div class="flex gap-3 overflow-x-auto items-center custom-scrollbar pb-2">
-                                @foreach ($cards as $card)
-                                    @if ($card->type == 'D')
-                                        <button type="button"
-                                            class="card-btn min-w-[220px] rounded-lg border-2 border-gray-300 bg-gray-50 p-3 text-left transition hover:bg-blue-50 dark:border-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600"
-                                            data-card-id="{{ $card->id }}" data-card-name="{{ $card->description }}">
-                                            <div class="flex items-center gap-2">
-                                                @if ($card->icon)
-                                                    <i class="{{ $card->icon }} text-base text-gray-600 dark:text-gray-400"></i>
-                                                @else
-                                                    <i class="fas fa-credit-card text-base text-gray-600 dark:text-gray-400"></i>
-                                                @endif
-                                                <div class="flex-1">
-                                                    <div class="text-sm font-semibold text-gray-900 dark:text-white">
-                                                        {{ $card->description }}
-                                                    </div>
-                                                </div>
-                                                <i class="fas fa-check-circle text-sm hidden text-blue-600 dark:text-blue-400"></i>
-                                            </div>
-                                        </button>
-                                    @endif
+                        @if($cards->where('type', 'D')->count())
+                            <p class="mb-1.5 text-xs font-medium text-gray-400 dark:text-gray-500">Débito</p>
+                            <div class="flex gap-2 overflow-x-auto custom-scrollbar pb-1">
+                                @foreach ($cards->where('type', 'D') as $card)
+                                    <button type="button"
+                                        class="card-btn inline-flex shrink-0 items-center gap-2 rounded-xl border-2 border-gray-200 bg-gray-50 px-3.5 py-2.5 transition hover:border-blue-500 hover:bg-blue-50 dark:border-gray-600 dark:bg-gray-700/60 dark:hover:border-blue-500 dark:hover:bg-blue-900/20"
+                                        data-card-id="{{ $card->id }}" data-card-name="{{ $card->description }}">
+                                        <i class="{{ $card->icon ?: 'fas fa-credit-card' }} text-sm text-gray-500 dark:text-gray-400"></i>
+                                        <span class="text-sm font-semibold text-gray-800 dark:text-white whitespace-nowrap">{{ $card->description }}</span>
+                                        <i class="fas fa-check-circle hidden text-blue-600 dark:text-blue-400 text-xs"></i>
+                                    </button>
                                 @endforeach
                             </div>
-                        </div>
+                        @endif
                     </div>
                 </div>
-                <div class="border-t border-gray-200 px-6 py-4 dark:border-gray-700">
-                    <div class="flex justify-end gap-2">
-                        <button type="button" id="cancel-card-selection"
-                            class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">
-                            Cancelar
-                        </button>
-                        <button type="button" id="confirm-card-selection"
-                            class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800"
-                            disabled>
-                            Confirmar
-                        </button>
-                    </div>
+                <div class="flex justify-end gap-2 border-t border-gray-100 px-5 py-3 dark:border-gray-700">
+                    <button type="button" id="cancel-card-selection"
+                        class="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 transition hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">
+                        Cancelar
+                    </button>
+                    <button type="button" id="confirm-card-selection"
+                        class="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-blue-700 dark:hover:bg-blue-600"
+                        disabled>
+                        Confirmar
+                    </button>
                 </div>
             </div>
         </div>
@@ -316,80 +302,56 @@
     </div>
 
     {{-- Notificación del sistema --}}
-    <div id="payment-notification" 
-        class="fixed top-24 right-8 z-50 transform transition-all duration-500 translate-x-[150%] opacity-0">
-        <div id="notification-content" class="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-4 rounded-xl shadow-2xl border border-blue-400/30 backdrop-blur-sm flex items-center gap-4 min-w-[320px]">
-            <div class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-                <i id="notification-icon" class="fas fa-info-circle text-2xl"></i>
+    <div id="payment-notification"
+        class="fixed top-24 right-6 z-50 transform transition-all duration-400 translate-x-[150%] opacity-0">
+        <div id="notification-content"
+            class="flex min-w-[300px] items-center gap-3 rounded-2xl border border-blue-400/20 bg-gradient-to-r from-blue-500 to-blue-600 px-4 py-3.5 text-white shadow-2xl shadow-blue-500/20 backdrop-blur-sm">
+            <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/20">
+                <i id="notification-icon" class="fas fa-info-circle text-lg"></i>
             </div>
-            <div class="flex-1">
-                <p id="notification-title" class="font-bold text-sm">Notificación</p>
-                <p id="notification-message" class="text-xs text-blue-50 mt-0.5">Mensaje</p>
+            <div class="flex-1 min-w-0">
+                <p id="notification-title" class="text-sm font-bold leading-tight">Notificación</p>
+                <p id="notification-message" class="mt-0.5 text-xs text-blue-100 leading-tight truncate">Mensaje</p>
             </div>
-            <button onclick="hidePaymentNotification()" class="text-white/80 hover:text-white transition-colors">
-                <i class="fas fa-times"></i>
+            <button onclick="hidePaymentNotification()"
+                class="ml-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-white/70 transition hover:bg-white/20 hover:text-white">
+                <i class="fas fa-times text-xs"></i>
             </button>
         </div>
     </div>
 
     <style>
-        .pm-btn.pm-active {
-            border-color: #3b82f6;
-            background: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%);
-        }
-
-        .dark .pm-btn.pm-active {
-            background: linear-gradient(135deg, rgba(30, 58, 138, .55) 0%, rgba(15, 23, 42, 1) 100%);
-        }
-
         .doc-type-btn.doc-active {
             border-color: #3b82f6;
-            background: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%);
+            background: linear-gradient(135deg, #eff6ff, #fff);
+            color: #1d4ed8;
         }
-
         .dark .doc-type-btn.doc-active {
-            background: linear-gradient(135deg, rgba(30, 58, 138, .55) 0%, rgba(15, 23, 42, 1) 100%);
+            background: linear-gradient(135deg, rgba(30,58,138,.4), rgba(15,23,42,1));
+            color: #93c5fd;
         }
-
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 999px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
-        }
-
-        .dark .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #475569;
-        }
-
-        .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #64748b;
-        }
-
-        #card-selection-modal {
-            backdrop-filter: blur(2px);
-        }
-
-        #card-selection-modal .gateway-btn.border-blue-500,
-        #card-selection-modal .card-btn.border-blue-500 {
+        .pm-btn.pm-active {
             border-color: #3b82f6;
-            background: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%);
+            background: linear-gradient(135deg, #eff6ff, #fff);
         }
-
-        .dark #card-selection-modal .gateway-btn.border-blue-500,
-        .dark #card-selection-modal .card-btn.border-blue-500 {
-            background: linear-gradient(135deg, rgba(30, 58, 138, .55) 0%, rgba(15, 23, 42, 1) 100%);
+        .dark .pm-btn.pm-active {
+            background: linear-gradient(135deg, rgba(30,58,138,.4), rgba(15,23,42,1));
         }
+        .gateway-btn.border-blue-500,
+        .card-btn.border-blue-500 {
+            border-color: #3b82f6;
+            background: linear-gradient(135deg, #eff6ff, #fff);
+        }
+        .dark .gateway-btn.border-blue-500,
+        .dark .card-btn.border-blue-500 {
+            background: linear-gradient(135deg, rgba(30,58,138,.4), rgba(15,23,42,1));
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #475569; }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #64748b; }
         .notification-show {
             transform: translateX(0) !important;
             opacity: 1 !important;

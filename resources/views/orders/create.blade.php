@@ -97,18 +97,19 @@
             </header>
 
             <div class="p-3 sm:p-5 md:p-6 w-full bg-white flex flex-col flex-1 min-h-0">                
-                <div class="flex items-center justify-end mb-3 sm:mb-4 shrink-0">
-                    <div class="w-40 sm:w-56 md:w-64 relative">
-                        <input type="text" placeholder="Buscar..."
-                            class="w-full pl-8 pr-3 py-2 text-sm bg-white border border-gray-200 dark:border-slate-600 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-200 transition-all">
-                        <i class="fas fa-search absolute left-2.5 sm:left-3 top-2.5 text-gray-400 text-xs"></i>
-                    </div>
-                </div>
-
                 <div class="flex flex-col flex-1 min-h-0 min-w-0">
-                    <div class="shrink-0 border-b border-gray-300 px-2 sm:px-4 pb-2">
+                    <div class="shrink-0 border-gray-300 px-2 sm:px-4 pt-3 pb-4">
+                        <div class="flex items-center justify-between">
                         <h3 class="font-bold text-sm sm:text-base text-slate-800 dark:text-white mb-2 shrink-0">Categoría</h3>
-                        <div id="categories-grid" class="flex flex-row flex-wrap gap-1.5 sm:gap-2 overflow-x-auto pb-1">
+                        <div class="flex items-center justify-end mb-3 sm:mb-4 shrink-0">
+                            <div class="w-40 sm:w-56 md:w-64 relative">
+                                <input type="text" id="search-products" placeholder="Buscar..."
+                                    class="w-full pl-8 pr-3 py-2 text-sm bg-white border border-gray-200 dark:border-slate-600 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-200 transition-all">
+                                <i class="fas fa-search absolute left-2.5 sm:left-3 top-2.5 text-gray-400 text-xs"></i>
+                            </div>
+                        </div>
+                        </div>
+                        <div id="categories-grid" class="flex flex-row flex-wrap gap-1.5 sm:gap-2 overflow-x-auto pb-3">
                         </div>
                     </div>
                     <div class="flex-1 min-h-0 min-w-0 pt-2 sm:pt-3">
@@ -122,10 +123,10 @@
 
         <aside
             class="flex flex-col shadow-2xl overflow-hidden w-[350px] sm:w-[320px] md:w-[350px] shrink-0 bg-blue-50 dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 min-h-0" style="min-height: 550px;">
-            <div class="h-14 sm:h-16 px-3 sm:px-6 flex items-center justify-between shadow-sm bg-white dark:bg-gray-800">
-                <h3 class="text-base sm:text-lg font-bold text-slate-800 dark:text-white">Orden Actual</h3>
+            <div class="h-14 sm:h-16 px-3 sm:px-6 flex items-center justify-between shadow-sm dark:bg-gray-800" style="background: #3B82F6;">
+                <h3 class=" sm:text-lg font-bold text-white dark:text-white">Orden Actual</h3>
             </div>
-            <div id="cart-container" class="flex-1 overflow-y-auto p-3 sm:p-5 space-y-2 sm:space-y-3 bg-white dark:bg-gray-900/50 min-h-0"></div>
+            <div id="cart-container" class="flex-1 overflow-y-auto p-3 sm:p-5 space-y-2 sm:space-y-3 bg-gray-100 dark:bg-gray-900/50 min-h-0"></div>
 
             <div class="shrink-0 p-4 sm:p-6 pt-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
                 <div class="space-y-2 sm:space-y-3 mb-4 sm:mb-5 text-xs sm:text-sm">
