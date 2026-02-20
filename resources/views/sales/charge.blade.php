@@ -6,7 +6,7 @@
         <div class="mb-4">
             <div class="flex items-center justify-between">
                 <h1 class="text-xl font-bold text-gray-900 dark:text-white">Cobrar Venta</h1>
-                <a href="{{ route('admin.sales.create') }}"
+                <a href="{{ route('sales.create') }}"
                     class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">
                     <i class="fas fa-arrow-left text-xs"></i>
                     Volver
@@ -1096,7 +1096,7 @@
 
             function renderSale() {
                 if (!sale || !Array.isArray(sale.items) || sale.items.length === 0) {
-                    window.location.href = "{{ route('admin.sales.create') }}";
+                    window.location.href = "{{ route('sales.create') }}";
                     return;
                 }
 
@@ -1313,7 +1313,7 @@
                 const originalText = this.textContent;
                 this.textContent = 'Procesando...';
 
-                fetch('{{ route('admin.sales.process') }}', {
+                fetch('{{ route('sales.process') }}', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',

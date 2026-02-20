@@ -327,7 +327,7 @@
                                             </div>
                                             <form
                                                 method="POST"
-                                                action="{{ route('admin.sales.destroy', array_merge([$sale], $viewId ? ['view_id' => $viewId] : [])) }}"
+                                                action="{{ route('sales.destroy', array_merge([$sale], $viewId ? ['view_id' => $viewId] : [])) }}"
                                                 class="relative group js-swal-delete"
                                                 data-swal-title="Eliminar venta?"
                                                 data-swal-text="Se eliminara la venta {{ $sale->number }}. Esta accion no se puede deshacer."
@@ -420,7 +420,7 @@
                                         </div>
                                         <p class="text-base font-semibold text-gray-700 dark:text-gray-200">No hay ventas registradas.</p>
                                         <p class="text-gray-500">Crea la primera venta para comenzar.</p>
-                                        <x-ui.link-button size="sm" variant="primary" href="{{ route('admin.sales.create', $viewId ? ['view_id' => $viewId] : []) }}">
+                                        <x-ui.link-button size="sm" variant="primary" href="{{ route('sales.create', $viewId ? ['view_id' => $viewId] : []) }}">
                                             <i class="ri-add-line"></i>
                                             <span>Registrar venta</span>
                                         </x-ui.link-button>
