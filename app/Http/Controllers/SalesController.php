@@ -1022,7 +1022,7 @@ class SalesController extends Controller
         ]);
 
         return redirect()
-            ->route('admin.sales.index', $request->filled('view_id') ? ['view_id' => $request->input('view_id')] : [])
+            ->route('sales.index', $request->filled('view_id') ? ['view_id' => $request->input('view_id')] : [])
             ->with('status', 'Venta creada correctamente.');
     }
 
@@ -1057,7 +1057,7 @@ class SalesController extends Controller
         ]);
 
         return redirect()
-            ->route('admin.sales.index', $request->filled('view_id') ? ['view_id' => $request->input('view_id')] : [])
+            ->route('sales.index', $request->filled('view_id') ? ['view_id' => $request->input('view_id')] : [])
             ->with('status', 'Venta actualizada correctamente.');
     }
 
@@ -1066,7 +1066,7 @@ class SalesController extends Controller
         $sale->delete();
 
         return redirect()
-            ->route('admin.sales.index', request()->filled('view_id') ? ['view_id' => request()->input('view_id')] : [])
+            ->route('sales.index', request()->filled('view_id') ? ['view_id' => request()->input('view_id')] : [])
             ->with('status', 'Venta eliminada correctamente.');
     }
 

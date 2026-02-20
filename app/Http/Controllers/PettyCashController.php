@@ -31,7 +31,7 @@ class PettyCashController extends Controller
             if ($request->filled('view_id')) {
                 $params['view_id'] = $request->input('view_id');
             }
-            return redirect()->route('admin.petty-cash.index', $params);
+            return redirect()->route('petty-cash.index', $params);
         }
         abort(404, 'No hay cajas registradas');
     }
@@ -350,7 +350,7 @@ class PettyCashController extends Controller
             if ($request->filled('view_id')) {
                 $params['view_id'] = $request->input('view_id');
             }
-            return redirect()->route('admin.petty-cash.index', $params)
+            return redirect()->route('petty-cash.index', $params)
                 ->with('success', 'Movimiento registrado correctamente.');
         } catch (\Exception $e) {
             return back()->withErrors(['error' => 'Error al guardar: ' . $e->getMessage()])
@@ -499,7 +499,7 @@ class PettyCashController extends Controller
             if ($request->filled('view_id')) {
                 $params['view_id'] = $request->input('view_id');
             }
-            return redirect()->route('admin.petty-cash.index', $params)
+            return redirect()->route('petty-cash.index', $params)
                 ->with('success', 'Movimiento actualizado correctamente.');
         } catch (\Exception $e) {
             return back()->withErrors(['error' => 'Error al actualizar: ' . $e->getMessage()])
@@ -526,7 +526,7 @@ class PettyCashController extends Controller
                 $params['view_id'] = $request->input('view_id');
             }
 
-            return redirect()->route('admin.petty-cash.index', $params)
+            return redirect()->route('petty-cash.index', $params)
                 ->with('success', 'Movimiento eliminado correctamente.');
         } catch (\Exception $e) {
             return back()->withErrors(['error' => 'Error al eliminar: ' . $e->getMessage()]);
