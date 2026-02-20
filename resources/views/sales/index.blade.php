@@ -477,7 +477,7 @@
         const dateTo = document.querySelector('[name="date_to"]')?.value || '';
         const docType = document.querySelector('[name="document_type_id"]')?.value || '';
         const perPage = document.querySelector('[name="per_page"]')?.value || '10';
-        const baseUrl = "{{ route('admin.sales.pdf') }}";
+        const baseUrl = "{{ route('sales.pdf') }}";
         const params = new URLSearchParams({
             search: search,
             date_from: dateFrom,

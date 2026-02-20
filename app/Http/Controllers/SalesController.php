@@ -1193,7 +1193,6 @@ class SalesController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            // Esto es vital para ver por qué falla en Windows
             dd("ERROR REAL: " . $e->getMessage());
         }
     }
