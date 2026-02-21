@@ -1,182 +1,186 @@
 @extends('layouts.app')
 
 @section('content')
-    <div class="mx-auto max-w-7xl px-3 sm:px-5 lg:px-7 py-3 sm:py-4">
-
-        {{-- Header --}}
-        <div class="mb-4 flex items-center justify-between gap-3">
-            <div class="flex items-center gap-3 min-w-0">
-                <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-600 shadow-sm shadow-blue-200 dark:shadow-blue-900">
-                    <i class="fas fa-receipt text-white text-sm"></i>
+    {{-- Fondo principal blanco --}}
+    <div class="min-h-screen bg-white dark:bg-gray-900 py-4 sm:py-5">
+        <div class="mx-auto max-w-7xl px-3 sm:px-5 lg:px-7">
+            {{-- Contenedor blanco principal --}}
+            <div class="rounded-2xl border border-slate-200/90 bg-white dark:border-gray-700 dark:bg-gray-800 shadow-xl shadow-slate-300/30 dark:shadow-black/30 overflow-hidden min-h-[calc(100vh-120px)] flex flex-col">
+                {{-- Header dentro del contenedor --}}
+                <div class="flex items-center justify-between  bg-blue-600 text-white gap-3 px-4 sm:px-6 py-4 border-b border-slate-200 dark:bg-gray-800/80 shrink-0">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="min-w-0">
+                            <h1 class="text-lg font-bold leading-tight text-white truncate">Cobrar Pedido</h1>
+                            @php
+                                $headerClientName = ($movement && $movement->person_name) ? $movement->person_name : (isset($draftOrder['clientName']) ? $draftOrder['clientName'] : null);
+                            @endphp
+                            <p class="text-sm text-white/95 leading-tight truncate">
+                                @if($table)
+                                    <span class="font-semibold">Mesa {{ $table->name }}</span>
+                                    @if($table->area)
+                                        <span class="text-white/80"> · {{ $table->area->name }}</span>
+                                    @endif
+                                @endif
+                            </p>
+                        </div>
+                    </div>
+                    <a id="back-to-orders-link" href="{{ $backUrl ?? route('orders.index') }}"
+                        class="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700 shadow-sm transition hover:bg-blue-100 hover:border-blue-300 hover:text-blue-800 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50">
+                        <i class="ri-arrow-left-line text-lg"></i>
+                    </a>
                 </div>
-                <div class="min-w-0">
-                    <h1 class="text-lg font-bold leading-tight text-gray-900 dark:text-white truncate">Cobrar Pedido</h1>
-                    @if($table)
-                        <p class="text-xs text-gray-500 dark:text-gray-400 leading-tight">
-                            Mesa <span class="font-semibold text-gray-700 dark:text-gray-300">{{ $table->name ?? $table->id }}</span>
-                            @if($table->area) · {{ $table->area->name }} @endif
-                        </p>
-                    @endif
+
+                <div class="grid grid-cols-1 gap-4 lg:grid-cols-3 flex-1 p-4 sm:p-6 min-h-0 overflow-hidden bg-white dark:bg-transparent">
+
+                    {{-- ═══════════ COLUMNA IZQUIERDA ═══════════ --}}
+                    <div class="lg:col-span-2 flex flex-col gap-3 overflow-hidden">
+
+                        {{-- Barra de info: cliente + número de orden --}}
+                        <div class="flex items-center gap-3 rounded-xl border border-blue-100 bg-blue-50/60 px-4 py-2.5 dark:border-gray-600 dark:bg-gray-800 shrink-0 shadow-sm">
+                            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400">
+                                <i class="fas fa-user text-xs"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-[10px] uppercase tracking-wider font-medium text-gray-400 dark:text-gray-500 leading-none mb-0.5">Cliente</p>
+                                <p class="text-sm font-semibold text-gray-900 dark:text-white truncate" id="client-name">Público General</p>
+                            </div>
+                            @if($movement)
+                                <div class="shrink-0 text-right">
+                                    <p class="text-[10px] uppercase tracking-wider font-medium text-gray-400 dark:text-gray-500 leading-none mb-0.5">Orden</p>
+                                    <p class="text-xs font-mono font-semibold text-blue-600 dark:text-blue-400">#{{ $movement->number ?? '—' }}</p>
+                                </div>
+                            @endif
+                        </div>
+
+                        {{-- Lista de productos --}}
+                        <div class="rounded-xl border border-indigo-100 bg-indigo-50/40 dark:border-gray-600 dark:bg-gray-800 flex-1 flex flex-col min-h-0 overflow-hidden shadow-sm">
+                            <div class="px-4 py-3 border-b border-indigo-100 dark:border-gray-700 flex items-center justify-between shrink-0 bg-indigo-100/50 dark:bg-gray-800/80">
+                                <div class="flex items-center gap-2">
+                                    <i class="fas fa-shopping-bag text-sm text-blue-600 dark:text-blue-400"></i>
+                                    <h2 class="text-sm font-semibold text-gray-800 dark:text-white">Detalle del pedido</h2>
+                                </div>
+                                <span class="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-bold text-blue-700 dark:bg-blue-900/50 dark:text-blue-300"
+                                    id="items-count">0 ítems</span>
+                            </div>
+                            <div id="items-list" class="flex-1 overflow-y-auto bg-gray-100 custom-scrollbar px-3 py-3 space-y-1.5 bg-white/80 dark:bg-gray-900/40">
+                                <div class="flex flex-col items-center justify-center py-10 text-center">
+                                    <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-200 dark:bg-gray-700">
+                                        <i class="fas fa-shopping-cart text-xl text-slate-400 dark:text-gray-500"></i>
+                                    </div>
+                                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">No hay productos en la orden</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="rounded-xl border border-emerald-100 bg-emerald-50/35 p-3 dark:border-gray-600 dark:bg-gray-800 shadow-sm">
+                            <label for="sale-notes" class="mb-1.5 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                                <i class="fas fa-sticky-note text-[11px]"></i> Notas <span class="normal-case font-normal text-gray-400">(Opcional)</span>
+                            </label>
+                            <textarea id="sale-notes" rows="2" placeholder="Ej: Cliente pagó con billete de 50..."
+                                class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-gray-900 placeholder-gray-400 transition focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-500 dark:focus:border-blue-400 dark:focus:bg-gray-600"></textarea>
+                        </div>
+                    </div>
+                
+                    {{-- ═══════════ COLUMNA DERECHA ═══════════ --}}
+                    <div class="flex flex-col gap-3 lg:sticky lg:top-4 lg:max-h-[calc(100vh-180px)] min-h-0 lg:border-slate-200/80 lg:pl-3 dark:lg:border-gray-700">
+                        <div class="flex-1 min-h-0 overflow-y-auto space-y-3 custom-scrollbar pr-0.5">
+
+                            {{-- Totales: bloque destacado en azul/slate --}}
+                            <div class="rounded-xl bg-gray-200 p-4 shadow-sm">
+                                <div class="flex items-center justify-between mb-3">
+                                    <h3 class="text-xs font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400">Resumen</h3>
+                                    <i class="fas fa-calculator text-blue-600 dark:text-blue-400 text-sm"></i>
+                                </div>
+                                <div class="space-y-2">
+                                    <div class="flex justify-between items-center text-sm">
+                                        <span class="text-gray-500 dark:text-gray-400">Subtotal</span>
+                                        <span class="font-semibold text-gray-800 dark:text-gray-200" id="subtotal">S/0.00</span>
+                                    </div>
+                                    <div class="flex justify-between items-center text-sm">
+                                        <span class="text-gray-500 dark:text-gray-400">Impuestos (10%)</span>
+                                        <span class="font-semibold text-gray-800 dark:text-gray-200" id="tax">S/0.00</span>
+                                    </div>
+                                    <div class="mt-1 pt-2.5 border-t border-blue-200 dark:border-blue-800/50">
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-base font-bold text-gray-900 dark:text-white">Total a pagar</span>
+                                            <span class="text-2xl font-extrabold text-blue-600 dark:text-blue-400 tabular-nums" id="total">S/0.00</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- Tipo de Documento --}}
+                            <div class="rounded-xl border border-violet-100 bg-violet-50/40 p-3 dark:border-gray-600 dark:bg-gray-800 shadow-sm">
+                                <p class="mb-2 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Comprobante</p>
+                                <div class="flex flex-wrap gap-2">
+                                    @foreach ($documentTypes as $index => $documentType)
+                                        <button type="button"
+                                            class="doc-type-btn {{ $index === 0 ? 'doc-active' : '' }} inline-flex items-center gap-1.5 rounded-lg border-2 px-3 py-1.5 text-xs font-semibold transition
+                                                {{ $index === 0 ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-600' : 'border-slate-200 bg-slate-50 text-gray-600 hover:border-blue-400 hover:bg-blue-50/80 hover:text-blue-700 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:border-blue-500 dark:hover:bg-blue-900/30' }}"
+                                            data-doc-type="{{ strtolower($documentType->name) }}"
+                                            data-doc-id="{{ $documentType->id }}">
+                                            <i class="fas fa-file-invoice text-[11px]"></i>
+                                            {{ $documentType->name }}
+                                        </button>
+                                    @endforeach
+                                </div>
+                                <input type="hidden" id="document-type-id" name="document_type_id"
+                                    value="{{ $documentTypes->first()?->id ?? '' }}">
+                            </div>
+
+                            {{-- Métodos de Pago --}}
+                            <div class="rounded-xl border border-cyan-100 bg-cyan-50/35 p-3 dark:border-gray-600 dark:bg-gray-800 shadow-sm">
+                                <div class="mb-3 flex items-center justify-between">
+                                    <p class="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Método de pago</p>
+                                    <button type="button" id="add-payment-method-btn"
+                                        class="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700 active:scale-95 dark:bg-blue-700 dark:hover:bg-blue-600">
+                                        <i class="fas fa-plus text-[10px]"></i> Agregar
+                                    </button>
+                                </div>
+                                <div id="payment-methods-list" class="space-y-2"></div>
+
+                                {{-- Resumen de pagos --}}
+                                <div id="payment-summary" class="mt-3 rounded-lg border border-slate-200 bg-slate-100/80 px-3 py-2.5 dark:bg-gray-700/50 dark:border-gray-600">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-xs font-semibold text-gray-600 dark:text-gray-300">Total pagado</span>
+                                        <span class="text-base font-bold text-gray-900 dark:text-white tabular-nums" id="total-paid">S/0.00</span>
+                                    </div>
+                                    <div id="payment-remaining" class="hidden mt-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-1.5 dark:bg-amber-900/20 dark:border-amber-800/50">
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-xs font-semibold text-amber-700 dark:text-amber-400">
+                                                <i class="fas fa-exclamation-circle mr-1 text-[10px]"></i>Falta pagar
+                                            </span>
+                                            <span class="text-sm font-bold text-amber-700 dark:text-amber-400 tabular-nums" id="remaining-amount">S/0.00</span>
+                                        </div>
+                                    </div>
+                                    <div id="payment-excess" class="hidden mt-2 rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-1.5 dark:bg-emerald-900/20 dark:border-emerald-800/50">
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                                                <i class="fas fa-check-circle mr-1 text-[10px]"></i>Vuelto
+                                            </span>
+                                            <span class="text-sm font-bold text-emerald-600 dark:text-emerald-400 tabular-nums" id="excess-amount">S/0.00</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Botón Confirmar --}}
+                        <button type="button" id="confirm-btn"
+                            class="w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-blue-500/30 transition hover:bg-blue-700 active:scale-[.98] dark:bg-blue-700 dark:shadow-blue-900/40 dark:hover:bg-blue-600 shrink-0">
+                            <i class="fas fa-check-circle mr-2"></i>
+                            Confirmar y Cobrar
+                        </button>
+                    </div>
                 </div>
             </div>
-            <a id="back-to-orders-link" href="{{ $backUrl ?? route('orders.index') }}"
-                class="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 shadow-sm transition hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">
-                <i class="fas fa-arrow-left text-[10px]"></i>
-                Volver
-            </a>
         </div>
-
-        <div class="grid grid-cols-1 gap-4 lg:grid-cols-3" style="height: calc(100vh - 155px);">
-
-            {{-- ═══════════ COLUMNA IZQUIERDA ═══════════ --}}
-            <div class="lg:col-span-2 flex flex-col gap-3 overflow-hidden">
-
-                {{-- Barra de info: cliente + número de orden --}}
-                <div class="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-2.5 dark:border-gray-700 dark:bg-gray-800 shrink-0">
-                    <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 dark:bg-gray-700">
-                        <i class="fas fa-user text-xs text-slate-500 dark:text-gray-400"></i>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <p class="text-[10px] uppercase tracking-wider font-medium text-gray-400 dark:text-gray-500 leading-none mb-0.5">Cliente</p>
-                        <p class="text-sm font-semibold text-gray-900 dark:text-white truncate" id="client-name">Público General</p>
-                    </div>
-                    @if($movement)
-                        <div class="shrink-0 text-right">
-                            <p class="text-[10px] uppercase tracking-wider font-medium text-gray-400 dark:text-gray-500 leading-none mb-0.5">Orden</p>
-                            <p class="text-xs font-mono font-semibold text-blue-600 dark:text-blue-400">#{{ $movement->number ?? '—' }}</p>
-                        </div>
-                    @endif
-                </div>
-
-                {{-- Lista de productos --}}
-                <div class="rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 flex-1 flex flex-col min-h-0 overflow-hidden">
-                    <div class="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between shrink-0">
-                        <div class="flex items-center gap-2">
-                            <i class="fas fa-shopping-bag text-sm text-gray-400"></i>
-                            <h2 class="text-sm font-semibold text-gray-800 dark:text-white">Detalle del pedido</h2>
-                        </div>
-                        <span class="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-bold text-blue-700 dark:bg-blue-900/50 dark:text-blue-300"
-                            id="items-count">0 ítems</span>
-                    </div>
-                    <div id="items-list" class="flex-1 overflow-y-auto custom-scrollbar px-3 py-2 space-y-1.5">
-                        <div class="flex flex-col items-center justify-center py-10 text-center">
-                            <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 dark:bg-gray-700">
-                                <i class="fas fa-shopping-cart text-xl text-gray-400"></i>
-                            </div>
-                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">No hay productos en la orden</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {{-- ═══════════ COLUMNA DERECHA ═══════════ --}}
-            <div class="flex flex-col gap-3 lg:sticky lg:top-4 lg:max-h-[calc(100vh-80px)] min-h-0">
-                <div class="flex-1 min-h-0 overflow-y-auto space-y-3 custom-scrollbar pr-0.5">
-
-                    {{-- Totales --}}
-                    <div class="rounded-xl border border-blue-200 bg-gradient-to-b from-blue-50 to-white p-4 dark:border-blue-800/60 dark:from-blue-950/40 dark:to-gray-800">
-                        <div class="flex items-center justify-between mb-3">
-                            <h3 class="text-xs font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400">Resumen</h3>
-                            <i class="fas fa-calculator text-blue-400 text-sm"></i>
-                        </div>
-                        <div class="space-y-2">
-                            <div class="flex justify-between items-center text-sm">
-                                <span class="text-gray-500 dark:text-gray-400">Subtotal</span>
-                                <span class="font-semibold text-gray-800 dark:text-gray-200" id="subtotal">S/0.00</span>
-                            </div>
-                            <div class="flex justify-between items-center text-sm">
-                                <span class="text-gray-500 dark:text-gray-400">Impuestos (10%)</span>
-                                <span class="font-semibold text-gray-800 dark:text-gray-200" id="tax">S/0.00</span>
-                            </div>
-                            <div class="mt-1 pt-2.5 border-t border-blue-200 dark:border-blue-800/60">
-                                <div class="flex justify-between items-center">
-                                    <span class="text-base font-bold text-gray-900 dark:text-white">Total a pagar</span>
-                                    <span class="text-2xl font-extrabold text-blue-600 dark:text-blue-400 tabular-nums" id="total">S/0.00</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- Tipo de Documento --}}
-                    <div class="rounded-xl border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
-                        <p class="mb-2 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Comprobante</p>
-                        <div class="flex flex-wrap gap-2">
-                            @foreach ($documentTypes as $index => $documentType)
-                                <button type="button"
-                                    class="doc-type-btn {{ $index === 0 ? 'doc-active' : '' }} inline-flex items-center gap-1.5 rounded-lg border-2 px-3 py-1.5 text-xs font-semibold transition
-                                        {{ $index === 0 ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-600' : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:border-blue-500' }}"
-                                    data-doc-type="{{ strtolower($documentType->name) }}"
-                                    data-doc-id="{{ $documentType->id }}">
-                                    <i class="fas fa-file-invoice text-[11px]"></i>
-                                    {{ $documentType->name }}
-                                </button>
-                            @endforeach
-                        </div>
-                        <input type="hidden" id="document-type-id" name="document_type_id"
-                            value="{{ $documentTypes->first()?->id ?? '' }}">
-                    </div>
-
-                    {{-- Métodos de Pago --}}
-                    <div class="rounded-xl border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
-                        <div class="mb-3 flex items-center justify-between">
-                            <p class="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Método de pago</p>
-                            <button type="button" id="add-payment-method-btn"
-                                class="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700 active:scale-95">
-                                <i class="fas fa-plus text-[10px]"></i> Agregar
-                            </button>
-                        </div>
-                        <div id="payment-methods-list" class="space-y-2"></div>
-
-                        {{-- Resumen de pagos --}}
-                        <div id="payment-summary" class="mt-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 dark:border-gray-600 dark:bg-gray-700/60">
-                            <div class="flex items-center justify-between">
-                                <span class="text-xs font-semibold text-gray-600 dark:text-gray-300">Total pagado</span>
-                                <span class="text-base font-bold text-gray-900 dark:text-white tabular-nums" id="total-paid">S/0.00</span>
-                            </div>
-                            <div id="payment-remaining" class="hidden mt-2 rounded-lg bg-orange-50 border border-orange-200 px-3 py-1.5 dark:bg-orange-900/20 dark:border-orange-800/50">
-                                <div class="flex items-center justify-between">
-                                    <span class="text-xs font-semibold text-orange-600 dark:text-orange-400">
-                                        <i class="fas fa-exclamation-circle mr-1 text-[10px]"></i>Falta pagar
-                                    </span>
-                                    <span class="text-sm font-bold text-orange-600 dark:text-orange-400 tabular-nums" id="remaining-amount">S/0.00</span>
-                                </div>
-                            </div>
-                            <div id="payment-excess" class="hidden mt-2 rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-1.5 dark:bg-emerald-900/20 dark:border-emerald-800/50">
-                                <div class="flex items-center justify-between">
-                                    <span class="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                                        <i class="fas fa-check-circle mr-1 text-[10px]"></i>Vuelto
-                                    </span>
-                                    <span class="text-sm font-bold text-emerald-600 dark:text-emerald-400 tabular-nums" id="excess-amount">S/0.00</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- Notas --}}
-                    <div class="rounded-xl border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
-                        <label for="sale-notes" class="mb-1.5 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                            <i class="fas fa-sticky-note text-[11px]"></i> Notas <span class="normal-case font-normal text-gray-400">(Opcional)</span>
-                        </label>
-                        <textarea id="sale-notes" rows="2" placeholder="Ej: Cliente pagó con billete de 50..."
-                            class="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-900 placeholder-gray-400 transition focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-500 dark:focus:border-blue-400 dark:focus:bg-gray-700"></textarea>
-                    </div>
-
-                </div>
-
-                {{-- Botón Confirmar --}}
-                <button type="button" id="confirm-btn"
-                    class="w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-md shadow-blue-200 transition hover:bg-blue-700 active:scale-[.98] dark:bg-blue-700 dark:shadow-blue-900 dark:hover:bg-blue-600 shrink-0">
-                    <i class="fas fa-check-circle mr-2"></i>
-                    Confirmar y Cobrar
-                </button>
-            </div>
-        </div>
+    </div>
 
         {{-- ═══════════ MODAL: Método de Pago ═══════════ --}}
         <div id="payment-method-selection-modal"
-            class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 backdrop-blur-sm">
-            <div class="mx-4 w-full max-w-xl rounded-2xl bg-white shadow-2xl dark:bg-gray-800">
-                <div class="flex items-center justify-between border-b border-gray-100 px-5 py-4 dark:border-gray-700">
+            class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/40 backdrop-blur-sm">
+            <div class="mx-4 w-full max-w-xl rounded-2xl bg-white/98 shadow-2xl shadow-slate-300/50 dark:bg-gray-800/98 dark:shadow-black/30 border border-slate-200/80 dark:border-gray-700">
+                <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-gray-700">
                     <div class="flex items-center gap-2">
                         <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/40">
                             <i class="fas fa-wallet text-blue-600 dark:text-blue-400 text-sm"></i>
@@ -218,9 +222,9 @@
 
         {{-- ═══════════ MODAL: Pasarela y Tarjeta ═══════════ --}}
         <div id="card-selection-modal"
-            class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 backdrop-blur-sm">
-            <div class="mx-4 w-full max-w-lg rounded-2xl bg-white shadow-2xl dark:bg-gray-800">
-                <div class="flex items-center justify-between border-b border-gray-100 px-5 py-4 dark:border-gray-700">
+            class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/40 backdrop-blur-sm">
+            <div class="mx-4 w-full max-w-lg rounded-2xl bg-white/98 shadow-2xl shadow-slate-300/50 dark:bg-gray-800/98 dark:shadow-black/30 border border-slate-200/80 dark:border-gray-700">
+                <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-gray-700">
                     <div class="flex items-center gap-2">
                         <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/40">
                             <i class="fas fa-credit-card text-blue-600 dark:text-blue-400 text-sm"></i>
@@ -285,7 +289,7 @@
                         @endif
                     </div>
                 </div>
-                <div class="flex justify-end gap-2 border-t border-gray-100 px-5 py-3 dark:border-gray-700">
+                <div class="flex justify-end gap-2 border-t border-slate-100 px-5 py-3 dark:border-gray-700">
                     <button type="button" id="cancel-card-selection"
                         class="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 transition hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">
                         Cancelar
@@ -297,8 +301,7 @@
                     </button>
                 </div>
             </div>
-        </div>
-
+        
     </div>
 
     {{-- Notificación del sistema --}}
@@ -321,6 +324,20 @@
     </div>
 
     <style>
+        .order-line-item {
+            transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease, background-color .18s ease;
+        }   
+        .order-line-item:hover {
+            border-color: #bfdbfe;
+            background-color: #f8fbff;
+            box-shadow: 0 6px 16px rgba(30, 64, 175, .08);
+            transform: translateY(-1px);
+        }
+        .dark .order-line-item:hover {
+            border-color: rgba(59, 130, 246, .55);
+            background-color: rgba(30, 41, 59, .7);
+            box-shadow: 0 8px 20px rgba(2, 6, 23, .45);
+        }
         .doc-type-btn.doc-active {
             border-color: #3b82f6;
             background: linear-gradient(135deg, #eff6ff, #fff);
@@ -346,12 +363,36 @@
         .dark .card-btn.border-blue-500 {
             background: linear-gradient(135deg, rgba(30,58,138,.4), rgba(15,23,42,1));
         }
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
+        .payment-method-item {
+            border-color: #cbd5e1 !important;
+            transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+        }
+        .payment-method-item:hover {
+            border-color: #93c5fd !important;
+            box-shadow: 0 10px 20px rgba(30, 64, 175, .10) !important;
+            transform: translateY(-1px);
+        }
+        .payment-method-item:focus-within {
+            border-color: #3b82f6 !important;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, .15), 0 10px 22px rgba(30, 64, 175, .12) !important;
+        }
+        .pm-selection-btn,
+        .gateway-btn,
+        .card-btn {
+            transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease, background-color .18s ease;
+        }
+        .pm-selection-btn:hover,
+        .gateway-btn:hover,
+        .card-btn:hover {
+            box-shadow: 0 8px 18px rgba(37, 99, 235, .12);
+            transform: translateY(-1px);
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 999px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #64748b; }
         .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #475569; }
-        .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         .notification-show {
             transform: translateX(0) !important;
             opacity: 1 !important;
@@ -1165,7 +1206,7 @@
                     const lineTotal = qty * price;
                     subtotal += lineTotal;
                     return `
-                <div class="flex items-center justify-between rounded-lg border border-gray-200 p-2 dark:border-gray-700 dark:bg-gray-700">
+                <div class="order-line-item flex items-center justify-between rounded-lg border border-slate-200 bg-white p-2 dark:border-gray-700 dark:bg-gray-700/70">
                     <div class="min-w-0 flex-1">
                         <p class="text-sm font-semibold text-gray-900 dark:text-white truncate">${description}</p>
                         <p class="text-xs text-gray-500 dark:text-gray-400">${qty} x ${fmtMoney(price)}</p>

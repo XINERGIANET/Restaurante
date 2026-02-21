@@ -114,7 +114,7 @@
                     </div>
                     <div class="flex-1 min-h-0 min-w-0 pt-2 sm:pt-3">
                         <h3 class="font-bold text-sm sm:text-base text-slate-800 dark:text-white mb-2 sm:mb-3 px-2 sm:px-4 shrink-0">Productos</h3>
-                        <div id="products-grid" class="px-2 sm:px-4 md:px-5 pb-2 grid grid-cols-3 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-6 gap-2 sm:gap-4 overflow-y-auto min-h-0 flex-1 content-start">
+                        <div id="products-grid" class="px-2 sm:px-4 md:px-5 pb-2 grid grid-cols-3 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5 2xl:grid-cols-5 gap-2 sm:gap-4 overflow-y-auto min-h-0 flex-1 content-start">
                         </div>
                     </div>
                 </div>
