@@ -369,7 +369,7 @@
                                         ->implode(' | ');
                                 @endphp
                                 <tbody x-data="{ expanded: false }">
-                                <tr class="border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-white/5 align-top">
+                                <tr class="border-b border-gray-100 bg-white dark:border-gray-800 dark:bg-white/[0.03] transition hover:bg-gray-50 dark:hover:bg-white/5 align-top">
                                     <td class="px-3 py-4 text-center sticky-left">
                                         <button type="button" @click="expanded = !expanded"
                                             class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-500 text-white transition hover:bg-brand-600 dark:bg-brand-500 dark:text-white">
@@ -460,11 +460,11 @@
                                 </tr>
                                 <tr x-show="expanded" x-cloak class="border-b border-gray-100 bg-gray-50 dark:border-gray-800 dark:bg-gray-900/20">
                                     <td colspan="12" class="px-5 py-4 sm:px-6">
-                                        <div class="mx-auto w-full max-w-xl space-y-1 text-center text-gray-800 dark:text-gray-200">
-                                            <div class="grid grid-cols-2 border-b border-gray-200 py-2 dark:border-gray-700"><span class="font-semibold">Persona</span><span>{{ $movement->person_name ?: '-' }}</span></div>
-                                            <div class="grid grid-cols-2 border-b border-gray-200 py-2 dark:border-gray-700"><span class="font-semibold">Responsable</span><span>{{ $movement->responsible_name ?: '-' }}</span></div>
-                                            <div class="grid grid-cols-2 border-b border-gray-200 py-2 dark:border-gray-700"><span class="font-semibold">Origen</span><span>{{ $movement->movement?->movementType?->description ?? '-' }} - {{ strtoupper(substr($movement->movement?->documentType?->name , 0, 1))?? '-' }}{{ $movement->movement?->salesMovement?->series }}-{{ $movement->number }}</span></div>
-                                            <div class="grid grid-cols-2 py-2"><span class="font-semibold">Comentario</span><span>{{ $movement->comment ?: '-' }}</span></div>
+                                        <div class="grid grid-cols-4 gap-x-4 gap-y-1 text-gray-800 dark:text-gray-200">
+                                            <div class="min-w-0"><p class="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Persona</p><p class="truncate text-sm">{{ $movement->person_name ?: '-' }}</p></div>
+                                            <div class="min-w-0"><p class="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Responsable</p><p class="truncate text-sm">{{ $movement->responsible_name ?: '-' }}</p></div>
+                                            <div class="min-w-0"><p class="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Origen</p><p class="truncate text-sm">{{ $movement->movement?->movementType?->description ?? '-' }} - {{ strtoupper(substr($movement->movement?->documentType?->name , 0, 1))?? '-' }}{{ $movement->movement?->salesMovement?->series }}-{{ $movement->number }}</p></div>
+                                            <div class="min-w-0"><p class="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Comentario</p><p class="truncate text-sm">{{ $movement->comment ?: '-' }}</p></div>
                                         </div>
                                     </td>
                                 </tr>

@@ -6,6 +6,7 @@ use App\Models\Branch;
 use App\Models\Card;
 use App\Models\CashMovements;
 use App\Models\CashRegister;
+use App\Models\DigitalWallet;
 use App\Models\DocumentType;
 use App\Models\Movement;
 use App\Models\MovementType;
@@ -221,7 +222,13 @@ class SalesController extends Controller
             ->where('status', true)
             ->orderBy('order_num')
             ->get(['id', 'description', 'type', 'icon', 'order_num']);
+
+        $digitalWallets = DigitalWallet::query()
+            ->where('status', true)
+            ->orderBy('order_num')
+            ->get(['id', 'description', 'order_num']);
         
+            
         $cashRegisters = CashRegister::query()
             ->orderByRaw("CASE WHEN status = 'A' THEN 0 ELSE 1 END")
             ->orderBy('number')
@@ -316,6 +323,7 @@ class SalesController extends Controller
             'paymentMethods' => $paymentMethods,
             'paymentGateways' => $paymentGateways,
             'cards' => $cards,
+            'digitalWallets' => $digitalWallets,
             'cashRegisters' => $cashRegisters,
             'people' => $people,
             'defaultClientId' => $defaultClientId,
@@ -345,6 +353,7 @@ class SalesController extends Controller
                 'payment_methods.*.amount' => 'required|numeric|min:0.01',
                 'payment_methods.*.payment_gateway_id' => 'nullable|integer|exists:payment_gateways,id',
                 'payment_methods.*.card_id' => 'nullable|integer|exists:cards,id',
+                'payment_methods.*.digital_wallet_id' => 'nullable|integer|exists:digital_wallets,id',
                 'notes' => 'nullable|string',
                 'movement_id' => 'nullable|integer|exists:movements,id', // ID del borrador a completar
             ]);
@@ -718,15 +727,18 @@ class SalesController extends Controller
                 $paymentMethod = PaymentMethod::findOrFail($paymentMethodData['payment_method_id']);
                 $paymentGateway = null;
                 $card = null;
-                
-                if ($paymentMethodData['payment_gateway_id']) {
+                $digitalWallet = null;
+
+                if (!empty($paymentMethodData['payment_gateway_id'])) {
                     $paymentGateway = PaymentGateways::find($paymentMethodData['payment_gateway_id']);
                 }
-                
-                if ($paymentMethodData['card_id']) {
+                if (!empty($paymentMethodData['card_id'])) {
                     $card = Card::find($paymentMethodData['card_id']);
                 }
-                
+                if (!empty($paymentMethodData['digital_wallet_id'])) {
+                    $digitalWallet = DigitalWallet::find($paymentMethodData['digital_wallet_id']);
+                }
+
                 DB::table('cash_movement_details')->insert([
                     'cash_movement_id' => $cashMovement->id,
                     'type' => 'PAGADO',
@@ -738,8 +750,8 @@ class SalesController extends Controller
                     'card' => $card?->description ?? '',
                     'bank_id' => null,
                     'bank' => '',
-                    'digital_wallet_id' => null,
-                    'digital_wallet' => '',
+                    'digital_wallet_id' => $digitalWallet?->id,
+                    'digital_wallet' => $digitalWallet?->description ?? '',
                     'payment_gateway_id' => $paymentGateway?->id,
                     'payment_gateway' => $paymentGateway?->description ?? '',
                     'amount' => $paymentMethodData['amount'],

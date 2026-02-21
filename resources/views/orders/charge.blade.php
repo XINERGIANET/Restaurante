@@ -176,11 +176,11 @@
         </div>
     </div>
 
-        {{-- ═══════════ MODAL: Método de Pago ═══════════ --}}
+        {{-- ═══════════ MODAL: Método de Pago (efectivo, billeteras, transferencia, tarjeta, etc.) ═══════════ --}}
         <div id="payment-method-selection-modal"
-            class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/40 backdrop-blur-sm">
-            <div class="mx-4 w-full max-w-xl rounded-2xl bg-white/98 shadow-2xl shadow-slate-300/50 dark:bg-gray-800/98 dark:shadow-black/30 border border-slate-200/80 dark:border-gray-700">
-                <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-gray-700">
+            class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+            <div class="flex h-max max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl shadow-slate-300/50 dark:bg-gray-800 dark:shadow-black/30 border border-slate-200/80 dark:border-gray-700">
+                <div class="flex shrink-0 items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-gray-700">
                     <div class="flex items-center gap-2">
                         <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/40">
                             <i class="fas fa-wallet text-blue-600 dark:text-blue-400 text-sm"></i>
@@ -192,12 +192,13 @@
                         <i class="fas fa-times text-sm"></i>
                     </button>
                 </div>
-                <div class="px-5 py-4 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                <div class="min-h-0 max-h-[50vh] overflow-y-auto px-5 py-4 custom-scrollbar">
                     <div class="grid grid-cols-2 gap-2.5">
                         @foreach ($paymentMethods as $paymentMethod)
                             @php
                                 $desc = strtolower($paymentMethod->description);
-                                $isCard = str_contains($desc, 'tarjeta') || str_contains($desc, 'card');
+                                $isCard = (str_contains($desc, 'tarjeta') || str_contains($desc, 'card')) && !str_contains($desc, 'billetera');
+                                $isWallet = str_contains($desc, 'billetera');
                                 $icon = $isCard ? 'fa-credit-card'
                                     : (str_contains($desc, 'efectivo') || str_contains($desc, 'cash') ? 'fa-money-bill-wave'
                                     : (str_contains($desc, 'yape') || str_contains($desc, 'plin') ? 'fa-mobile-alt'
@@ -207,7 +208,8 @@
                                 class="pm-selection-btn group flex items-center gap-3 rounded-xl border-2 border-gray-200 bg-gray-50 p-3.5 text-left transition hover:border-blue-500 hover:bg-blue-50 dark:border-gray-600 dark:bg-gray-700/60 dark:hover:border-blue-500 dark:hover:bg-blue-900/20"
                                 data-method-id="{{ $paymentMethod->id }}"
                                 data-method-name="{{ $paymentMethod->description }}"
-                                data-is-card="{{ $isCard ? '1' : '0' }}">
+                                data-is-card="{{ $isCard ? '1' : '0' }}"
+                                data-is-wallet="{{ $isWallet ? '1' : '0' }}">
                                 <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm dark:bg-gray-700 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/40 transition">
                                     <i class="fas {{ $icon }} text-gray-500 dark:text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition"></i>
                                 </div>
@@ -222,9 +224,9 @@
 
         {{-- ═══════════ MODAL: Pasarela y Tarjeta ═══════════ --}}
         <div id="card-selection-modal"
-            class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/40 backdrop-blur-sm">
-            <div class="mx-4 w-full max-w-lg rounded-2xl bg-white/98 shadow-2xl shadow-slate-300/50 dark:bg-gray-800/98 dark:shadow-black/30 border border-slate-200/80 dark:border-gray-700">
-                <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-gray-700">
+            class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-5">
+            <div class="flex h-max max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl shadow-slate-300/50 dark:bg-gray-800 dark:shadow-black/30 border border-slate-200/80 dark:border-gray-700">
+                <div class="flex shrink-0 items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-gray-700">
                     <div class="flex items-center gap-2">
                         <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/40">
                             <i class="fas fa-credit-card text-blue-600 dark:text-blue-400 text-sm"></i>
@@ -236,7 +238,7 @@
                         <i class="fas fa-times text-sm"></i>
                     </button>
                 </div>
-                <div class="px-5 py-4 space-y-5">
+                <div class="min-h-0 max-h-[50vh] overflow-y-auto px-5 py-4 space-y-5 custom-scrollbar">
                     {{-- Pasarelas --}}
                     <div>
                         <p class="mb-2.5 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Pasarela de pago</p>
@@ -289,7 +291,7 @@
                         @endif
                     </div>
                 </div>
-                <div class="flex justify-end gap-2 border-t border-slate-100 px-5 py-3 dark:border-gray-700">
+                <div class="flex shrink-0 justify-end gap-2 border-t border-slate-100 px-5 py-3 dark:border-gray-700">
                     <button type="button" id="cancel-card-selection"
                         class="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 transition hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">
                         Cancelar
@@ -300,8 +302,43 @@
                         Confirmar
                     </button>
                 </div>
+            
+        </div>
+    </div>
+
+    {{-- Modal: Elegir billetera (Yape, Plin, etc.) --}}
+    <div id="wallet-selection-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+        <div class="flex h-max max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl shadow-slate-300/50 dark:bg-gray-800 dark:shadow-black/30 border border-slate-200/80 dark:border-gray-700">
+            <div class="flex shrink-0 items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-gray-700">
+                <div class="flex items-center gap-2">
+                    <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/40">
+                        <i class="fas fa-mobile-alt text-emerald-600 dark:text-emerald-400 text-sm"></i>
+                    </div>
+                    <h3 class="text-base font-bold text-gray-900 dark:text-white">Elegir billetera</h3>
+                </div>
+                <button type="button" id="close-wallet-modal" class="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-200">
+                    <i class="fas fa-times text-sm"></i>
+                </button>
             </div>
-        
+            <div class="min-h-0 max-h-[50vh] overflow-y-auto px-5 py-4 custom-scrollbar">
+                <p class="mb-2.5 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Billetera digital</p>
+                <div class="flex flex-wrap gap-2">
+                    @foreach ($digitalWallets ?? [] as $wallet)
+                        <button type="button"
+                            class="wallet-btn inline-flex shrink-0 items-center gap-2 rounded-xl border-2 border-gray-200 bg-gray-50 px-3.5 py-2.5 transition hover:border-emerald-500 hover:bg-emerald-50 dark:border-gray-600 dark:bg-gray-700/60 dark:hover:border-emerald-500 dark:hover:bg-emerald-900/20"
+                            data-wallet-id="{{ $wallet->id }}" data-wallet-name="{{ $wallet->description }}">
+                            <i class="fas fa-mobile-alt text-sm text-gray-500 dark:text-gray-400"></i>
+                            <span class="text-sm font-semibold text-gray-800 dark:text-white whitespace-nowrap">{{ $wallet->description }}</span>
+                            <i class="fas fa-check-circle hidden text-emerald-600 dark:text-emerald-400 text-xs"></i>
+                        </button>
+                    @endforeach
+                </div>
+            </div>
+            <div class="flex shrink-0 justify-end gap-2 border-t border-slate-100 px-5 py-3 dark:border-gray-700">
+                <button type="button" id="cancel-wallet-selection" class="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 transition hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">Cancelar</button>
+                <button type="button" id="confirm-wallet-selection" class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-emerald-700 dark:hover:bg-emerald-600" disabled>Confirmar</button>
+            </div>
+        </div>
     </div>
 
     {{-- Notificación del sistema --}}
@@ -363,6 +400,8 @@
         .dark .card-btn.border-blue-500 {
             background: linear-gradient(135deg, rgba(30,58,138,.4), rgba(15,23,42,1));
         }
+        .wallet-btn.border-emerald-500 { border-color: #10b981; background: linear-gradient(135deg, #ecfdf5, #fff); }
+        .dark .wallet-btn.border-emerald-500 { background: linear-gradient(135deg, rgba(5,150,105,.3), rgba(15,23,42,1)); }
         .payment-method-item {
             border-color: #cbd5e1 !important;
             transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
@@ -418,6 +457,7 @@
             const paymentMethods = @json($paymentMethods ?? []);
             const paymentGateways = @json($paymentGateways ?? []);
             const cards = @json($cards ?? []);
+            const digitalWallets = @json($digitalWallets ?? []);
             const productsMap = @json($products ?? []); // Mapa de ID => descripción
             
             // Debug: verificar que los métodos de pago se carguen
@@ -433,6 +473,10 @@
             const closeCardModal = document.getElementById('close-card-modal');
             const cancelCardSelection = document.getElementById('cancel-card-selection');
             const confirmCardSelection = document.getElementById('confirm-card-selection');
+            const walletSelectionModal = document.getElementById('wallet-selection-modal');
+            const closeWalletModalBtn = document.getElementById('close-wallet-modal');
+            const cancelWalletSelection = document.getElementById('cancel-wallet-selection');
+            const confirmWalletSelection = document.getElementById('confirm-wallet-selection');
             // Enlace "Volver a pedidos": solo navegar, nunca disparar cobro (Turbo para no recargar pestaña)
             const backToOrdersLink = document.getElementById('back-to-orders-link');
             if (backToOrdersLink) {
@@ -459,7 +503,9 @@
             let currentEditingIndex = -1; // Índice del método de pago que se está editando
             let selectedGatewayId = null;
             let selectedCardId = null;
-            let cardModalListenersSetup = false; // Bandera para evitar configurar listeners múltiples veces
+            let selectedWalletId = null;
+            let cardModalListenersSetup = false;
+            let walletModalListenersSetup = false;
 
             // Función para formatear dinero
             function fmtMoney(n) {
@@ -501,6 +547,7 @@
             // Función para renderizar un método de pago
             function renderPaymentMethod(index, paymentMethod) {
                 const isCard = paymentMethod.isCard || false;
+                const isWallet = paymentMethod.isWallet || false;
                 const methodName = paymentMethod.methodName || '';
                 const amount = paymentMethod.amount || 0;
                 const methodId = paymentMethod.methodId || null;
@@ -508,19 +555,33 @@
                 const cardId = paymentMethod.cardId || null;
                 const gatewayName = paymentMethod.gatewayName || '';
                 const cardName = paymentMethod.cardName || '';
+                const walletId = paymentMethod.walletId || null;
+                const walletName = paymentMethod.walletName || '';
 
                 // Determinar el icono según el método
                 const getMethodIcon = (methodDesc) => {
                     const desc = (methodDesc || '').toLowerCase();
                     if (desc.includes('tarjeta') || desc.includes('card')) return 'fa-credit-card';
                     if (desc.includes('efectivo') || desc.includes('cash')) return 'fa-money-bill-wave';
-                    if (desc.includes('yape') || desc.includes('plin')) return 'fa-mobile-alt';
+                    if (desc.includes('yape') || desc.includes('plin') || desc.includes('billetera')) return 'fa-mobile-alt';
                     if (desc.includes('transferencia') || desc.includes('transfer')) return 'fa-exchange-alt';
                     return 'fa-wallet';
                 };
 
                 const methodIcon = getMethodIcon(methodName);
                 const hasCardInfo = isCard && gatewayName && cardName;
+                const hasWalletInfo = isWallet && walletName;
+
+                const walletInfo = isWallet ? `
+                    <div class="mb-2 rounded-lg border-2 ${hasWalletInfo ? 'border-emerald-200 bg-emerald-50' : 'border-orange-200 bg-orange-50'} p-2 dark:${hasWalletInfo ? 'border-emerald-800 bg-emerald-900/20' : 'border-orange-800 bg-orange-900/20'}">
+                        <div class="flex items-center justify-between">
+                            <p class="text-sm font-bold ${hasWalletInfo ? 'text-emerald-700 dark:text-emerald-400' : 'text-orange-700 dark:text-orange-400'} wallet-name-${index}">${walletName || 'Elegir billetera (Yape, Plin...)'}</p>
+                            <button type="button" class="select-wallet-btn ml-2 rounded-lg ${hasWalletInfo ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-orange-600 hover:bg-orange-700'} px-3 py-1.5 text-xs font-semibold text-white transition" data-index="${index}">
+                                <i class="fas fa-${hasWalletInfo ? 'edit' : 'plus'}"></i>
+                            </button>
+                        </div>
+                    </div>
+                ` : '';
 
                 const cardInfo = isCard ? `
                     <div class="mb-2 rounded-lg border-2 ${hasCardInfo ? 'border-green-200 bg-green-50' : 'border-orange-200 bg-orange-50'} p-2 dark:${hasCardInfo ? 'border-green-800 bg-green-900/20' : 'border-orange-800 bg-orange-900/20'}">
@@ -549,6 +610,7 @@
                                     <div class="flex-1">
                                         <p class="text-sm font-semibold text-gray-900 dark:text-white">${methodName || 'Seleccionar método'}</p>
                                         ${isCard && !hasCardInfo ? '<p class="text-xs text-orange-600 dark:text-orange-400 mt-0.5">Configurar pasarela y tarjeta</p>' : ''}
+                                        ${isWallet && !hasWalletInfo ? '<p class="text-xs text-orange-600 dark:text-orange-400 mt-0.5">Elegir billetera (Yape, Plin...)</p>' : ''}
                                     </div>
                                     <i class="fas fa-chevron-down text-xs text-gray-400"></i>
                                 </div>
@@ -557,6 +619,7 @@
                                 <i class="fas fa-times"></i>
                             </button>
                         </div>
+                        ${walletInfo}
                         ${cardInfo}
                         <div class="flex items-center gap-2">
                             <div class="relative flex-1">
@@ -614,7 +677,8 @@
                 }) || paymentMethods[0];
                 
                 const isCard = defaultMethod && (defaultMethod.description.toLowerCase().includes('tarjeta') || defaultMethod.description.toLowerCase().includes('card'));
-                
+                const descDef = (defaultMethod?.description || '').toLowerCase();
+                const isWallet = descDef.includes('billetera');
                 // Si es el primer método, usar el total completo; si no, usar lo que falta
                 const initialAmount = paymentMethodsData.length === 0 ? total : (remaining > 0 ? remaining : 0);
                 
@@ -622,11 +686,14 @@
                     methodId: defaultMethod?.id || null,
                     methodName: defaultMethod?.description || 'Seleccionar método',
                     isCard: isCard,
+                    isWallet: isWallet,
                     amount: initialAmount,
                     gatewayId: null,
                     cardId: null,
                     gatewayName: '',
-                    cardName: ''
+                    cardName: '',
+                    walletId: null,
+                    walletName: ''
                 };
                 
                 paymentMethodsData.push(newPaymentMethod);
@@ -682,30 +749,41 @@
                     const methodId = parseInt(this.dataset.methodId);
                     const methodName = this.dataset.methodName;
                     const isCard = this.dataset.isCard === '1';
+                    const isWallet = this.dataset.isWallet === '1';
                     
                     if (currentEditingIndex >= 0 && paymentMethodsData[currentEditingIndex]) {
                         paymentMethodsData[currentEditingIndex].methodId = methodId;
                         paymentMethodsData[currentEditingIndex].methodName = methodName;
                         paymentMethodsData[currentEditingIndex].isCard = isCard;
+                        paymentMethodsData[currentEditingIndex].isWallet = isWallet;
                         
-                        if (!isCard) {
-                            // Si no es tarjeta, limpiar datos de tarjeta
+                        if (isCard) {
+                            paymentMethodsData[currentEditingIndex].walletId = null;
+                            paymentMethodsData[currentEditingIndex].walletName = '';
+                            const savedIndex = currentEditingIndex;
+                            closePaymentMethodModal(false);
+                            currentEditingIndex = savedIndex;
+                            setTimeout(() => openCardModal(), 200);
+                        } else if (isWallet) {
                             paymentMethodsData[currentEditingIndex].gatewayId = null;
                             paymentMethodsData[currentEditingIndex].cardId = null;
                             paymentMethodsData[currentEditingIndex].gatewayName = '';
                             paymentMethodsData[currentEditingIndex].cardName = '';
-                            updatePaymentMethodsList();
-                            closePaymentMethodModal();
-                        } else {
-                            // Si es tarjeta, siempre abrir modal de pasarela/tarjeta
-                            // Guardar el índice antes de cerrar el modal
+                            paymentMethodsData[currentEditingIndex].walletId = null;
+                            paymentMethodsData[currentEditingIndex].walletName = '';
                             const savedIndex = currentEditingIndex;
                             closePaymentMethodModal(false);
-                            // Asegurarse de que el índice se mantenga
                             currentEditingIndex = savedIndex;
-                            setTimeout(() => {
-                                openCardModal();
-                            }, 200);
+                            setTimeout(() => openWalletModal(), 200);
+                        } else {
+                            paymentMethodsData[currentEditingIndex].gatewayId = null;
+                            paymentMethodsData[currentEditingIndex].cardId = null;
+                            paymentMethodsData[currentEditingIndex].gatewayName = '';
+                            paymentMethodsData[currentEditingIndex].cardName = '';
+                            paymentMethodsData[currentEditingIndex].walletId = null;
+                            paymentMethodsData[currentEditingIndex].walletName = '';
+                            updatePaymentMethodsList();
+                            closePaymentMethodModal();
                         }
                     }
                 });
@@ -752,6 +830,14 @@
                         const index = parseInt(this.dataset.index);
                         currentEditingIndex = index;
                         openCardModal();
+                    });
+                });
+                
+                paymentMethodsList.querySelectorAll('.select-wallet-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const index = parseInt(this.dataset.index);
+                        currentEditingIndex = index;
+                        openWalletModal();
                     });
                 });
                 
@@ -961,6 +1047,97 @@
                     selectedCardId = null;
                 } else {
                 }
+            });
+
+            // --- Modal billetera (Yape, Plin, etc.) ---
+            function openWalletModal() {
+                walletSelectionModal.classList.remove('hidden');
+                walletSelectionModal.classList.add('flex');
+                if (currentEditingIndex >= 0 && paymentMethodsData[currentEditingIndex]) {
+                    const pm = paymentMethodsData[currentEditingIndex];
+                    selectedWalletId = pm.walletId ? String(pm.walletId) : null;
+                } else {
+                    selectedWalletId = null;
+                }
+                const walletButtons = document.querySelectorAll('.wallet-btn');
+                walletButtons.forEach(b => {
+                    if (b.dataset.walletId && b.dataset.walletId == selectedWalletId) {
+                        b.classList.remove('border-gray-300', 'bg-gray-50');
+                        b.classList.add('border-emerald-500', 'bg-emerald-50');
+                        const checkIcon = b.querySelector('.fa-check-circle');
+                        if (checkIcon) checkIcon.classList.remove('hidden');
+                    } else {
+                        b.classList.remove('border-emerald-500', 'bg-emerald-50');
+                        b.classList.add('border-gray-300', 'bg-gray-50');
+                        const checkIcon = b.querySelector('.fa-check-circle');
+                        if (checkIcon) checkIcon.classList.add('hidden');
+                    }
+                });
+                setupWalletModalListeners();
+                updateWalletConfirmButton();
+            }
+
+            function closeWalletModal() {
+                walletSelectionModal.classList.add('hidden');
+                walletSelectionModal.classList.remove('flex');
+            }
+
+            function setupWalletModalListeners() {
+                if (walletModalListenersSetup) return;
+                walletModalListenersSetup = true;
+                walletSelectionModal.addEventListener('click', function(e) {
+                    if (e.target.closest('#confirm-wallet-selection') || e.target.closest('#cancel-wallet-selection') || e.target.closest('#close-wallet-modal')) return;
+                    const walletBtn = e.target.closest('.wallet-btn');
+                    if (walletBtn && walletBtn.dataset.walletId) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const walletButtons = document.querySelectorAll('.wallet-btn');
+                        walletButtons.forEach(b => {
+                            b.classList.remove('border-emerald-500', 'bg-emerald-50');
+                            b.classList.add('border-gray-300', 'bg-gray-50');
+                            const checkIcon = b.querySelector('.fa-check-circle');
+                            if (checkIcon) checkIcon.classList.add('hidden');
+                        });
+                        walletBtn.classList.remove('border-gray-300', 'bg-gray-50');
+                        walletBtn.classList.add('border-emerald-500', 'bg-emerald-50');
+                        const checkIcon = walletBtn.querySelector('.fa-check-circle');
+                        if (checkIcon) checkIcon.classList.remove('hidden');
+                        selectedWalletId = walletBtn.dataset.walletId;
+                        updateWalletConfirmButton();
+                    }
+                });
+            }
+
+            function updateWalletConfirmButton() {
+                if (confirmWalletSelection) {
+                    confirmWalletSelection.disabled = !selectedWalletId;
+                    if (selectedWalletId) {
+                        confirmWalletSelection.classList.remove('opacity-50', 'cursor-not-allowed');
+                    } else {
+                        confirmWalletSelection.classList.add('opacity-50', 'cursor-not-allowed');
+                    }
+                }
+            }
+
+            closeWalletModalBtn?.addEventListener('click', closeWalletModal);
+            cancelWalletSelection?.addEventListener('click', function() {
+                closeWalletModal();
+                currentEditingIndex = -1;
+            });
+            walletSelectionModal?.addEventListener('click', function(e) {
+                if (e.target === walletSelectionModal) closeWalletModal();
+            });
+            confirmWalletSelection?.addEventListener('click', function() {
+                if (!selectedWalletId || currentEditingIndex < 0) return;
+                const pm = paymentMethodsData[currentEditingIndex];
+                const walletButtons = document.querySelectorAll('.wallet-btn');
+                const walletBtn = Array.from(walletButtons).find(b => b.dataset.walletId == selectedWalletId);
+                pm.walletId = selectedWalletId;
+                pm.walletName = walletBtn ? (walletBtn.dataset.walletName || '') : '';
+                updatePaymentMethodsList();
+                closeWalletModal();
+                currentEditingIndex = -1;
+                selectedWalletId = null;
             });
 
             // Tipo de documento
@@ -1310,8 +1487,16 @@
                         if (!pm.gatewayId || !pm.cardId) {
                             showNotification('Error', `El método de pago "${pm.methodName}" requiere seleccionar pasarela y tarjeta`, 'error');
                             currentEditingIndex = i;
-                        openCardModal();
-                        return;
+                            openCardModal();
+                            return;
+                        }
+                    }
+                    if (pm.isWallet) {
+                        if (!pm.walletId || !pm.walletName) {
+                            showNotification('Error', `El método de pago "${pm.methodName}" requiere elegir billetera (Yape, Plin, etc.)`, 'error');
+                            currentEditingIndex = i;
+                            openWalletModal();
+                            return;
                         }
                     }
                 }
@@ -1434,6 +1619,7 @@
                         amount: parseFloat(pm.amount) || 0,
                         payment_gateway_id: pm.gatewayId ? parseInt(pm.gatewayId) : null,
                         card_id: pm.cardId ? parseInt(pm.cardId) : null,
+                        digital_wallet_id: pm.walletId ? parseInt(pm.walletId) : null,
                     })),
                     notes: document.getElementById('sale-notes')?.value || '',
                 };

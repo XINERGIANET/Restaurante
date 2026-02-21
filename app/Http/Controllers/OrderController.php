@@ -8,6 +8,7 @@ use App\Models\Card;
 use App\Models\CashMovements;
 use App\Models\CashRegister;
 use App\Models\Category;
+use App\Models\DigitalWallet;
 use App\Models\DocumentType;
 use App\Models\Movement;
 use App\Models\MovementType;
@@ -354,6 +355,11 @@ class OrderController extends Controller
             ->orderBy('order_num')
             ->get(['id', 'description', 'type', 'icon', 'order_num']);
 
+        $digitalWallets = DigitalWallet::query()
+            ->where('status', true)
+            ->orderBy('order_num')
+            ->get(['id', 'description', 'order_num']);
+
         // Si se pasa un movement_id, cargar la orden pendiente (pedido o venta)
         $draftOrder = null;
         $pendingAmount = 0;
@@ -443,6 +449,7 @@ class OrderController extends Controller
             'paymentMethods' => $paymentMethods,
             'paymentGateways' => $paymentGateways,
             'cards' => $cards,
+            'digitalWallets' => $digitalWallets,
             'draftOrder' => $draftOrder,
             'pendingAmount' => $pendingAmount,
             'products' => $products,
@@ -878,6 +885,9 @@ class OrderController extends Controller
                         $card = !empty($paymentMethodData['card_id'])
                             ? Card::find((int) $paymentMethodData['card_id'])
                             : null;
+                        $digitalWallet = !empty($paymentMethodData['digital_wallet_id'])
+                            ? DigitalWallet::find((int) $paymentMethodData['digital_wallet_id'])
+                            : null;
 
                         DB::table('cash_movement_details')->insert([
                             'cash_movement_id' => $cashMovement->id,
@@ -890,8 +900,8 @@ class OrderController extends Controller
                             'card' => $card?->description,
                             'bank_id' => null,
                             'bank' => null,
-                            'digital_wallet_id' => null,
-                            'digital_wallet' => null,
+                            'digital_wallet_id' => $digitalWallet?->id,
+                            'digital_wallet' => $digitalWallet?->description,
                             'payment_gateway_id' => $paymentGateway?->id,
                             'payment_gateway' => $paymentGateway?->description,
                             'amount' => (float) ($paymentMethodData['amount'] ?? 0),

@@ -1,416 +1,350 @@
 @extends('layouts.app')
 
 @section('content')
-    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4">
-        {{-- Header Compacto --}}
-        <div class="mb-4">
-            <div class="flex items-center justify-between">
-                <h1 class="text-xl font-bold text-gray-900 dark:text-white">Cobrar Venta</h1>
-                <a href="{{ route('sales.create') }}"
-                    class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">
-                    <i class="fas fa-arrow-left text-xs"></i>
-                    Volver
-                </a>
+    @php
+        $viewId = request('view_id');
+        $backUrl = route('sales.create', $viewId ? ['view_id' => $viewId] : []);
+    @endphp
+    {{-- Mismo diseño que orders/charge --}}
+    <div class="min-h-screen bg-white dark:bg-gray-900 py-4 sm:py-5">
+        <div class="mx-auto max-w-7xl px-3 sm:px-5 lg:px-7">
+            <div class="rounded-2xl border border-slate-200/90 bg-white dark:border-gray-700 dark:bg-gray-800 shadow-xl shadow-slate-300/30 dark:shadow-black/30 overflow-hidden min-h-[calc(100vh-120px)] flex flex-col">
+                {{-- Header azul --}}
+                <div class="flex items-center justify-between bg-blue-600 text-white gap-3 px-4 sm:px-6 py-4 border-b border-slate-200 dark:bg-gray-800/80 shrink-0">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="min-w-0">
+                            <h1 class="text-lg font-bold leading-tight text-white truncate">Cobrar Venta</h1>
+                            <p class="text-sm text-white/95 leading-tight truncate">Cliente y caja</p>
+                        </div>
+                    </div>
+                    <a id="back-to-sales-link" href="{{ $backUrl }}"
+                        class="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700 shadow-sm transition hover:bg-blue-100 hover:border-blue-300 hover:text-blue-800 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50">
+                        <i class="ri-arrow-left-line text-lg"></i>
+                    </a>
+                </div>
+
+                <div class="grid grid-cols-1 gap-4 lg:grid-cols-3 flex-1 p-4 sm:p-6 min-h-0 overflow-hidden bg-white dark:bg-transparent">
+                    {{-- COLUMNA IZQUIERDA --}}
+                    <div class="lg:col-span-2 flex flex-col gap-3 overflow-hidden">
+                        {{-- Barra Cliente + Caja --}}
+                        <div class="flex items-center gap-3 rounded-xl border border-blue-100 bg-blue-50/60 px-4 py-2.5 dark:border-gray-600 dark:bg-gray-800 shrink-0 shadow-sm">
+                            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400">
+                                <i class="fas fa-user text-xs"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-[10px] uppercase tracking-wider font-medium text-gray-400 dark:text-gray-500 leading-none mb-0.5">Cliente</p>
+                                <select id="client-id" class="w-full text-sm font-semibold text-gray-900 dark:text-white truncate bg-transparent border-0 p-0 focus:ring-0 cursor-pointer">
+                                    @foreach ($people as $person)
+                                        <option value="{{ $person->id }}" @selected((int) $person->id === (int) $defaultClientId)>{{ trim(($person->document_number ?? '') . ' - ' . ($person->first_name ?? '') . ' ' . ($person->last_name ?? '')) }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="h-6 w-px bg-gray-300 dark:bg-gray-600 shrink-0"></div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-[10px] uppercase tracking-wider font-medium text-gray-400 dark:text-gray-500 leading-none mb-0.5">Caja</p>
+                                <select id="cash-register-id" class="w-full text-sm font-semibold text-gray-900 dark:text-white truncate bg-transparent border-0 p-0 focus:ring-0 cursor-pointer">
+                                    @foreach ($cashRegisters as $cashRegister)
+                                        <option value="{{ $cashRegister->id }}" @selected($cashRegister->status === 'A')>{{ $cashRegister->number }}{{ $cashRegister->status === 'A' ? ' (Activa)' : '' }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+
+                        {{-- Lista de productos --}}
+                        <div class="rounded-xl border border-indigo-100 bg-indigo-50/40 dark:border-gray-600 dark:bg-gray-800 flex-1 flex flex-col min-h-0 overflow-hidden shadow-sm">
+                            <div class="px-4 py-3 border-b border-indigo-100 dark:border-gray-700 flex items-center justify-between shrink-0 bg-indigo-100/50 dark:bg-gray-800/80">
+                                <div class="flex items-center gap-2">
+                                    <i class="fas fa-shopping-bag text-sm text-blue-600 dark:text-blue-400"></i>
+                                    <h2 class="text-sm font-semibold text-gray-800 dark:text-white">Detalle de la venta</h2>
+                                </div>
+                                <span class="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-bold text-blue-700 dark:bg-blue-900/50 dark:text-blue-300" id="items-count">0 ítems</span>
+                            </div>
+                            <div id="items-list" class="flex-1 overflow-y-auto custom-scrollbar px-3 py-2 space-y-1.5 bg-white/80 dark:bg-gray-900/40">
+                                <div class="flex flex-col items-center justify-center py-10 text-center">
+                                    <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-200 dark:bg-gray-700">
+                                        <i class="fas fa-shopping-cart text-xl text-slate-400 dark:text-gray-500"></i>
+                                    </div>
+                                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">No hay productos en la venta</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Notas --}}
+                        <div class="rounded-xl border border-emerald-100 bg-emerald-50/35 p-3 dark:border-gray-600 dark:bg-gray-800 shadow-sm">
+                            <label for="sale-notes" class="mb-1.5 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                                <i class="fas fa-sticky-note text-[11px]"></i> Notas <span class="normal-case font-normal text-gray-400">(Opcional)</span>
+                            </label>
+                            <textarea id="sale-notes" rows="2" placeholder="Ej: Cliente pagó con billete de 50..."
+                                class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-gray-900 placeholder-gray-400 transition focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-500 dark:focus:border-blue-400 dark:focus:bg-gray-600"></textarea>
+                        </div>
+                    </div>
+
+                    {{-- COLUMNA DERECHA --}}
+                    <div class="flex flex-col gap-3 lg:sticky lg:top-4 lg:max-h-[calc(100vh-180px)] min-h-0 lg:border-l lg:border-slate-200/80 lg:pl-3 dark:lg:border-gray-700">
+                        <div class="flex-1 min-h-0 overflow-y-auto space-y-3 custom-scrollbar pr-0.5">
+                            {{-- Resumen --}}
+                            <div class="rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50 to-slate-50 p-4 dark:border-blue-800/50 dark:from-blue-950/60 dark:to-slate-900/80 shadow-sm">
+                                <div class="flex items-center justify-between mb-3">
+                                    <h3 class="text-xs font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400">Resumen</h3>
+                                    <i class="fas fa-calculator text-blue-600 dark:text-blue-400 text-sm"></i>
+                                </div>
+                                <div class="space-y-2">
+                                    <div class="flex justify-between items-center text-sm">
+                                        <span class="text-gray-500 dark:text-gray-400">Subtotal</span>
+                                        <span class="font-semibold text-gray-800 dark:text-gray-200" id="subtotal">S/0.00</span>
+                                    </div>
+                                    <div class="flex justify-between items-center text-sm">
+                                        <span class="text-gray-500 dark:text-gray-400">Impuestos</span>
+                                        <span class="font-semibold text-gray-800 dark:text-gray-200" id="tax">S/0.00</span>
+                                    </div>
+                                    <div class="mt-1 pt-2.5 border-t border-blue-200 dark:border-blue-800/50">
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-base font-bold text-gray-900 dark:text-white">Total a pagar</span>
+                                            <span class="text-2xl font-extrabold text-blue-600 dark:text-blue-400 tabular-nums" id="total">S/0.00</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- Comprobante --}}
+                            <div class="rounded-xl border border-violet-100 bg-violet-50/40 p-3 dark:border-gray-600 dark:bg-gray-800 shadow-sm">
+                                <p class="mb-2 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Comprobante</p>
+                                <div class="flex flex-wrap gap-2">
+                                    @foreach ($documentTypes as $index => $documentType)
+                                        <button type="button"
+                                            class="doc-type-btn {{ $index === 0 ? 'doc-active' : '' }} inline-flex items-center gap-1 rounded-lg border-2 px-3 py-1.5 text-xs font-semibold transition {{ $index === 0 ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-600' : 'border-slate-200 bg-slate-50 text-gray-600 hover:border-blue-400 hover:bg-blue-50/80 hover:text-blue-700 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:border-blue-500 dark:hover:bg-blue-900/30' }}"
+                                            data-doc-type="{{ strtolower($documentType->name) }}" data-doc-id="{{ $documentType->id }}">
+                                            <i class="fas fa-file-alt text-[11px]"></i>
+                                            {{ $documentType->name }}
+                                        </button>
+                                    @endforeach
+                                </div>
+                                <input type="hidden" id="document-type-id" name="document_type_id" value="{{ $documentTypes->first()?->id ?? '' }}">
+                            </div>
+
+                            {{-- Métodos de Pago --}}
+                            <div class="rounded-xl border border-cyan-100 bg-cyan-50/35 p-3 dark:border-gray-600 dark:bg-gray-800 shadow-sm">
+                                <div class="mb-3 flex items-center justify-between">
+                                    <p class="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Método de pago</p>
+                                    <button type="button" id="add-payment-method-btn"
+                                        class="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700 active:scale-95 dark:bg-blue-700 dark:hover:bg-blue-600">
+                                        <i class="fas fa-plus text-[10px]"></i> Agregar
+                                    </button>
+                                </div>
+                                <div id="payment-methods-list" class="space-y-2"></div>
+                                <div id="payment-summary" class="mt-3 rounded-lg border border-slate-200 bg-slate-100/80 px-3 py-2.5 dark:bg-gray-700/50 dark:border-gray-600">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-xs font-semibold text-gray-600 dark:text-gray-300">Total pagado</span>
+                                        <span class="text-base font-bold text-gray-900 dark:text-white tabular-nums" id="total-paid">S/0.00</span>
+                                    </div>
+                                    <div id="payment-remaining" class="hidden mt-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-1.5 dark:bg-amber-900/20 dark:border-amber-800/50">
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-xs font-semibold text-amber-700 dark:text-amber-400"><i class="fas fa-exclamation-circle mr-1 text-[10px]"></i>Falta pagar</span>
+                                            <span class="text-sm font-bold text-amber-700 dark:text-amber-400 tabular-nums" id="remaining-amount">S/0.00</span>
+                                        </div>
+                                    </div>
+                                    <div id="payment-excess" class="hidden mt-2 rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-1.5 dark:bg-emerald-900/20 dark:border-emerald-800/50">
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-xs font-semibold text-emerald-600 dark:text-emerald-400"><i class="fas fa-check-circle mr-1 text-[10px]"></i>Vuelto</span>
+                                            <span class="text-sm font-bold text-emerald-600 dark:text-emerald-400 tabular-nums" id="excess-amount">S/0.00</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="button" id="confirm-btn"
+                            class="w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-blue-500/30 transition hover:bg-blue-700 active:scale-[.98] dark:bg-blue-700 dark:shadow-blue-900/40 dark:hover:bg-blue-600 shrink-0">
+                            <i class="fas fa-check-circle mr-2"></i>
+                            Confirmar y Cobrar
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
+    </div>
 
-        <div class="grid grid-cols-1 gap-4 lg:grid-cols-3" style="height: calc(100vh - 160px);">
-            {{-- Columna Izquierda: Resumen --}}
-            <div class="lg:col-span-2 flex flex-col gap-3 overflow-hidden">
-                                {{-- Cliente y Caja --}}
-                <div class="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800 shrink-0">
-                    <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-                        <div>
-                            <label for="client-id" class="mb-2 block text-xs font-semibold text-gray-900 dark:text-white">Cliente</label>
-                            <select id="client-id"
-                                class="w-full rounded-lg border border-gray-300 bg-gray-50 px-2.5 py-2 text-xs text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400">
-                                @foreach ($people as $person)
-                                    <option value="{{ $person->id }}" @selected((int) $person->id === (int) $defaultClientId)>{{ trim(($person->document_number ?? '') . ' - ' .($person->first_name ?? '') . ' ' . ($person->last_name ?? '')) }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div>
-                            <label for="cash-register-id" class="mb-2 block text-xs font-semibold text-gray-900 dark:text-white">Caja</label>
-                            <select id="cash-register-id"
-                                class="w-full rounded-lg border border-gray-300 bg-gray-50 px-2.5 py-2 text-xs text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400">
-                                @foreach ($cashRegisters as $cashRegister)
-                                    <option value="{{ $cashRegister->id }}" @selected($cashRegister->status === 'A')>
-                                        {{ $cashRegister->number }}{{ $cashRegister->status === 'A' ? ' (Activa)' : '' }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
+    {{-- Modal: Método de Pago (efectivo, billeteras, transferencia, tarjeta, etc.) --}}
+    <div id="payment-method-selection-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+        <div class="flex h-max max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl shadow-slate-300/50 dark:bg-gray-800 dark:shadow-black/30 border border-slate-200/80 dark:border-gray-700">
+            <div class="flex shrink-0 items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-gray-700">
+                <div class="flex items-center gap-2">
+                    <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/40">
+                        <i class="fas fa-wallet text-blue-600 dark:text-blue-400 text-sm"></i>
                     </div>
+                    <h3 class="text-base font-bold text-gray-900 dark:text-white">Método de pago</h3>
                 </div>
-
-                {{-- Productos --}}
-                <div
-                    class="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800 flex-1 flex flex-col min-h-0 overflow-hidden">
-                    <div class="mb-2 flex items-center justify-between shrink-0">
-                        <h2 class="text-base font-semibold text-gray-900 dark:text-white">Productos</h2>
-                        <span
-                            class="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-                            id="items-count">0 items</span>
-                    </div>
-                    <div id="items-list" class="space-y-1.5 flex-1 overflow-y-auto pr-1 custom-scrollbar">
-                        <div class="rounded-lg border border-dashed border-gray-300 p-6 text-center dark:border-gray-600">
-                            <i class="fas fa-shopping-cart mb-2 text-2xl text-gray-400"></i>
-                            <p class="text-xs text-gray-500 dark:text-gray-400">No hay productos en la orden</p>
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Totales --}}
-                <div
-                    class="rounded-lg border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100 p-3 dark:border-blue-800 dark:from-blue-900/20 dark:to-blue-800/20 shrink-0">
-                    <h3 class="mb-2 text-sm font-semibold text-gray-900 dark:text-white">Resumen</h3>
-                    <div class="space-y-1.5">
-                        <div class="flex justify-between text-xs">
-                            <span class="text-gray-600 dark:text-gray-400">Subtotal</span>
-                            <span class="font-semibold text-gray-900 dark:text-white" id="subtotal">S/0.00</span>
-                        </div>
-                        <div class="flex justify-between text-xs">
-                            <span class="text-gray-600 dark:text-gray-400">IGV</span>
-                            <span class="font-semibold text-gray-900 dark:text-white" id="tax">S/0.00</span>
-                        </div>
-                        <div class="border-t border-blue-300 pt-1.5 dark:border-blue-700">
-                            <div class="flex justify-between">
-                                <span class="text-sm font-semibold text-gray-900 dark:text-white">Total</span>
-                                <span class="text-xl font-bold text-blue-600 dark:text-blue-400"
-                                    id="total">S/0.00</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {{-- Columna Derecha: Pago (Sticky) --}}
-            <div class="flex flex-col gap-3 lg:sticky lg:top-4 h-fit max-h-[calc(100vh-80px)] overflow-y-auto custom-scrollbar">
-                {{-- Tipo de Documento --}}
-                <div class="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
-                    <label class="mb-2 block text-xs font-semibold text-gray-900 dark:text-white">Tipo de Documento</label>
-                    <div class="grid grid-cols-3 gap-1.5">
-                        @foreach ($documentTypes as $index => $documentType)
-                            <button type="button"
-                                class="doc-type-btn {{ $index === 0 ? 'doc-active' : '' }} w-full rounded-lg border-2 {{ $index === 0 ? 'border-blue-500 bg-blue-50' : 'border-gray-300 bg-gray-50' }} p-2 text-left transition hover:bg-blue-100 dark:border-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600"
-                                data-doc-type="{{ strtolower($documentType->name) }}" data-doc-id="{{ $documentType->id }}">
-                                <div class="flex items-center gap-2">
-                                    <i
-                                        class="fas fa-file-alt text-base {{ $index === 0 ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400' }}"></i>
-                                    <div class="flex-1">
-                                        <div class="text-sm font-semibold text-gray-900 dark:text-white">
-                                            {{ $documentType->name }}</div>
-                                    </div>
-                                    <i
-                                        class="fas fa-check-circle text-sm {{ $index === 0 ? 'text-blue-600 dark:text-blue-400' : 'hidden text-blue-600 dark:text-blue-400' }}"></i>
-                                </div>
-                            </button>
-                        @endforeach
-                    </div>
-                    <input type="hidden" id="document-type-id" name="document_type_id"
-                        value="{{ $documentTypes->first()?->id ?? '' }}">
-                </div>
-
-                {{-- Métodos de Pago Múltiples --}}
-                <div class="rounded-lg border border-gray-200 p-3 dark:border-gray-700 dark:bg-gray-800">
-                    <div class="mb-3 flex items-center justify-between">
-                        <label class="block text-sm font-semibold text-gray-900 dark:text-white">Métodos de Pago</label>
-                        <button type="button" id="add-payment-method-btn"
-                            class="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-700">
-                            <i class="fas fa-plus mr-1"></i> Agregar
-                            </button>
-                    </div>
-                    <div id="payment-methods-list" class="space-y-3">
-                        {{-- Los métodos de pago se agregarán dinámicamente aquí --}}
-                            </div>
-                    {{-- Resumen de pagos --}}
-                    <div id="payment-summary" class="mt-3 rounded-lg border-2 border-gray-200 bg-gray-50 p-3 dark:border-gray-600 dark:bg-gray-700">
-                        <div class="flex justify-between items-center mb-2">
-                            <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">Total pagado:</span>
-                            <span class="text-lg font-bold text-gray-900 dark:text-white" id="total-paid">S/0.00</span>
-                        </div>
-                        <div id="payment-remaining" class="mt-2 hidden rounded-lg bg-orange-50 p-2 dark:bg-orange-900/20">
-                            <div class="flex justify-between items-center">
-                                <span class="text-xs font-semibold text-orange-700 dark:text-orange-400">Falta pagar:</span>
-                                <span class="text-sm font-bold text-orange-700 dark:text-orange-400" id="remaining-amount">S/0.00</span>
-                            </div>
-                        </div>
-                        <div id="payment-excess" class="mt-2 hidden rounded-lg bg-green-50 p-2 dark:bg-green-900/20">
-                            <div class="flex justify-between items-center">
-                                <span class="text-xs font-semibold text-green-700 dark:text-green-400">Vuelto a devolver:</span>
-                                <span class="text-sm font-bold text-green-700 dark:text-green-400" id="excess-amount">S/0.00</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Notas --}}
-                <div class="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
-                    <label for="sale-notes" class="mb-1.5 block text-xs font-semibold text-gray-900 dark:text-white">Notas
-                        (Opcional)</label>
-                    <textarea id="sale-notes" rows="2" placeholder="Ej: Cliente pagó con billete de 50..."
-                        class="w-full rounded-lg border border-gray-300 bg-gray-50 px-2.5 py-1.5 text-xs text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400"></textarea>
-                </div>
-
-                {{-- Botón Confirmar (Siempre visible) --}}
-                <button type="button" id="confirm-btn"
-                    class="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:bg-blue-700 active:scale-95 dark:bg-blue-700 dark:hover:bg-blue-800 shrink-0">
-                    <i class="fas fa-check-circle mr-1.5"></i>
-                    Confirmar y Cobrar
+                <button type="button" id="close-payment-method-modal" class="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-200">
+                    <i class="fas fa-times text-sm"></i>
                 </button>
             </div>
-        </div>
-
-        {{-- Modal para seleccionar método de pago --}}
-        <div id="payment-method-selection-modal"
-            class="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-50">
-            <div class="mx-4 w-full max-w-2xl rounded-lg bg-white shadow-xl dark:bg-gray-800">
-                <div class="border-b border-gray-200 px-6 py-4 dark:border-gray-700">
-                    <div class="flex items-center justify-between">
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Seleccionar Método de Pago</h3>
-                        <button type="button" id="close-payment-method-modal"
-                            class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                            <i class="fas fa-times"></i>
+            <div class="min-h-0 max-h-[50vh] overflow-y-auto px-5 py-4 custom-scrollbar">
+                <div class="grid grid-cols-2 gap-2.5">
+                    @foreach ($paymentMethods as $paymentMethod)
+                        @php
+                            $desc = strtolower($paymentMethod->description);
+                            $isCard = (str_contains($desc, 'tarjeta') || str_contains($desc, 'card')) && !str_contains($desc, 'billetera');
+                            $isWallet = str_contains($desc, 'billetera');
+                            $icon = $isCard ? 'fa-credit-card' : (str_contains($desc, 'efectivo') || str_contains($desc, 'cash') ? 'fa-money-bill-wave' : (str_contains($desc, 'yape') || str_contains($desc, 'plin') ? 'fa-mobile-alt' : (str_contains($desc, 'transfer') ? 'fa-exchange-alt' : 'fa-wallet')));
+                        @endphp
+                        <button type="button"
+                            class="pm-selection-btn group flex items-center gap-3 rounded-xl border-2 border-gray-200 bg-gray-50 p-3.5 text-left transition hover:border-blue-500 hover:bg-blue-50 dark:border-gray-600 dark:bg-gray-700/60 dark:hover:border-blue-500 dark:hover:bg-blue-900/20"
+                            data-method-id="{{ $paymentMethod->id }}"
+                            data-method-name="{{ $paymentMethod->description }}"
+                            data-is-card="{{ $isCard ? '1' : '0' }}"
+                            data-is-wallet="{{ $isWallet ? '1' : '0' }}">
+                            <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm dark:bg-gray-700 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/40 transition">
+                                <i class="fas {{ $icon }} text-gray-500 dark:text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition"></i>
+                            </div>
+                            <span class="flex-1 text-sm font-semibold text-gray-800 dark:text-white">{{ $paymentMethod->description }}</span>
+                            <i class="fas fa-check-circle hidden text-blue-600 dark:text-blue-400 text-sm"></i>
                         </button>
-                    </div>
+                    @endforeach
                 </div>
-                <div class="px-6 py-4 max-h-[60vh] overflow-y-auto custom-scrollbar">
-                    <div class="grid grid-cols-2 gap-3">
-                        @foreach ($paymentMethods as $paymentMethod)
-                            @php
-                                $isCard = str_contains(strtolower($paymentMethod->description), 'tarjeta') || 
-                                         str_contains(strtolower($paymentMethod->description), 'card');
-                                $icon = $isCard ? 'fa-credit-card' : 
-                                       (str_contains(strtolower($paymentMethod->description), 'efectivo') || str_contains(strtolower($paymentMethod->description), 'cash') ? 'fa-money-bill-wave' :
-                                       (str_contains(strtolower($paymentMethod->description), 'yape') || str_contains(strtolower($paymentMethod->description), 'plin') ? 'fa-mobile-alt' : 'fa-wallet'));
-                            @endphp
+            </div>
+        </div>
+    </div>
+
+    {{-- Modal: Pasarela y Tarjeta --}}
+    <div id="card-selection-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+        <div class="flex h-max max-h-[85vh] w-full max-w-md flex-col rounded-2xl bg-white shadow-2xl shadow-slate-300/50 dark:bg-gray-800 dark:shadow-black/30 border border-slate-200/80 dark:border-gray-700 overflow-hidden">
+            <div class="flex shrink-0 items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-gray-700">
+                <div class="flex items-center gap-2">
+                    <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/40">
+                        <i class="fas fa-credit-card text-blue-600 dark:text-blue-400 text-sm"></i>
+                    </div>
+                    <h3 class="text-base font-bold text-gray-900 dark:text-white">Pasarela y Tarjeta</h3>
+                </div>
+                <button type="button" id="close-card-modal" class="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-200">
+                    <i class="fas fa-times text-sm"></i>
+                </button>
+            </div>
+            <div class="min-h-0 max-h-[50vh] overflow-y-auto px-5 py-4 space-y-5 custom-scrollbar">
+                <div>
+                    <p class="mb-2.5 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Pasarela de pago</p>
+                    <div class="flex gap-2 overflow-x-auto custom-scrollbar pb-1">
+                        @foreach ($paymentGateways as $gateway)
                             <button type="button"
-                                class="pm-selection-btn rounded-lg border-2 border-gray-300 bg-gray-50 p-4 text-left transition hover:bg-blue-50 hover:border-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600"
-                                data-method-id="{{ $paymentMethod->id }}"
-                                data-method-name="{{ $paymentMethod->description }}"
-                                data-is-card="{{ $isCard ? '1' : '0' }}">
-                                <div class="flex items-center gap-3">
-                                    <i class="fas {{ $icon }} text-2xl text-gray-600 dark:text-gray-400"></i>
-                                    <div class="flex-1">
-                                        <div class="text-sm font-semibold text-gray-900 dark:text-white">
-                                            {{ $paymentMethod->description }}
-                                        </div>
-                                    </div>
-                                    <i class="fas fa-check-circle text-sm hidden text-blue-600 dark:text-blue-400"></i>
-                                </div>
+                                class="gateway-btn inline-flex shrink-0 items-center gap-2 rounded-xl border-2 border-gray-200 bg-gray-50 px-3.5 py-2.5 text-left transition hover:border-blue-500 hover:bg-blue-50 dark:border-gray-600 dark:bg-gray-700/60 dark:hover:border-blue-500 dark:hover:bg-blue-900/20"
+                                data-gateway-id="{{ $gateway->id }}" data-gateway-name="{{ $gateway->description }}">
+                                <i class="fas fa-building-columns text-sm text-gray-500 dark:text-gray-400"></i>
+                                <span class="text-sm font-semibold text-gray-800 dark:text-white whitespace-nowrap">{{ $gateway->description }}</span>
+                                <i class="fas fa-check-circle hidden text-blue-600 dark:text-blue-400 text-xs"></i>
                             </button>
                         @endforeach
                     </div>
                 </div>
-            </div>
-        </div>
-
-        {{-- Modal para seleccionar pasarela de pago y tarjeta --}}
-        <div id="card-selection-modal"
-            class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-50">
-            <div class="mx-4 w-full max-w-md rounded-lg bg-white shadow-xl dark:bg-gray-800">
-                <div class="border-b border-gray-200 px-6 py-4 dark:border-gray-700">
-                    <div class="flex items-center justify-between">
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Seleccionar Pasarela y Tarjeta</h3>
-                        <button type="button" id="close-card-modal"
-                            class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                </div>
-                <div class="px-6 py-4">
-                    {{-- Pasarelas de Pago --}}
-                    <div class="mb-4">
-                        <label class="mb-2 block text-sm font-semibold text-gray-900 dark:text-white">
-                            Pasarela de Pago
-                        </label>
-
-                        <div class="flex gap-3 overflow-x-auto custom-scrollbar pb-2">
-                            @foreach ($paymentGateways as $gateway)
+                <div>
+                    <p class="mb-2.5 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Tipo de tarjeta</p>
+                    @if($cards->where('type', 'C')->count())
+                        <p class="mb-1.5 text-xs font-medium text-gray-400 dark:text-gray-500">Crédito</p>
+                        <div class="flex gap-2 overflow-x-auto custom-scrollbar pb-2 mb-3">
+                            @foreach ($cards->where('type', 'C') as $card)
                                 <button type="button"
-                                    class="gateway-btn min-w-[220px] rounded-lg border-2 border-gray-300 bg-gray-50 p-3 text-left transition hover:bg-blue-50
-                                       dark:border-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600"
-                                    data-gateway-id="{{ $gateway->id }}"
-                                    data-gateway-name="{{ $gateway->description }}">
-                                    <div class="flex items-center gap-2">
-                                        <i class="fas fa-credit-card text-base text-gray-600 dark:text-gray-400"></i>
-
-                                        <div class="flex-1">
-                                            <div class="text-sm font-semibold text-gray-900 dark:text-white">
-                                                {{ $gateway->description }}
-                                            </div>
-                                        </div>
-
-                                        <i class="fas fa-check-circle text-sm hidden text-blue-600 dark:text-blue-400"></i>
-                                    </div>
+                                    class="card-btn inline-flex shrink-0 items-center gap-2 rounded-xl border-2 border-gray-200 bg-gray-50 px-3.5 py-2.5 transition hover:border-blue-500 hover:bg-blue-50 dark:border-gray-600 dark:bg-gray-700/60 dark:hover:border-blue-500 dark:hover:bg-blue-900/20"
+                                    data-card-id="{{ $card->id }}" data-card-name="{{ $card->description }}">
+                                    <i class="{{ $card->icon ?: 'fas fa-credit-card' }} text-sm text-gray-500 dark:text-gray-400"></i>
+                                    <span class="text-sm font-semibold text-gray-800 dark:text-white whitespace-nowrap">{{ $card->description }}</span>
+                                    <i class="fas fa-check-circle hidden text-blue-600 dark:text-blue-400 text-xs"></i>
                                 </button>
                             @endforeach
                         </div>
-                    </div>
-                    {{-- Tarjetas --}}
-                    <div>
-                        <label class="mb-3 block text-sm font-semibold text-gray-900 dark:text-white">
-                            Tipo de Tarjeta
-                        </label>
-
-                        {{-- Tarjetas de Crédito --}}
-                        <div class="mb-4">
-                            <label class="mb-2 block text-xs font-medium text-gray-600 dark:text-gray-400">
-                                Crédito
-                            </label>
-                            <div class="flex gap-3 overflow-x-auto items-center custom-scrollbar pb-2">
-                                @foreach ($cards as $card)
-                                    @if ($card->type == 'C')
-                                        <button type="button"
-                                            class="card-btn min-w-[220px] rounded-lg border-2 border-gray-300 bg-gray-50 p-3 text-left transition hover:bg-blue-50 dark:border-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600"
-                                            data-card-id="{{ $card->id }}" data-card-name="{{ $card->description }}">
-                                            <div class="flex items-center gap-2">
-                                                @if ($card->icon)
-                                                    <i class="{{ $card->icon }} text-base text-gray-600 dark:text-gray-400"></i>
-                                                @else
-                                                    <i class="fas fa-credit-card text-base text-gray-600 dark:text-gray-400"></i>
-                                                @endif
-                                                <div class="flex-1">
-                                                    <div class="text-sm font-semibold text-gray-900 dark:text-white">
-                                                        {{ $card->description }}
-                                                    </div>
-                                                </div>
-                                                <i class="fas fa-check-circle text-sm hidden text-blue-600 dark:text-blue-400"></i>
-                                            </div>
-                                        </button>
-                                    @endif
-                                @endforeach
-                            </div>
+                    @endif
+                    @if($cards->where('type', 'D')->count())
+                        <p class="mb-1.5 text-xs font-medium text-gray-400 dark:text-gray-500">Débito</p>
+                        <div class="flex gap-2 overflow-x-auto custom-scrollbar pb-1">
+                            @foreach ($cards->where('type', 'D') as $card)
+                                <button type="button"
+                                    class="card-btn inline-flex shrink-0 items-center gap-2 rounded-xl border-2 border-gray-200 bg-gray-50 px-3.5 py-2.5 transition hover:border-blue-500 hover:bg-blue-50 dark:border-gray-600 dark:bg-gray-700/60 dark:hover:border-blue-500 dark:hover:bg-blue-900/20"
+                                    data-card-id="{{ $card->id }}" data-card-name="{{ $card->description }}">
+                                    <i class="{{ $card->icon ?: 'fas fa-credit-card' }} text-sm text-gray-500 dark:text-gray-400"></i>
+                                    <span class="text-sm font-semibold text-gray-800 dark:text-white whitespace-nowrap">{{ $card->description }}</span>
+                                    <i class="fas fa-check-circle hidden text-blue-600 dark:text-blue-400 text-xs"></i>
+                                </button>
+                            @endforeach
                         </div>
-
-                        {{-- Tarjetas de Débito --}}
-                        <div>
-                            <label class="mb-2 block text-xs font-medium text-gray-600 dark:text-gray-400">
-                                Débito
-                            </label>
-                            <div class="flex gap-3 overflow-x-auto items-center custom-scrollbar pb-2">
-                                @foreach ($cards as $card)
-                                    @if ($card->type == 'D')
-                                        <button type="button"
-                                            class="card-btn min-w-[220px] rounded-lg border-2 border-gray-300 bg-gray-50 p-3 text-left transition hover:bg-blue-50 dark:border-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600"
-                                            data-card-id="{{ $card->id }}" data-card-name="{{ $card->description }}">
-                                            <div class="flex items-center gap-2">
-                                                @if ($card->icon)
-                                                    <i class="{{ $card->icon }} text-base text-gray-600 dark:text-gray-400"></i>
-                                                @else
-                                                    <i class="fas fa-credit-card text-base text-gray-600 dark:text-gray-400"></i>
-                                                @endif
-                                                <div class="flex-1">
-                                                    <div class="text-sm font-semibold text-gray-900 dark:text-white">
-                                                        {{ $card->description }}
-                                                    </div>
-                                                </div>
-                                                <i class="fas fa-check-circle text-sm hidden text-blue-600 dark:text-blue-400"></i>
-                                            </div>
-                                        </button>
-                                    @endif
-                                @endforeach
-                            </div>
-                        </div>
-                    </div>
+                    @endif
                 </div>
-                <div class="border-t border-gray-200 px-6 py-4 dark:border-gray-700">
-                    <div class="flex justify-end gap-2">
-                        <button type="button" id="cancel-card-selection"
-                            class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">
-                            Cancelar
-                        </button>
-                        <button type="button" id="confirm-card-selection"
-                            class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800"
-                            disabled>
-                            Confirmar
-                        </button>
-                    </div>
-                </div>
+            </div>
+            <div class="flex shrink-0 justify-end gap-2 border-t border-slate-100 px-5 py-3 dark:border-gray-700">
+                <button type="button" id="cancel-card-selection" class="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 transition hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">Cancelar</button>
+                <button type="button" id="confirm-card-selection" class="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-blue-700 dark:hover:bg-blue-600" disabled>Confirmar</button>
             </div>
         </div>
-
     </div>
 
-    {{-- Notificación del sistema --}}
-    <div id="payment-notification" 
-        class="fixed top-24 right-8 z-50 transform transition-all duration-500 translate-x-[150%] opacity-0">
-        <div id="notification-content" class="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-4 rounded-xl shadow-2xl border border-blue-400/30 backdrop-blur-sm flex items-center gap-4 min-w-[320px]">
-            <div class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-                <i id="notification-icon" class="fas fa-info-circle text-2xl"></i>
+    {{-- Modal: Elegir billetera (Yape, Plin, etc.) --}}
+    <div id="wallet-selection-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+        <div class="flex h-max max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl shadow-slate-300/50 dark:bg-gray-800 dark:shadow-black/30 border border-slate-200/80 dark:border-gray-700">
+            <div class="flex shrink-0 items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-gray-700">
+                <div class="flex items-center gap-2">
+                    <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/40">
+                        <i class="fas fa-mobile-alt text-emerald-600 dark:text-emerald-400 text-sm"></i>
+                    </div>
+                    <h3 class="text-base font-bold text-gray-900 dark:text-white">Elegir billetera</h3>
+                </div>
+                <button type="button" id="close-wallet-modal" class="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-200">
+                    <i class="fas fa-times text-sm"></i>
+                </button>
             </div>
-            <div class="flex-1">
-                <p id="notification-title" class="font-bold text-sm">Notificación</p>
-                <p id="notification-message" class="text-xs text-blue-50 mt-0.5">Mensaje</p>
+            <div class="min-h-0 max-h-[50vh] overflow-y-auto px-5 py-4 custom-scrollbar">
+                <p class="mb-2.5 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Billetera digital</p>
+                <div class="flex flex-wrap gap-2">
+                    @foreach ($digitalWallets ?? [] as $wallet)
+                        <button type="button"
+                            class="wallet-btn inline-flex shrink-0 items-center gap-2 rounded-xl border-2 border-gray-200 bg-gray-50 px-3.5 py-2.5 transition hover:border-emerald-500 hover:bg-emerald-50 dark:border-gray-600 dark:bg-gray-700/60 dark:hover:border-emerald-500 dark:hover:bg-emerald-900/20"
+                            data-wallet-id="{{ $wallet->id }}" data-wallet-name="{{ $wallet->description }}">
+                            <i class="fas fa-mobile-alt text-sm text-gray-500 dark:text-gray-400"></i>
+                            <span class="text-sm font-semibold text-gray-800 dark:text-white whitespace-nowrap">{{ $wallet->description }}</span>
+                            <i class="fas fa-check-circle hidden text-emerald-600 dark:text-emerald-400 text-xs"></i>
+                        </button>
+                    @endforeach
+                </div>
             </div>
-            <button onclick="hidePaymentNotification()" class="text-white/80 hover:text-white transition-colors">
-                <i class="fas fa-times"></i>
+            <div class="flex shrink-0 justify-end gap-2 border-t border-slate-100 px-5 py-3 dark:border-gray-700">
+                <button type="button" id="cancel-wallet-selection" class="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 transition hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">Cancelar</button>
+                <button type="button" id="confirm-wallet-selection" class="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-blue-700 dark:hover:bg-blue-600" disabled>Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    {{-- Notificación --}}
+    <div id="payment-notification" class="fixed top-24 right-6 z-50 transform transition-all duration-400 translate-x-[150%] opacity-0">
+        <div id="notification-content" class="flex min-w-[300px] items-center gap-3 rounded-2xl border border-blue-400/20 bg-gradient-to-r from-blue-500 to-blue-600 px-4 py-3.5 text-white shadow-2xl shadow-blue-500/20 backdrop-blur-sm">
+            <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/20">
+                <i id="notification-icon" class="fas fa-info-circle text-lg"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+                <p id="notification-title" class="text-sm font-bold leading-tight">Notificación</p>
+                <p id="notification-message" class="mt-0.5 text-xs text-blue-100 leading-tight truncate">Mensaje</p>
+            </div>
+            <button onclick="hidePaymentNotification()" class="ml-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-white/70 transition hover:bg-white/20 hover:text-white">
+                <i class="fas fa-times text-xs"></i>
             </button>
         </div>
     </div>
 
     <style>
-        .pm-btn.pm-active {
-            border-color: #3b82f6;
-            background: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%);
-        }
-
-        .dark .pm-btn.pm-active {
-            background: linear-gradient(135deg, rgba(30, 58, 138, .55) 0%, rgba(15, 23, 42, 1) 100%);
-        }
-
-        .doc-type-btn.doc-active {
-            border-color: #3b82f6;
-            background: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%);
-        }
-
-        .dark .doc-type-btn.doc-active {
-            background: linear-gradient(135deg, rgba(30, 58, 138, .55) 0%, rgba(15, 23, 42, 1) 100%);
-        }
-
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 999px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
-        }
-
-        .dark .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #475569;
-        }
-
-        .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #64748b;
-        }
-
-        #card-selection-modal {
-            backdrop-filter: blur(2px);
-        }
-
-        #card-selection-modal .gateway-btn.border-blue-500,
-        #card-selection-modal .card-btn.border-blue-500 {
-            border-color: #3b82f6;
-            background: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%);
-        }
-
-        .dark #card-selection-modal .gateway-btn.border-blue-500,
-        .dark #card-selection-modal .card-btn.border-blue-500 {
-            background: linear-gradient(135deg, rgba(30, 58, 138, .55) 0%, rgba(15, 23, 42, 1) 100%);
-        }
-        .notification-show {
-            transform: translateX(0) !important;
-            opacity: 1 !important;
-        }
+        .doc-type-btn.doc-active { border-color: #3b82f6; background: linear-gradient(135deg, #eff6ff, #fff); color: #1d4ed8; }
+        .dark .doc-type-btn.doc-active { background: linear-gradient(135deg, rgba(30,58,138,.4), rgba(15,23,42,1)); color: #93c5fd; }
+        .pm-btn.pm-active { border-color: #3b82f6; background: linear-gradient(135deg, #eff6ff, #fff); }
+        .dark .pm-btn.pm-active { background: linear-gradient(135deg, rgba(30,58,138,.4), rgba(15,23,42,1)); }
+        .gateway-btn.border-blue-500, .card-btn.border-blue-500 { border-color: #3b82f6; background: linear-gradient(135deg, #eff6ff, #fff); }
+        .dark .gateway-btn.border-blue-500, .dark .card-btn.border-blue-500 { background: linear-gradient(135deg, rgba(30,58,138,.4), rgba(15,23,42,1)); }
+        .payment-method-item { border-color: #cbd5e1 !important; transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease; }
+        .payment-method-item:hover { border-color: #93c5fd !important; box-shadow: 0 10px 20px rgba(30, 64, 175, .10) !important; transform: translateY(-1px); }
+        .payment-method-item:focus-within { border-color: #3b82f6 !important; box-shadow: 0 0 0 3px rgba(59, 130, 246, .15), 0 10px 22px rgba(30, 64, 175, .12) !important; }
+        .pm-selection-btn, .gateway-btn, .card-btn, .wallet-btn { transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease, background-color .18s ease; }
+        .pm-selection-btn:hover, .gateway-btn:hover, .card-btn:hover, .wallet-btn:hover { box-shadow: 0 8px 18px rgba(37, 99, 235, .12); transform: translateY(-1px); }
+        .wallet-btn.border-emerald-500 { border-color: #10b981; background: linear-gradient(135deg, #ecfdf5, #fff); }
+        .dark .wallet-btn.border-emerald-500 { background: linear-gradient(135deg, rgba(5,150,105,.3), rgba(15,23,42,1)); }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 999px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #475569; }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .notification-show { transform: translateX(0) !important; opacity: 1 !important; }
     </style>
 
     <script>
@@ -420,6 +354,7 @@
             const paymentMethods = @json($paymentMethods ?? []);
             const paymentGateways = @json($paymentGateways ?? []);
             const cards = @json($cards ?? []);
+            const digitalWallets = @json($digitalWallets ?? []);
             const defaultClientId = @json($defaultClientId ?? 4);
             const productsMap = @json($products ?? []);
             const productBranches = @json($productBranches ?? []);
@@ -448,6 +383,10 @@
             const closeCardModal = document.getElementById('close-card-modal');
             const cancelCardSelection = document.getElementById('cancel-card-selection');
             const confirmCardSelection = document.getElementById('confirm-card-selection');
+            const walletSelectionModal = document.getElementById('wallet-selection-modal');
+            const closeWalletModalBtn = document.getElementById('close-wallet-modal');
+            const cancelWalletSelection = document.getElementById('cancel-wallet-selection');
+            const confirmWalletSelection = document.getElementById('confirm-wallet-selection');
             // Estos se actualizarán cuando se abra el modal
             let gatewayButtons = document.querySelectorAll('.gateway-btn');
             let cardButtons = document.querySelectorAll('.card-btn');
@@ -457,7 +396,9 @@
             let currentEditingIndex = -1; // Índice del método de pago que se está editando
             let selectedGatewayId = null;
             let selectedCardId = null;
-            let cardModalListenersSetup = false; // Bandera para evitar configurar listeners múltiples veces
+            let selectedWalletId = null;
+            let cardModalListenersSetup = false;
+            let walletModalListenersSetup = false;
 
             // Función para formatear dinero
             function fmtMoney(n) {
@@ -499,6 +440,7 @@
             // Función para renderizar un método de pago
             function renderPaymentMethod(index, paymentMethod) {
                 const isCard = paymentMethod.isCard || false;
+                const isWallet = paymentMethod.isWallet || false;
                 const methodName = paymentMethod.methodName || '';
                 const amount = paymentMethod.amount || 0;
                 const methodId = paymentMethod.methodId || null;
@@ -506,19 +448,33 @@
                 const cardId = paymentMethod.cardId || null;
                 const gatewayName = paymentMethod.gatewayName || '';
                 const cardName = paymentMethod.cardName || '';
+                const walletId = paymentMethod.walletId || null;
+                const walletName = paymentMethod.walletName || '';
 
                 // Determinar el icono según el método
                 const getMethodIcon = (methodDesc) => {
                     const desc = (methodDesc || '').toLowerCase();
                     if (desc.includes('tarjeta') || desc.includes('card')) return 'fa-credit-card';
                     if (desc.includes('efectivo') || desc.includes('cash')) return 'fa-money-bill-wave';
-                    if (desc.includes('yape') || desc.includes('plin')) return 'fa-mobile-alt';
+                    if (desc.includes('yape') || desc.includes('plin') || desc.includes('billetera')) return 'fa-mobile-alt';
                     if (desc.includes('transferencia') || desc.includes('transfer')) return 'fa-exchange-alt';
                     return 'fa-wallet';
                 };
 
                 const methodIcon = getMethodIcon(methodName);
                 const hasCardInfo = isCard && gatewayName && cardName;
+                const hasWalletInfo = isWallet && walletName;
+
+                const walletInfo = isWallet ? `
+                    <div class="mb-2 rounded-lg border-2 ${hasWalletInfo ? 'border-emerald-200 bg-emerald-50' : 'border-orange-200 bg-orange-50'} p-2 dark:${hasWalletInfo ? 'border-emerald-800 bg-emerald-900/20' : 'border-orange-800 bg-orange-900/20'}">
+                        <div class="flex items-center justify-between">
+                            <p class="text-sm font-bold ${hasWalletInfo ? 'text-emerald-700 dark:text-emerald-400' : 'text-orange-700 dark:text-orange-400'} wallet-name-${index}">${walletName || 'Elegir billetera (Yape, Plin...)'}</p>
+                            <button type="button" class="select-wallet-btn ml-2 rounded-lg ${hasWalletInfo ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-orange-600 hover:bg-orange-700'} px-3 py-1.5 text-xs font-semibold text-white transition" data-index="${index}">
+                                <i class="fas fa-${hasWalletInfo ? 'edit' : 'plus'}"></i>
+                            </button>
+                        </div>
+                    </div>
+                ` : '';
 
                 const cardInfo = isCard ? `
                     <div class="mb-2 rounded-lg border-2 ${hasCardInfo ? 'border-green-200 bg-green-50' : 'border-orange-200 bg-orange-50'} p-2 dark:${hasCardInfo ? 'border-green-800 bg-green-900/20' : 'border-orange-800 bg-orange-900/20'}">
@@ -547,6 +503,7 @@
                                     <div class="flex-1">
                                         <p class="text-sm font-semibold text-gray-900 dark:text-white">${methodName || 'Seleccionar método'}</p>
                                         ${isCard && !hasCardInfo ? '<p class="text-xs text-orange-600 dark:text-orange-400 mt-0.5">Configurar pasarela y tarjeta</p>' : ''}
+                                        ${isWallet && !hasWalletInfo ? '<p class="text-xs text-orange-600 dark:text-orange-400 mt-0.5">Elegir billetera (Yape, Plin...)</p>' : ''}
                                     </div>
                                     <i class="fas fa-chevron-down text-xs "></i>
                                 </div>
@@ -555,6 +512,7 @@
                                   <i class="ri-delete-bin-line"></i>
                             </button>
                         </div>
+                        ${walletInfo}
                         ${cardInfo}
                         <div class="flex items-center gap-2">
                             <div class="relative flex-1">
@@ -616,15 +574,20 @@
                 // Si es el primer método, usar el total completo; si no, usar lo que falta
                 const initialAmount = paymentMethodsData.length === 0 ? total : (remaining > 0 ? remaining : 0);
                 
+                const descDef = (defaultMethod?.description || '').toLowerCase();
+                const isWallet = descDef.includes('billetera');
                 const newPaymentMethod = {
                     methodId: defaultMethod?.id || null,
                     methodName: defaultMethod?.description || 'Seleccionar método',
                     isCard: isCard,
+                    isWallet: isWallet,
                     amount: initialAmount,
                     gatewayId: null,
                     cardId: null,
                     gatewayName: '',
-                    cardName: ''
+                    cardName: '',
+                    walletId: null,
+                    walletName: ''
                 };
                 
                 paymentMethodsData.push(newPaymentMethod);
@@ -680,31 +643,41 @@
                     const methodId = parseInt(this.dataset.methodId);
                     const methodName = this.dataset.methodName;
                     const isCard = this.dataset.isCard === '1';
+                    const isWallet = this.dataset.isWallet === '1';
                     
                     if (currentEditingIndex >= 0 && paymentMethodsData[currentEditingIndex]) {
                         paymentMethodsData[currentEditingIndex].methodId = methodId;
                         paymentMethodsData[currentEditingIndex].methodName = methodName;
                         paymentMethodsData[currentEditingIndex].isCard = isCard;
+                        paymentMethodsData[currentEditingIndex].isWallet = isWallet;
                         
-                        if (!isCard) {
-                            // Si no es tarjeta, limpiar datos de tarjeta
+                        if (isCard) {
+                            paymentMethodsData[currentEditingIndex].walletId = null;
+                            paymentMethodsData[currentEditingIndex].walletName = '';
+                            const savedIndex = currentEditingIndex;
+                            closePaymentMethodModal(false);
+                            currentEditingIndex = savedIndex;
+                            setTimeout(() => openCardModal(), 200);
+                        } else if (isWallet) {
                             paymentMethodsData[currentEditingIndex].gatewayId = null;
                             paymentMethodsData[currentEditingIndex].cardId = null;
                             paymentMethodsData[currentEditingIndex].gatewayName = '';
                             paymentMethodsData[currentEditingIndex].cardName = '';
-                            updatePaymentMethodsList();
-                            closePaymentMethodModal();
-                        } else {
-                            // Si es tarjeta, siempre abrir modal de pasarela/tarjeta
-                            // Guardar el índice antes de cerrar el modal
+                            paymentMethodsData[currentEditingIndex].walletId = null;
+                            paymentMethodsData[currentEditingIndex].walletName = '';
                             const savedIndex = currentEditingIndex;
                             closePaymentMethodModal(false);
-                            // Asegurarse de que el índice se mantenga
                             currentEditingIndex = savedIndex;
-                            setTimeout(() => {
-                                console.log('Abriendo modal de tarjeta con índice:', currentEditingIndex);
-                                openCardModal();
-                            }, 200);
+                            setTimeout(() => openWalletModal(), 200);
+                        } else {
+                            paymentMethodsData[currentEditingIndex].gatewayId = null;
+                            paymentMethodsData[currentEditingIndex].cardId = null;
+                            paymentMethodsData[currentEditingIndex].gatewayName = '';
+                            paymentMethodsData[currentEditingIndex].cardName = '';
+                            paymentMethodsData[currentEditingIndex].walletId = null;
+                            paymentMethodsData[currentEditingIndex].walletName = '';
+                            updatePaymentMethodsList();
+                            closePaymentMethodModal();
                         }
                     }
                 });
@@ -751,6 +724,14 @@
                         const index = parseInt(this.dataset.index);
                         currentEditingIndex = index;
                         openCardModal();
+                    });
+                });
+                
+                paymentMethodsList.querySelectorAll('.select-wallet-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const index = parseInt(this.dataset.index);
+                        currentEditingIndex = index;
+                        openWalletModal();
                     });
                 });
                 
@@ -965,6 +946,97 @@
                 }
             });
 
+            // --- Modal billetera (Yape, Plin, etc.) ---
+            function openWalletModal() {
+                walletSelectionModal.classList.remove('hidden');
+                walletSelectionModal.classList.add('flex');
+                if (currentEditingIndex >= 0 && paymentMethodsData[currentEditingIndex]) {
+                    const pm = paymentMethodsData[currentEditingIndex];
+                    selectedWalletId = pm.walletId ? String(pm.walletId) : null;
+                } else {
+                    selectedWalletId = null;
+                }
+                const walletButtons = document.querySelectorAll('.wallet-btn');
+                walletButtons.forEach(b => {
+                    if (b.dataset.walletId && b.dataset.walletId == selectedWalletId) {
+                        b.classList.remove('border-gray-300', 'bg-gray-50');
+                        b.classList.add('border-emerald-500', 'bg-emerald-50');
+                        const checkIcon = b.querySelector('.fa-check-circle');
+                        if (checkIcon) checkIcon.classList.remove('hidden');
+                    } else {
+                        b.classList.remove('border-emerald-500', 'bg-emerald-50');
+                        b.classList.add('border-gray-300', 'bg-gray-50');
+                        const checkIcon = b.querySelector('.fa-check-circle');
+                        if (checkIcon) checkIcon.classList.add('hidden');
+                    }
+                });
+                setupWalletModalListeners();
+                updateWalletConfirmButton();
+            }
+
+            function closeWalletModal() {
+                walletSelectionModal.classList.add('hidden');
+                walletSelectionModal.classList.remove('flex');
+            }
+
+            function setupWalletModalListeners() {
+                if (walletModalListenersSetup) return;
+                walletModalListenersSetup = true;
+                walletSelectionModal.addEventListener('click', function(e) {
+                    if (e.target.closest('#confirm-wallet-selection') || e.target.closest('#cancel-wallet-selection') || e.target.closest('#close-wallet-modal')) return;
+                    const walletBtn = e.target.closest('.wallet-btn');
+                    if (walletBtn && walletBtn.dataset.walletId) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const walletButtons = document.querySelectorAll('.wallet-btn');
+                        walletButtons.forEach(b => {
+                            b.classList.remove('border-emerald-500', 'bg-emerald-50');
+                            b.classList.add('border-gray-300', 'bg-gray-50');
+                            const checkIcon = b.querySelector('.fa-check-circle');
+                            if (checkIcon) checkIcon.classList.add('hidden');
+                        });
+                        walletBtn.classList.remove('border-gray-300', 'bg-gray-50');
+                        walletBtn.classList.add('border-emerald-500', 'bg-emerald-50');
+                        const checkIcon = walletBtn.querySelector('.fa-check-circle');
+                        if (checkIcon) checkIcon.classList.remove('hidden');
+                        selectedWalletId = walletBtn.dataset.walletId;
+                        updateWalletConfirmButton();
+                    }
+                });
+            }
+
+            function updateWalletConfirmButton() {
+                if (confirmWalletSelection) {
+                    confirmWalletSelection.disabled = !selectedWalletId;
+                    if (selectedWalletId) {
+                        confirmWalletSelection.classList.remove('opacity-50', 'cursor-not-allowed');
+                    } else {
+                        confirmWalletSelection.classList.add('opacity-50', 'cursor-not-allowed');
+                    }
+                }
+            }
+
+            closeWalletModalBtn?.addEventListener('click', closeWalletModal);
+            cancelWalletSelection?.addEventListener('click', function() {
+                closeWalletModal();
+                currentEditingIndex = -1;
+            });
+            walletSelectionModal?.addEventListener('click', function(e) {
+                if (e.target === walletSelectionModal) closeWalletModal();
+            });
+            confirmWalletSelection?.addEventListener('click', function() {
+                if (!selectedWalletId || currentEditingIndex < 0) return;
+                const pm = paymentMethodsData[currentEditingIndex];
+                const walletButtons = document.querySelectorAll('.wallet-btn');
+                const walletBtn = Array.from(walletButtons).find(b => b.dataset.walletId == selectedWalletId);
+                pm.walletId = selectedWalletId;
+                pm.walletName = walletBtn ? (walletBtn.dataset.walletName || '') : '';
+                updatePaymentMethodsList();
+                closeWalletModal();
+                currentEditingIndex = -1;
+                selectedWalletId = null;
+            });
+
             // Tipo de documento
             docButtons.forEach(btn => {
                 btn.addEventListener('click', function() {
@@ -1018,7 +1090,7 @@
                 });
             }
 
-            // Si hay un borrador del servidor, usarlo
+            // Cargar venta solo si: (1) viene borrador del servidor (movement_id), o (2) viene desde Create (botón Cobrar)
             if (draftSaleFromServer && draftSaleFromServer.items && draftSaleFromServer.items.length > 0) {
                 sale = {
                     id: draftSaleFromServer.id,
@@ -1029,21 +1101,23 @@
                     notes: draftSaleFromServer.notes || '',
                     pendingAmount: draftSaleFromServer.pendingAmount || 0
                 };
-            } else {
-                // Si no, intentar cargar desde localStorage
+            } else if (sessionStorage.getItem('sales_charge_from_create') === '1') {
+                sessionStorage.removeItem('sales_charge_from_create');
                 const db = JSON.parse(localStorage.getItem('restaurantDB') || '{}');
                 const activeKey = localStorage.getItem(ACTIVE_SALE_KEY_STORAGE);
                 const fromStorage = activeKey ? db[activeKey] : null;
                 if (fromStorage && Array.isArray(fromStorage.items)) {
                     sale = { ...fromStorage, items: validItems(fromStorage.items) };
-                    // Actualizar localStorage con ítems filtrados para no volver a cargar fantasmas
                     if (sale.items.length !== fromStorage.items.length && activeKey) {
                         db[activeKey] = sale;
                         localStorage.setItem('restaurantDB', JSON.stringify(db));
                     }
                 } else {
-                    sale = fromStorage;
+                    sale = null;
                 }
+            } else {
+                sale = null;
+                localStorage.removeItem(ACTIVE_SALE_KEY_STORAGE);
             }
 
             function fmtMoney(n) {
@@ -1270,8 +1344,16 @@
                         if (!pm.gatewayId || !pm.cardId) {
                             showNotification('Error', `El método de pago "${pm.methodName}" requiere seleccionar pasarela y tarjeta`, 'error');
                             currentEditingIndex = i;
-                        openCardModal();
-                        return;
+                            openCardModal();
+                            return;
+                        }
+                    }
+                    if (pm.isWallet) {
+                        if (!pm.walletId || !pm.walletName) {
+                            showNotification('Error', `El método de pago "${pm.methodName}" requiere elegir billetera (Yape, Plin, etc.)`, 'error');
+                            currentEditingIndex = i;
+                            openWalletModal();
+                            return;
                         }
                     }
                 }
@@ -1300,6 +1382,7 @@
                         amount: parseFloat(pm.amount) || 0,
                         payment_gateway_id: pm.gatewayId ? parseInt(pm.gatewayId) : null,
                         card_id: pm.cardId ? parseInt(pm.cardId) : null,
+                        digital_wallet_id: pm.walletId ? parseInt(pm.walletId) : null,
                     })),
                     notes: document.getElementById('sale-notes')?.value || '',
                 };

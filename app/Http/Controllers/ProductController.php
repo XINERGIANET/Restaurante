@@ -240,7 +240,7 @@ class ProductController extends Controller
     {
         $validated = $request->validate([
             // Datos del Producto
-            'code' => ['required', 'string', 'max:50'],
+            'code' => ['required', 'string', 'max:50', 'unique:products,code'],
             'description' => ['required', 'string', 'max:255'],
             'abbreviation' => ['required', 'string', 'max:255'],
             'type' => ['required', 'string', 'in:PRODUCT,INGREDENT'],
@@ -257,9 +257,9 @@ class ProductController extends Controller
 
             // Datos de ProductBranch (Detalle por Sede)
             'price' => ['required', 'numeric', 'min:0'],
-            'stock' => ['required', 'numeric', 'min:0'],
+            'stock' => ['required', 'numeric', 'min:0', 'gte:stock_minimum'],
             'stock_minimum' => ['required', 'numeric', 'min:0'],
-            'stock_maximum' => ['required', 'numeric', 'min:0'],
+            'stock_maximum' => ['required', 'numeric', 'min:0', 'gte:stock_minimum'],
             'minimum_sell' => ['required', 'numeric', 'min:0'],
             'minimum_purchase' => ['required', 'numeric', 'min:0'],
             'tax_rate_id' => ['nullable', 'integer', 'exists:tax_rates,id'],
@@ -274,6 +274,7 @@ class ProductController extends Controller
         if (isset($validated['image']) && empty($validated['image'])) {
             unset($validated['image']);
         }
+        
         
         return $validated;
     }

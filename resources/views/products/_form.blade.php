@@ -62,7 +62,7 @@
     </div>
 
             <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Tipo</label>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Tipo <span class="text-red-500">*</span></label>
                 <select
                     name="type"
                     required
@@ -99,7 +99,7 @@
             </div>
 
             <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Estado</label>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Estado <span class="text-red-500">*</span></label>
                 <select
                     name="status"
                     required
@@ -117,7 +117,7 @@
         <h3 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Configuración</h3>
         <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Receta</label>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Receta <span class="text-red-500">*</span></label>
                 <select
                     name="recipe"
                     class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
@@ -128,7 +128,7 @@
             </div>
 
             <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Kardex</label>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Kardex <span class="text-red-500">*</span></label>
                 <select
                     name="kardex"
                     required
@@ -140,7 +140,7 @@
             </div>
 
             <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">¿Es favorito?</label>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">¿Es favorito? <span class="text-red-500">*</span></label>
                 <select
                     name="favorite"
                     required
@@ -170,7 +170,7 @@
         <p class="mb-4 text-xs text-gray-600 dark:text-gray-400">Estos campos se configuran por cada sucursal</p>
         <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Precio</label>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Precio <span class="text-red-500">*</span></label>
                 <input
                     type="number"
                     name="price"
@@ -183,39 +183,43 @@
             </div>
 
             <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Stock actual</label>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Stock actual <span class="text-red-500">*</span></label>
                 <input
                     type="number"
                     name="stock"
                     step="0.01"
                     value="{{ old('stock', $productBranch->stock ?? '') }}"
                     required
+                    min="{{ old('stock_minimum', $productBranch->stock_minimum ?? 0) }}"
+                    max="{{ old('stock_maximum', $productBranch->stock_maximum ?? 0) }}"
                     class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
                     placeholder="0.00"
                 />
             </div>
 
             <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Stock mínimo</label>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Stock mínimo <span class="text-red-500">*</span></label>
                 <input
                     type="number"
                     name="stock_minimum"
                     step="0.01"
                     value="{{ old('stock_minimum', $productBranch->stock_minimum ?? '') }}"
                     required
+                    min="0"
                     class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
                     placeholder="0.00"
                 />
             </div>
 
             <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Stock máximo</label>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Stock máximo <span class="text-red-500">*</span></label>
                 <input
                     type="number"
                     name="stock_maximum"
                     step="0.01"
                     value="{{ old('stock_maximum', $productBranch->stock_maximum ?? '') }}"
                     required
+                    min="0"
                     class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
                     placeholder="0.00"
                 />
@@ -310,7 +314,7 @@
         <h3 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">🎁 Complementos</h3>
         <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Complemento</label>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Complemento <span class="text-red-500">*</span></label>
                 <select
                     name="complement"
                     x-model="complementValue"
@@ -339,7 +343,7 @@
             </div>
 
             <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Clasificación</label>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Clasificación <span class="text-red-500">*</span></label>
                 <select
                     name="classification"
                     x-model="classificationValue"
