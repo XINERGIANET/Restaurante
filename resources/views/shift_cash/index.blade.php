@@ -56,6 +56,24 @@
                         <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"><i class="ri-search-line"></i></span>
                         <input type="text" name="search" value="{{ $search }}" placeholder="Buscar por N° apertura..." class="dark:bg-dark-900 shadow-theme-xs h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 pl-10 text-sm focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90" />
                     </div>
+                    <div class="relative flex w-full sm:w-auto min-w-[200px]">
+                        <select 
+                            onchange="
+                                let baseUrl = '{{ url('/caja/turno-caja') }}/' + this.value;
+                                let params = new URLSearchParams(window.location.search);                               
+                                params.delete('cash_register_id'); 
+                                window.location.href = baseUrl + (params.toString() ? '?' + params.toString() : '');
+                            "
+                            class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white/90">
+                            @if (isset($cashRegisters))
+                                @foreach ($cashRegisters as $register)
+                                    <option value="{{ $register->id }}" {{ $selectedBoxId == $register->id ? 'selected' : '' }}>
+                                        {{ $register->number }}
+                                    </option>
+                                @endforeach
+                            @endif
+                        </select>
+                    </div>
                     <div class="flex gap-2">
                         <x-ui.button size="md" variant="primary" type="submit" class="h-11 px-4" style="background-color: #244BB3;">
                             <i class="ri-search-line text-gray-100"></i> <span class="text-gray-100">Buscar</span>

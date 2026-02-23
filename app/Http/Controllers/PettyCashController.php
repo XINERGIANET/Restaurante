@@ -74,7 +74,7 @@ class PettyCashController extends Controller
         }
 
         $cashRegisters = CashRegister::where('status', '1')->orderBy('number', 'asc')->get();
-        $selectedBoxId = $cash_register_id;
+        $selectedBoxId = $request->input('cash_register_id') ?? $cash_register_id;
 
         if (empty($selectedBoxId) && $cashRegisters->isNotEmpty()) {
             $selectedBoxId = $cashRegisters->first()->id;
@@ -138,7 +138,9 @@ class PettyCashController extends Controller
         // Mostrar movimientos desde la última apertura (activa o cerrada).
         // Cuando se registre una nueva apertura, $lastOpeningMovement apuntará a la nueva
         // y la lista se vacía sola mostrando solo los movimientos del nuevo turno.
-        if ($lastOpeningMovement) {
+        if (!$hasOpening) {
+            $movementsQuery->whereRaw('1 = 0');
+        } elseif ($lastOpeningMovement) {
             $movementsQuery->where('movements.id', '>=', $lastOpeningMovement->id);
         } else {
             $movementsQuery->whereRaw('1 = 0');

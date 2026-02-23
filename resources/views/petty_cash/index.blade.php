@@ -196,13 +196,12 @@
                     </div>
 
                     <div class="relative flex w-full sm:w-auto min-w-[200px]">
-                        <select name="cash_register_id"
+                        <select 
                             onchange="
-                                const nextUrl = new URL('{{ url('/caja/caja-chica') }}/' + this.value, window.location.origin);
-                                @if ($viewId)
-                                    nextUrl.searchParams.set('view_id', '{{ $viewId }}');
-                                @endif
-                                window.location.href = nextUrl.toString();
+                                let baseUrl = '{{ url('/caja/caja-chica') }}/' + this.value;                                
+                                let params = new URLSearchParams(window.location.search);
+                                params.delete('cash_register_id'); 
+                                window.location.href = baseUrl + (params.toString() ? '?' + params.toString() : '');
                             "
                             class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90">
                             @if (isset($cashRegisters))

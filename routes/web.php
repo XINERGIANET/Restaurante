@@ -377,7 +377,7 @@ Route::middleware('auth')->group(function () {
         ->parameters(['cajas' => 'box']);
 
     // Turno por caja
-    Route::resource('/caja/turno-caja', ShiftCashController::class)
+    Route::resource('/caja/turno-caja/{cash_register_id?}', ShiftCashController::class)
         ->names('shift-cash')
         ->parameters(['turno-caja' => 'shiftCash']);
 

@@ -19,8 +19,39 @@ use Illuminate\Http\Request;
 
 class ShiftCashController extends Controller
 {
-    public function index(Request $request)
+    public function redirectBase(Request $request)
     {
+        $firstBox = CashRegister::where('status', '1')->first();
+        if ($firstBox) {
+            $params = ['cash_register_id' => $firstBox->id];
+            if ($request->filled('view_id')) {
+                $params['view_id'] = $request->input('view_id');
+            }
+            return redirect()->route('shift-cash.index', $params);
+        }
+        abort(404, 'No hay cajas registradas');
+    }
+
+    public function index(Request $request, $cash_register_id = null)
+    {
+        $cashRegisters = CashRegister::where('status', '1')->orderBy('number', 'asc')->get();
+
+        if (empty($cash_register_id)) {
+            if ($cashRegisters->isNotEmpty()) {
+                $defaultId = $cashRegisters->first()->id;                
+                $params = ['cash_register_id' => $defaultId];
+                if ($request->filled('view_id')) {
+                    $params['view_id'] = $request->input('view_id');
+                }
+                
+                return redirect()->route('shift-cash.index', $params);
+            } else {
+                abort(404, 'No hay cajas registradas');
+            }
+        }
+
+        $selectedBoxId = $cash_register_id;
+
         $search = $request->input('search');
         $perPage = (int) $request->input('per_page', 10);
         $allowedPerPage = [10, 20, 50, 100];
@@ -58,6 +89,13 @@ class ShiftCashController extends Controller
                 ->get();
         }
 
+        $cashRegisters = CashRegister::where('status', '1')->orderBy('number', 'asc')->get();        
+
+        $selectedBoxId = $request->input('cash_register_id') ?? $cash_register_id;
+        if (empty($selectedBoxId) && $cashRegisters->isNotEmpty()) {
+            $selectedBoxId = $cashRegisters->first()->id;
+        }
+
         $shift_cash = CashShiftRelation::query()
             ->with([
                 'cashMovementStart.movement.documentType',
@@ -73,19 +111,23 @@ class ShiftCashController extends Controller
                     $query->where('status', 'FINALIZADO');
                 }
             ])
+            ->whereHas('cashMovementStart', function($q) use ($selectedBoxId) {
+                $q->where('cash_register_id', $selectedBoxId);
+            })
             ->when($search, function ($query, $search) {
-                $query->whereHas('cashMovementStart.movement', function ($q) use ($search) {
-                    $q->where('number', 'ILIKE', "%{$search}%");
-                })
-                ->orWhereHas('cashMovementEnd.movement', function ($q) use ($search) {
-                    $q->where('number', 'ILIKE', "%{$search}%");
+                $query->where(function ($q2) use ($search) {
+                    $q2->whereHas('cashMovementStart.movement', function ($q) use ($search) {
+                        $q->where('number', 'ILIKE', "%{$search}%");
+                    })
+                    ->orWhereHas('cashMovementEnd.movement', function ($q) use ($search) {
+                        $q->where('number', 'ILIKE', "%{$search}%");
+                    });
                 });
             })
             ->orderBy('started_at', 'desc')
             ->paginate($perPage)
             ->withQueryString();
 
-        $cashRegisters = CashRegister::where('status', '1')->orderBy('number', 'asc')->get();
         
         $documentTypes = DocumentType::where('movement_type_id', 4)->get();
         $docIngreso = $documentTypes->firstWhere('name', 'Ingreso');
@@ -125,6 +167,7 @@ class ShiftCashController extends Controller
             'ingresoDocId'    => $ingresoDocId,
             'egresoDocId'     => $egresoDocId,
             'cashRegisters'   => $cashRegisters,
+            'selectedBoxId'   => $selectedBoxId,
             'conceptsIngreso' => $conceptsIngreso,
             'conceptsEgreso'  => $conceptsEgreso,
             'shifts'          => $shifts,
