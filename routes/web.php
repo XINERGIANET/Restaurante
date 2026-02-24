@@ -383,7 +383,7 @@ Route::middleware('auth')->group(function () {
         ->parameters(['cajas' => 'box']);
 
     // Turno por caja 
-    Route::get('/shift-cash/redirect', [ShiftCashController::class, 'redirect'])->name('shift-cash.redirect');
+    Route::get('/shift-cash/redirect', [ShiftCashController::class, 'redirectBase'])->name('shift-cash.redirect');
     Route::resource('/caja/turno-caja/{cash_register_id?}', ShiftCashController::class)
         ->names('shift-cash')
         ->parameters(['turno-caja' => 'shiftCash']);
@@ -418,6 +418,7 @@ Route::middleware('auth')->group(function () {
         ->names('recipe-book')
         ->parameters(['recetario' => 'recipe']); 
 
+    // SELECCIÓN DE CAJA EN CABECERA POR SESSION
     Route::post('/caja/fijar', [CashRegisterController::class, 'set'])->name('caja.fijar');
     Route::get('/caja/seleccionar', [CashRegisterController::class, 'select'])->name('caja.seleccionar');
 });
