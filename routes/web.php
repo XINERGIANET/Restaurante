@@ -382,17 +382,11 @@ Route::middleware('auth')->group(function () {
         ->names('boxes')
         ->parameters(['cajas' => 'box']);
 
-    // Turno por caja (rutas explícitas para evitar duplicar parámetro cash_register_id en el pattern)
-    Route::prefix('caja/turno-caja')->name('shift-cash.')->group(function () {
-        Route::get('/', [ShiftCashController::class, 'redirectBase'])->name('redirect');
-        Route::get('/{cash_register_id}', [ShiftCashController::class, 'index'])->name('index');
-        Route::get('/{cash_register_id}/edit/{shiftCash}', function () {
-            abort(404, 'Editar turno no implementado.');
-        })->name('edit');
-        Route::delete('/{cash_register_id}/{shiftCash}', function () {
-            abort(404, 'Eliminar turno no implementado.');
-        })->name('destroy');
-    });
+    // Turno por caja 
+    Route::get('/shift-cash/redirect', [ShiftCashController::class, 'redirect'])->name('shift-cash.redirect');
+    Route::resource('/caja/turno-caja/{cash_register_id?}', ShiftCashController::class)
+        ->names('shift-cash')
+        ->parameters(['turno-caja' => 'shiftCash']);
 
     //tasa de impuesto
     Route::resource('/admin/herramientas/tasas-impuesto', TaxRateController::class)
