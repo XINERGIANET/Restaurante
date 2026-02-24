@@ -14,6 +14,9 @@ use App\Models\PaymentConcept;
 use App\Models\PaymentGateways;
 use App\Models\PaymentMethod;
 use App\Models\Person;
+use App\Models\CashShiftRelation;
+use App\Models\Category;
+use App\Models\User;
 use App\Models\Product;
 use App\Models\ProductBranch;
 use App\Models\SalesMovement;
@@ -150,24 +153,59 @@ class SalesController extends Controller
         return $this->index($request);
     }
 
+    // Obtener caja desde sesión
+    public function getSessionCashRegister(Request $request)
+    {
+        $cashRegisterId = session('cash_register_id');
+        return response()->json([
+            'success' => true,
+            'cash_register_id' => $cashRegisterId
+        ]);
+    }
+
     public function create()
     {
         $branchId = session('branch_id');
+
+        $defaultImage = asset('images/logo/Xinergia-icon.png');
+
+        $userId = session('user_id');
+        $user = User::find($userId);
+
+        $personId = session('person_id');
+        $person = Person::find($personId);
+
+        $categories = Category::orderBy('description')->get()->map(function ($cat) use ($defaultImage) {
+            $img = $defaultImage;
+            if ($cat->image && Storage::disk('public')->exists($cat->image)) {
+                $img = asset('storage/' . $cat->image);
+            }
+            return [
+                'id' => $cat->id,
+                'name' => $cat->description,
+                'img' => $img
+            ];
+        })->values();
 
         $products = Product::query()
             ->where('type', 'PRODUCT')
             ->with('category')
             ->orderBy('description')
             ->get()
-            ->map(function (Product $product) {
-                $imageUrl = ($product->image && !empty($product->image))
-                    ? asset('storage/' . ltrim($product->image, '/'))
-                    : null;
+            ->map(function (Product $product) use ($defaultImage) {                
+                $imageUrl = $defaultImage;
+
+                if (!empty($product->image)) {
+                    $path = ltrim($product->image, '/');
+                    if (Storage::disk('public')->exists($path)) {
+                        $imageUrl = asset('storage/' . $path);
+                    }
+                }
 
                 return [
                     'id' => (int) $product->id,
                     'name' => $product->description,
-                    'img' => $imageUrl,
+                    'img' => $imageUrl, // Aquí ya va la URL correcta (producto o default)
                     'note' => $product->note ?? null,
                     'category' => $product->category ? $product->category->description : 'Sin categoria',
                 ];
@@ -195,14 +233,19 @@ class SalesController extends Controller
         return view('sales.create', [
             'products' => $products,
             'productBranches' => $productBranches,
-            // Compatibilidad con implementaciones previas en la vista
             'productsBranches' => $productBranches,
+            'user' => $user,
+            'person' => $person,
+            'categories' => $categories,
         ]);
     }
 
     // POS: vista de cobro
     public function charge(Request $request)
     {
+        $personId = session('person_id');
+        $person = Person::find($personId);
+
         $documentTypes = DocumentType::query()
             ->orderBy('name')
             ->where('movement_type_id', 2)
@@ -331,6 +374,7 @@ class SalesController extends Controller
             'pendingAmount' => $pendingAmount,
             'products' => $products,
             'productBranches' => $productBranches,
+            'person' => $person,
         ]);
     }
     // POS: procesar venta
@@ -346,7 +390,6 @@ class SalesController extends Controller
                 // Compatibilidad: algunos flujos pueden enviar `comment` en lugar de `note`
                 'items.*.comment' => 'nullable|string|max:65535',
                 'document_type_id' => 'required|integer|exists:document_types,id',
-                'cash_register_id' => 'required|integer|exists:cash_registers,id',
                 'person_id' => 'nullable|integer|exists:people,id',
                 'payment_methods' => 'required|array|min:1',
                 'payment_methods.*.payment_method_id' => 'required|integer|exists:payment_methods,id',
@@ -383,6 +426,45 @@ class SalesController extends Controller
             if (!$shift) {
                 throw new \Exception('No hay turno disponible. Por favor, crea un turno primero.');
             }
+
+            // Obtener caja desde la sesión
+            $cashRegisterId = session('cash_register_id');
+            if (!$cashRegisterId) {
+                throw new \Exception('No hay caja seleccionada en la sesión.');
+            }
+
+            // Verificar si la caja está abierta basándose en los movimientos
+            // Obtener el último movimiento de apertura para esta caja
+            $lastOpeningMovement = Movement::query()
+                ->whereHas('cashMovement', function ($query) use ($cashRegisterId) {
+                    $query->where('cash_register_id', $cashRegisterId);
+                })
+                ->whereHas('cashMovement.paymentConcept', function ($query) {
+                    $query->where('description', 'like', '%Apertura%');
+                })
+                ->orderBy('id', 'desc')
+                ->first();
+
+            if (!$lastOpeningMovement) {
+                throw new \Exception('No hay apertura de caja. Por favor, abre la caja primero.');
+            }
+
+            // Obtener el último movimiento de cierre para esta caja
+            $lastClosingMovement = Movement::query()
+                ->whereHas('cashMovement', function ($query) use ($cashRegisterId) {
+                    $query->where('cash_register_id', $cashRegisterId);
+                })
+                ->whereHas('cashMovement.paymentConcept', function ($query) {
+                    $query->where('description', 'like', '%Cierre%');
+                })
+                ->orderBy('id', 'desc')
+                ->first();
+
+            // Verificar que no haya cierre DESPUÉS de la apertura
+            if ($lastClosingMovement && $lastClosingMovement->id > $lastOpeningMovement->id) {
+                throw new \Exception('La caja está cerrada. Por favor, abre la caja primero.');
+            }
+
             // Obtener tipos de movimiento y documento para ventas
             $movementType = MovementType::where('description', 'like', '%venta%')
                 ->orWhere('description', 'like', '%sale%')
@@ -440,11 +522,8 @@ class SalesController extends Controller
             $tax = $calculated['tax'];
             $total = $calculated['total'];
 
-            // Caja seleccionada desde el formulario de cobro
-            $cashRegister = CashRegister::find($validated['cash_register_id']);
-            if (!$cashRegister) {
-                throw new \Exception('No hay caja registradora disponible');
-            }
+            // Caja obtenida desde la sesión
+            $cashRegister = CashRegister::findOrFail($cashRegisterId);
 
             // Validar que la suma de los métodos de pago sea igual al total
             $totalPaymentMethods = array_sum(array_column($request->payment_methods, 'amount'));

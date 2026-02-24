@@ -14,5 +14,11 @@ class CashRegister extends Model
         'number',
         'status',
         'series',
+        'branch_id',
     ];
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class);
+    }
 }

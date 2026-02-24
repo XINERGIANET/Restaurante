@@ -1,5 +1,5 @@
 @props([
-    'label',
+    'label' => null,
     'options' => [], 
     'placeholder' => 'Seleccione una opción...',
     'required' => false,
@@ -85,7 +85,8 @@
             type="text" 
             x-model="query"
             @focus="open = true"
-            @input="open = true" 
+            @input="open = true"
+            @dblclick="$el.select()" 
             @keydown.escape="closeDropdown()"
             @keydown.enter.prevent="if(filteredOptions.length > 0) selectOption(filteredOptions[0])"
             placeholder="{{ $placeholder }}"
