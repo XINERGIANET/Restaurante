@@ -879,7 +879,13 @@
             }
 
             function goBack() {
-                // Guardar en el servidor y volver al listado
+                const items = currentTable?.items || [];
+                // Si no hay productos en la mesa, liberar la mesa y volver sin guardar nada
+                if (!items.length) {
+                    releaseTableAndGoBack();
+                    return;
+                }
+                // Si hay productos, guardar el pedido y volver al listado
                 processOrder();
             }
 
