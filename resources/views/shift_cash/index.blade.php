@@ -59,7 +59,7 @@
                     <div class="relative flex w-full sm:w-auto min-w-[200px]">
                         <select 
                             onchange="
-                                let baseUrl = '{{ url('/caja/turno-caja') }}/' + this.value;
+                                let baseUrl = '{{ url('/caja/turno-caja/lista') }}/' + this.value;
                                 let params = new URLSearchParams(window.location.search);                               
                                 params.delete('cash_register_id'); 
                                 window.location.href = baseUrl + (params.toString() ? '?' + params.toString() : '');

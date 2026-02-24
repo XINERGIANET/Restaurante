@@ -383,10 +383,14 @@ Route::middleware('auth')->group(function () {
         ->parameters(['cajas' => 'box']);
 
     // Turno por caja 
-    Route::get('/shift-cash/redirect', [ShiftCashController::class, 'redirectBase'])->name('shift-cash.redirect');
-    Route::resource('/caja/turno-caja/{cash_register_id?}', ShiftCashController::class)
+    Route::get('/shift-cash/redirect', [ShiftCashController::class, 'redirectBase'])
+        ->name('shift-cash.redirect');
+    Route::get('/caja/turno-caja/lista/{cash_register_id?}', [ShiftCashController::class, 'index'])
+        ->name('shift-cash.index');
+    Route::resource('/caja/turno-caja', ShiftCashController::class)
         ->names('shift-cash')
-        ->parameters(['turno-caja' => 'shiftCash']);
+        ->parameters(['turno-caja' => 'shiftCash'])
+        ->except(['index']);
 
     //tasa de impuesto
     Route::resource('/admin/herramientas/tasas-impuesto', TaxRateController::class)
