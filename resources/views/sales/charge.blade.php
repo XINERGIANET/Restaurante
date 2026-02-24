@@ -4,12 +4,22 @@
     @php
         $viewId = request('view_id');
         $backUrl = route('sales.create', $viewId ? ['view_id' => $viewId] : []);
+
+        $peopleCollection = $people ?? collect();
+
+        $clientOptions = $peopleCollection->map(function($p) {
+            return [
+                'id' => $p->id,
+                'description' => trim(($p->document_number ?? '') . ' - ' . ($p->first_name ?? '') . ' ' . ($p->last_name ?? ''))
+            ];
+        })->values()->all();
+
+        $defaultClientId = $defaultClientId ?? $peopleCollection->first()?->id ?? null;
     @endphp
-    {{-- Mismo diseño que orders/charge --}}
+
     <div class="min-h-screen bg-white dark:bg-gray-900 py-4 sm:py-5">
         <div class="mx-auto max-w-7xl px-3 sm:px-5 lg:px-7">
             <div class="rounded-2xl border border-slate-200/90 bg-white dark:border-gray-700 dark:bg-gray-800 shadow-xl shadow-slate-300/30 dark:shadow-black/30 overflow-hidden min-h-[calc(100vh-120px)] flex flex-col">
-                {{-- Header azul --}}
                 <div class="flex items-center justify-between bg-blue-600 text-white gap-3 px-4 sm:px-6 py-4 border-b border-slate-200 dark:bg-gray-800/80 shrink-0">
                     <div class="flex items-center gap-3 min-w-0">
                         <div class="min-w-0">
@@ -24,33 +34,43 @@
                 </div>
 
                 <div class="grid grid-cols-1 gap-4 lg:grid-cols-3 flex-1 p-4 sm:p-6 min-h-0 overflow-hidden bg-white dark:bg-transparent">
-                    {{-- COLUMNA IZQUIERDA --}}
                     <div class="lg:col-span-2 flex flex-col gap-3 overflow-hidden">
-                        {{-- Barra Cliente + Caja --}}
                         <div class="flex items-center gap-3 rounded-xl border border-blue-100 bg-blue-50/60 px-4 py-2.5 dark:border-gray-600 dark:bg-gray-800 shrink-0 shadow-sm">
-                            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400">
-                                <i class="fas fa-user text-xs"></i>
+                            <div class="flex-1 min-w-0" x-data="{ selectedClientId: {{ $defaultClientId ?? 'null' }} }">
+                                <div class="flex justify-between items-center mb-0.5">
+                                    <p class="text-[10px] uppercase tracking-wider font-medium text-gray-400 dark:text-gray-500 leading-none">Cliente</p>
+                                </div>
+                                
+                                <div class="flex items-center gap-2">
+                                    <div class="flex-1 min-w-0">
+                                        <x-form.select.combobox 
+                                            :options="$clientOptions"
+                                            x-model="selectedClientId"
+                                            name="client_id"
+                                            placeholder="Buscar cliente..."
+                                            icon=""
+                                            class="!h-auto !py-0 !text-sm !font-semibold !text-gray-900 dark:!text-white !bg-transparent !border-0 !p-0 !shadow-none focus:!ring-0 w-full placeholder-gray-400"
+                                        />
+                                    </div>
+
+                                    <button type="button" 
+                                        onclick="openCreateClientModal()" 
+                                        title="Nuevo Cliente"
+                                        class="shrink-0 flex items-center justify-center h-9 w-9 rounded-lg bg-blue-200/50 text-blue-700 hover:bg-blue-600 hover:text-white dark:bg-blue-900/50 dark:text-blue-300 dark:hover:bg-blue-600 dark:hover:text-white transition-all duration-200 shadow-sm">
+                                        <i class="ri-user-add-line text-lg"></i>
+                                    </button>
+                                </div>
                             </div>
-                            <div class="flex-1 min-w-0">
-                                <p class="text-[10px] uppercase tracking-wider font-medium text-gray-400 dark:text-gray-500 leading-none mb-0.5">Cliente</p>
-                                <select id="client-id" class="w-full text-sm font-semibold text-gray-900 dark:text-white truncate bg-transparent border-0 p-0 focus:ring-0 cursor-pointer">
-                                    @foreach ($people as $person)
-                                        <option value="{{ $person->id }}" @selected((int) $person->id === (int) $defaultClientId)>{{ trim(($person->document_number ?? '') . ' - ' . ($person->first_name ?? '') . ' ' . ($person->last_name ?? '')) }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="h-6 w-px bg-gray-300 dark:bg-gray-600 shrink-0"></div>
+
+                            <div class="h-8 w-px bg-gray-300/50 dark:bg-gray-600 shrink-0"></div>
+
                             <div class="flex-1 min-w-0">
                                 <p class="text-[10px] uppercase tracking-wider font-medium text-gray-400 dark:text-gray-500 leading-none mb-0.5">Caja</p>
-                                <select id="cash-register-id" class="w-full text-sm font-semibold text-gray-900 dark:text-white truncate bg-transparent border-0 p-0 focus:ring-0 cursor-pointer">
-                                    @foreach ($cashRegisters as $cashRegister)
-                                        <option value="{{ $cashRegister->id }}" @selected($cashRegister->status === 'A')>{{ $cashRegister->number }}{{ $cashRegister->status === 'A' ? ' (Activa)' : '' }}</option>
-                                    @endforeach
-                                </select>
+                                <p class="text-sm font-semibold text-gray-900 dark:text-white truncate" id="cash-register-display">-</p>
+                                <input type="hidden" id="cash-register-id" value="">
                             </div>
                         </div>
 
-                        {{-- Lista de productos --}}
                         <div class="rounded-xl border border-indigo-100 bg-indigo-50/40 dark:border-gray-600 dark:bg-gray-800 flex-1 flex flex-col min-h-0 overflow-hidden shadow-sm">
                             <div class="px-4 py-3 border-b border-indigo-100 dark:border-gray-700 flex items-center justify-between shrink-0 bg-indigo-100/50 dark:bg-gray-800/80">
                                 <div class="flex items-center gap-2">
@@ -69,7 +89,6 @@
                             </div>
                         </div>
 
-                        {{-- Notas --}}
                         <div class="rounded-xl border border-emerald-100 bg-emerald-50/35 p-3 dark:border-gray-600 dark:bg-gray-800 shadow-sm">
                             <label for="sale-notes" class="mb-1.5 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                                 <i class="fas fa-sticky-note text-[11px]"></i> Notas <span class="normal-case font-normal text-gray-400">(Opcional)</span>
@@ -79,10 +98,8 @@
                         </div>
                     </div>
 
-                    {{-- COLUMNA DERECHA --}}
                     <div class="flex flex-col gap-3 lg:sticky lg:top-4 lg:max-h-[calc(100vh-180px)] min-h-0 lg:border-l lg:border-slate-200/80 lg:pl-3 dark:lg:border-gray-700">
                         <div class="flex-1 min-h-0 overflow-y-auto space-y-3 custom-scrollbar pr-0.5">
-                            {{-- Resumen --}}
                             <div class="rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50 to-slate-50 p-4 dark:border-blue-800/50 dark:from-blue-950/60 dark:to-slate-900/80 shadow-sm">
                                 <div class="flex items-center justify-between mb-3">
                                     <h3 class="text-xs font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400">Resumen</h3>
@@ -106,7 +123,6 @@
                                 </div>
                             </div>
 
-                            {{-- Comprobante --}}
                             <div class="rounded-xl border border-violet-100 bg-violet-50/40 p-3 dark:border-gray-600 dark:bg-gray-800 shadow-sm">
                                 <p class="mb-2 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Comprobante</p>
                                 <div class="flex flex-wrap gap-2">
@@ -114,15 +130,14 @@
                                         <button type="button"
                                             class="doc-type-btn {{ $index === 0 ? 'doc-active' : '' }} inline-flex items-center gap-1 rounded-lg border-2 px-3 py-1.5 text-xs font-semibold transition {{ $index === 0 ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-600' : 'border-slate-200 bg-slate-50 text-gray-600 hover:border-blue-400 hover:bg-blue-50/80 hover:text-blue-700 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:border-blue-500 dark:hover:bg-blue-900/30' }}"
                                             data-doc-type="{{ strtolower($documentType->name) }}" data-doc-id="{{ $documentType->id }}">
-                                            <i class="fas fa-file-alt text-[11px]"></i>
-                                            {{ $documentType->name }}
+                                            <i class="fas fa-file-alt text-[11px]"></i>                                            
+                                            {{ trim(str_ireplace('de venta', '', $documentType->name)) }}
                                         </button>
                                     @endforeach
                                 </div>
                                 <input type="hidden" id="document-type-id" name="document_type_id" value="{{ $documentTypes->first()?->id ?? '' }}">
                             </div>
 
-                            {{-- Métodos de Pago --}}
                             <div class="rounded-xl border border-cyan-100 bg-cyan-50/35 p-3 dark:border-gray-600 dark:bg-gray-800 shadow-sm">
                                 <div class="mb-3 flex items-center justify-between">
                                     <p class="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Método de pago</p>
@@ -164,7 +179,6 @@
         </div>
     </div>
 
-    {{-- Modal: Método de Pago (efectivo, billeteras, transferencia, tarjeta, etc.) --}}
     <div id="payment-method-selection-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
         <div class="flex h-max max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl shadow-slate-300/50 dark:bg-gray-800 dark:shadow-black/30 border border-slate-200/80 dark:border-gray-700">
             <div class="flex shrink-0 items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-gray-700">
@@ -205,7 +219,6 @@
         </div>
     </div>
 
-    {{-- Modal: Pasarela y Tarjeta --}}
     <div id="card-selection-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
         <div class="flex h-max max-h-[85vh] w-full max-w-md flex-col rounded-2xl bg-white shadow-2xl shadow-slate-300/50 dark:bg-gray-800 dark:shadow-black/30 border border-slate-200/80 dark:border-gray-700 overflow-hidden">
             <div class="flex shrink-0 items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-gray-700">
@@ -273,7 +286,6 @@
         </div>
     </div>
 
-    {{-- Modal: Elegir billetera (Yape, Plin, etc.) --}}
     <div id="wallet-selection-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
         <div class="flex h-max max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl shadow-slate-300/50 dark:bg-gray-800 dark:shadow-black/30 border border-slate-200/80 dark:border-gray-700">
             <div class="flex shrink-0 items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-gray-700">
@@ -308,7 +320,6 @@
         </div>
     </div>
 
-    {{-- Notificación --}}
     <div id="payment-notification" class="fixed top-24 right-6 z-50 transform transition-all duration-400 translate-x-[150%] opacity-0">
         <div id="notification-content" class="flex min-w-[300px] items-center gap-3 rounded-2xl border border-blue-400/20 bg-gradient-to-r from-blue-500 to-blue-600 px-4 py-3.5 text-white shadow-2xl shadow-blue-500/20 backdrop-blur-sm">
             <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/20">
@@ -349,7 +360,6 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Documentos disponibles (se cargarán desde el servidor)
             const documentTypes = @json($documentTypes ?? []);
             const paymentMethods = @json($paymentMethods ?? []);
             const paymentGateways = @json($paymentGateways ?? []);
@@ -358,6 +368,7 @@
             const defaultClientId = @json($defaultClientId ?? 4);
             const productsMap = @json($products ?? []);
             const productBranches = @json($productBranches ?? []);
+            const cashRegisters = @json($cashRegisters ?? []);
             const taxRateByProductId = new Map();
             const defaultTaxPct = 18;
             productBranches.forEach((pb) => {
@@ -367,14 +378,33 @@
                 }
             });
             
-            // Debug: verificar que los métodos de pago se carguen
-            console.log('Métodos de pago cargados:', paymentMethods);
-
             const docButtons = document.querySelectorAll('.doc-type-btn');
             const totalElement = document.getElementById('total');
             const documentTypeInput = document.getElementById('document-type-id');
-            const clientInput = document.getElementById('client-id');
+            const clientInput = document.querySelector('input[name="client_id"]'); 
             const cashRegisterInput = document.getElementById('cash-register-id');
+            const cashRegisterDisplay = document.getElementById('cash-register-display');
+            
+            fetch('/api/session/cash-register', {
+                method: 'GET',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success && data.cash_register_id) {
+                    const crId = data.cash_register_id;
+                    const cashRegister = cashRegisters.find(cr => cr.id == crId);
+                    
+                    if (cashRegister) {
+                        cashRegisterInput.value = crId;
+                        cashRegisterDisplay.textContent = cashRegister.number + (cashRegister.status === 'A' ? ' (Activa)' : '');
+                    }
+                }
+            })
+            .catch(err => {
+                console.error('Error al obtener caja de sesión:', err);
+            });
+
             const paymentMethodsList = document.getElementById('payment-methods-list');
             const addPaymentMethodBtn = document.getElementById('add-payment-method-btn');
             const paymentMethodSelectionModal = document.getElementById('payment-method-selection-modal');
@@ -387,31 +417,27 @@
             const closeWalletModalBtn = document.getElementById('close-wallet-modal');
             const cancelWalletSelection = document.getElementById('cancel-wallet-selection');
             const confirmWalletSelection = document.getElementById('confirm-wallet-selection');
-            // Estos se actualizarán cuando se abra el modal
             let gatewayButtons = document.querySelectorAll('.gateway-btn');
             let cardButtons = document.querySelectorAll('.card-btn');
             const pmSelectionButtons = document.querySelectorAll('.pm-selection-btn');
 
-            let paymentMethodsData = []; // Array para almacenar los métodos de pago agregados
-            let currentEditingIndex = -1; // Índice del método de pago que se está editando
+            let paymentMethodsData = []; 
+            let currentEditingIndex = -1; 
             let selectedGatewayId = null;
             let selectedCardId = null;
             let selectedWalletId = null;
             let cardModalListenersSetup = false;
             let walletModalListenersSetup = false;
 
-            // Función para formatear dinero
             function fmtMoney(n) {
                 return 'S/' + (Number(n) || 0).toFixed(2);
             }
 
-            // Función para calcular el total pagado
             function calculateTotalPaid() {
                 return paymentMethodsData.reduce((sum, pm) => sum + (parseFloat(pm.amount) || 0), 0);
             }
 
-            // Función para actualizar el resumen de pagos
-            function  updatePaymentSummary() {
+            function updatePaymentSummary() {
                 const total = parseFloat((totalElement?.textContent || 'S/0.00').replace('S/', '').replace(',', '').trim()) || 0;
                 const totalPaid = calculateTotalPaid();
                 const remaining = total - totalPaid;
@@ -437,7 +463,6 @@
                 }
             }
 
-            // Función para renderizar un método de pago
             function renderPaymentMethod(index, paymentMethod) {
                 const isCard = paymentMethod.isCard || false;
                 const isWallet = paymentMethod.isWallet || false;
@@ -451,7 +476,6 @@
                 const walletId = paymentMethod.walletId || null;
                 const walletName = paymentMethod.walletName || '';
 
-                // Determinar el icono según el método
                 const getMethodIcon = (methodDesc) => {
                     const desc = (methodDesc || '').toLowerCase();
                     if (desc.includes('tarjeta') || desc.includes('card')) return 'fa-credit-card';
@@ -509,7 +533,7 @@
                                 </div>
                             </button>
                             <button type="button" class="remove-payment-method ml-2 rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700 transition" data-index="${index}" title="Eliminar método">
-                                  <i class="ri-delete-bin-line"></i>
+                                <i class="ri-delete-bin-line"></i>
                             </button>
                         </div>
                         ${walletInfo}
@@ -531,14 +555,12 @@
                 `;
             }
 
-            // Función para obtener el monto que falta pagar
             function getRemainingAmount() {
                 const total = parseFloat((totalElement?.textContent || 'S/0.00').replace('S/', '').replace(',', '').trim()) || 0;
                 const totalPaid = calculateTotalPaid();
                 return Math.max(0, total - totalPaid);
             }
 
-            // Función para autocompletar un método de pago con lo que falta
             function fillRemainingAmount(index) {
                 const remaining = getRemainingAmount();
                 if (remaining > 0 && paymentMethodsData[index]) {
@@ -548,9 +570,7 @@
                 }
             }
 
-            // Función para agregar un método de pago
             function addPaymentMethod() {
-                // Verificar que haya métodos de pago disponibles
                 if (!paymentMethods || paymentMethods.length === 0) {
                     console.error('No hay métodos de pago disponibles');
                     if (typeof showNotification === 'function') {
@@ -563,7 +583,6 @@
                 const totalPaid = calculateTotalPaid();
                 const remaining = total - totalPaid;
                 
-                // Buscar el primer método que no sea tarjeta, o usar el primero disponible
                 const defaultMethod = paymentMethods.find(pm => {
                     const desc = (pm.description || '').toLowerCase();
                     return !desc.includes('tarjeta') && !desc.includes('card');
@@ -571,7 +590,6 @@
                 
                 const isCard = defaultMethod && (defaultMethod.description.toLowerCase().includes('tarjeta') || defaultMethod.description.toLowerCase().includes('card'));
                 
-                // Si es el primer método, usar el total completo; si no, usar lo que falta
                 const initialAmount = paymentMethodsData.length === 0 ? total : (remaining > 0 ? remaining : 0);
                 
                 const descDef = (defaultMethod?.description || '').toLowerCase();
@@ -595,20 +613,17 @@
                 updatePaymentSummary();
             }
 
-            // Función para eliminar un método de pago
             function removePaymentMethod(index) {
                 paymentMethodsData.splice(index, 1);
                 updatePaymentMethodsList();
                 updatePaymentSummary();
             }
 
-            // Función para abrir modal de selección de método de pago
             function openPaymentMethodModal(index) {
                 currentEditingIndex = index;
                 paymentMethodSelectionModal.classList.remove('hidden');
                 paymentMethodSelectionModal.classList.add('flex');
                 
-                // Marcar el método actual si existe
                 if (paymentMethodsData[index]) {
                     const currentMethodId = paymentMethodsData[index].methodId;
                     pmSelectionButtons.forEach(btn => {
@@ -627,17 +642,14 @@
                 }
             }
 
-            // Función para cerrar modal de selección de método de pago
             function closePaymentMethodModal(resetIndex = true) {
                 paymentMethodSelectionModal.classList.add('hidden');
                 paymentMethodSelectionModal.classList.remove('flex');
-                // Solo resetear el índice si no se va a abrir otro modal
                 if (resetIndex) {
                     currentEditingIndex = -1;
                 }
             }
 
-            // Event listeners para selección de método de pago
             pmSelectionButtons.forEach(btn => {
                 btn.addEventListener('click', function() {
                     const methodId = parseInt(this.dataset.methodId);
@@ -683,7 +695,6 @@
                 });
             });
 
-            // Cerrar modal al hacer clic fuera
             paymentMethodSelectionModal?.addEventListener('click', function(e) {
                 if (e.target === paymentMethodSelectionModal) {
                     closePaymentMethodModal();
@@ -692,11 +703,9 @@
 
             closePaymentMethodModalBtn?.addEventListener('click', closePaymentMethodModal);
 
-            // Función para actualizar la lista de métodos de pago
             function updatePaymentMethodsList() {
                 paymentMethodsList.innerHTML = paymentMethodsData.map((pm, index) => renderPaymentMethod(index, pm)).join('');
                 
-                // Agregar event listeners
                 paymentMethodsList.querySelectorAll('.payment-method-btn').forEach(btn => {
                     btn.addEventListener('click', function() {
                         const index = parseInt(this.dataset.index);
@@ -743,20 +752,15 @@
                 });
             }
 
-            // Botón para agregar método de pago
             addPaymentMethodBtn?.addEventListener('click', addPaymentMethod);
 
-            // Abrir modal de selección de tarjeta
             function openCardModal() {
-                
-                // Actualizar referencias a los botones (por si el DOM cambió)
                 gatewayButtons = document.querySelectorAll('.gateway-btn');
                 cardButtons = document.querySelectorAll('.card-btn');
                 
                 cardSelectionModal.classList.remove('hidden');
                 cardSelectionModal.classList.add('flex');
                 
-                // Si estamos editando un método de pago existente, restaurar sus valores
                 if (currentEditingIndex >= 0 && paymentMethodsData[currentEditingIndex]) {
                     const pm = paymentMethodsData[currentEditingIndex];
                     selectedGatewayId = pm.gatewayId ? String(pm.gatewayId) : null;
@@ -768,7 +772,6 @@
                     console.warn('currentEditingIndex es inválido o no hay método de pago:', currentEditingIndex);
                 }
                 
-                // Marcar botones según valores guardados
                 gatewayButtons.forEach(b => {
                     if (b.dataset.gatewayId && b.dataset.gatewayId == selectedGatewayId) {
                         b.classList.remove('border-gray-300', 'bg-gray-50');
@@ -797,36 +800,27 @@
                     }
                 });
                 
-                // Configurar event listeners para los botones (por si no se configuraron antes)
                 setupCardModalListeners();
                 
                 updateConfirmButton();
             }
             
-            // Función para configurar los event listeners del modal de tarjeta usando event delegation
             function setupCardModalListeners() {
-                // Solo configurar una vez
                 if (cardModalListenersSetup) return;
                 cardModalListenersSetup = true;
                 
-                // Usar event delegation en el modal para manejar clics en pasarelas y tarjetas
-                // Esto evita problemas con listeners duplicados
                 cardSelectionModal.addEventListener('click', function(e) {
-                    // No procesar si se hace clic en el botón de confirmar o cancelar
                     if (e.target.closest('#confirm-card-selection') || e.target.closest('#cancel-card-selection') || e.target.closest('#close-card-modal')) {
                         return;
                     }
                     
-                    // Manejar clic en pasarela
                     const gatewayBtn = e.target.closest('.gateway-btn');
                     if (gatewayBtn && gatewayBtn.dataset.gatewayId) {
                         e.preventDefault();
                         e.stopPropagation();
                         
-                        // Actualizar referencias
                         gatewayButtons = document.querySelectorAll('.gateway-btn');
                         
-                        // Deseleccionar otros
                         gatewayButtons.forEach(b => {
                             if (!b.dataset.gatewayId) return;
                             b.classList.remove('border-blue-500', 'bg-blue-50');
@@ -835,7 +829,6 @@
                             if (checkIcon) checkIcon.classList.add('hidden');
                         });
                         
-                        // Seleccionar este
                         gatewayBtn.classList.remove('border-gray-300', 'bg-gray-50');
                         gatewayBtn.classList.add('border-blue-500', 'bg-blue-50');
                         const checkIcon = gatewayBtn.querySelector('.fa-check-circle');
@@ -846,16 +839,13 @@
                         return;
                     }
                     
-                    // Manejar clic en tarjeta
                     const cardBtn = e.target.closest('.card-btn');
                     if (cardBtn && cardBtn.dataset.cardId) {
                         e.preventDefault();
                         e.stopPropagation();
                         
-                        // Actualizar referencias
                         cardButtons = document.querySelectorAll('.card-btn');
                         
-                        // Deseleccionar otros
                         cardButtons.forEach(b => {
                             if (!b.dataset.cardId) return;
                             b.classList.remove('border-blue-500', 'bg-blue-50');
@@ -864,7 +854,6 @@
                             if (checkIcon) checkIcon.classList.add('hidden');
                         });
                         
-                        // Seleccionar este
                         cardBtn.classList.remove('border-gray-300', 'bg-gray-50');
                         cardBtn.classList.add('border-blue-500', 'bg-blue-50');
                         const checkIcon = cardBtn.querySelector('.fa-check-circle');
@@ -877,7 +866,6 @@
                 });
             }
 
-            // Cerrar modal
             function closeModal() {
                 cardSelectionModal.classList.add('hidden');
                 cardSelectionModal.classList.remove('flex');
@@ -889,17 +877,12 @@
                 currentEditingIndex = -1;
             });
 
-            // Cerrar modal al hacer clic fuera
             cardSelectionModal?.addEventListener('click', function(e) {
                 if (e.target === cardSelectionModal) {
                     closeModal();
                 }
             });
 
-            // Los event listeners ahora se configuran en setupCardModalListeners()
-            // que se llama cuando se abre el modal
-
-            // Actualizar estado del botón confirmar
             function updateConfirmButton() {
                 if (selectedGatewayId && selectedCardId) {
                     confirmCardSelection.disabled = false;
@@ -910,20 +893,16 @@
                 }
             }
 
-            // Confirmar selección de tarjeta
             confirmCardSelection?.addEventListener('click', function() {
                 
                 if (selectedGatewayId && selectedCardId && currentEditingIndex >= 0) {
-                    // Actualizar referencias a los botones antes de obtener los nombres
                     gatewayButtons = document.querySelectorAll('.gateway-btn');
                     cardButtons = document.querySelectorAll('.card-btn');
                     
-                    // Actualizar el método de pago actual
                     const pm = paymentMethodsData[currentEditingIndex];
                     pm.gatewayId = selectedGatewayId;
                     pm.cardId = selectedCardId;
                     
-                    // Obtener nombres usando las referencias actualizadas
                     const gatewayBtn = Array.from(gatewayButtons).find(b => b.dataset.gatewayId == selectedGatewayId);
                     const cardBtn = Array.from(cardButtons).find(b => b.dataset.cardId == selectedCardId);
 
@@ -934,19 +913,16 @@
                         pm.cardName = cardBtn.dataset.cardName || '';
                     }
 
-                    // Actualizar la lista
                     updatePaymentMethodsList();
                     closeModal();
                     currentEditingIndex = -1;
                     
-                    // Limpiar selección
                     selectedGatewayId = null;
                     selectedCardId = null;
                 } else {
                 }
             });
 
-            // --- Modal billetera (Yape, Plin, etc.) ---
             function openWalletModal() {
                 walletSelectionModal.classList.remove('hidden');
                 walletSelectionModal.classList.add('flex');
@@ -1418,7 +1394,7 @@
                                     errorMessage = validationErrors || errorMessage;
                                 }
                                 if (r.status >= 500 && (!errorMessage || errorMessage === 'Error al procesar la venta')) {
-                                    errorMessage = 'Ocurri� un error interno al procesar la venta. Por favor, int�ntalo nuevamente en unos minutos.';
+                                    errorMessage = 'Ocurri un error interno al procesar la venta. Por favor, intntalo nuevamente en unos minutos.';
                                 }
                                 throw new Error(errorMessage);
                             }
@@ -1427,7 +1403,7 @@
 
                         await r.text();
                         if (!r.ok) {
-                            throw new Error('Ocurri� un error interno al procesar la venta. Por favor, int�ntalo nuevamente en unos minutos.');
+                            throw new Error('Ocurri un error interno al procesar la venta. Por favor, intntalo nuevamente en unos minutos.');
                         }
                         throw new Error('Respuesta inesperada del servidor.');
                     })
@@ -1453,7 +1429,7 @@
                         if (viewId) url += (url.includes('?') ? '&' : '?') + 'view_id=' + encodeURIComponent(viewId);
                         window.location.href = url;
                     })
-                    .catch(err => {   
+                    .catch(err => {    
                         const errorMessage = err.message || 'Error al procesar la venta';
                         showErrorModal(errorMessage);
                         this.disabled = false;

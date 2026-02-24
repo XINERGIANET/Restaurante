@@ -81,6 +81,7 @@ class BoxController extends Controller
                 'number'    => $validated['number'],
                 'series'    => $validated['series'],
                 'status'    => $validated['status'],
+                'branch_id' => $request->session()->get('branch_id'),
             ]);
             $viewId = $request->input('view_id');
             

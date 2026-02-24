@@ -102,6 +102,112 @@
                     </div>
                 @endif
 
+                <div x-data="{ openCashModal: false }" class="flex items-center gap-2">
+
+                    <button type="button" 
+                        @click="openCashModal = true"
+                        title="Cambiar Caja"
+                        class="relative flex items-center justify-center text-white transition-all bg-white/5 border border-white/10 rounded-full hover:text-white h-11 w-11 hover:bg-white/10 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white">
+                        
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M5 11h14v-3a1 1 0 0 0-1-1H6a1 1 0 0 0-1 1v3z"/>
+                            <path d="M17.5 11l-1.5 10h-8L6.5 11"/>
+                            <path d="M6 7V5a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v2"/>
+                            <path d="M9 16h6"/>
+                            <path d="M12 4V2"/>
+                        </svg>
+                    </button>
+
+                    <div x-show="openCashModal" 
+                        style="display: none;" 
+                        class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm"
+                        x-transition:enter="transition ease-out duration-300"
+                        x-transition:enter-start="opacity-0"
+                        x-transition:enter-end="opacity-100"
+                        x-transition:leave="transition ease-in duration-200"
+                        x-transition:leave-start="opacity-100"
+                        x-transition:leave-end="opacity-0">
+
+                        <div class="w-full max-w-md bg-white border border-gray-200 shadow-2xl rounded-2xl dark:bg-gray-900 dark:border-gray-700"
+                            @click.away="openCashModal = false"
+                            x-transition:enter="transition ease-out duration-300"
+                            x-transition:enter-start="opacity-0 scale-95"
+                            x-transition:enter-end="opacity-100 scale-100"
+                            x-transition:leave="transition ease-in duration-200"
+                            x-transition:leave-start="opacity-100 scale-100"
+                            x-transition:leave-end="opacity-0 scale-95">
+
+                            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+                                <h3 class="text-lg font-semibold text-gray-800 dark:text-white">
+                                    Seleccionar Caja
+                                </h3>
+                                <button @click="openCashModal = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
+                                    <i class="ri-close-line text-xl"></i>
+                                </button>
+                            </div>
+
+                            <div class="p-6">
+                                <p class="mb-4 text-sm text-gray-500 dark:text-gray-400">
+                                    Seleccione la caja en la que desea operar actualmente.
+                                </p>
+
+                                <div class="grid gap-3">
+                                    @if(isset($cashRegisters) && $cashRegisters->count() > 0)
+                                        @foreach($cashRegisters as $caja)
+                                            @php
+                                                $sessionRegisterId = session('cash_register_id');
+                                                
+                                                $isActive = $sessionRegisterId 
+                                                            ? ($sessionRegisterId == $caja->id) 
+                                                            : $loop->first;
+                                            @endphp
+
+                                            <form action="{{ route('caja.fijar') }}" method="POST">
+                                                @csrf
+                                                <input type="hidden" name="cash_register_id" value="{{ $caja->id }}">
+                                                
+                                                <button type="submit" 
+                                                    class="group relative w-full flex items-center p-3 text-left border rounded-xl transition-all duration-200
+                                                    {{ $isActive 
+                                                        ? 'bg-brand-50 border-brand-200 ring-1 ring-brand-500/20 dark:bg-brand-500/10 dark:border-brand-500/30' 
+                                                        : 'bg-gray-50 border-transparent hover:bg-white hover:border-gray-200 hover:shadow-sm dark:bg-gray-800 dark:hover:bg-gray-700 dark:hover:border-gray-600' 
+                                                    }}">
+                                                    
+                                                    <div class="flex items-center justify-center w-10 h-10 rounded-lg mr-4 
+                                                        {{ $isActive ? 'bg-brand-100 text-brand-600 dark:bg-brand-500/20 dark:text-brand-400' : 'bg-white text-gray-400 shadow-sm group-hover:text-brand-500 dark:bg-gray-700 dark:text-gray-400' }}">
+                                                        <i class="ri-store-2-line text-lg"></i>
+                                                    </div>
+
+                                                    <div class="flex-1 ml-4">
+                                                        <h4 class="font-medium {{ $isActive ? 'text-brand-700 dark:text-brand-400' : 'text-gray-800 dark:text-gray-200' }}">
+                                                            {{ $caja->number }}
+                                                        </h4>
+                                                        @if($isActive)
+                                                            <span class="text-xs text-brand-500 font-medium">● Activa actualmente</span>
+                                                        @else
+                                                            <span class="text-xs text-gray-400 group-hover:text-gray-500"> Click para cambiar</span>
+                                                        @endif
+                                                    </div>
+
+                                                    @if($isActive)
+                                                        <div class="text-brand-500">
+                                                            <i class="ri-checkbox-circle-fill text-xl"></i>
+                                                        </div>
+                                                    @endif
+                                                </button>
+                                            </form>
+                                        @endforeach
+                                    @else
+                                        <div class="text-center py-4 text-gray-500">
+                                            No hay cajas registradas.
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
 
                 <!-- Theme Toggle Button -->
                 <button
@@ -124,7 +230,7 @@
                 <!-- Notification Dropdown -->
                 <x-header.notification-dropdown class="text-white hover:text-white" />
             </div>
-
+                
             <!-- User Dropdown -->
             <x-header.user-dropdown class="text-white hover:text-white" />
         </div>

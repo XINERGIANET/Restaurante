@@ -676,6 +676,7 @@ class OrderController extends Controller
             ], 500);
         }
     }
+
     public function processOrder(Request $request)
     {
         $items = $request->input('items', []);
@@ -907,7 +908,6 @@ class OrderController extends Controller
         $user = $request->user();
         $paymentMethods = collect($request->input('payment_methods', []));
 
-        // Buscar el pedido por movement_id (envia la vista de cobro) o por table_id
         $orderMovement = null;
         if ($movementId) {
             $orderMovement = OrderMovement::where('movement_id', $movementId)->first();

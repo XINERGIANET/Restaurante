@@ -37,6 +37,7 @@ use App\Http\Controllers\RecipeBookController;
 use App\Http\Controllers\UnitController;
 use App\Http\Controllers\WarehouseMovementController;
 use App\Http\Controllers\ShiftCashController;
+use App\Http\Controllers\CashRegisterController;
 
 
 Route::prefix('restaurante')->name('restaurant.')->group(function () {
@@ -123,6 +124,10 @@ Route::middleware('auth')->group(function () {
     // POS: vista de cobro (antes era modal)
     Route::get('/ventas/cobrar', [SalesController::class, 'charge'])
         ->name('sales.charge');
+
+    // API: obtener caja de sesión
+    Route::get('/api/session/cash-register', [SalesController::class, 'getSessionCashRegister'])
+        ->name('api.session.cash-register');
 
     // POS: procesar venta (usado por resources/views/sales/create.blade.php)
     Route::post('/admin/ventas/procesar', [SalesController::class, 'processSale'])
@@ -418,5 +423,8 @@ Route::middleware('auth')->group(function () {
     Route::resource('/cocina/recetario', RecipeBookController::class)
         ->names('recipe-book')
         ->parameters(['recetario' => 'recipe']); 
+
+    Route::post('/caja/fijar', [CashRegisterController::class, 'set'])->name('caja.fijar');
+    Route::get('/caja/seleccionar', [CashRegisterController::class, 'select'])->name('caja.seleccionar');
 });
 
