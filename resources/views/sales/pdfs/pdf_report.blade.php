@@ -21,6 +21,9 @@
         
         /* Ajuste para columnas estrechas */
         .w-min { width: 1%; white-space: nowrap; }
+        .filters-box { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; padding: 8px 12px; margin-bottom: 12px; font-size: 9px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 20px; }
+        .filters-box .filter-item { white-space: nowrap; }
+        .filters-box strong { color: #495057; }
     </style>
 </head>
 <body>
@@ -28,10 +31,23 @@
         <h1>Reporte Detallado de Ventas</h1>
         <p>Generado el: {{ now()->format('d/m/Y H:i') }}</p>
         <p>
-            Desde: {{ $dateFrom ? \Carbon\Carbon::parse($dateFrom)->format('d/m/Y') : 'Inicio' }} 
-            Hasta: {{ $dateTo ? \Carbon\Carbon::parse($dateTo)->format('d/m/Y') : 'Hoy' }}
+            Desde: {{ $dateFrom ? \Carbon\Carbon::parse($dateFrom)->format('d/m/Y') : 'Inicio' }}
+            — Hasta: {{ $dateTo ? \Carbon\Carbon::parse($dateTo)->format('d/m/Y') : 'Hoy' }}
         </p>
     </div>
+
+    @if(!empty($filters))
+    <div class="filters-box">
+        <strong style="margin-right: 8px;">Filtros aplicados:</strong>
+        <span class="filters-row">
+            @foreach($filters as $label => $value)
+                @if($value !== null && $value !== '')
+                <span class="filter-item" style="margin-right: 10px;"><strong>{{ $label }}:</strong> {{ $value }}</span>
+                @endif
+            @endforeach
+        </span>
+    </div>
+    @endif
 
     <table>
         <thead>

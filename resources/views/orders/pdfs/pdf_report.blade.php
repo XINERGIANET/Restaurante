@@ -13,7 +13,7 @@
         th, td { border: 1px solid #ccc; padding: 5px; text-align: left; vertical-align: top; }
 
         th { background-color: #f0f0f0; font-weight: bold; font-size: 9px; text-transform: uppercase; }
-
+        
         .text-right { text-align: right; }
         .font-bold { font-weight: bold; }
         .w-min { width: 1%; white-space: nowrap; }

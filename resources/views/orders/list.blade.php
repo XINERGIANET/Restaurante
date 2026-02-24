@@ -101,69 +101,56 @@
                         </x-ui.link-button>
                     </div>
             </div>
-            <div class="flex flex-col gap-4 w-full lg:flex-row justify-between lg:items-end lg:gap-4">
-                <div
-                    class="flex flex-nowrap gap-3 rounded-xl py-3 w-full lg:w-auto lg:items-end">
-                    <div
-                        class="min-w-0 [&_label]:mb-1 [&_label]:text-xs [&_.custom-datepicker]:mt-auto [&_.custom-datepicker]:w-full [&_.custom-datepicker_input]:h-10">
-                        <x-form.date-picker name="date_from" label="Desde" :defaultDate="$dateFrom" dateFormat="Y-m-d"
-                            class="h-10 w-full min-w-0 rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-900" />
+            <div class="flex flex-wrap items-end justify-between gap-3 w-full">
+                <div class="flex flex-wrap items-end gap-3">
+                    <div class="w-[155px] shrink-0 [&_label]:mb-1 [&_label]:text-xs [&_label]:font-medium [&_label]:text-gray-600 dark:[&_label]:text-gray-400">
+                        <x-form.date-picker name="date_from" label="Desde" :defaultDate="$dateFrom" dateFormat="Y-m-d" />
                     </div>
-                    <div
-                        class="min-w-0 [&_label]:mb-1 [&_label]:text-xs [&_.custom-datepicker]:mt-auto [&_.custom-datepicker]:w-full [&_.custom-datepicker_input]:h-10">
-                        <x-form.date-picker name="date_to" label="Hasta" :defaultDate="$dateTo" dateFormat="Y-m-d"
-                            class="h-10 w-full min-w-0 rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-900" />
+                    <div class="w-[155px] shrink-0 [&_label]:mb-1 [&_label]:text-xs [&_label]:font-medium [&_label]:text-gray-600 dark:[&_label]:text-gray-400">
+                        <x-form.date-picker name="date_to" label="Hasta" :defaultDate="$dateTo" dateFormat="Y-m-d" />
                     </div>
-                    <div class="min-w-0">
-                        <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Método de
-                            pago</label>
+                    <div class="w-[155px] shrink-0">
+                        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Método de pago</label>
                         <select name="payment_method_id" onchange="this.form.submit()"
-                            class="mt-auto h-11 w-full min-w-0 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-2 focus:ring-brand-500/10 dark:border-gray-600 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800">
+                            class="h-11 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-2 focus:ring-brand-500/10 dark:border-gray-600 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800">
                             <option value="">Todos</option>
                             @foreach ($paymentMethods ?? [] as $pm)
-                                <option value="{{ $pm->id }}" @selected(($paymentMethodId ?? '') == $pm->id)>
-                                    {{ $pm->description ?? $pm->id }}</option>
+                                <option value="{{ $pm->id }}" @selected(($paymentMethodId ?? '') == $pm->id)>{{ $pm->description ?? $pm->id }}</option>
                             @endforeach
                         </select>
                     </div>
-                    <div class="min-w-0">
-                        <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Tipo de
-                            documento</label>
+                    <div class="w-[155px] shrink-0">
+                        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Tipo de documento</label>
                         <select name="document_type_id" onchange="this.form.submit()"
-                            class="mt-auto h-11 w-full min-w-0 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-2 focus:ring-brand-500/10 dark:border-gray-600 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800">
+                            class="h-11 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-2 focus:ring-brand-500/10 dark:border-gray-600 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800">
                             <option value="">Todos</option>
                             @foreach ($documentTypes ?? [] as $dt)
-                                <option value="{{ $dt->id }}" @selected(($documentTypeId ?? '') == $dt->id)>{{ $dt->name }}
-                                </option>
+                                <option value="{{ $dt->id }}" @selected(($documentTypeId ?? '') == $dt->id)>{{ $dt->name }}</option>
                             @endforeach
                         </select>
                     </div>
-                    <div class="min-w-0">
-                        <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Caja</label>
+                    <div class="w-[100px] shrink-0">
+                        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Caja</label>
                         <select name="cash_register_id" onchange="this.form.submit()"
-                            class="mt-auto h-11 w-full min-w-0 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-2 focus:ring-brand-500/10 dark:border-gray-600 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800">
+                            class="h-11 w-full rounded-lg border border-gray-300 bg-white px-5 py-2 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-2 focus:ring-brand-500/10 dark:border-gray-600 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800">
                             <option value="">Todas</option>
                             @foreach ($cashRegisters ?? [] as $cr)
-                                <option value="{{ $cr->id }}" @selected(($cashRegisterId ?? '') == $cr->id)>
-                                    {{ $cr->number ?? $cr->id }}</option>
+                                <option value="{{ $cr->id }}" @selected(($cashRegisterId ?? '') == $cr->id)>{{ $cr->number ?? $cr->id }}</option>
                             @endforeach
                         </select>
                     </div>
                 </div>
-                <div class="flex-shrink-0 self-end  items-bottom">
+                <div class="shrink-0">
                     <button type="button"
-                        class="inline-flex h-10 min-h-[2.5rem] items-center justify-center gap-2 rounded-lg bg-orange-600 px-4 py-0 text-sm font-medium leading-none text-white shadow-sm transition hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
-                        onclick="window.location.href='{{ route(
-                            'orders.pdf',
-                            array_filter([
-                                'date_from' => $dateFrom,
-                                'date_to' => $dateTo,
-                                'search' => $search,
-                                'document_type_id' => $documentTypeId ?? null,
-                                'payment_method_id' => $paymentMethodId ?? null,
-                                'cash_register_id' => $cashRegisterId ?? null,
-                            ]),
-                        ) }}'">
+                        class="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-orange-600 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+                        onclick="window.location.href='{{ route('orders.pdf', array_filter([
+                            'date_from' => $dateFrom,
+                            'date_to' => $dateTo,
+                            'search' => $search,
+                            'document_type_id' => $documentTypeId ?? null,
+                            'payment_method_id' => $paymentMethodId ?? null,
+                            'cash_register_id' => $cashRegisterId ?? null,
+                        ])) }}'">
                         <i class="ri-file-pdf-line text-base"></i>
                         <span>Descargar PDF</span>
                     </button>
