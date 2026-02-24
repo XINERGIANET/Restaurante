@@ -28,6 +28,7 @@ use App\Models\Table;
 use App\Models\Unit;
 use App\Models\User;
 use App\Models\Operation;
+use Barryvdh\Snappy\Facades\SnappyPdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -39,6 +40,8 @@ class OrderController extends Controller
         $search = $request->input('search');
         $viewId = $request->input('view_id');
         $perPage = (int) $request->input('per_page', 10);
+        $dateFrom = $request->input('date_from');
+        $dateTo = $request->input('date_to');
         $allowedPerPage = [10, 20, 50, 100];
         if (!in_array($perPage, $allowedPerPage, true)) {
             $perPage = 10;
@@ -46,6 +49,15 @@ class OrderController extends Controller
 
         $branchId = $request->session()->get('branch_id');
         $profileId = $request->session()->get('profile_id') ?? $request->user()?->profile_id;
+        $documentTypeId = $request->input('document_type_id');
+        $paymentMethodId = $request->input('payment_method_id');
+        $cashRegisterId = $request->input('cash_register_id');
+        $documentTypes = DocumentType::query()
+            ->orderBy('name')
+            ->where('name', 'ILIKE', '%venta%')
+            ->get(['id', 'name']);
+        $paymentMethods = PaymentMethod::query()->where('status', true)->orderBy('order_num')->get(['id', 'description']);
+        $cashRegisters = CashRegister::query()->orderBy('number')->get(['id', 'number']);
         $operaciones = collect();
         if ($viewId && $branchId && $profileId) {
             $operaciones = Operation::query()
@@ -83,6 +95,16 @@ class OrderController extends Controller
             ->when($branchId, function ($query) use ($branchId) {
                 $query->where('branch_id', $branchId);
             })
+            ->when($dateFrom, function ($query) use ($dateFrom) {
+                $query->whereHas('movement', function ($movementQuery) use ($dateFrom) {
+                    $movementQuery->where('moved_at', '>=', $dateFrom . ' 00:00:00');
+                });
+            })
+            ->when($dateTo, function ($query) use ($dateTo) {
+                $query->whereHas('movement', function ($movementQuery) use ($dateTo) {
+                    $movementQuery->where('moved_at', '<=', $dateTo . ' 23:59:59');
+                });
+            })
 
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
@@ -96,6 +118,33 @@ class OrderController extends Controller
                         ->orWhere('status', 'ILIKE', "%{$search}%");
                 });
             })
+            ->when($documentTypeId, function ($query) use ($documentTypeId) {
+                $query->whereHas('movement', function ($movementQuery) use ($documentTypeId) {
+                    $movementQuery->where('document_type_id', $documentTypeId);
+                });
+            })
+            ->when($cashRegisterId, function ($query) use ($cashRegisterId) {
+                $query->whereExists(function ($sub) use ($cashRegisterId) {
+                    $sub->select(DB::raw(1))
+                        ->from('movements as m')
+                        ->join('cash_movements as cm', 'cm.movement_id', '=', 'm.id')
+                        ->whereColumn('m.parent_movement_id', 'order_movements.movement_id')
+                        ->where('cm.cash_register_id', $cashRegisterId)
+                        ->whereNull('cm.deleted_at');
+                });
+            })
+            ->when($paymentMethodId, function ($query) use ($paymentMethodId) {
+                $query->whereExists(function ($sub) use ($paymentMethodId) {
+                    $sub->select(DB::raw(1))
+                        ->from('movements as m')
+                        ->join('cash_movements as cm', 'cm.movement_id', '=', 'm.id')
+                        ->join('cash_movement_details as cmd', 'cmd.cash_movement_id', '=', 'cm.id')
+                        ->whereColumn('m.parent_movement_id', 'order_movements.movement_id')
+                        ->where('cmd.payment_method_id', $paymentMethodId)
+                        ->whereNull('cm.deleted_at')
+                        ->whereNull('cmd.deleted_at');
+                });
+            })
             ->orderByDesc('id')
             ->paginate($perPage)
             ->withQueryString();
@@ -105,6 +154,14 @@ class OrderController extends Controller
             'search' => $search,
             'perPage' => $perPage,
             'operaciones' => $operaciones,
+            'dateFrom' => $dateFrom,
+            'dateTo' => $dateTo,
+            'documentTypes' => $documentTypes,
+            'paymentMethods' => $paymentMethods,
+            'cashRegisters' => $cashRegisters,
+            'documentTypeId' => $request->input('document_type_id'),
+            'paymentMethodId' => $request->input('payment_method_id'),
+            'cashRegisterId' => $request->input('cash_register_id'),
         ]);
     }
 
@@ -180,6 +237,89 @@ class OrderController extends Controller
         $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
         $response->headers->set('Pragma', 'no-cache');
         return $response;
+    }
+
+    public function pdfReport(Request $request)
+    {
+        $dateFrom = $request->input('date_from') ?? now()->startOfMonth()->format('Y-m-d');
+        $dateTo = $request->input('date_to') ?? now()->format('Y-m-d');
+        $search = $request->input('search');
+        $documentTypeId = $request->input('document_type_id');
+        $paymentMethodId = $request->input('payment_method_id');
+        $cashRegisterId = $request->input('cash_register_id');
+        $branchId = $request->session()->get('branch_id');
+
+        $orders = OrderMovement::query()
+            ->with(['movement.documentType', 'movement.movementType', 'table', 'area'])
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+            ->when($dateFrom, fn($q) => $q->whereHas('movement', fn($m) => $m->where('moved_at', '>=', $dateFrom . ' 00:00:00')))
+            ->when($dateTo, fn($q) => $q->whereHas('movement', fn($m) => $m->where('moved_at', '<=', $dateTo . ' 23:59:59')))
+            ->when($search, function ($query) use ($search) {
+                $query->where(function ($inner) use ($search) {
+                    $inner->whereHas('movement', function ($movementQuery) use ($search) {
+                        $movementQuery->where(function ($movementInner) use ($search) {
+                            $movementInner->where('number', 'ILIKE', "%{$search}%")
+                                ->orWhere('person_name', 'ILIKE', "%{$search}%")
+                                ->orWhere('user_name', 'ILIKE', "%{$search}%");
+                        });
+                    })
+                        ->orWhere('status', 'ILIKE', "%{$search}%");
+                });
+            })
+            ->when($documentTypeId, function ($query) use ($documentTypeId) {
+                $query->whereHas('movement', fn($m) => $m->where('document_type_id', $documentTypeId));
+            })
+            ->when($cashRegisterId, function ($query) use ($cashRegisterId) {
+                $query->whereExists(function ($sub) use ($cashRegisterId) {
+                    $sub->select(DB::raw(1))
+                        ->from('movements as m')
+                        ->join('cash_movements as cm', 'cm.movement_id', '=', 'm.id')
+                        ->whereColumn('m.parent_movement_id', 'order_movements.movement_id')
+                        ->where('cm.cash_register_id', $cashRegisterId)
+                        ->whereNull('cm.deleted_at');
+                });
+            })
+            ->when($paymentMethodId, function ($query) use ($paymentMethodId) {
+                $query->whereExists(function ($sub) use ($paymentMethodId) {
+                    $sub->select(DB::raw(1))
+                        ->from('movements as m')
+                        ->join('cash_movements as cm', 'cm.movement_id', '=', 'm.id')
+                        ->join('cash_movement_details as cmd', 'cmd.cash_movement_id', '=', 'cm.id')
+                        ->whereColumn('m.parent_movement_id', 'order_movements.movement_id')
+                        ->where('cmd.payment_method_id', $paymentMethodId)
+                        ->whereNull('cm.deleted_at')
+                        ->whereNull('cmd.deleted_at');
+                });
+            })
+            ->orderByDesc('id')
+            ->get();
+
+        $filters = [];
+        $filters['Desde'] = $dateFrom ? \Carbon\Carbon::parse($dateFrom)->format('d/m/Y') : null;
+        $filters['Hasta'] = $dateTo ? \Carbon\Carbon::parse($dateTo)->format('d/m/Y') : null;
+        if ($search !== null && $search !== '') {
+            $filters['Búsqueda'] = $search;
+        }
+        if ($documentTypeId) {
+            $dt = DocumentType::find($documentTypeId);
+            $filters['Tipo de documento'] = $dt ? $dt->name : "ID {$documentTypeId}";
+        }
+        if ($paymentMethodId) {
+            $pm = PaymentMethod::find($paymentMethodId);
+            $filters['Método de pago'] = $pm ? ($pm->description ?? $pm->id) : "ID {$paymentMethodId}";
+        }
+        if ($cashRegisterId) {
+            $cr = CashRegister::find($cashRegisterId);
+            $filters['Caja'] = $cr ? ($cr->number ?? $cr->id) : "ID {$cashRegisterId}";
+        }
+
+        $pdf = SnappyPdf::loadView('orders.pdfs.pdf_report', [
+            'orders' => $orders,
+            'dateFrom' => $dateFrom,
+            'dateTo' => $dateTo,
+            'filters' => $filters,
+        ]);
+        return $pdf->download('reporte_pedidos.pdf');
     }
 
     public function tablesData(Request $request)
@@ -660,8 +800,8 @@ class OrderController extends Controller
                     'user_name' => $user?->name ?? 'Sistema',
                     'person_id' => null,
                     'person_name' => 'Público General',
-                    'responsible_id' => $user?->id,
-                    'responsible_name' => $user?->name ?? 'Sistema',
+                    'responsible_id' => $user?->person->id,
+                    'responsible_name' => $user?->person->first_name . ' ' . $user?->person->last_name ?? '-',
                     'comment' => 'Pedido desde punto de venta',
                     'status' => 'A',
                     'movement_type_id' => $movementType->id,
@@ -819,8 +959,8 @@ class OrderController extends Controller
                         'user_name' => $user?->name ?? 'Sistema',
                         'person_id' => $orderBaseMovement?->person_id,
                         'person_name' => $orderBaseMovement?->person_name ?? 'Publico General',
-                        'responsible_id' => $user?->id,
-                        'responsible_name' => $user?->name ?? 'Sistema',
+                        'responsible_id' => $user?->person->id,
+                        'responsible_name' => $user?->person->first_name . ' ' . $user?->person->last_name ?? '-',
                         'comment' => 'Cobro de pedido ' . ($orderBaseMovement?->number ?? ''),
                         'status' => '1',
                         'movement_type_id' => $cashMovementTypeId,
@@ -954,39 +1094,41 @@ class OrderController extends Controller
 
     private function generateOrderMovementNumber(int $branchId, int $movementTypeId, int $documentTypeId): string
     {
-        $query = Movement::query()
+        if (DB::connection()->getDriverName() === 'pgsql') {
+            // Serializar con advisory lock
+            DB::statement('SELECT pg_advisory_xact_lock(?)', [7000001]);
+            // Secuencia de 8 dígitos: 00000001, 00000002, ...
+            DB::statement('CREATE SEQUENCE IF NOT EXISTS order_movement_number_seq START WITH 1');
+            $next = DB::selectOne("SELECT nextval('order_movement_number_seq') AS v");
+            $val = (int) $next->v;
+            // Si la secuencia se pasó de 8 dígitos, reiniciar para mostrar 00000001, 00000002, ...
+            if ($val > 99999999) {
+                DB::statement("SELECT setval('order_movement_number_seq', 1)");
+                $val = 1;
+            }
+            return str_pad((string) $val, 8, '0', STR_PAD_LEFT);
+        }
+
+        // Fallback para MySQL u otro: lock de fila + máximo
+        $last = Movement::query()
             ->where('branch_id', $branchId)
             ->where('movement_type_id', $movementTypeId)
             ->where('document_type_id', $documentTypeId)
-            ->lockForUpdate();
+            ->orderByRaw("COALESCE(NULLIF(REGEXP_REPLACE(number, '[^0-9]', '', 'g'), '')::BIGINT, 0) DESC")
+            ->lockForUpdate()
+            ->first();
+
         $lastCorrelative = 0;
-        $numbers = $query->pluck('number');
-
-        foreach ($numbers as $number) {
-            $raw = trim((string) $number);
-            if ($raw === '') {
-                continue;
-            }
-
+        if ($last) {
+            $raw = trim((string) $last->number);
             if (preg_match('/^\d+$/', $raw) === 1) {
-                $value = (int) $raw;
-                if ($value > $lastCorrelative) {
-                    $lastCorrelative = $value;
-                }
-                continue;
-            }
-
-            if (preg_match('/(\d+)-\d{4}$/', $raw, $matches) === 1) {
-                $value = (int) $matches[1];
-                if ($value > $lastCorrelative) {
-                    $lastCorrelative = $value;
-                }
+                $lastCorrelative = (int) $raw;
+            } elseif (preg_match('/(\d+)-\d{4}$/', $raw, $matches) === 1) {
+                $lastCorrelative = (int) $matches[1];
             }
         }
 
-        $nextCorrelative = $lastCorrelative + 1;
-
-        return str_pad((string) $nextCorrelative, 8, '0', STR_PAD_LEFT);
+        return str_pad((string) ($lastCorrelative + 1), 8, '0', STR_PAD_LEFT);
     }
 
     private function resolveCashMovementTypeId(): int

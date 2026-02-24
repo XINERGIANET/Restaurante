@@ -1147,20 +1147,22 @@
                         b.classList.remove('doc-active');
                         b.classList.add('border-gray-300', 'bg-gray-50');
                         b.classList.remove('border-blue-500', 'bg-blue-50');
-                        b.querySelector('.fa-file-alt').classList.remove('text-blue-600',
-                            'dark:text-blue-400');
-                        b.querySelector('.fa-file-alt').classList.add('text-gray-600',
-                            'dark:text-gray-400');
+                        const icon = b.querySelector('.fa-file-invoice') || b.querySelector('i.fas');
+                        if (icon) {
+                            icon.classList.remove('text-blue-600', 'dark:text-blue-400');
+                            icon.classList.add('text-gray-600', 'dark:text-gray-400');
+                        }
                         const checkIcon = b.querySelector('.fa-check-circle');
                         if (checkIcon) checkIcon.classList.add('hidden');
                     });
                     this.classList.add('doc-active');
                     this.classList.remove('border-gray-300', 'bg-gray-50');
                     this.classList.add('border-blue-500', 'bg-blue-50');
-                    this.querySelector('.fa-file-alt').classList.remove('text-gray-600',
-                        'dark:text-gray-400');
-                    this.querySelector('.fa-file-alt').classList.add('text-blue-600',
-                        'dark:text-blue-400');
+                    const icon = this.querySelector('.fa-file-invoice') || this.querySelector('i.fas');
+                    if (icon) {
+                        icon.classList.remove('text-gray-600', 'dark:text-gray-400');
+                        icon.classList.add('text-blue-600', 'dark:text-blue-400');
+                    }
                     const checkIcon = this.querySelector('.fa-check-circle');
                     if (checkIcon) checkIcon.classList.remove('hidden');
 

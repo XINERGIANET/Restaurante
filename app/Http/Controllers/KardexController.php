@@ -6,6 +6,8 @@ use App\Models\Branch;
 use App\Models\Product;
 use App\Models\SalesMovementDetail;
 use App\Models\WarehouseMovementDetail;
+use App\Models\OrderMovementDetail;
+use App\Models\OrderMovement;
 use App\Models\DocumentType;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -35,6 +37,9 @@ class KardexController extends Controller
         $movementsCollection = collect(); 
         $showAllProducts = ($productId === 'all');
 
+        // Correlativo 001, 002, 003... por tipo de documento para pedidos (como en ventas)
+        $orderSeriesMap = $this->buildOrderSeriesMap($branchId ? (int) $branchId : null, $dateFrom, $dateTo);
+
         if ($showAllProducts) {
             $productIds = $this->getProductIdsWithMovements($branchId ? (int) $branchId : null, $dateFrom, $dateTo);
             $productIds = array_values(array_intersect($productIds, $products->pluck('id')->all()));
@@ -43,7 +48,7 @@ class KardexController extends Controller
                 $productMap = Product::whereIn('id', $productIds)->get()->keyBy('id');
 
                 foreach ($productIds as $pid) {
-                    $rows = $this->buildKardexMovements($pid, $branchId ? (int) $branchId : null, $dateFrom, $dateTo);
+                    $rows = $this->buildKardexMovements($pid, $branchId ? (int) $branchId : null, $dateFrom, $dateTo, $orderSeriesMap);
                     
                     $p = $productMap->get($pid);
                     foreach ($rows as $r) {
@@ -59,17 +64,19 @@ class KardexController extends Controller
             }
 
         } elseif ($productId && is_numeric($productId)) {
-            $data = $this->buildKardexMovements((int) $productId, $branchId ? (int) $branchId : null, $dateFrom, $dateTo);
+            $data = $this->buildKardexMovements((int) $productId, $branchId ? (int) $branchId : null, $dateFrom, $dateTo, $orderSeriesMap);
             $movementsCollection = collect($data);
         }
 
         if ($sourceFilter !== 'all') {
             $movementsCollection = $movementsCollection->filter(function ($m) use ($sourceFilter) {
+                $origin = $m['origin'] ?? '';
+                $isSale = str_starts_with($origin, 'V - ') || str_starts_with($origin, 'O - ');
                 $typeLower = strtolower($m['type'] ?? '');
-                $isSale = str_contains($typeLower, 'boleta') || 
-                        str_contains($typeLower, 'factura') ||
-                        str_contains($typeLower, 'nota') ||
-                        str_contains($typeLower, 'ticket');
+                if (!$isSale) {
+                    $isSale = str_contains($typeLower, 'boleta') || str_contains($typeLower, 'factura')
+                        || str_contains($typeLower, 'nota') || str_contains($typeLower, 'ticket');
+                }
 
                 if ($sourceFilter === 'sales') return $isSale;
                 if ($sourceFilter === 'warehouse') return !$isSale && ($m['type'] ?? '') !== 'Saldo inicial';
@@ -112,7 +119,37 @@ class KardexController extends Controller
         ));
     }
 
-    private function buildKardexMovements(int $productId, ?int $branchId, string $dateFrom, string $dateTo): \Illuminate\Support\Collection
+    /**
+     * Correlativo 001, 002, 003... por tipo de documento para pedidos cobrados en el rango de fechas.
+     * @return array<int, string> movement_id => series (ej. "001")
+     */
+    private function buildOrderSeriesMap(?int $branchId, string $dateFrom, string $dateTo): array
+    {
+        $dateFromStart = $dateFrom . ' 00:00:00';
+        $dateToEnd = $dateTo . ' 23:59:59';
+
+        $orders = OrderMovement::query()
+            ->whereIn('status', ['FINALIZADO', 'F'])
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->whereHas('movement', fn ($m) => $m->whereBetween('moved_at', [$dateFromStart, $dateToEnd]))
+            ->with('movement:id,document_type_id,branch_id,moved_at')
+            ->get();
+
+        $movements = $orders->map(fn ($om) => $om->movement)->filter();
+        $movements = $movements->sortBy(fn ($m) => [$m->document_type_id, $m->moved_at?->format('Y-m-d H:i:s'), $m->id])->values();
+
+        $map = [];
+        $countByDocType = [];
+        foreach ($movements as $mov) {
+            $key = $mov->document_type_id . '_' . ($mov->branch_id ?? 0);
+            $countByDocType[$key] = ($countByDocType[$key] ?? 0) + 1;
+            $map[$mov->id] = str_pad((string) $countByDocType[$key], 3, '0', STR_PAD_LEFT);
+        }
+
+        return $map;
+    }
+
+    private function buildKardexMovements(int $productId, ?int $branchId, string $dateFrom, string $dateTo, array $orderSeriesMap = []): \Illuminate\Support\Collection
     {
         $dateFromStart = $dateFrom . ' 00:00:00';
         $dateToEnd = $dateTo . ' 23:59:59';
@@ -172,6 +209,27 @@ class KardexController extends Controller
             $qty = (float) $d->quantity;
             $detailUnit = $d->unit?->description ?? $d->unit?->abbreviation ?? $unitName;
             $unitPrice = $qty > 0 ? (float) $d->amount / $qty : null;
+
+            // Prefijo de serie según tipo de documento: T = ticket, B = boleta, F = factura
+            $docNameLower = strtolower($mov->documentType?->name ?? '');
+            $seriesPrefix = '';
+            if (str_contains($docNameLower, 'boleta')) {
+                $seriesPrefix = 'B';
+            } elseif (str_contains($docNameLower, 'factura')) {
+                $seriesPrefix = 'F';
+            } elseif (str_contains($docNameLower, 'ticket')) {
+                $seriesPrefix = 'T';
+            }
+
+            $series = $mov->salesMovement?->series;
+            if ($series && $seriesPrefix) {
+                $originV = 'V - ' . $seriesPrefix . $series . ' - ' . $mov->number;
+            } elseif ($series) {
+                $originV = 'V - ' . $series . ' - ' . $mov->number;
+            } else {
+                $originV = 'V - ' . $mov->number;
+            }
+
             $rows->push([
                 'date' => $mov->moved_at?->format('Y-m-d H:i:s'),
                 'date_sort' => $mov->moved_at?->format('Y-m-d H:i:s'),
@@ -181,7 +239,63 @@ class KardexController extends Controller
                 'exit' => $qty,
                 'unit' => $detailUnit,
                 'unit_price' => $unitPrice,
-                'origin' => $mov->movementType?->description . ' - ' . $mov->documentType?->name[0] . $mov->salesMovement?->series . ' - ' . $mov->number,
+                'origin' => $originV,
+            ]);
+        }
+
+        // 3. OrderMovementDetail (pedidos cobrados = salida de stock)
+        $orderDetails = OrderMovementDetail::query()
+            ->where('product_id', $productId)
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->whereHas('orderMovement', function ($q) use ($dateFromStart, $dateToEnd) {
+                $q->whereIn('status', ['FINALIZADO', 'F'])
+                    ->whereHas('movement', fn ($m) => $m->whereBetween('moved_at', [$dateFromStart, $dateToEnd]));
+            })
+            ->with(['orderMovement.movement.documentType', 'orderMovement.movement.movementType', 'unit'])
+            ->get();
+
+        foreach ($orderDetails as $d) {
+            $om = $d->orderMovement;
+            $mov = $om?->movement;
+            if (!$mov) {
+                continue;
+            }
+            $docTypeName = $mov->documentType?->name ?? 'Pedido';
+            $qty = (float) $d->quantity;
+            $detailUnit = $d->unit?->description ?? $d->unit?->abbreviation ?? $unitName;
+            $unitPrice = $qty > 0 ? (float) $d->amount / $qty : null;
+
+            // Mismo prefijo que ventas: T = ticket, B = boleta, F = factura
+            $docNameLower = strtolower($mov->documentType?->name ?? '');
+            $seriesPrefix = '';
+            if (str_contains($docNameLower, 'boleta')) {
+                $seriesPrefix = 'B';
+            } elseif (str_contains($docNameLower, 'factura')) {
+                $seriesPrefix = 'F';
+            } elseif (str_contains($docNameLower, 'ticket')) {
+                $seriesPrefix = 'T';
+            }
+
+            // Correlativo 001, 002, 003 por tipo de documento (precalculado en orderSeriesMap)
+            $series = $orderSeriesMap[$mov->id] ?? '';
+            if ($series !== '' && $seriesPrefix !== '') {
+                $originO = 'O - ' . $seriesPrefix . $series . ' - ' . $mov->number;
+            } elseif ($series !== '') {
+                $originO = 'O - ' . $series . ' - ' . $mov->number;
+            } else {
+                $originO = 'O - ' . $mov->number;
+            }
+
+            $rows->push([
+                'date' => $mov->moved_at?->format('Y-m-d H:i:s'),
+                'date_sort' => $mov->moved_at?->format('Y-m-d H:i:s'),
+                'number' => $mov->number,
+                'type' => $docTypeName,
+                'entry' => 0,
+                'exit' => $qty,
+                'unit' => $detailUnit,
+                'unit_price' => $unitPrice,
+                'origin' => $originO,
             ]);
         }
 
@@ -251,6 +365,16 @@ class KardexController extends Controller
             ->sum('quantity');
         $balance -= (float) $salesQty;
 
+        $orderQty = OrderMovementDetail::query()
+            ->where('product_id', $productId)
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->whereHas('orderMovement', function ($q) use ($beforeDate) {
+                $q->whereIn('status', ['FINALIZADO', 'F'])
+                    ->whereHas('movement', fn ($m) => $m->where('moved_at', '<', $beforeDate));
+            })
+            ->sum('quantity');
+        $balance -= (float) $orderQty;
+
         return $balance;
     }
 
@@ -271,6 +395,16 @@ class KardexController extends Controller
             SalesMovementDetail::query()
                 ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
                 ->whereHas('salesMovement.movement', fn ($q) => $q->whereBetween('moved_at', [$dateFromStart, $dateToEnd]))
+                ->pluck('product_id')
+        );
+
+        $ids = $ids->merge(
+            OrderMovementDetail::query()
+                ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+                ->whereHas('orderMovement', function ($q) use ($dateFromStart, $dateToEnd) {
+                    $q->whereIn('status', ['FINALIZADO', 'F'])
+                        ->whereHas('movement', fn ($m) => $m->whereBetween('moved_at', [$dateFromStart, $dateToEnd]));
+                })
                 ->pluck('product_id')
         );
 

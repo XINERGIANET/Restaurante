@@ -78,7 +78,7 @@
                         <x-ui.button size="md" variant="primary" type="submit" class="h-11 px-4" style="background-color: #244BB3;">
                             <i class="ri-search-line text-gray-100"></i> <span class="text-gray-100">Buscar</span>
                         </x-ui.button>
-                        <x-ui.link-button size="md" variant="outline" href="{{ route('shift-cash.index', $viewId ? ['view_id' => $viewId] : []) }}" class="h-11 px-4">
+                        <x-ui.link-button size="md" variant="outline" href="{{ route('shift-cash.redirect') }}{{ $viewId ? '?view_id=' . urlencode($viewId) : '' }}" class="h-11 px-4">
                             <i class="ri-refresh-line"></i> <span>Limpiar</span>
                         </x-ui.link-button>
                     </div>
@@ -290,8 +290,8 @@
                                                  </x-ui.link-button>
                                             @endforeach
                                         @else
-                                            <x-ui.link-button size="icon" variant="edit" href="{{ route('shift-cash.edit', [$shift]) }}" style="background-color: #fbbf24; color: #1f2937;" className="rounded-lg"><i class="ri-pencil-line"></i></x-ui.link-button>
-                                            <form action="{{ route('shift-cash.destroy', [$shift]) }}" method="POST" class="inline js-swal-delete">
+                                            <x-ui.link-button size="icon" variant="edit" href="{{ route('shift-cash.edit', ['cash_register_id' => $selectedBoxId, 'shiftCash' => $shift->id]) }}" style="background-color: #fbbf24; color: #1f2937;" className="rounded-lg"><i class="ri-pencil-line"></i></x-ui.link-button>
+                                            <form action="{{ route('shift-cash.destroy', ['cash_register_id' => $selectedBoxId, 'shiftCash' => $shift->id]) }}" method="POST" class="inline js-swal-delete">
                                                 @csrf @method('DELETE')
                                                 @if ($viewId) <input type="hidden" name="view_id" value="{{ $viewId }}"> @endif
                                                 <x-ui.button size="icon" type="submit" style="background-color: #ef4444; color: white;" className="rounded-lg"><i class="ri-delete-bin-line"></i></x-ui.button>
