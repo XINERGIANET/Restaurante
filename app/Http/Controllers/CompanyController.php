@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Branch;
 use App\Models\Company;
 use App\Models\Operation;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class CompanyController extends Controller
 {
@@ -76,14 +78,39 @@ class CompanyController extends Controller
             'tax_id' => ['required', 'string', 'max:255'],
             'legal_name' => ['required', 'string', 'max:255'],
             'address' => ['required', 'string', 'max:255'],
+            'logo' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,webp', 'max:2048'],
         ]);
 
-        Company::create($data);
+        $logoPath = null;
+        if ($request->hasFile('logo')) {
+            $file = $request->file('logo');
+            if ($file->isValid()) {
+                $logoPath = $file->store('companies', 'public');
+            }
+        }
+
+        $data['logo'] = $logoPath ? Storage::url($logoPath) : null;
+
+        $company = Company::create($data);
+
+        $branchLogoPath = $logoPath ? str_replace('companies/', 'branches/', $logoPath) : null;
+        if ($branchLogoPath) {
+            Storage::disk('public')->copy($logoPath, $branchLogoPath);
+        }
+
+        Branch::create([
+            'ruc' => $data['tax_id'],
+            'company_id' => $company->id,
+            'legal_name' => $data['legal_name'],
+            'address' => $data['address'],
+            'logo' => $branchLogoPath ? Storage::url($branchLogoPath) : null,
+            'location_id' => 1477,
+        ]);
 
         $redirectParams = $request->filled('view_id') ? ['view_id' => $request->input('view_id')] : [];
 
         return redirect()->route('admin.companies.index', $redirectParams)
-            ->with('status', 'Empresa creada correctamente.');
+            ->with('status', 'Empresa y sucursal creadas correctamente.');
     }
 
     public function edit(Company $company)
@@ -97,7 +124,31 @@ class CompanyController extends Controller
             'tax_id' => ['required', 'string', 'max:255'],
             'legal_name' => ['required', 'string', 'max:255'],
             'address' => ['required', 'string', 'max:255'],
+            'logo' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,webp', 'max:2048'],
         ]);
+
+        if ($request->hasFile('logo')) {
+            $file = $request->file('logo');
+            if ($file->isValid()) {
+                if ($company->logo && Storage::disk('public')->exists($company->logo)) {
+                    Storage::disk('public')->delete($company->logo);
+                }
+                $logoPath = $file->store('companies', 'public');
+                $branchLogoPath = str_replace('companies/', 'branches/', $logoPath);
+                Storage::disk('public')->copy($logoPath, $branchLogoPath);
+                $data['logo'] = Storage::url($logoPath);
+
+                // Update branch logo
+                $branch = Branch::where('company_id', $company->id)->first();
+                if ($branch) {
+                    if ($branch->logo) {
+                        $oldPath = str_replace('/storage/', '', $branch->logo);
+                        Storage::disk('public')->delete($oldPath);
+                    }
+                    $branch->update(['logo' => Storage::url($branchLogoPath)]);
+                }
+            }
+        }
 
         $company->update($data);
 
@@ -109,6 +160,19 @@ class CompanyController extends Controller
 
     public function destroy(Company $company)
     {
+        // Eliminar logo si existe
+        if ($company->logo) {
+            $path = str_replace('/storage/', '', $company->logo);
+            Storage::disk('public')->delete($path);
+        }
+
+        // Eliminar logo de la sucursal
+        $branch = Branch::where('company_id', $company->id)->first();
+        if ($branch && $branch->logo) {
+            $path = str_replace('/storage/', '', $branch->logo);
+            Storage::disk('public')->delete($path);
+        }
+
         $company->delete();
 
         $redirectParams = request()->filled('view_id') ? ['view_id' => request()->input('view_id')] : [];

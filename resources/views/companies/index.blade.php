@@ -315,7 +315,7 @@
                     </div>
                 @endif
 
-                <form method="POST" action="{{ route('admin.companies.store') }}" class="space-y-6">
+                <form method="POST" action="{{ route('admin.companies.store') }}" enctype="multipart/form-data" class="space-y-6">
                     @csrf
                     @if ($viewId)
                         <input type="hidden" name="view_id" value="{{ $viewId }}">
