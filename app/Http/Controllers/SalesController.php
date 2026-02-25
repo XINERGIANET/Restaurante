@@ -45,6 +45,8 @@ class SalesController extends Controller
         $dateTo = $request->input('date_to');
         $personId = $request->input('person_id');
         $documentTypeId = $request->input('document_type_id');
+        $paymentMethodId = $request->input('payment_method_id');
+        $cashRegisterId = $request->input('cash_register_id');
         $perPage = (int) $request->input('per_page', 10);
         $allowedPerPage = [10, 20, 50, 100];
         if (!in_array($perPage, $allowedPerPage, true)) {
@@ -81,6 +83,9 @@ class SalesController extends Controller
             ->orderBy('name')
             ->get(['id', 'name']);
 
+        $paymentMethods = PaymentMethod::query()->where('status', true)->orderBy('order_num')->get(['id', 'description']);
+        $cashRegisters  = CashRegister::query()->orderBy('number')->get(['id', 'number']);
+
         $query = Movement::query()
             ->with(['branch', 'person', 'movementType', 'documentType', 'salesMovement'])
             ->where('movement_type_id', 2) 
@@ -108,6 +113,28 @@ class SalesController extends Controller
         }
         if ($dateTo !== null && $dateTo !== '') {
             $query->where('moved_at', '<=', $dateTo);
+        }
+        if ($paymentMethodId) {
+            $query->whereExists(function ($sub) use ($paymentMethodId) {
+                $sub->select(DB::raw(1))
+                    ->from('movements as m')
+                    ->join('cash_movements as cm', 'cm.movement_id', '=', 'm.id')
+                    ->join('cash_movement_details as cmd', 'cmd.cash_movement_id', '=', 'cm.id')
+                    ->whereColumn('m.parent_movement_id', 'movements.id')
+                    ->where('cmd.payment_method_id', $paymentMethodId)
+                    ->whereNull('cm.deleted_at')
+                    ->whereNull('cmd.deleted_at');
+            });
+        }
+        if ($cashRegisterId) {
+            $query->whereExists(function ($sub) use ($cashRegisterId) {
+                $sub->select(DB::raw(1))
+                    ->from('movements as m')
+                    ->join('cash_movements as cm', 'cm.movement_id', '=', 'm.id')
+                    ->whereColumn('m.parent_movement_id', 'movements.id')
+                    ->where('cm.cash_register_id', $cashRegisterId)
+                    ->whereNull('cm.deleted_at');
+            });
         }
 
         $sales = $query->orderBy('moved_at', 'desc') 
@@ -139,6 +166,10 @@ class SalesController extends Controller
             'dateTo' => $dateTo,
             'documentTypeId' => $documentTypeId,
             'documentTypes' => $documentTypes,
+            'paymentMethodId' => $paymentMethodId,
+            'paymentMethods' => $paymentMethods,
+            'cashRegisterId' => $cashRegisterId,
+            'cashRegisters' => $cashRegisters,
             'personId' => $personId,
         ];
 
@@ -1249,6 +1280,8 @@ class SalesController extends Controller
         $dateFrom = $request->input('date_from');
         $dateTo = $request->input('date_to');
         $documentTypeId = $request->input('document_type_id');
+        $paymentMethodId = $request->input('payment_method_id');
+        $cashRegisterId = $request->input('cash_register_id');
         $personId = $request->input('person_id');
 
         $query = Movement::query()
@@ -1270,11 +1303,52 @@ class SalesController extends Controller
         }
         if ($dateFrom) $query->where('moved_at', '>=', $dateFrom);
         if ($dateTo) $query->where('moved_at', '<=', $dateTo);
+        if ($paymentMethodId) {
+            $query->whereExists(function ($sub) use ($paymentMethodId) {
+                $sub->select(DB::raw(1))
+                    ->from('movements as m')
+                    ->join('cash_movements as cm', 'cm.movement_id', '=', 'm.id')
+                    ->join('cash_movement_details as cmd', 'cmd.cash_movement_id', '=', 'cm.id')
+                    ->whereColumn('m.parent_movement_id', 'movements.id')
+                    ->where('cmd.payment_method_id', $paymentMethodId)
+                    ->whereNull('cm.deleted_at')
+                    ->whereNull('cmd.deleted_at');
+            });
+        }
+        if ($cashRegisterId) {
+            $query->whereExists(function ($sub) use ($cashRegisterId) {
+                $sub->select(DB::raw(1))
+                    ->from('movements as m')
+                    ->join('cash_movements as cm', 'cm.movement_id', '=', 'm.id')
+                    ->whereColumn('m.parent_movement_id', 'movements.id')
+                    ->where('cm.cash_register_id', $cashRegisterId)
+                    ->whereNull('cm.deleted_at');
+            });
+        }
 
         $sales = $query->orderBy('moved_at', 'desc')->get();
 
+        $filters = [];
+        $filters['Desde'] = $dateFrom ? \Carbon\Carbon::parse($dateFrom)->format('d/m/Y') : null;
+        $filters['Hasta'] = $dateTo  ? \Carbon\Carbon::parse($dateTo)->format('d/m/Y')  : null;
+        if ($search) {
+            $filters['Búsqueda'] = $search;
+        }
+        if ($documentTypeId) {
+            $dt = DocumentType::find($documentTypeId);
+            $filters['Tipo de documento'] = $dt ? $dt->name : "ID {$documentTypeId}";
+        }
+        if ($paymentMethodId) {
+            $pm = PaymentMethod::find($paymentMethodId);
+            $filters['Método de pago'] = $pm ? ($pm->description ?? $pm->id) : "ID {$paymentMethodId}";
+        }
+        if ($cashRegisterId) {
+            $cr = CashRegister::find($cashRegisterId);
+            $filters['Caja'] = $cr ? ($cr->number ?? $cr->id) : "ID {$cashRegisterId}";
+        }
+
         try {
-            $pdf = PDF::loadView('sales.pdfs.pdf_report', compact('sales', 'dateFrom', 'dateTo'));
+            $pdf = PDF::loadView('sales.pdfs.pdf_report', compact('sales', 'dateFrom', 'dateTo', 'filters'));
             
             $pdf->setPaper('a4')
                 ->setOption('margin-bottom', 10)

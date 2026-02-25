@@ -81,15 +81,6 @@
                                 <input type="text" name="search" value="{{ $search }}" placeholder="Buscar..."
                                     class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 pl-12 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90" />
                             </div>
-                            <div class="w-full sm:w-auto">
-                                <select name="document_type_id"
-                                    class="h-11 w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-white">
-                                    <option value="">Tipo Doc.</option>
-                                    @foreach ($documentTypes ?? [] as $dt)
-                                        <option value="{{ $dt->id }}" @selected(($documentTypeId ?? '') == $dt->id)>{{ $dt->name }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
                             <div class="flex gap-2">
                                 <x-ui.button size="md" variant="primary" type="submit"
                                     class="h-11 px-6 shadow-sm hover:shadow-md transition-all duration-200 active:scale-95"
@@ -133,25 +124,61 @@
                         </div>
                     </div>
 
-                    <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 w-full">
-                        <div class="flex flex-wrap gap-4 items-end">
-                            <div class="w-full sm:w-auto">
-                                <x-form.date-picker name="date_from" label="Desde" :defaultDate="$dateFrom" dateFormat="Y-m-d" class="h-11" />
+                    <div class="flex flex-wrap items-end justify-between gap-3 w-full">
+                        <div class="flex flex-wrap items-end gap-3">
+                            <div class="w-[155px] shrink-0 [&_label]:mb-1 [&_label]:text-xs [&_label]:font-medium [&_label]:text-gray-600 dark:[&_label]:text-gray-400">
+                                <x-form.date-picker name="date_from" label="Desde" :defaultDate="$dateFrom" dateFormat="Y-m-d" />
                             </div>
-                            <div class="w-full sm:w-auto">
-                                <x-form.date-picker name="date_to" label="Hasta" :defaultDate="$dateTo" dateFormat="Y-m-d" class="h-11" />
+                            <div class="w-[155px] shrink-0 [&_label]:mb-1 [&_label]:text-xs [&_label]:font-medium [&_label]:text-gray-600 dark:[&_label]:text-gray-400">
+                                <x-form.date-picker name="date_to" label="Hasta" :defaultDate="$dateTo" dateFormat="Y-m-d" />
+                            </div>
+                            <div class="w-[155px] shrink-0">
+                                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Método de pago</label>
+                                <select name="payment_method_id" onchange="this.form.submit()"
+                                    class="h-11 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-2 focus:ring-brand-500/10 dark:border-gray-600 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800">
+                                    <option value="">Todos</option>
+                                    @foreach ($paymentMethods ?? [] as $pm)
+                                        <option value="{{ $pm->id }}" @selected(($paymentMethodId ?? '') == $pm->id)>{{ $pm->description ?? $pm->id }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="w-[155px] shrink-0">
+                                    <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Tipo de documento</label>
+                                    <select name="document_type_id" onchange="this.form.submit()"
+                                    class="h-11 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-2 focus:ring-brand-500/10 dark:border-gray-600 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800">
+                                    <option value="">Todos</option>
+                                    @foreach ($documentTypes ?? [] as $dt)
+                                        <option value="{{ $dt->id }}" @selected(($documentTypeId ?? '') == $dt->id)>{{ $dt->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="w-[100px] shrink-0">
+                                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Caja</label>
+                                <select name="cash_register_id" onchange="this.form.submit()"
+                                    class="h-11 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-2 focus:ring-brand-500/10 dark:border-gray-600 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800">
+                                    <option value="">Todas</option>
+                                    @foreach ($cashRegisters ?? [] as $cr)
+                                        <option value="{{ $cr->id }}" @selected(($cashRegisterId ?? '') == $cr->id)>{{ $cr->number ?? $cr->id }}</option>
+                                    @endforeach
+                                </select>
                             </div>
                         </div>
-
-                        <div class="flex-shrink-0">
-                            <button type="button" 
-                                    onclick="descargarPdf()"
-                                    class="inline-flex h-11 items-center justify-center gap-1.5 rounded-lg bg-red-500 text-white px-4 text-sm font-medium shadow-sm hover:bg-red-700 transition-all">
-                                <i class="ri-file-pdf-line"></i> 
+                        <div class="shrink-0">
+                            <button type="button"
+                                onclick="descargarPdf()"
+                                data-pdf-url="{{ route('sales.pdf', array_filter([
+                                    'date_from'         => $dateFrom,
+                                    'date_to'           => $dateTo,
+                                    'search'            => $search,
+                                    'document_type_id'  => $documentTypeId ?? null,
+                                    'payment_method_id' => $paymentMethodId ?? null,
+                                    'cash_register_id'  => $cashRegisterId ?? null,
+                                ])) }}"
+                                class="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-orange-600 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2">
+                                <i class="ri-file-pdf-line text-base"></i>
                                 <span>Descargar PDF</span>
                             </button>
                         </div>
-                    </button>
                     </div>
                 </form>                    
             </div>
@@ -161,7 +188,7 @@
                     <thead>
                         <tr class="text-white">
                             <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6 first:rounded-tl-xl sticky-left-header">
-                                <p class="font-semibold text-white text-theme-xs uppercase">ID</p>
+                                <p class="font-semibold text-white text-center text-theme-xs uppercase">#</p>
                             </th>
                             <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
                                 <p class="font-semibold text-white text-theme-xs uppercase">Comprobante</p>
@@ -197,7 +224,7 @@
                                             <i class="ri-add-line" x-show="openRow !== {{ $sale->id }}"></i>
                                             <i class="ri-subtract-line" x-show="openRow === {{ $sale->id }}"></i>
                                         </button>
-                                        <p class="font-bold text-gray-800 text-theme-sm dark:text-white/90">#{{ $sale->id }}</p>
+                                        <p class="font-bold text-gray-800 text-center text-theme-sm dark:text-white/90">{{ $sale->id }}</p>
                                     </div>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
@@ -358,55 +385,45 @@
                                 </td>
                             </tr>
                             <tr x-show="openRow === {{ $sale->id }}" x-cloak class="bg-gray-50/70 dark:bg-gray-800/40 border-b border-gray-100 dark:border-gray-800">
-                                <td colspan="10" class="px-6 py-4">
-                                    <div class="grid grid-cols-4 gap-3 sm:grid-cols-5">
-                                        <div class="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-gray-700 dark:bg-gray-900/50">
-                                            <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Persona</p>
-                                            <p class="mt-0.5 truncate text-sm font-medium text-gray-800 dark:text-gray-200">{{ $sale->person_name ?: '-' }}</p>
+                                <td colspan="8" class="px-5 py-3 sm:px-6">
+                                    <div class="grid w-full grid-cols-5 gap-x-6 gap-y-3">
+                                        {{-- Fila 1 --}}
+                                        <div>
+                                            <div class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Fecha</div>
+                                            <div class="mt-0.5 text-sm text-gray-800 dark:text-white/90 whitespace-nowrap">{{ $sale->moved_at ? $sale->moved_at->format('d/m/Y H:i') : '-' }}</div>
                                         </div>
-                                        <div class="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-gray-700 dark:bg-gray-900/50">
-                                            <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Fecha</p>
-                                            <p class="mt-0.5 text-sm font-medium text-gray-800 dark:text-gray-200">{{ $sale->moved_at ? $sale->moved_at->format('d/m/Y H:i') : '-' }}</p>
+                                        <div>
+                                            <div class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Usuario</div>
+                                            <div class="mt-0.5 text-sm text-gray-800 dark:text-white/90">{{ $sale->user_name ?: '-' }}</div>
                                         </div>
-                                        <div class="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-gray-700 dark:bg-gray-900/50">
-                                            <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Usuario</p>
-                                            <p class="mt-0.5 truncate text-sm font-medium text-gray-800 dark:text-gray-200">{{ $sale->user_name ?: '-' }}</p>
+                                        <div>
+                                            <div class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Responsable</div>
+                                            <div class="mt-0.5 text-sm text-gray-800 dark:text-white/90">{{ $sale->responsible_name ?: '-' }}</div>
                                         </div>
-                                        <div class="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-gray-700 dark:bg-gray-900/50">
-                                            <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Responsable</p>
-                                            <p class="mt-0.5 truncate text-sm font-medium text-gray-800 dark:text-gray-200">{{ $sale->responsible_name ?: '-' }}</p>
+                                        <div>
+                                            <div class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Moneda</div>
+                                            <div class="mt-0.5 text-sm text-gray-800 dark:text-white/90">{{ $sale->salesMovement?->currency ?? 'PEN' }}</div>
                                         </div>
-                                        <div class="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-gray-700 dark:bg-gray-900/50">
-                                            <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Tipo de detalle</p>
-                                            <p class="mt-0.5 text-sm font-medium text-gray-800 dark:text-gray-200">{{ $sale->salesMovement?->detail_type ?? '-' }}</p>
+                                        <div>
+                                            <div class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">T. cambio</div>
+                                            <div class="mt-0.5 text-sm text-gray-800 dark:text-white/90">{{ number_format((float) ($sale->salesMovement?->exchange_rate ?? 1), 3) }}</div>
                                         </div>
-                                        <div class="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-gray-700 dark:bg-gray-900/50">
-                                            <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Moneda</p>
-                                            <p class="mt-0.5 text-sm font-medium text-gray-800 dark:text-gray-200">{{ $sale->salesMovement?->currency ?? 'PEN' }}</p>
+                                        {{-- Fila 2 --}}
+                                        <div>
+                                            <div class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Tipo de pago</div>
+                                            <div class="mt-0.5 text-sm text-gray-800 dark:text-white/90">{{ $sale->salesMovement?->payment_type ?? '-' }}</div>
                                         </div>
-                                        <div class="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-gray-700 dark:bg-gray-900/50">
-                                            <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">T. cambio</p>
-                                            <p class="mt-0.5 text-sm font-medium text-gray-800 dark:text-gray-200">{{ number_format((float) ($sale->salesMovement?->exchange_rate ?? 1), 3) }}</p>
+                                        <div>
+                                            <div class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Por consumo</div>
+                                            <div class="mt-0.5 text-sm text-gray-800 dark:text-white/90">{{ ($sale->salesMovement?->consumption ?? 'N') === 'Y' ? 'Sí' : 'No' }}</div>
                                         </div>
-                                        <div class="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-gray-700 dark:bg-gray-900/50">
-                                            <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Por consumo</p>
-                                            <p class="mt-0.5 text-sm font-medium text-gray-800 dark:text-gray-200">{{ ($sale->salesMovement?->consumption ?? 'N') === 'Y' ? 'Sí' : 'No' }}</p>
+                                        <div>
+                                            <div class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Comentario</div>
+                                            <div class="mt-0.5 text-sm text-gray-800 dark:text-white/90">{{ Str::limit($sale->comment ?? '-', 50) }}</div>
                                         </div>
-                                        <div class="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-gray-700 dark:bg-gray-900/50">
-                                            <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Tipo de pago</p>
-                                            <p class="mt-0.5 text-sm font-medium text-gray-800 dark:text-gray-200">{{ $sale->salesMovement?->payment_type ?? '-' }}</p>
-                                        </div>
-                                        <div class="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-gray-700 dark:bg-gray-900/50 sm:col-span-2">
-                                            <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Comentario</p>
-                                            <p class="mt-0.5 text-sm font-medium text-gray-800 dark:text-gray-200">{{ Str::limit($sale->comment ?? '-', 60) }}</p>
-                                        </div>
-                                        <div class="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-gray-700 dark:bg-gray-900/50">
-                                            <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Estado SUNAT</p>
-                                            <p class="mt-0.5 text-sm font-medium text-gray-800 dark:text-gray-200">{{ $sale->salesMovement?->status ?? '-' }}</p>
-                                        </div>
-                                        <div class="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-gray-700 dark:bg-gray-900/50">
-                                            <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Origen</p>
-                                            <p class="mt-0.5 text-sm font-medium text-gray-800 dark:text-gray-200">{{ $sale->movementType?->description ?? 'Venta' }} - {{ strtoupper(substr($sale->documentType?->name , 0, 1))?? '-' }}{{ $sale->salesMovement?->series }}-{{ $sale->number }}</p>
+                                        <div class="col-span-2">
+                                            <div class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Origen</div>
+                                            <div class="mt-0.5 text-sm text-gray-800 dark:text-white/90">{{ $sale->movementType?->description ?? 'Venta' }} – {{ strtoupper(substr($sale->documentType?->name ?? '', 0, 1)) }}{{ $sale->salesMovement?->series }}-{{ $sale->number }}</div>
                                         </div>
                                     </div>
                                 </td>
@@ -472,21 +489,17 @@
     })();
 
     function descargarPdf() {
-        const search = document.querySelector('[name="search"]')?.value || '';
-        const dateFrom = document.querySelector('[name="date_from"]')?.value || '';
-        const dateTo = document.querySelector('[name="date_to"]')?.value || '';
-        const docType = document.querySelector('[name="document_type_id"]')?.value || '';
-        const perPage = document.querySelector('[name="per_page"]')?.value || '10';
-        const baseUrl = "{{ route('sales.pdf') }}";
-        const params = new URLSearchParams({
-            search: search,
-            date_from: dateFrom,
-            date_to: dateTo,
-            document_type_id: docType,
-            per_page: perPage
-        });
+        const btn     = document.querySelector('[data-pdf-url]');
+        const baseUrl = btn ? btn.dataset.pdfUrl : "{{ route('sales.pdf') }}";
 
-        window.open(`${baseUrl}?${params.toString()}`, '_blank');
+        // Sobreescribir fechas con lo que tenga el picker en este momento
+        const url    = new URL(baseUrl, window.location.origin);
+        const dfVal  = document.querySelector('[name="date_from"]')?.value;
+        const dtVal  = document.querySelector('[name="date_to"]')?.value;
+        if (dfVal) url.searchParams.set('date_from', dfVal);
+        if (dtVal) url.searchParams.set('date_to', dtVal);
+
+        window.open(url.toString(), '_blank');
     }
     </script>
     @endpush

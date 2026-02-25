@@ -241,8 +241,8 @@ class OrderController extends Controller
 
     public function pdfReport(Request $request)
     {
-        $dateFrom = $request->input('date_from') ?? now()->startOfMonth()->format('Y-m-d');
-        $dateTo = $request->input('date_to') ?? now()->format('Y-m-d');
+        $dateFrom = $request->input('date_from');
+        $dateTo = $request->input('date_to');
         $search = $request->input('search');
         $documentTypeId = $request->input('document_type_id');
         $paymentMethodId = $request->input('payment_method_id');
