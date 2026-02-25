@@ -91,7 +91,7 @@
 
                         <div class="rounded-xl border border-emerald-100 bg-emerald-50/35 p-3 dark:border-gray-600 dark:bg-gray-800 shadow-sm">
                             <label for="sale-notes" class="mb-1.5 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                                <i class="fas fa-sticky-note text-[11px]"></i> Notas <span class="normal-case font-normal text-gray-400">(Opcional)</span>
+                                <i class="fas fa-sticky-note text-[11px]"></i> Nota <span class="normal-case font-normal text-gray-400">(Opcional)</span>
                             </label>
                             <textarea id="sale-notes" rows="2" placeholder="Ej: Cliente pagó con billete de 50..."
                                 class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-gray-900 placeholder-gray-400 transition focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-500 dark:focus:border-blue-400 dark:focus:bg-gray-600"></textarea>
@@ -125,16 +125,29 @@
 
                             <div class="rounded-xl border border-violet-100 bg-violet-50/40 p-3 dark:border-gray-600 dark:bg-gray-800 shadow-sm">
                                 <p class="mb-2 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Comprobante</p>
-                                <div class="flex flex-wrap gap-2">
+                                
+                                {{-- Contenedor de botones --}}
+                                <div class="flex flex-wrap gap-2" id="document-type-container">
                                     @foreach ($documentTypes as $index => $documentType)
                                         <button type="button"
-                                            class="doc-type-btn {{ $index === 0 ? 'doc-active' : '' }} inline-flex items-center gap-1 rounded-lg border-2 px-3 py-1.5 text-xs font-semibold transition {{ $index === 0 ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-600' : 'border-slate-200 bg-slate-50 text-gray-600 hover:border-blue-400 hover:bg-blue-50/80 hover:text-blue-700 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:border-blue-500 dark:hover:bg-blue-900/30' }}"
-                                            data-doc-type="{{ strtolower($documentType->name) }}" data-doc-id="{{ $documentType->id }}">
-                                            <i class="fas fa-file-alt text-[11px]"></i>                                            
+                                            {{-- Evento Click --}}
+                                            onclick="selectDocument(this, '{{ $documentType->id }}')"
+                                            {{-- Clases Dinámicas --}}
+                                            class="doc-type-btn inline-flex items-center gap-1 rounded-lg border-2 px-3 py-1.5 text-xs font-semibold transition-all duration-200
+                                            {{ $index === 0 
+                                                ? 'doc-selected border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-600' 
+                                                : 'border-slate-200 bg-slate-50 text-gray-600 hover:border-blue-400 hover:bg-blue-50/80 hover:text-blue-700 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:border-blue-500 dark:hover:bg-blue-900/30' 
+                                            }}"
+                                            data-doc-type="{{ strtolower($documentType->name) }}">
+                                            
+                                            <i class="fas fa-file-alt text-[11px]"></i>
+                                            {{-- Tu lógica de nombre limpio --}}
                                             {{ trim(str_ireplace('de venta', '', $documentType->name)) }}
                                         </button>
                                     @endforeach
                                 </div>
+
+                                {{-- Input Oculto que guarda el ID --}}
                                 <input type="hidden" id="document-type-id" name="document_type_id" value="{{ $documentTypes->first()?->id ?? '' }}">
                             </div>
 
@@ -359,6 +372,20 @@
     </style>
 
     <script>
+        function selectDocument(btn, id) {
+            document.getElementById('document-type-id').value = id;
+            const buttons = document.querySelectorAll('.doc-type-btn');
+            const activeClasses = ['doc-selected', 'border-blue-500', 'bg-blue-50', 'text-blue-700', 'dark:bg-blue-900/40', 'dark:text-blue-300', 'dark:border-blue-600'];
+            const inactiveClasses = ['border-slate-200', 'bg-slate-50', 'text-gray-600', 'hover:border-blue-400', 'hover:bg-blue-50/80', 'hover:text-blue-700', 'dark:border-gray-600', 'dark:bg-gray-700', 'dark:text-gray-300', 'dark:hover:border-blue-500', 'dark:hover:bg-blue-900/30'];
+            
+            buttons.forEach(b => {
+                b.classList.remove(...activeClasses);
+                b.classList.add(...inactiveClasses);
+            });
+            btn.classList.remove(...inactiveClasses);
+            btn.classList.add(...activeClasses);
+        }
+        
         document.addEventListener('DOMContentLoaded', function() {
             const documentTypes = @json($documentTypes ?? []);
             const paymentMethods = @json($paymentMethods ?? []);

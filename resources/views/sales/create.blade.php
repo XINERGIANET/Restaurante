@@ -13,75 +13,75 @@
     <div class="flex flex-col h-[calc(100vh-80px)] bg-[#F3F4F6] dark:bg-[#0B1120] font-sans overflow-hidden">
         
         {{-- 1. HEADER --}}
-        <header class="flex items-center justify-between px-4 sm:px-6 py-3 bg-white dark:bg-[#151C2C] border-b border-gray-200 dark:border-gray-800 shadow-sm z-30 shrink-0 h-16 gap-4 relative">
-                    
-            {{-- 1. IZQUIERDA: Navegación y Título --}}
-            <div class="flex items-center gap-3 sm:gap-5 shrink-0">
-                <a href="#" id="back-to-sales-link" 
-                class="flex items-center justify-center w-9 h-9 rounded-full bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-600 transition-all dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700 dark:text-gray-300 shadow-sm">
-                    <i class="ri-arrow-left-s-line text-xl"></i>
-                </a>
-                <div class="hidden sm:block h-6 w-px bg-gray-300 dark:bg-gray-700"></div>
-                <div>
-                    <h1 class="text-lg font-bold text-gray-900 dark:text-white leading-none tracking-tight">Nueva Venta</h1>
-                    <div class="flex items-center gap-1.5 mt-1.5">
-                        <span class="relative flex h-2 w-2">
-                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                        <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                        </span>
-                        <span class="text-[11px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider" id="cash-register-display">Caja Principal</span>
+            <header class="flex items-center justify-between px-4 sm:px-6 py-3 bg-white dark:bg-[#151C2C] border-b border-gray-200 dark:border-gray-800 shadow-sm z-30 shrink-0 h-16 gap-4 relative">
+                        
+                {{-- 1. IZQUIERDA: Navegación y Título --}}
+                <div class="flex items-center gap-3 sm:gap-5 shrink-0">
+                    <a href="#" id="back-to-sales-link" 
+                    class="flex items-center justify-center w-9 h-9 rounded-full bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-600 transition-all dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700 dark:text-gray-300 shadow-sm">
+                        <i class="ri-arrow-left-s-line text-xl"></i>
+                    </a>
+                    <div class="hidden sm:block h-6 w-px bg-gray-300 dark:bg-gray-700"></div>
+                    <div>
+                        <h1 class="text-lg font-bold text-gray-900 dark:text-white leading-none tracking-tight">Nueva Venta</h1>
+                        <div class="flex items-center gap-1.5 mt-1.5">
+                            <span class="relative flex h-2 w-2">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                            </span>
+                            <span class="text-[11px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider" id="cash-register-display">Caja Principal</span>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            {{-- 2. CENTRO: Buscador --}}
-            <div class="hidden md:block w-full max-w-md relative group">
-                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
-                    <i class="ri-search-line text-gray-400 group-focus-within:text-indigo-500 transition-colors"></i>
+                {{-- 2. CENTRO: Buscador --}}
+                <div class="hidden md:block w-full max-w-md relative group">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
+                        <i class="ri-search-line text-gray-400 group-focus-within:text-indigo-500 transition-colors"></i>
+                    </div>
+                    <input type="text" id="search-products" placeholder="Buscar producto..." 
+                        class="block w-full pl-10 pr-4 py-2 bg-gray-50/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-900 transition-all shadow-sm">
                 </div>
-                <input type="text" id="search-products" placeholder="Buscar producto..." 
-                    class="block w-full pl-10 pr-4 py-2 bg-gray-50/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-900 transition-all shadow-sm">
-            </div>
 
-            {{-- 3. DERECHA: Controles EN FILA (Side-by-Side) --}}
-            <div class="flex items-center ml-auto">
-                {{-- Contenedor Cápsula --}}
-                <div class="flex items-center bg-gray-50 dark:bg-gray-900/50 rounded-full border border-gray-200 dark:border-gray-700 shadow-sm px-2 h-10">
-                    
-                    {{-- Grupo MOZO --}}
-                    <div class="flex items-center gap-2 px-3 hover:bg-white dark:hover:bg-gray-800 rounded-full transition-colors h-8 cursor-pointer group relative">
-                        <span class="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Mozo:</span>
-                        <select class="bg-transparent text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-200 outline-none cursor-pointer appearance-none pr-1">
-                            <option value="1" selected>ADMIN</option>
-                        </select>
-                        <i class="ri-arrow-down-s-line text-xs text-gray-400"></i>
+                {{-- 3. DERECHA: Controles EN FILA (Side-by-Side) --}}
+                <div class="flex items-center ml-auto">
+                    {{-- Contenedor Cápsula --}}
+                    <div class="flex items-center bg-gray-50 dark:bg-gray-900/50 rounded-full border border-gray-200 dark:border-gray-700 shadow-sm px-2 h-10">
+                        
+                        {{-- Grupo MOZO --}}
+                        <div class="flex items-center gap-2 px-3 hover:bg-white dark:hover:bg-gray-800 rounded-full transition-colors h-8 cursor-pointer group relative">
+                            <span class="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Mozo:</span>
+                            <select class="bg-transparent text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-200 outline-none cursor-pointer appearance-none pr-1">
+                                <option value="1" selected>ADMIN</option>
+                            </select>
+                            <i class="ri-arrow-down-s-line text-xs text-gray-400"></i>
+                        </div>
+
+                        {{-- Separador Vertical --}}
+                        <div class="h-5 w-px bg-gray-300 dark:bg-gray-700 mx-1"></div>
+
+                        {{-- Grupo CLIENTE --}}
+                        <div class="flex items-center gap-2 px-3 hover:bg-white dark:hover:bg-gray-800 rounded-full transition-colors h-8 cursor-pointer group relative">
+                            <span class="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Cliente:</span>
+                            <select class="bg-transparent text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-200 outline-none cursor-pointer appearance-none pr-1 max-w-[100px] truncate">
+                                <option value="1" selected>Público General</option>
+                            </select>
+                            <i class="ri-arrow-down-s-line text-xs text-gray-400"></i>
+                        </div>
+
+                        {{-- Separador Vertical --}}
+                        <div class="h-5 w-px bg-gray-300 dark:bg-gray-700 mx-1"></div>
+
+                        {{-- Grupo PERSONAS --}}
+                        <div class="flex items-center gap-2 px-3 hover:bg-white dark:hover:bg-gray-800 rounded-full transition-colors h-8 group">
+                            <span class="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Pers:</span>
+                            <input type="number" value="1" min="1" 
+                                class="w-8 text-center text-xs sm:text-sm font-bold bg-transparent border-none p-0 text-gray-800 dark:text-gray-200 focus:ring-0 appearance-none m-0">
+                        </div>
+
                     </div>
-
-                    {{-- Separador Vertical --}}
-                    <div class="h-5 w-px bg-gray-300 dark:bg-gray-700 mx-1"></div>
-
-                    {{-- Grupo CLIENTE --}}
-                    <div class="flex items-center gap-2 px-3 hover:bg-white dark:hover:bg-gray-800 rounded-full transition-colors h-8 cursor-pointer group relative">
-                        <span class="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Cliente:</span>
-                        <select class="bg-transparent text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-200 outline-none cursor-pointer appearance-none pr-1 max-w-[100px] truncate">
-                            <option value="1" selected>Público General</option>
-                        </select>
-                        <i class="ri-arrow-down-s-line text-xs text-gray-400"></i>
-                    </div>
-
-                    {{-- Separador Vertical --}}
-                    <div class="h-5 w-px bg-gray-300 dark:bg-gray-700 mx-1"></div>
-
-                    {{-- Grupo PERSONAS --}}
-                    <div class="flex items-center gap-2 px-3 hover:bg-white dark:hover:bg-gray-800 rounded-full transition-colors h-8 group">
-                        <span class="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Pers:</span>
-                        <input type="number" value="1" min="1" 
-                            class="w-8 text-center text-xs sm:text-sm font-bold bg-transparent border-none p-0 text-gray-800 dark:text-gray-200 focus:ring-0 appearance-none m-0">
-                    </div>
-
                 </div>
-            </div>
-        </header>
+            </header>
 
         {{-- 2. CUERPO PRINCIPAL (Split View) --}}
         <div class="flex flex-1 overflow-hidden relative">
