@@ -49,7 +49,7 @@
                 </div>
             @endif
 
-            <form method="POST" action="{{ $viewId ? route('admin.companies.update', $company) . '?view_id=' . $viewId : route('admin.companies.update', $company) }}" class="space-y-6">
+            <form method="POST" action="{{ $viewId ? route('admin.companies.update', $company) . '?view_id=' . $viewId : route('admin.companies.update', $company) }}" enctype="multipart/form-data" class="space-y-6">
                 @csrf
                 @method('PUT')
                 @if ($viewId)

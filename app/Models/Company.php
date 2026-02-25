@@ -14,6 +14,7 @@ class Company extends Model
         'tax_id',
         'legal_name',
         'address',
+        'logo',
     ];
 
     public function branches()
