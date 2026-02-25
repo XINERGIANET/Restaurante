@@ -20,18 +20,21 @@
     <div class="min-h-screen bg-white dark:bg-gray-900 py-4 sm:py-5">
         <div class="mx-auto max-w-7xl px-3 sm:px-5 lg:px-7">
             <div class="rounded-2xl border border-slate-200/90 bg-white dark:border-gray-700 dark:bg-gray-800 shadow-xl shadow-slate-300/30 dark:shadow-black/30 overflow-hidden min-h-[calc(100vh-120px)] flex flex-col">
-                <div class="flex items-center justify-between bg-blue-600 text-white gap-3 px-4 sm:px-6 py-4 border-b border-slate-200 dark:bg-gray-800/80 shrink-0">
-                    <div class="flex items-center gap-3 min-w-0">
-                        <div class="min-w-0">
-                            <h1 class="text-lg font-bold leading-tight text-white truncate">Cobrar Venta</h1>
-                            <p class="text-sm text-white/95 leading-tight truncate">Cliente y caja</p>
+                <header class="flex items-center justify-between px-4 sm:px-6 py-3 bg-white dark:bg-[#151C2C] border-b border-gray-200 dark:border-gray-800 shadow-sm z-30 shrink-0 h-16 gap-4 relative">            
+                    <div class="flex items-center gap-3 sm:gap-5 shrink-0">
+                        <a href="{{ $backUrl }}" id="back-to-sales-link" 
+                        class="flex items-center justify-center w-9 h-9 rounded-full bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-600 transition-all dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700 dark:text-gray-300 shadow-sm">
+                            <i class="ri-arrow-left-s-line text-xl"></i>
+                        </a>
+                        <div class="hidden sm:block h-6 w-px bg-gray-300 dark:bg-gray-700"></div>
+                        <div>
+                            <h1 class="text-lg font-bold text-gray-900 dark:text-white leading-none tracking-tight">Cobrar Venta</h1>
+                            <div class="flex items-center gap-1.5 mt-1.5">
+                                <span class="text-[11px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Confirmación de pago</span>
+                            </div>
                         </div>
                     </div>
-                    <a id="back-to-sales-link" href="{{ $backUrl }}"
-                        class="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700 shadow-sm transition hover:bg-blue-100 hover:border-blue-300 hover:text-blue-800 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50">
-                        <i class="ri-arrow-left-line text-lg"></i>
-                    </a>
-                </div>
+                </header>
 
                 <div class="grid grid-cols-1 gap-4 lg:grid-cols-3 flex-1 p-4 sm:p-6 min-h-0 overflow-hidden bg-white dark:bg-transparent">
                     <div class="lg:col-span-2 flex flex-col gap-3 overflow-hidden">
@@ -54,7 +57,8 @@
                                     </div>
 
                                     <button type="button" 
-                                        onclick="openCreateClientModal()" 
+                                        x-data 
+                                        @click="$dispatch('open-person-modal')" 
                                         title="Nuevo Cliente"
                                         class="shrink-0 flex items-center justify-center h-9 w-9 rounded-lg bg-blue-200/50 text-blue-700 hover:bg-blue-600 hover:text-white dark:bg-blue-900/50 dark:text-blue-300 dark:hover:bg-blue-600 dark:hover:text-white transition-all duration-200 shadow-sm">
                                         <i class="ri-user-add-line text-lg"></i>
@@ -347,6 +351,71 @@
             </button>
         </div>
     </div>
+
+    <x-ui.modal 
+        x-data="{ open: false }" 
+        @open-person-modal.window="open = true" 
+        @close-person-modal.window="open = false" 
+        :isOpen="false" 
+        :showCloseButton="false" 
+        class="max-w-4xl z-[100]" {{-- Z-index alto para que se vea sobre todo --}}
+    >
+        <div class="p-6 sm:p-8 bg-white dark:bg-gray-800">
+            
+            {{-- Header del Modal --}}
+            <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div class="flex items-center gap-4">
+                    <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400">
+                        <i class="ri-user-add-line text-2xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-900 dark:text-white">Registrar Nuevo Cliente</h3>
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Ingresa la información personal.</p>
+                    </div>
+                </div>
+                <button
+                    type="button"
+                    @click="open = false"
+                    class="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600 transition-colors"
+                >
+                    <i class="ri-close-line text-xl"></i>
+                </button>
+            </div>
+
+            {{-- Errores --}}
+            @if ($errors->any())
+                <div class="mb-5 p-4 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm">
+                    <p class="font-bold mb-1">Por favor corrige los siguientes errores:</p>
+                    <ul class="list-disc list-inside">
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
+            {{-- Formulario --}}
+            {{-- IMPORTANTE: Verifica que la ruta 'admin.companies.branches.people.store' acepte null o pasa los IDs correctos --}}
+            <form method="POST" 
+                action="{{ route('admin.companies.branches.people.store', [$company->id ?? '0', $branch->id ?? '0']) }}" 
+                class="space-y-6">
+                @csrf
+
+                {{-- Aquí incluimos el formulario que pediste --}}
+                @include('branches.people._form', ['person' => null])
+
+                {{-- Footer del Modal --}}
+                <div class="flex flex-wrap gap-3 justify-end pt-4 border-t border-gray-100 dark:border-gray-700">
+                    <button type="button" @click="open = false" class="px-5 py-2.5 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700 transition-colors">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 shadow-lg shadow-blue-500/30 transition-all">
+                        <i class="ri-save-line mr-1"></i> Guardar Cliente
+                    </button>
+                </div>
+            </form>
+        </div>
+    </x-ui.modal>
 
     <style>
         .doc-type-btn.doc-active { border-color: #3b82f6; background: linear-gradient(135deg, #eff6ff, #fff); color: #1d4ed8; }

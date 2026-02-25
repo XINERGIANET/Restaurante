@@ -126,7 +126,7 @@
                 </select>
             </div>
 
-            <div>
+            <div style="display: none;">
                 <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Duración
                     (minutos)</label>
                 <input type="number" name="duration_minutes"
