@@ -146,6 +146,7 @@ class ProductController extends Controller
 
     public function edit(Request $request, Product $product)
     {
+        $product->load('category');
         $categories = Category::query()->orderBy('description')->get();
         $units = Unit::query()->orderBy('description')->get();
         $taxRates = TaxRate::query()->where('status', true)->orderBy('order_num')->get();
@@ -167,7 +168,7 @@ class ProductController extends Controller
 
     public function update(Request $request, Product $product)
     {
-        $validated = $this->validateProduct($request);
+        $validated = $this->validateProduct($request, $product->id);
         $productData = $this->prepareProductData($validated);
         $branchData = $this->prepareBranchData($validated);
         
@@ -236,11 +237,11 @@ class ProductController extends Controller
             ->with('status', 'Producto eliminado correctamente.');
     }
 
-    private function validateProduct(Request $request): array
+    private function validateProduct(Request $request, ?int $excludeId = null): array
     {
         $validated = $request->validate([
             // Datos del Producto
-            'code' => ['required', 'string', 'max:50', 'unique:products,code'],
+            'code' => ['required', 'string', 'max:50', 'unique:products,code,' . ($excludeId ?? 'NULL')],
             'description' => ['required', 'string', 'max:255'],
             'abbreviation' => ['required', 'string', 'max:255'],
             'type' => ['required', 'string', 'in:PRODUCT,INGREDENT'],
