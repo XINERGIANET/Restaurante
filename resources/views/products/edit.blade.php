@@ -27,6 +27,7 @@
                 @csrf
                 @method('PUT')
                 @if (!empty($viewId))
+                
                     <input type="hidden" name="view_id" value="{{ $viewId }}">
                 @endif
 

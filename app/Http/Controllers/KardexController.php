@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Branch;
 use App\Models\Product;
+use App\Models\ProductBranch;
 use App\Models\SalesMovementDetail;
 use App\Models\WarehouseMovementDetail;
 use App\Models\OrderMovementDetail;
@@ -95,6 +96,8 @@ class KardexController extends Controller
                 return ($m['type'] ?? '') === $typeFilter;
             });
         }
+        
+        $movementsCollection = $movementsCollection->sortByDesc('date')->values();
 
         $currentPage = LengthAwarePaginator::resolveCurrentPage();
         $currentResults = $movementsCollection->slice(($currentPage - 1) * $perPage, $perPage)->all();
@@ -336,12 +339,20 @@ class KardexController extends Controller
 
     private function getOpeningBalance(int $productId, ?int $branchId, string $beforeDate): float
     {
-        $balance = 0.0;
+        // Usamos el stock actual de product_branch como punto de partida (fuente de verdad),
+        // y revertimos todos los movimientos desde beforeDate hasta hoy para obtener
+        // el saldo en ese punto en el tiempo.
+        $productBranch = ProductBranch::where('product_id', $productId)
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->first();
 
+        $balance = (float) ($productBranch?->stock ?? 0);
+
+        // Revertir entradas/salidas de almacén desde beforeDate hasta hoy
         $warehouseDetails = WarehouseMovementDetail::query()
             ->where('product_id', $productId)
             ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
-            ->whereHas('warehouseMovement.movement', fn ($q) => $q->where('moved_at', '<', $beforeDate))
+            ->whereHas('warehouseMovement.movement', fn ($q) => $q->where('moved_at', '>=', $beforeDate))
             ->with('warehouseMovement.movement.documentType')
             ->get();
 
@@ -355,25 +366,28 @@ class KardexController extends Controller
             $isEntry = str_starts_with((string) $mov->number, 'E-')
                 || str_contains($docName, 'entrada')
                 || str_contains($docName, 'entry');
-            $balance += $isEntry ? $qty : -$qty;
+            // Invertir efecto: si fue entrada la restamos, si fue salida la sumamos
+            $balance += $isEntry ? -$qty : $qty;
         }
 
+        // Revertir ventas desde beforeDate (las ventas redujeron stock, las sumamos de vuelta)
         $salesQty = SalesMovementDetail::query()
             ->where('product_id', $productId)
             ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
-            ->whereHas('salesMovement.movement', fn ($q) => $q->where('moved_at', '<', $beforeDate))
+            ->whereHas('salesMovement.movement', fn ($q) => $q->where('moved_at', '>=', $beforeDate))
             ->sum('quantity');
-        $balance -= (float) $salesQty;
+        $balance += (float) $salesQty;
 
+        // Revertir pedidos finalizados desde beforeDate
         $orderQty = OrderMovementDetail::query()
             ->where('product_id', $productId)
             ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
             ->whereHas('orderMovement', function ($q) use ($beforeDate) {
                 $q->whereIn('status', ['FINALIZADO', 'F'])
-                    ->whereHas('movement', fn ($m) => $m->where('moved_at', '<', $beforeDate));
+                    ->whereHas('movement', fn ($m) => $m->where('moved_at', '>=', $beforeDate));
             })
             ->sum('quantity');
-        $balance -= (float) $orderQty;
+        $balance += (float) $orderQty;
 
         return $balance;
     }
