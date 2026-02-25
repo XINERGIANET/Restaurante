@@ -436,6 +436,7 @@
 
         <x-ui.modal x-data="{ open: false }" @open-product-modal.window="open = true"
             @close-product-modal.window="open = false" :isOpen="false" :showCloseButton="false" class="w-full max-w-5xl sm:max-w-6xl lg:max-w-7xl">
+            <template x-if="open">
             <div class="flex w-full flex-col min-h-0 p-6 sm:p-8">
                 <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div class="flex items-center gap-4">
@@ -462,7 +463,7 @@
                     </div>
                 @endif
 
-                <form method="POST" action="{{ route('products.store') }}" enctype="multipart/form-data" class="flex w-full flex-col min-h-0 space-y-6">
+                <form id="create-product-form" method="POST" action="{{ route('products.store') }}" enctype="multipart/form-data" class="flex w-full flex-col min-h-0 space-y-6">
                     @csrf
                     @if ($viewId)
                         <input type="hidden" name="view_id" value="{{ $viewId }}">
@@ -473,6 +474,8 @@
                         'currentBranch' => $currentBranch ?? null,
                         'taxRates' => $taxRates ?? collect(),
                         'productBranch' => null,
+                        'branches' => $branches ?? collect(),
+                        'igvByBranchId' => $igvByBranchId ?? [],
                     ])
 
                     <div class="flex flex-wrap gap-3">
@@ -487,6 +490,7 @@
                     </div>
                 </form>
             </div>
+            </template>
         </x-ui.modal>
     </div>
 @endsection
