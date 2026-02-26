@@ -354,7 +354,7 @@
 
             form.addEventListener('submit', (event) => {
                 event.preventDefault();
-                const name = form.dataset.name || 'esta operaciÃ³n';
+                const name = form.dataset.name || 'esta operación';
 
                 if (!window.Swal) {
                     form.submit();
@@ -362,11 +362,11 @@
                 }
 
                 Swal.fire({
-                    title: 'Â¿Eliminar operaciÃ³n?',
-                    text: `Se eliminarÃ¡ "${name}".`,
+                    title: '¿Eliminar operación?',
+                    text: `Se eliminará "${name}".`,
                     icon: 'warning',
                     showCancelButton: true,
-                    confirmButtonText: 'SÃ­, eliminar',
+                    confirmButtonText: 'Si, eliminar',
                     cancelButtonText: 'Cancelar',
                     confirmButtonColor: '#ef4444',
                     cancelButtonColor: '#6b7280',

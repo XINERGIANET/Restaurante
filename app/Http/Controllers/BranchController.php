@@ -152,29 +152,38 @@ class BranchController extends Controller
             $request->session()->put('profile_view_id', $request->input('view_id'));
         }
         $viewId = $request->input('view_id');
-        $branchId = $request->session()->get('branch_id');
+        $sessionBranchId = $request->session()->get('branch_id');
         $profileId = $request->session()->get('profile_id') ?? $request->user()?->profile_id;
         $operaciones = collect();
 
-        if ($viewId && $branchId && $profileId) {
+        if ($viewId) {
             $operaciones = Operation::query()
                 ->select('operations.*')
-                ->join('branch_operation', function ($join) use ($branchId) {
-                    $join->on('branch_operation.operation_id', '=', 'operations.id')
-                        ->where('branch_operation.branch_id', $branchId)
-                        ->where('branch_operation.status', 1)
-                        ->whereNull('branch_operation.deleted_at');
-                })
-                ->join('operation_profile_branch', function ($join) use ($branchId, $profileId) {
-                    $join->on('operation_profile_branch.operation_id', '=', 'operations.id')
-                        ->where('operation_profile_branch.branch_id', $branchId)
-                        ->where('operation_profile_branch.profile_id', $profileId)
-                        ->where('operation_profile_branch.status', 1)
-                        ->whereNull('operation_profile_branch.deleted_at');
-                })
                 ->where('operations.status', 1)
                 ->where('operations.view_id', $viewId)
                 ->whereNull('operations.deleted_at')
+                ->where(function ($query) use ($branch, $sessionBranchId) {
+                    // Operaciones habilitadas para la sucursal que se está gestionando
+                    $query->whereExists(function ($q) use ($branch) {
+                        $q->select(DB::raw(1))
+                            ->from('branch_operation')
+                            ->whereColumn('branch_operation.operation_id', 'operations.id')
+                            ->where('branch_operation.branch_id', $branch->id)
+                            ->where('branch_operation.status', 1)
+                            ->whereNull('branch_operation.deleted_at');
+                    });
+                    // O para la sucursal de sesión del admin (si es diferente)
+                    if ($sessionBranchId && $sessionBranchId !== $branch->id) {
+                        $query->orWhereExists(function ($q) use ($sessionBranchId) {
+                            $q->select(DB::raw(1))
+                                ->from('branch_operation')
+                                ->whereColumn('branch_operation.operation_id', 'operations.id')
+                                ->where('branch_operation.branch_id', $sessionBranchId)
+                                ->where('branch_operation.status', 1)
+                                ->whereNull('branch_operation.deleted_at');
+                        });
+                    }
+                })
                 ->orderBy('operations.id')
                 ->distinct()
                 ->get();
@@ -202,6 +211,18 @@ class BranchController extends Controller
             ->paginate($perPage)
             ->withQueryString();
 
+        $allProfiles = Profile::query()
+            ->whereNull('deleted_at')
+            ->orderBy('name')
+            ->get(['id', 'name', 'status']);
+
+        $assignedProfileIds = DB::table('profile_branch')
+            ->where('branch_id', $branch->id)
+            ->whereNull('deleted_at')
+            ->pluck('profile_id')
+            ->map(fn ($id) => (int) $id)
+            ->toArray();
+
         return view('branches.profiles.index', [
             'company' => $company,
             'branch' => $branch,
@@ -209,7 +230,64 @@ class BranchController extends Controller
             'search' => $search,
             'perPage' => $perPage,
             'operaciones' => $operaciones,
+            'allProfiles' => $allProfiles,
+            'assignedProfileIds' => $assignedProfileIds,
         ]);
+    }
+
+    public function assignBranchProfiles(Request $request, Company $company, Branch $branch)
+    {
+        $branch = $this->resolveBranch($company, $branch);
+        $selectedIds = array_map('intval', $request->input('profiles', []));
+        $now = now();
+
+        $currentIds = DB::table('profile_branch')
+            ->where('branch_id', $branch->id)
+            ->whereNull('deleted_at')
+            ->pluck('profile_id')
+            ->map(fn ($id) => (int) $id)
+            ->toArray();
+
+        // Quitar los que ya no están seleccionados
+        $toRemove = array_diff($currentIds, $selectedIds);
+        if (!empty($toRemove)) {
+            DB::table('profile_branch')
+                ->where('branch_id', $branch->id)
+                ->whereIn('profile_id', $toRemove)
+                ->whereNull('deleted_at')
+                ->update(['deleted_at' => $now, 'updated_at' => $now]);
+        }
+
+        // Agregar los nuevos seleccionados
+        $toAdd = array_diff($selectedIds, $currentIds);
+        foreach ($toAdd as $profileId) {
+            $existing = DB::table('profile_branch')
+                ->where('branch_id', $branch->id)
+                ->where('profile_id', $profileId)
+                ->first();
+
+            if ($existing) {
+                DB::table('profile_branch')
+                    ->where('id', $existing->id)
+                    ->update(['deleted_at' => null, 'updated_at' => $now]);
+            } else {
+                DB::table('profile_branch')->insert([
+                    'profile_id' => $profileId,
+                    'branch_id'  => $branch->id,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]);
+            }
+        }
+
+        $viewId = $request->input('view_id');
+
+        return redirect()
+            ->route('admin.companies.branches.profiles.index', array_merge(
+                [$company, $branch],
+                array_filter(['view_id' => $viewId])
+            ))
+            ->with('status', 'Perfiles actualizados correctamente.');
     }
 
     public function viewsIndex(Request $request, Company $company, Branch $branch)

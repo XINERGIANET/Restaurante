@@ -83,6 +83,8 @@ Route::middleware('auth')->group(function () {
         ->name('admin.companies.branches.people.user.password');
     Route::get('/admin/herramientas/empresas/{company}/sucursales/{branch}/perfiles', [BranchController::class, 'profiles'])
         ->name('admin.companies.branches.profiles.index');
+    Route::post('/admin/herramientas/empresas/{company}/sucursales/{branch}/perfiles/asignar', [BranchController::class, 'assignBranchProfiles'])
+        ->name('admin.companies.branches.profiles.assign');
     Route::get('/admin/herramientas/empresas/{company}/sucursales/{branch}/perfiles/{profile}/operaciones', [BranchController::class, 'profileOperationsIndex'])
         ->name('admin.companies.branches.profiles.operations.index');
     Route::post('/admin/herramientas/empresas/{company}/sucursales/{branch}/perfiles/{profile}/operaciones/asignar', [BranchController::class, 'assignProfileOperations'])

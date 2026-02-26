@@ -134,17 +134,24 @@ class OperationsController extends Controller
     public function destroy(View $view, Operation $operation)
     {
         $operation = $this->resolveScope($view, $operation);
-        $operation->delete();
+
+        DB::transaction(function () use ($operation) {
+            DB::table('branch_operation')
+                ->where('operation_id', $operation->id)
+                ->delete();
+
+            DB::table('operation_profile_branch')
+                ->where('operation_id', $operation->id)
+                ->delete();
+
+            $operation->deleteOrFail();
+        });
 
         $viewId = request('view_id');
 
-        $redirect = redirect()
-            ->route('admin.views.operations.index', $view)
+        return redirect()
+            ->route('admin.views.operations.index', $viewId ? [$view, 'view_id' => $viewId] : $view)
             ->with('status', 'Operación eliminada correctamente.');
-
-        if ($viewId) {
-            $redirect->with('view_id', $viewId);
-        }
     }
 
 

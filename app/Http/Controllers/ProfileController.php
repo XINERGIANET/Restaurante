@@ -17,7 +17,7 @@ class ProfileController extends Controller
         $allowedPerPage = [10, 20, 50, 100];
         $viewId = $request->input('view_id');
         $branchId = $request->session()->get('branch_id');
-        $profileId = $request->session()->get('profile_id') ?? $request->user()?->profile_id;
+        $profileId = $request->session()->get('profile_id') ?? $request->user()?->profile_id;  
         $operaciones = collect();
 
         if ($viewId && $branchId && $profileId) {
@@ -129,5 +129,17 @@ class ProfileController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'status' => ['required', 'boolean'],
         ]);
+    }
+
+    private function assignProfileToBranch(Profile $profile, Branch $branch){
+        $now = now();
+        
+        $rows = Branch::query()->pluck('id')->map(fn ($branchId) => [
+            'profile_id' => $profile->id,
+            'branch_id' => $branchId,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        DB::table('profile_branch')->insert($rows->all());
     }
 }

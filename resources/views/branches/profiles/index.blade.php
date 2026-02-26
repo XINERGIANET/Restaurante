@@ -174,10 +174,18 @@
                             $topStyle = "background-color: {$topColor}; color: {$topTextColor};";
                             $topActionUrl = $resolveActionUrl($operation->action ?? '', [$company, $branch], $operation);
                             $isCreate = str_contains($operation->action ?? '', 'profiles.create');
+                            $isAssign = str_contains($operation->action ?? '', 'profiles.assign')
+                                || $operation->action === 'admin.companies.branches.profiles.index';
                         @endphp
                         @if ($isCreate)
                             <x-ui.button size="md" variant="primary" type="button"
                                 style="{{ $topStyle }}" @click="$dispatch('open-profile-modal')">
+                                <i class="{{ $operation->icon }}"></i>
+                                <span>{{ $operation->name }}</span>
+                            </x-ui.button>
+                        @elseif ($isAssign)
+                            <x-ui.button size="md" variant="primary" type="button"
+                                style="{{ $topStyle }}" @click="$dispatch('open-assign-profiles')">
                                 <i class="{{ $operation->icon }}"></i>
                                 <span>{{ $operation->name }}</span>
                             </x-ui.button>
@@ -325,5 +333,94 @@
                 </div>
             </div>
         </x-common.component-card>
+
+        {{-- Modal: Asignar perfiles a la sucursal --}}
+        <x-ui.modal x-data="{ open: false }" @open-assign-profiles.window="open = true"
+            @close-assign-profiles.window="open = false" :isOpen="false"
+            :showCloseButton="false" class="max-w-2xl">
+            <div class="flex h-[70vh] flex-col overflow-hidden p-6 sm:p-8">
+                    <div class="mb-6 flex shrink-0 items-center justify-between gap-4">
+                        <div class="flex items-center gap-4">
+                            <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-500 dark:bg-brand-500/10">
+                                <i class="ri-user-add-line text-2xl"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Asignar perfiles</h3>
+                                <p class="mt-1 text-sm text-gray-500">Selecciona los perfiles para <strong>{{ $branch->legal_name }}</strong>.</p>
+                            </div>
+                        </div>
+                        <button type="button" @click="open = false"
+                            class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700 dark:hover:text-white">
+                            <i class="ri-close-line text-xl"></i>
+                        </button>
+                    </div>
+
+                    <form method="POST"
+                        action="{{ route('admin.companies.branches.profiles.assign', [$company, $branch]) }}"
+                        class="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden">
+                        @csrf
+                        @if ($viewId)
+                            <input type="hidden" name="view_id" value="{{ $viewId }}">
+                        @endif
+
+                        <div class="min-h-0 flex-1 overflow-y-auto rounded-xl border border-gray-200 bg-white custom-scrollbar dark:border-gray-800 dark:bg-white/[0.03]">
+                            <table class="w-full">
+                                <thead class="sticky top-0 z-10" style="background-color: #63B7EC; color: #FFFFFF;">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase first:rounded-tl-xl">
+                                            Asignar
+                                        </th>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase">
+                                            Nombre
+                                        </th>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase last:rounded-tr-xl">
+                                            Estado
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                                    @forelse ($allProfiles as $p)
+                                        <tr class="hover:bg-gray-50 dark:hover:bg-white/5">
+                                            <td class="px-4 py-3">
+                                                <label class="inline-flex cursor-pointer items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+                                                    <input type="checkbox" name="profiles[]" value="{{ $p->id }}"
+                                                        @checked(in_array($p->id, $assignedProfileIds ?? [], true))
+                                                        class="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/10" />
+                                                    <span>Asignar</span>
+                                                </label>
+                                            </td>
+                                            <td class="px-4 py-3">
+                                                <p class="font-medium text-gray-800 text-sm dark:text-white/90">{{ $p->name }}</p>
+                                            </td>
+                                            <td class="px-4 py-3">
+                                                <x-ui.badge variant="light" color="{{ $p->status ? 'success' : 'error' }}">
+                                                    {{ $p->status ? 'Activo' : 'Inactivo' }}
+                                                </x-ui.badge>
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="3" class="px-6 py-10 text-center text-sm text-gray-500">
+                                                No hay perfiles creados en el sistema.
+                                            </td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="flex shrink-0 gap-3 border-t pt-4">
+                            <x-ui.button type="submit" size="md" variant="primary">
+                                <i class="ri-save-line"></i>
+                                <span>Guardar cambios</span>
+                            </x-ui.button>
+                            <x-ui.button type="button" size="md" variant="outline" @click="open = false">
+                                <i class="ri-close-line"></i>
+                                <span>Cancelar</span>
+                            </x-ui.button>
+                        </div>
+                    </form>
+                </div>
+        </x-ui.modal>
     </div>
 @endsection
