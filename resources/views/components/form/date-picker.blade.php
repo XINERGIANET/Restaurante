@@ -8,7 +8,7 @@
     'dateFormat' => 'Y-m-d',
 ])
 
-<div x-data="{
+<div class="w-full" x-data="{
     flatpickrInstance: null,
     init() {
         this.$nextTick(() => {
@@ -26,6 +26,13 @@
                     });
                 }
             });
+
+            // Flatpickr puede envolver el input en .flatpickr-wrapper (inline-block)
+            // y eso rompe los anchos uniformes. Forzamos width:100% con clase.
+            this.$nextTick(() => {
+                const wrapper = this.$refs.dateInput?.closest?.('.flatpickr-wrapper');
+                if (wrapper) wrapper.classList.add('w-full');
+            });
         });
     },
     destroy() {
@@ -41,14 +48,14 @@
         </label>
     @endif
 
-    <div class="relative custom-datepicker">
+    <div class="relative custom-datepicker w-full">
         <input
             x-ref="dateInput"
             type="text"
             id="{{ $id }}"
             name="{{ $name }}"
             placeholder="{{ $placeholder }}"
-            class="h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 focus:outline-hidden focus:ring-3 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 focus:ring-brand-500/20 dark:border-gray-700 dark:focus:border-brand-800"
+            class="h-11 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-2 focus:ring-brand-500/10 dark:border-gray-600 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
             autocomplete="off"
         />
         <span class="absolute text-gray-500 -translate-y-1/2 pointer-events-none right-3 top-1/2 dark:text-gray-400">
