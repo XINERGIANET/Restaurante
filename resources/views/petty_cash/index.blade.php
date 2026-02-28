@@ -49,8 +49,8 @@
             $url = $action;
         } else {
             $routeCandidates = [$action];
-            if (!str_starts_with($action, '')) {
-                $routeCandidates[] = '' . $action;
+            if (Str::startsWith($action, 'admin.')) {
+                $routeCandidates[] = Str::after($action, 'admin.');
             }
             $routeCandidates = array_merge(
                 $routeCandidates,

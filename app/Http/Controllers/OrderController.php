@@ -196,7 +196,7 @@ class OrderController extends Controller
                 $situation = (in_array($rawSituation, ['PENDIENTE', 'OCUPADA', 'ocupada', 'Pendiente'], true)) ? 'ocupada' : 'libre';
             }
 
-            $orderMovement = OrderMovement::with('movement')
+            $orderMovement = OrderMovement::with('movement', 'details')
                 ->where('table_id', $table->id)
                 ->whereIn('status', ['PENDIENTE', 'P'])
                 ->orderByDesc('id')
@@ -204,6 +204,14 @@ class OrderController extends Controller
             $totalAmount = $orderMovement ? (float) $orderMovement->subtotal : 0;
             $taxAmount = $orderMovement ? (float) ($orderMovement->tax ?? 0) : 0;
             $totalWithTax = round($totalAmount + $taxAmount, 2);
+            $productsText = '';
+            if ($orderMovement && $orderMovement->relationLoaded('details') && $orderMovement->details->isNotEmpty()) {
+                $productsText = $orderMovement->details
+                    ->map(fn ($d) => $d->description ?? (is_array($d->product_snapshot) ? ($d->product_snapshot['description'] ?? $d->product_snapshot['name'] ?? '') : ''))
+                    ->filter()
+                    ->unique()
+                    ->implode(' ');
+            }
 
             return [
                 'id' => $table->id,
@@ -211,12 +219,14 @@ class OrderController extends Controller
                 'area_id' => (int) $table->area_id,
                 'situation' => $situation,
                 'diners' => (int) ($table->capacity ?? 0),
+                'people_count' => (int) ($orderMovement?->people_count ?? 0),
                 'waiter' => $orderMovement?->movement?->user_name ?? '-',
                 'client' => $orderMovement?->movement?->person_name ?? '-',
                 'total' => $totalWithTax,
                 'order_movement_id' => $orderMovement?->id ?? null,
                 'movement_id' => $orderMovement?->movement_id ?? null,
                 'elapsed' => $elapsed,
+                'products_text' => $productsText,
             ];
         })->values();
 
@@ -346,7 +356,7 @@ class OrderController extends Controller
             if ($situation !== 'libre' && $situation !== 'ocupada') {
                 $situation = (in_array($rawSituation, ['PENDIENTE', 'OCUPADA', 'ocupada', 'Pendiente'], true)) ? 'ocupada' : 'libre';
             }
-            $orderMovement = OrderMovement::with('movement')
+            $orderMovement = OrderMovement::with('movement', 'details')
                 ->where('table_id', $table->id)
                 ->whereIn('status', ['PENDIENTE', 'P'])
                 ->orderByDesc('id')
@@ -354,18 +364,28 @@ class OrderController extends Controller
             $totalAmount = $orderMovement ? (float) $orderMovement->subtotal : 0;
             $taxAmount = $orderMovement ? (float) ($orderMovement->tax ?? 0) : 0;
             $totalWithTax = round($totalAmount + $taxAmount, 2);
+            $productsText = '';
+            if ($orderMovement && $orderMovement->relationLoaded('details') && $orderMovement->details->isNotEmpty()) {
+                $productsText = $orderMovement->details
+                    ->map(fn ($d) => $d->description ?? ($d->product_snapshot['description'] ?? $d->product_snapshot['name'] ?? ''))
+                    ->filter()
+                    ->unique()
+                    ->implode(' ');
+            }
             return [
                 'id' => $table->id,
                 'name' => $table->name,
                 'area_id' => (int) $table->area_id,
                 'situation' => $situation,
                 'diners' => (int) ($table->capacity ?? 0),
+                'people_count' => (int) ($orderMovement?->people_count ?? 0),
                 'waiter' => $orderMovement?->movement?->user_name ?? '-',
                 'client' => $orderMovement?->movement?->person_name ?? '-',
                 'total' => $totalWithTax,
                 'order_movement_id' => $orderMovement?->id ?? null,
                 'movement_id' => $orderMovement?->movement_id ?? null,
                 'elapsed' => $elapsed,
+                'products_text' => $productsText,
             ];
         })->values();
         $areasArray = $areas->map(fn($area) => ['id' => (int) $area->id, 'name' => $area->name])->values();
@@ -454,6 +474,7 @@ class OrderController extends Controller
             'startFresh' => $startFresh,
             'pendingOrderMovementId' => $pendingOrder?->id,
             'pendingMovementId' => $pendingOrder?->movement_id,
+            'pendingPeopleCount' => (int) ($pendingOrder?->people_count ?: ($table->capacity ?? 1)),
             'turboCacheControl' => 'no-cache',
         ]);
         $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
