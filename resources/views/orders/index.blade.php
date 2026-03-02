@@ -27,47 +27,62 @@
                         No hay áreas disponibles
                     </div>
                 </template>
+
+                {{-- Buscador + chips de filtro --}}
+                <div class="flex flex-col gap-3 min-w-0 flex-1 sm:min-w-[20rem] w-full max-w-2xl">
+                    <div class="relative w-full">
+                        <input type="text" x-model="searchQuery"
+                            placeholder="Buscar por mesa, mozo, cliente o productos..."
+                            class="w-full pl-10 pr-4 py-2.5 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 outline-none transition-all">
+                        <svg class="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </div>
+                </div>
             </div>
 
             {{-- 2. GRID DE MESAS - RESPONSIVO --}}
-            <div class="flex-1 pb-10">
+            <div class="flex justify-center w-full pb-10">
                 <template x-if="filteredTables?.length > 0">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4 gap-5">
+                    <div class="grid grid-cols-6 sm:grid-cols-6 md:grid-cols-6 lg:grid-cols-6 xl:grid-cols-6 2xl:grid-cols-6 gap-5 w-full">
                         <template x-for="table in (filteredTables || [])" :key="table.id">
                             <div @click="openTable(table)"
-                                class="relative rounded-2xl shadow-lg border overflow-hidden bg-white dark:bg-gray-800 transition-all hover:shadow-lg max-w-[320px] cursor-pointer"
+                                class="relative rounded-2xl p-2 shadow-lg border overflow-hidden bg-white dark:bg-gray-800 transition-all hover:shadow-lg max-w-[320px] cursor-pointer"
                                 :class="table.situation === 'ocupada' ?
-                                    'border-gray-200 dark:border-gray-700 border-l-4' :
-                                    'border-gray-200 dark:border-gray-700 hover:border-gray-300'"
-                                :style="table.situation === 'ocupada' ? 'border-left-color: #F37022' : ''">
-                                <div class="p-6 pl-8">
+                                    'border-gray-100 dark:border-gray-700 border-l-4' :
+                                    'border-blue-200 dark:border-blue-700 border-l-4'"
+                                :style="table.situation === 'ocupada' ? 'border-left-color: #F37022' : 'border-left-color: rgb(59, 130, 246)'">
+                                <div class="p-3 py-4 pl-3">
                                     {{-- Header --}}
                                     <div class="flex justify-between items-start mb-4">
                                         <div class="flex items-center gap-4">
                                             <template x-if="table.situation === 'ocupada'">
-                                                <div class="bg-gray-100 font-bold  text-lg w-14 h-14 flex items-center justify-center rounded-xl shadow-sm dark:bg-gray-700 dark:text-red-400"
-                                                    style="color: #F37022; border: 2px solid #F37022;">
+                                                <div class="bg-gray-100 font-bold text-lg w-11 h-11 flex items-center justify-center rounded-xl shadow-sm dark:bg-gray-700 border-2" style="color: #F37022; border-color: #F37022;">
                                                     <span x-text="String(table.name || table.id).padStart(2, '0')"></span>
                                                 </div>
                                             </template>
                                             <template x-if="table.situation === 'libre'">
                                                 <div
-                                                    class="bg-gray-100 border border-blue-500 text-blue-500 font-bold text-lg w-14 h-14 flex items-center justify-center rounded-xl shadow-sm dark:bg-gray-700 dark:text-red-400">
+                                                    class="bg-gray-100 border border-blue-500 text-blue-500 font-bold text-lg w-11 h-11 flex items-center justify-center rounded-xl shadow-sm dark:bg-gray-700 dark:text-red-400">
+
                                                     <span x-text="String(table.name || table.id).padStart(2, '0')"></span>
                                                 </div>
                                             </template>
                                             <div>
                                                 <div class="flex">
-                                                    <p class="font-semibold text-sm text-gray-500 dark:text-gray-400">Mozo:
+                                                    <p class="font-semibold text-theme-xs text-gray-500 dark:text-gray-400">
+                                                        Mozo:
                                                     </p>
-                                                    <p class="font-medium text-gray-800 text-sm dark:text-white/90 ml-1"
+                                                    <p class="font-medium text-gray-800 text-theme-xs dark:text-white/90 ml-1"
                                                         x-text="table.waiter || '-'"></p>
                                                 </div>
                                                 <div class="flex min-w-0 flex-1">
                                                     <p
-                                                        class="font-semibold text-sm text-gray-500 dark:text-gray-400 shrink-0">
+                                                        class="font-semibold text-theme-xs text-gray-500 dark:text-gray-400 shrink-0">
                                                         Cliente:</p>
-                                                    <p class="font-medium text-gray-800 text-sm dark:text-white/90 ml-1"
+                                                    <p class="font-medium text-gray-800 text-theme-xs dark:text-white/90 ml-1"
                                                         x-text="(table.client && table.client !== 'Público General') ? table.client : 'Público'">
                                                     </p>
                                                 </div>
@@ -79,18 +94,19 @@
                                                 <path stroke-linecap="round" stroke-linejoin="round"
                                                     d="M17 20h5v-1a4 4 0 00-3-3.87M9 20H4v-1a4 4 0 013-3.87m6-4.13a4 4 0 110-8 4 4 0 010 8z" />
                                             </svg>
-                                            <span class="text-sm font-medium" x-text="table.diners || 0"></span>
+                                            <span class="text-sm font-medium"
+                                                x-text="table.situation === 'ocupada' ? (table.people_count || 0) : (table.diners || 0)"></span>
                                         </div>
                                     </div>
 
                                     {{-- Total + Estado --}}
                                     <div class="flex justify-between items-center mb-5">
                                         <template x-if="table.situation === 'ocupada'">
-                                            <p class="text-2xl font-bold text-gray-900 dark:text-white"
+                                            <p class="text-xl font-bold text-gray-900 dark:text-white"
                                                 x-text="'S/. ' + parseFloat(table.total).toFixed(2)"></p>
                                         </template>
                                         <template x-if="table.situation === 'libre'">
-                                            <p class="text-2xl font-bold text-gray-400">-</p>
+                                            <p class="text-xl font-bold text-gray-400">-</p>
                                         </template>
                                         <div class="text-right">
                                             <template x-if="table.situation === 'ocupada'">
@@ -113,7 +129,8 @@
                                                 class="inline-flex items-center justify-center bg-green-500 hover:bg-green-600 active:bg-green-700 text-white py-1.5 px-3 rounded-lg transition shadow-sm hover:shadow w-9">
                                                 <i class="ri-bank-card-line text-white"></i>
                                             </button>
-                                            <button type="button" @click.stop="$dispatch('open-move-table-modal', { table: table })"
+                                            <button type="button"
+                                                @click.stop="$dispatch('open-move-table-modal', { table: table })"
                                                 title="Mover mesa"
                                                 class="inline-flex items-center justify-center bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white py-1.5 px-3 rounded-lg transition shadow-sm hover:shadow w-9">
                                                 <i class="ri-drag-move-2-line text-white"></i>
@@ -156,10 +173,10 @@
         $tableOptions = collect($tables ?? [])
             ->map(
                 fn($t) => [
-                    'id'          => is_array($t) ? $t['id'] ?? null : $t->id,
+                    'id' => is_array($t) ? $t['id'] ?? null : $t->id,
                     'description' => is_array($t) ? $t['name'] ?? '' : $t->name ?? '',
-                    'area_id'     => is_array($t) ? $t['area_id'] ?? null : $t->area_id,
-                    'situation'   => is_array($t) ? ($t['situation'] ?? 'libre') : ($t->situation ?? 'libre'),
+                    'area_id' => is_array($t) ? $t['area_id'] ?? null : $t->area_id,
+                    'situation' => is_array($t) ? $t['situation'] ?? 'libre' : $t->situation ?? 'libre',
                 ],
             )
             ->values()
@@ -172,13 +189,14 @@
     @endphp
     <x-ui.modal x-data="moveTableModal()" x-effect="if (open) { syncAreaOptions(); updateTables(); }"
         @open-move-table-modal.window="open = true; tableId = null; if ($event.detail && $event.detail.table) { sourceTableId = $event.detail.table.id; sourceTableName = $event.detail.table.name || 'Mesa'; } $nextTick(() => updateTables())"
-        @close-move-table-modal.window="open = false" :isOpen="false"
-        :showCloseButton="false" :scrollable="false" class="max-w-3xl">
+        @close-move-table-modal.window="open = false" :isOpen="false" :showCloseButton="false" :scrollable="false"
+        class="max-w-3xl">
         <div class="p-3">
             <div class="flex flex-col p-3 gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div class="flex flex-col gap-0.5">
                     <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Mover mesa</h3>
-                    <p x-show="sourceTableId" class="text-sm text-gray-500 dark:text-gray-400">Mesa a mover: <span x-text="sourceTableName"></span> #<span x-text="sourceTableId"></span></p>
+                    <p x-show="sourceTableId" class="text-sm text-gray-500 dark:text-gray-400">Mesa a mover: <span
+                            x-text="sourceTableName"></span> #<span x-text="sourceTableId"></span></p>
                 </div>
                 <i class="ri-drag-move-2-line text-2xl text-blue-500"></i>
                 <button type="button" @click="open = false"
@@ -246,13 +264,16 @@
                 },
                 syncAreaOptions() {
                     window.dispatchEvent(new CustomEvent('update-combobox-options', {
-                        detail: { name: 'area_id', options: this.allAreaOptions }
+                        detail: {
+                            name: 'area_id',
+                            options: this.allAreaOptions
+                        }
                     }));
                 },
                 // Solo mesas libres, excluyendo la mesa origen
                 updateTables() {
                     const areaId = this.currentAreaId;
-                    const srcId  = this.sourceTableId;
+                    const srcId = this.sourceTableId;
                     let options = this.allTables.filter(t =>
                         String(t.situation ?? '').toLowerCase() !== 'ocupada' &&
                         String(t.id) !== String(srcId)
@@ -261,16 +282,27 @@
                         options = options.filter(t => String(t.area_id) === String(areaId));
                     }
                     window.dispatchEvent(new CustomEvent('update-combobox-options', {
-                        detail: { name: 'table_id', options }
+                        detail: {
+                            name: 'table_id',
+                            options
+                        }
                     }));
                 },
                 async moveTable() {
                     if (!this.sourceTableId) {
-                        if (window.Swal) Swal.fire({ icon: 'warning', title: 'Error', text: 'No se ha seleccionado ninguna mesa para mover.' });
+                        if (window.Swal) Swal.fire({
+                            icon: 'warning',
+                            title: 'Error',
+                            text: 'No se ha seleccionado ninguna mesa para mover.'
+                        });
                         return;
                     }
                     if (!this.tableId) {
-                        if (window.Swal) Swal.fire({ icon: 'warning', title: 'Error', text: 'Selecciona una mesa destino libre.' });
+                        if (window.Swal) Swal.fire({
+                            icon: 'warning',
+                            title: 'Error',
+                            text: 'Selecciona una mesa destino libre.'
+                        });
                         return;
                     }
                     try {
@@ -283,7 +315,7 @@
                                 'X-Requested-With': 'XMLHttpRequest'
                             },
                             body: JSON.stringify({
-                                table_id:     this.sourceTableId,
+                                table_id: this.sourceTableId,
                                 new_table_id: this.tableId,
                             })
                         });
@@ -291,15 +323,32 @@
                         if (data.success) {
                             this.open = false;
                             if (window.Swal) {
-                                Swal.fire({ toast: true, position: 'bottom-end', icon: 'success', title: data.message || 'Pedido movido correctamente', showConfirmButton: false, timer: 3000, timerProgressBar: true });
+                                Swal.fire({
+                                    toast: true,
+                                    position: 'bottom-end',
+                                    icon: 'success',
+                                    title: data.message || 'Pedido movido correctamente',
+                                    showConfirmButton: false,
+                                    timer: 3000,
+                                    timerProgressBar: true
+                                });
                             }
-                            if (typeof window.__posRefreshTables === 'function') window.__posRefreshTables();
+                            if (typeof window.__posRefreshTables === 'function') window
+                                .__posRefreshTables();
                         } else {
                             const msg = data.message || 'No se pudo mover el pedido.';
-                            if (window.Swal) Swal.fire({ icon: 'error', title: 'Error', text: msg });
+                            if (window.Swal) Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: msg
+                            });
                         }
                     } catch (e) {
-                        if (window.Swal) Swal.fire({ icon: 'error', title: 'Error', text: 'Error de conexión. Intenta de nuevo.' });
+                        if (window.Swal) Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Error de conexión. Intenta de nuevo.'
+                        });
                     }
                 }
             }));
@@ -336,6 +385,8 @@
                     areas: Array.isArray(areasData) ? areasData : [],
                     tables: Array.isArray(tablesData) ? tablesData : [],
                     currentAreaId: firstAreaId ? Number(firstAreaId) : null,
+                    searchQuery: '',
+                    statusChip: '',
                     createUrl: @json(route('orders.create')),
                     chargeUrl: @json(route('orders.charge')),
                     tablesDataUrl: @json(route('orders.tablesData')),
@@ -377,6 +428,12 @@
                         this.$watch('currentAreaId', () => {
                             this.updateFilteredTables();
                         });
+                        this.$watch('searchQuery', () => {
+                            this.updateFilteredTables();
+                        });
+                        this.$watch('statusChip', () => {
+                            this.updateFilteredTables();
+                        });
                         const self = this;
                         window.__posRefreshTables = function() {
                             self.refreshTables();
@@ -389,24 +446,34 @@
                                 this.filteredTables = [];
                                 return;
                             }
-                            if (!this.areas || !Array.isArray(this.areas) || this.areas.length === 0) {
-                                this.filteredTables = [...this.tables];
-                                return;
+                            let list = [...this.tables];
+                            if (this.areas && this.areas.length > 0 && this.currentAreaId) {
+                                const areaId = Number(this.currentAreaId);
+                                if (!isNaN(areaId)) {
+                                    list = list.filter(t => {
+                                        if (!t || typeof t.area_id === 'undefined') return false;
+                                        const tableAreaId = Number(t.area_id);
+                                        return !isNaN(tableAreaId) && tableAreaId === areaId;
+                                    });
+                                }
                             }
-                            if (!this.currentAreaId) {
-                                this.filteredTables = [...this.tables];
-                                return;
+                            if (this.statusChip) {
+                                const status = String(this.statusChip).toLowerCase();
+                                list = list.filter(t => String(t.situation || '').toLowerCase() === status);
                             }
-                            const areaId = Number(this.currentAreaId);
-                            if (isNaN(areaId)) {
-                                this.filteredTables = [...this.tables];
-                                return;
+                            const q = String(this.searchQuery || '').trim().toLowerCase();
+                            if (q.length > 0) {
+                                const terms = q.split(/\s+/).filter(term => term.length > 0);
+                                list = list.filter(t => {
+                                    const name = String(t.name ?? t.id ?? '').toLowerCase();
+                                    const waiter = String(t.waiter ?? t.user_name ?? '').toLowerCase();
+                                    const client = String(t.client ?? t.clientName ?? t.person_name ?? '').toLowerCase();
+                                    const productsText = String(t.products_text ?? '').toLowerCase();
+                                    const searchable = [name, waiter, client, productsText].join(' ');
+                                    return terms.every(term => searchable.includes(term));
+                                });
                             }
-                            this.filteredTables = this.tables.filter(t => {
-                                if (!t || typeof t.area_id === 'undefined') return false;
-                                const tableAreaId = Number(t.area_id);
-                                return !isNaN(tableAreaId) && tableAreaId === areaId;
-                            });
+                            this.filteredTables = list;
                         } catch (error) {
                             console.error('Error en updateFilteredTables:', error);
                             this.filteredTables = [];
@@ -436,7 +503,9 @@
                             url.searchParams.set('table_id', table.id);
                             url.searchParams.set('_t', Date.now());
                             if (window.Turbo && typeof window.Turbo.visit === 'function') {
-                                window.Turbo.visit(url.toString(), { action: 'advance' });
+                                window.Turbo.visit(url.toString(), {
+                                    action: 'advance'
+                                });
                             } else {
                                 window.location.href = url.toString();
                             }

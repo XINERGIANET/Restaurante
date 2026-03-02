@@ -10,6 +10,7 @@ use App\Models\ProductBranch;
 use App\Models\TaxRate;
 use App\Models\Unit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -67,6 +68,16 @@ class ProductController extends Controller
         $units = Unit::query()->orderBy('description')->get();
         $taxRates = TaxRate::query()->where('status', true)->orderBy('order_num')->get();
         $currentBranch = Branch::find(session('branch_id'));
+        $branches = Branch::query()->orderBy('legal_name')->get(['id', 'legal_name']);
+        $igvByBranchId = DB::table('branch_parameters as bp')
+            ->join('parameters as p', 'p.id', '=', 'bp.parameter_id')
+            ->whereNull('bp.deleted_at')
+            ->whereNull('p.deleted_at')
+            ->where('p.description', 'igv_defecto')
+            ->pluck('bp.value', 'bp.branch_id')
+            ->map(fn ($v) => is_numeric($v) ? (int) $v : null)
+            ->filter()
+            ->all();
 
         return view('products.index', [
             'products' => $products,
@@ -74,6 +85,8 @@ class ProductController extends Controller
             'units' => $units,
             'taxRates' => $taxRates,
             'currentBranch' => $currentBranch,
+            'branches' => $branches,
+            'igvByBranchId' => $igvByBranchId,
             'search' => $search,
             'perPage' => $perPage,
             'operaciones' => $operaciones,
@@ -129,7 +142,7 @@ class ProductController extends Controller
         $product = Product::create($productData);
         
         // Crear ProductBranch para la sucursal actual
-        $branchId = $request->session()->get('branch_id');
+        $branchId = (int) ($request->input('branch_id') ?: $request->session()->get('branch_id'));
         if ($branchId) {
             $branchData['product_id'] = $product->id;
             $branchData['branch_id'] = $branchId;
@@ -146,7 +159,7 @@ class ProductController extends Controller
 
     public function edit(Request $request, Product $product)
     {
-        $product->load('category');
+        $product->load(['category', 'productBranches']);
         $categories = Category::query()->orderBy('description')->get();
         $units = Unit::query()->orderBy('description')->get();
         $taxRates = TaxRate::query()->where('status', true)->orderBy('order_num')->get();
@@ -155,6 +168,33 @@ class ProductController extends Controller
             ->where('branch_id', $branchId)
             ->first();
 
+        $branches = Branch::query()->orderBy('legal_name')->get(['id', 'legal_name']);
+        $igvByBranchId = DB::table('branch_parameters as bp')
+            ->join('parameters as p', 'p.id', '=', 'bp.parameter_id')
+            ->whereNull('bp.deleted_at')
+            ->whereNull('p.deleted_at')
+            ->where('p.description', 'igv_defecto')
+            ->pluck('bp.value', 'bp.branch_id')
+            ->map(fn ($v) => is_numeric($v) ? (int) $v : null)
+            ->filter()
+            ->all();
+        $productBranchesByBranchId = $product->productBranches
+            ->keyBy('branch_id')
+            ->map(fn (ProductBranch $pb) => [
+                'price' => (float) ($pb->price ?? 0),
+                'stock' => (float) ($pb->stock ?? 0),
+                'stock_minimum' => (float) ($pb->stock_minimum ?? 0),
+                'stock_maximum' => (float) ($pb->stock_maximum ?? 0),
+                'minimum_sell' => (float) ($pb->minimum_sell ?? 0),
+                'minimum_purchase' => (float) ($pb->minimum_purchase ?? 0),
+                'tax_rate_id' => $pb->tax_rate_id,
+                'unit_sale' => is_numeric($pb->unit_sale) ? (int) $pb->unit_sale : null,
+                'expiration_date' => $pb->expiration_date,
+                'supplier_id' => $pb->supplier_id,
+                'favorite' => $pb->favorite ?? 'N',
+                'duration_minutes' => (float) ($pb->duration_minutes ?? 0),
+            ]);
+
         return view('products.edit', [
             'product' => $product,
             'productBranch' => $productBranch,
@@ -162,6 +202,9 @@ class ProductController extends Controller
             'units' => $units,
             'taxRates' => $taxRates,
             'suppliers' => collect(), 
+            'branches' => $branches,
+            'igvByBranchId' => $igvByBranchId,
+            'productBranchesByBranchId' => $productBranchesByBranchId,
             'viewId' => $request->input('view_id'),
         ]);
     }
@@ -198,8 +241,8 @@ class ProductController extends Controller
         // Actualizar producto
         $product->update($productData);
         
-        // Actualizar o crear ProductBranch para la sucursal actual
-        $branchId = $request->session()->get('branch_id');
+        // Actualizar o crear ProductBranch para la sucursal seleccionada
+        $branchId = (int) ($validated['branch_id'] ?? $request->session()->get('branch_id') ?? 0);
         if ($branchId) {
             $productBranch = $product->productBranches()
                 ->where('branch_id', $branchId)
@@ -255,16 +298,21 @@ class ProductController extends Controller
             'classification' => ['required', 'string', 'in:GOOD,SERVICE'],
             'features' => ['nullable', 'string'],
             'recipe' => ['required', 'boolean'],
+            'branch_id' => ['nullable', 'integer', 'exists:branches,id'],
 
             // Datos de ProductBranch (Detalle por Sede)
             'price' => ['required', 'numeric', 'min:0'],
-            'stock' => ['required', 'numeric', 'min:0', 'gte:stock_minimum'],
+            'stock' => array_values(array_filter([
+                'required', 'numeric', 'min:0',
+                'gte:stock_minimum',
+                $request->input('stock_maximum', 0) > 0 ? 'lte:stock_maximum' : null,
+            ])),
             'stock_minimum' => ['required', 'numeric', 'min:0'],
             'stock_maximum' => ['required', 'numeric', 'min:0', 'gte:stock_minimum'],
             'minimum_sell' => ['required', 'numeric', 'min:0'],
-            'minimum_purchase' => ['required', 'numeric', 'min:0'],
+            'minimum_purchase' => ['nullable', 'numeric', 'min:0'],
             'tax_rate_id' => ['nullable', 'integer', 'exists:tax_rates,id'],
-            'unit_sale' => ['nullable', 'string', 'max:50'],
+            'unit_sale' => ['nullable', 'integer', 'exists:units,id'],
             'expiration_date' => ['nullable', 'date'],
             'favorite' => ['required', 'string', 'in:S,N'],
             'duration_minutes' => ['nullable', 'integer', 'min:0'],
@@ -306,10 +354,12 @@ class ProductController extends Controller
             'stock_minimum' => $validated['stock_minimum'],
             'stock_maximum' => $validated['stock_maximum'],
             'minimum_sell' => $validated['minimum_sell'],
-            'minimum_purchase' => $validated['minimum_purchase'],
+            'minimum_purchase' => $validated['minimum_purchase'] ?? 0,
             'favorite' => $validated['favorite'],
             'tax_rate_id' => $validated['tax_rate_id'],
-            'unit_sale' => $validated['unit_sale'],
+            // product_branch.unit_sale es NOT NULL. Si no seleccionan unidad de venta,
+            // usamos la unidad base como valor por defecto.
+            'unit_sale' => $validated['unit_sale'] ?? $validated['base_unit_id'] ?? 'N',
             'duration_minutes' => $validated['duration_minutes'],
             'supplier_id' => $validated['supplier_id'],
             'stock' => $validated['stock'],

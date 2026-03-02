@@ -84,20 +84,30 @@
 
                         <div class="flex items-center gap-1 sm:gap-2 group min-w-0">
                             <span class="text-gray-500 dark:text-gray-400 shrink-0">Personas:</span>
-                            <div class="relative flex items-center">
-                                <input type="number" 
-                                    value="{{ $diners ?? 1 }}" 
-                                    min="1" 
-                                    onchange="updateDiners(this.value)"
-                                    class="w-8 sm:w-10 py-1 px-1 text-center text-xs sm:text-sm bg-white dark:bg-slate-700/80 border border-gray-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 font-semibold focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-500/40 focus:border-blue-400 outline-none shadow-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
+                            <span class="text-xs text-gray-400 dark:text-gray-500 shrink-0">(máx. {{ $table->capacity ?? 1 }})</span>
+                            <div class="flex items-center gap-0.5 sm:gap-1">
+                                <button type="button" onclick="updateDiners(-1)"
+                                    class="w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded-md bg-gray-100 dark:bg-slate-600 hover:bg-blue-100 dark:hover:bg-blue-700/50 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-300 transition-colors border border-gray-200 dark:border-slate-500 text-xs font-bold leading-none select-none">
+                                    <i class="fas fa-minus text-[9px] sm:text-[10px]"></i>
+                                </button>
+                                <input type="number"
+                                    id="diners-input"
+                                    value="{{ $pendingPeopleCount ?? 1 }}"
+                                    min="1"
+                                    onchange="updateDiners(0)"
+                                    class="w-8 sm:w-9 py-1 px-0.5 text-center text-xs sm:text-sm bg-white dark:bg-slate-700/80 border border-gray-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 font-semibold focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-500/40 focus:border-blue-400 outline-none shadow-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
+                                <button type="button" onclick="updateDiners(1)"
+                                    class="w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded-md bg-gray-100 dark:bg-slate-600 hover:bg-blue-100 dark:hover:bg-blue-700/50 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-300 transition-colors border border-gray-200 dark:border-slate-500 text-xs font-bold leading-none select-none">
+                                    <i class="fas fa-plus text-[9px] sm:text-[10px]"></i>
+                                </button>
                             </div>
                         </div>
                     </div>
                 </div>
             </header>
 
-            <div class="p-3 sm:p-5 md:p-6 w-full bg-white flex flex-col flex-1 min-h-0">                
-                <div class="flex flex-col flex-1 min-h-0 min-w-0">
+            <div class="p-3 sm:p-5 md:p-6 w-full bg-white flex flex-col flex-1 min-h-0 overflow-hidden">                
+                <div class="flex flex-col flex-1 min-h-0 min-w-0 overflow-hidden">
                     <div class="shrink-0 border-gray-300 px-2 sm:px-4 pt-3 pb-4">
                         <div class="flex items-center justify-between">
                         <h3 class="font-bold text-sm sm:text-base text-slate-800 dark:text-white mb-2 shrink-0">Categoría</h3>
@@ -112,9 +122,9 @@
                         <div id="categories-grid" class="flex flex-row flex-wrap gap-1.5 sm:gap-2 overflow-x-auto pb-3">
                         </div>
                     </div>
-                    <div class="flex-1 min-h-0 min-w-0 pt-2 sm:pt-3">
+                    <div class="flex-1 min-h-0 min-w-0 pt-2 sm:pt-3 flex flex-col overflow-hidden">
                         <h3 class="font-bold text-sm sm:text-base text-slate-800 dark:text-white mb-2 sm:mb-3 px-2 sm:px-4 shrink-0">Productos</h3>
-                        <div id="products-grid" class="px-2 sm:px-4 md:px-5 pb-2 grid grid-cols-3 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5 2xl:grid-cols-5 gap-2 sm:gap-4 overflow-y-auto min-h-0 flex-1 content-start">
+                        <div id="products-grid" class="px-2 sm:px-4 md:px-5 pb-2 grid grid-cols-3 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5 2xl:grid-cols-5 gap-2 sm:gap-4 overflow-y-auto overflow-x-hidden min-h-0 flex-1 content-start overscroll-contain">
                         </div>
                     </div>
                 </div>
@@ -173,6 +183,7 @@
                     'clientName' => $person?->name ?? 'Sin cliente',
                     'status' => $table->situation ?? 'libre',
                     'items' => [],
+                    'people_count' => (int) ($table->capacity ?? 1),
                 ];
             @endphp
             const serverTable = @json($serverTableData);
@@ -195,6 +206,8 @@
             }
 
             let currentTable = (useFreshOrder || !db[activeKey]) ? serverTable : db[activeKey];
+            // Inicializar people_count si no existe en el estado guardado (default: capacity de mesa)
+            if (!currentTable.people_count) currentTable.people_count = {{ $pendingPeopleCount ?? 1 }};
             // Siempre sincronizar order_movement_id y movement_id con el servidor para evitar duplicados
             if (serverOrderMovementId) {
                 currentTable.order_movement_id = serverOrderMovementId;
@@ -235,13 +248,47 @@
                     document.getElementById('pos-client-name').innerText = currentTable.clientName ||
                         "{{ $person?->name ?? 'Sin cliente' }}";
                 }
+                const dinersInput = document.getElementById('diners-input');
+                if (dinersInput && currentTable.people_count) {
+                    dinersInput.value = currentTable.people_count;
+                }
                 refreshCartPricesFromServer();
                 renderCategories();
                 renderProducts();
                 renderTicket();
+                fixScrollLayout();
+                const searchProductsInput = document.getElementById('search-products');
+                if (searchProductsInput) {
+                    searchProductsInput.addEventListener('input', function() {
+                        productSearchQuery = this.value.trim();
+                        renderProducts();
+                    });
+                }
                 if (currentTable.items && currentTable.items.length > 0) {
                     setTimeout(scheduleAutoSave, 800);
                 }
+            }
+
+            function fixScrollLayout() {
+                function run() {
+                    const grid = document.getElementById('products-grid');
+                    const cart = document.getElementById('cart-container');
+                    if (grid) {
+                        grid.scrollTop = 0;
+                        void grid.offsetHeight;
+                    }
+                    if (cart) {
+                        cart.scrollTop = 0;
+                        void cart.offsetHeight;
+                    }
+                    window.scrollTo(0, 0);
+                }
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        run();
+                        setTimeout(run, 100);
+                    });
+                });
             }
 
             // Función para escapar HTML y prevenir XSS
@@ -331,6 +378,7 @@
             }
 
             let selectedCategoryId = null;
+            let productSearchQuery = '';
 
             function renderCategories() {
                 const grid = document.getElementById('categories-grid');
@@ -386,9 +434,19 @@
                 }
 
                 // Filtrar por categoría seleccionada (si hay una)
-                const productsToShow = selectedCategoryId == null
+                let productsToShow = selectedCategoryId == null
                     ? serverProducts
                     : serverProducts.filter(p => p.category_id == selectedCategoryId);
+
+                // Filtrar por texto de búsqueda (nombre o categoría del producto)
+                const q = String(productSearchQuery || '').trim().toLowerCase();
+                if (q.length > 0) {
+                    productsToShow = productsToShow.filter(p => {
+                        const name = String(p.name || '').toLowerCase();
+                        const category = String(p.category || '').toLowerCase();
+                        return name.includes(q) || category.includes(q);
+                    });
+                }
 
                 let productsRendered = 0;
                 productsToShow.forEach(prod => {
@@ -447,9 +505,13 @@
                 });
 
                 if (productsRendered === 0) {
-                    grid.innerHTML = selectedCategoryId != null
-                        ? '<div class="col-span-full text-center text-gray-500 py-8">No hay productos en esta categoría</div>'
-                        : '<div class="col-span-full text-center text-gray-500 py-8">No hay productos disponibles para esta sucursal</div>';
+                    if (q.length > 0) {
+                        grid.innerHTML = '<div class="col-span-full text-center text-gray-500 py-8">No se encontraron productos para "' + escapeHtml(productSearchQuery) + '"</div>';
+                    } else {
+                        grid.innerHTML = selectedCategoryId != null
+                            ? '<div class="col-span-full text-center text-gray-500 py-8">No hay productos en esta categoría</div>'
+                            : '<div class="col-span-full text-center text-gray-500 py-8">No hay productos disponibles para esta sucursal</div>';
+                    }
                 }
 
             }
@@ -917,6 +979,23 @@
                 }, 3500);
             }
 
+            function updateDiners(delta) {
+                const input = document.getElementById('diners-input');
+                if (!input) return;
+                let value = delta === 0
+                    ? parseInt(input.value, 10)
+                    : parseInt(input.value, 10) + delta;
+                if (isNaN(value) || value < 1) value = 1;
+                input.value = value;
+                if (currentTable) {
+                    currentTable.people_count = value;
+                    if (db && activeKey) {
+                        db[activeKey] = currentTable;
+                        localStorage.setItem('restaurantDB', JSON.stringify(db));
+                    }
+                }
+            }
+
             // Exponer funciones usadas desde onclick en el HTML (mismo ámbito tras re-render)
             window.toggleNoteInput = toggleNoteInput;
             window.updateQty = updateQty;
@@ -925,6 +1004,7 @@
             window.goBack = goBack;
             window.processOrder = processOrder;
             window.processOrderPayment = processOrderPayment;
+            window.updateDiners = updateDiners;
         })();
     </script>
 @endsection

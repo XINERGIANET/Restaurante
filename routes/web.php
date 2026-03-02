@@ -84,6 +84,8 @@ Route::middleware('auth')->group(function () {
         ->name('admin.companies.branches.people.user.password');
     Route::get('/admin/herramientas/empresas/{company}/sucursales/{branch}/perfiles', [BranchController::class, 'profiles'])
         ->name('admin.companies.branches.profiles.index');
+    Route::post('/admin/herramientas/empresas/{company}/sucursales/{branch}/perfiles/asignar', [BranchController::class, 'assignBranchProfiles'])
+        ->name('admin.companies.branches.profiles.assign');
     Route::get('/admin/herramientas/empresas/{company}/sucursales/{branch}/perfiles/{profile}/operaciones', [BranchController::class, 'profileOperationsIndex'])
         ->name('admin.companies.branches.profiles.operations.index');
     Route::post('/admin/herramientas/empresas/{company}/sucursales/{branch}/perfiles/{profile}/operaciones/asignar', [BranchController::class, 'assignProfileOperations'])
@@ -120,8 +122,10 @@ Route::middleware('auth')->group(function () {
         ->names('sales')
         ->parameters(['ventas' => 'sale'])
         ->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
-    Route::get('/admin/ventas/pdf', [SalesController::class, 'exportPdf'])->name('sales.pdf');
-
+    Route::get('/admin/ventas/pdf', [SalesController::class, 'exportPdf'])->name('admin.sales.pdf');
+    Route::get('/admin/ventas/pdf/{sale}', [SalesController::class, 'printPdf'])->name('admin.sales.print.pdf');
+    Route::get('/admin/ventas/ticket/{sale}', [SalesController::class, 'printTicket'])->name('admin.sales.print.ticket');
+    
     // POS: vista de cobro (antes era modal)
     Route::get('/ventas/cobrar', [SalesController::class, 'charge'])
         ->name('sales.charge');
@@ -139,9 +143,6 @@ Route::middleware('auth')->group(function () {
     Route::post('/admin/ventas/borrador', [SalesController::class, 'saveDraft'])
         ->name('sales.draft')
         ->middleware('active.shift');
-
-    Route::get('/admin/ventas/reporte', [SalesController::class, 'reportSales'])
-        ->name('sales.report');
 
     Route::resource('/products/tipos-movimiento', MovementTypeController::class)
         ->names('admin.movement-types')

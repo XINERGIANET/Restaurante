@@ -292,8 +292,8 @@
 
         <x-ui.modal
             x-data="{ open: false }"
-            @open-tax-rate-modal.window="open = true"
-            @close-tax-rate-modal.window="open = false"
+            @open-tax-rate-modal.document="open = true"
+            @close-tax-rate-modal.document="open = false"
             :isOpen="false"
             :showCloseButton="false"
             class="max-w-3xl"
