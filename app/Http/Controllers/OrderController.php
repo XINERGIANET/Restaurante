@@ -174,15 +174,19 @@ class OrderController extends Controller
             ->orderBy('id')
             ->get(['id', 'name']);
 
-        // Si hay áreas, filtrar mesas por área. Si no hay áreas pero hay branch_id, no mostrar mesas.
-        // Si no hay branch_id, mostrar todas las mesas.
         $tables = Table::query()
             ->when($areas->isNotEmpty(), fn($q) => $q->whereIn('area_id', $areas->pluck('id')))
-            ->when($branchId && $areas->isEmpty(), fn($q) => $q->whereRaw('1 = 0')) // No mostrar mesas si hay branch_id pero no hay áreas
+            ->when($branchId && $areas->isEmpty(), fn($q) => $q->whereRaw('1 = 0'))
             ->orderBy('name')
             ->get(['id', 'name', 'area_id', 'capacity', 'situation', 'opened_at']);
 
-        $tablesPayload = $tables->map(function (Table $table) {
+        $activeOrderMovements = OrderMovement::with(['movement', 'details'])
+            ->whereIn('table_id', $tables->pluck('id'))
+            ->whereIn('status', ['PENDIENTE', 'P'])
+            ->get()
+            ->groupBy('table_id'); 
+
+        $tablesPayload = $tables->map(function (Table $table) use ($activeOrderMovements) {
             $elapsed = '--:--';
             if ($table->opened_at instanceof \DateTimeInterface) {
                 $elapsed = $table->opened_at->format('H:i');
@@ -196,21 +200,27 @@ class OrderController extends Controller
                 $situation = (in_array($rawSituation, ['PENDIENTE', 'OCUPADA', 'ocupada', 'Pendiente'], true)) ? 'ocupada' : 'libre';
             }
 
-            $orderMovement = OrderMovement::with('movement', 'details')
-                ->where('table_id', $table->id)
-                ->whereIn('status', ['PENDIENTE', 'P'])
-                ->orderByDesc('id')
-                ->first();
+            $orderMovement = $activeOrderMovements->get($table->id)?->sortByDesc('id')->first();
+
             $totalAmount = $orderMovement ? (float) $orderMovement->subtotal : 0;
             $taxAmount = $orderMovement ? (float) ($orderMovement->tax ?? 0) : 0;
             $totalWithTax = round($totalAmount + $taxAmount, 2);
+            
             $productsText = '';
-            if ($orderMovement && $orderMovement->relationLoaded('details') && $orderMovement->details->isNotEmpty()) {
+            if ($orderMovement && $orderMovement->details && $orderMovement->details->isNotEmpty()) {
                 $productsText = $orderMovement->details
-                    ->map(fn ($d) => $d->description ?? (is_array($d->product_snapshot) ? ($d->product_snapshot['description'] ?? $d->product_snapshot['name'] ?? '') : ''))
+                    ->map(function($d) {
+                        if (!empty($d->description)) {
+                            return $d->description;
+                        }
+                        if (is_array($d->product_snapshot)) {
+                            return $d->product_snapshot['description'] ?? $d->product_snapshot['name'] ?? '';
+                        }
+                        return '';
+                    })
                     ->filter()
                     ->unique()
-                    ->implode(' ');
+                    ->implode(' '); 
             }
 
             return [
@@ -226,11 +236,10 @@ class OrderController extends Controller
                 'order_movement_id' => $orderMovement?->id ?? null,
                 'movement_id' => $orderMovement?->movement_id ?? null,
                 'elapsed' => $elapsed,
-                'products_text' => $productsText,
+                'products_text' => strtolower($productsText), 
             ];
         })->values();
 
-        // Convertir áreas a array para asegurar compatibilidad con Alpine.js
         $areasArray = $areas->map(function ($area) {
             return [
                 'id' => (int) $area->id,
@@ -244,8 +253,10 @@ class OrderController extends Controller
             'user' => $request->user(),
             'turboCacheControl' => 'no-cache',
         ]);
+        
         $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
         $response->headers->set('Pragma', 'no-cache');
+        
         return $response;
     }
 

@@ -117,7 +117,6 @@
                         <div class="md:col-span-2">
                             <label class="mb-1.5 block text-xs font-semibold uppercase text-gray-500 tracking-wider">Documento</label>
                             <select name="document_type_id" class="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm focus:border-[#244BB3] focus:outline-none focus:ring-1 focus:ring-[#244BB3] bg-white" required>
-                                <option value="">Documento...</option>
                                 @foreach($documentTypes as $documentType)
                                     <option value="{{ $documentType->id }}" @selected((int) old('document_type_id', $purchase?->document_type_id ?? 0) === (int) $documentType->id)>{{ str_replace(' de compra', '', $documentType->name) }}</option>
                                 @endforeach

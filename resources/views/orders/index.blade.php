@@ -9,38 +9,62 @@
             class="flex flex-col min-h-[calc(100vh-9rem)] w-full font-sans text-slate-800 dark:text-white"
             style="--brand:#3B82F6; --brand-soft:rgba(59,130,246,0.14);">
 
-            <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4 shrink-0">
-                <template x-if="areas && areas.length > 0">
-                    <div class="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-xl">
-                        <template x-for="area in areas" :key="area.id">
-                            <button @click="switchArea(area)"
-                                :class="currentAreaId === area.id ?
-                                    'bg-white dark:bg-gray-700 shadow-sm text-gray-800 dark:text-white' :
-                                    'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
-                                class="px-4 py-2 rounded-lg text-sm font-medium transition-all" x-text="area.name">
-                            </button>
-                        </template>
-                    </div>
-                </template>
-                <template x-if="!areas || areas.length === 0">
-                    <div class="text-gray-500 dark:text-gray-400 text-sm">
-                        No hay áreas disponibles
-                    </div>
-                </template>
+            {{-- CONTROLES SUPERIORES: Áreas, Buscador y Chips --}}
+            <div class="flex flex-col w-full mb-6 gap-4 shrink-0">
+                
+                {{-- Fila 1: Botones de área y buscador --}}
+                <div class="flex flex-col sm:flex-row justify-between items-center gap-4 w-full">
+                    
+                    <template x-if="areas && areas.length > 0">
+                        <div class="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-xl">
+                            <template x-for="area in areas" :key="area.id">
+                                <button @click="switchArea(area)"
+                                    :class="currentAreaId === area.id ?
+                                        'bg-white dark:bg-gray-700 shadow-sm text-gray-800 dark:text-white' :
+                                        'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
+                                    class="px-4 py-2 rounded-lg text-sm font-medium transition-all" x-text="area.name">
+                                </button>
+                            </template>
+                        </div>
+                    </template>
+                    <template x-if="!areas || areas.length === 0">
+                        <div class="text-gray-500 dark:text-gray-400 text-sm">
+                            No hay áreas disponibles
+                        </div>
+                    </template>
 
-                {{-- Buscador + chips de filtro --}}
-                <div class="flex flex-col gap-3 min-w-0 flex-1 sm:min-w-[20rem] w-full max-w-2xl">
-                    <div class="relative w-full">
-                        <input type="text" x-model="searchQuery"
-                            placeholder="Buscar por mesa, mozo, cliente o productos..."
+                    {{-- Buscador --}}
+                    <div class="relative w-full max-w-2xl min-w-0 flex-1 sm:min-w-[20rem]">
+                        <input type="text" 
+                            x-model="searchQuery"
+                            @keydown.enter.prevent="addSearchChip"
+                            placeholder="Buscar y presionar Enter para añadir filtro..."
                             class="w-full pl-10 pr-4 py-2.5 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 outline-none transition-all">
-                        <svg class="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
-                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        <svg class="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
                     </div>
+
                 </div>
+
+                {{-- Fila 2: Contenedor de "Nubes" (Chips) en una línea nueva --}}
+                <template x-if="activeFilters && activeFilters.length > 0">
+                    <div class="flex flex-wrap gap-2 w-full">
+                        <template x-for="(chip, index) in activeFilters" :key="index">
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800 shadow-sm transition-all hover:shadow">
+                                <span x-text="chip"></span>
+                                <button @click="removeSearchChip(index)" type="button" class="flex items-center justify-center w-4 h-4 text-blue-600 hover:text-red-500 dark:text-blue-400 dark:hover:text-red-400 focus:outline-none transition-colors">
+                                    <i class="ri-close-line text-sm"></i>
+                                </button>
+                            </span>
+                        </template>
+                        
+                        {{-- Botón para limpiar todos --}}
+                        <button @click="clearAllChips" type="button" class="text-xs text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400 underline ml-2 self-center transition-colors">
+                            Limpiar todo
+                        </button>
+                    </div>
+                </template>
             </div>
 
             {{-- 2. GRID DE MESAS - RESPONSIVO --}}
@@ -386,6 +410,7 @@
                     tables: Array.isArray(tablesData) ? tablesData : [],
                     currentAreaId: firstAreaId ? Number(firstAreaId) : null,
                     searchQuery: '',
+                    activeFilters: [],
                     statusChip: '',
                     createUrl: @json(route('orders.create')),
                     chargeUrl: @json(route('orders.charge')),
@@ -414,6 +439,26 @@
                         } catch (e) {
                             console.warn('No se pudo actualizar mesas:', e);
                         }
+                    },
+
+                    addSearchChip() {
+                        const val = String(this.searchQuery || '').trim();
+                        if (val.length > 0 && !this.activeFilters.includes(val)) {
+                            this.activeFilters.push(val);
+                        }
+                        this.searchQuery = ''; 
+                        this.updateFilteredTables(); 
+                    },
+
+                    removeSearchChip(index) {
+                        this.activeFilters.splice(index, 1);
+                        this.updateFilteredTables();
+                    },
+
+                    clearAllChips() {
+                        this.activeFilters = [];
+                        this.searchQuery = '';
+                        this.updateFilteredTables();
                     },
 
                     init() {
@@ -446,33 +491,53 @@
                                 this.filteredTables = [];
                                 return;
                             }
+                            
                             let list = [...this.tables];
+                            
+                            // Filtro por Área
                             if (this.areas && this.areas.length > 0 && this.currentAreaId) {
                                 const areaId = Number(this.currentAreaId);
                                 if (!isNaN(areaId)) {
                                     list = list.filter(t => {
                                         if (!t || typeof t.area_id === 'undefined') return false;
-                                        const tableAreaId = Number(t.area_id);
-                                        return !isNaN(tableAreaId) && tableAreaId === areaId;
+                                        return Number(t.area_id) === areaId;
                                     });
                                 }
                             }
+                            
+                            // Filtro por Estado (libre/ocupada)
                             if (this.statusChip) {
                                 const status = String(this.statusChip).toLowerCase();
                                 list = list.filter(t => String(t.situation || '').toLowerCase() === status);
                             }
-                            const q = String(this.searchQuery || '').trim().toLowerCase();
-                            if (q.length > 0) {
-                                const terms = q.split(/\s+/).filter(term => term.length > 0);
+                            
+                            // NUEVO FILTRO MULTIPLE: Combinar input actual + chips guardados
+                            const currentInput = String(this.searchQuery || '').trim().toLowerCase();
+                            
+                            // Extraemos todos los términos de búsqueda activos
+                            let searchTerms = [...this.activeFilters.map(f => f.toLowerCase())];
+                            
+                            // Si el usuario está escribiendo algo pero aún no presiona Enter, lo consideramos también
+                            if (currentInput.length > 0) {
+                                searchTerms.push(...currentInput.split(/\s+/).filter(term => term.length > 0));
+                            }
+
+                            // Si hay términos que buscar, aplicamos el filtro
+                            if (searchTerms.length > 0) {
                                 list = list.filter(t => {
                                     const name = String(t.name ?? t.id ?? '').toLowerCase();
                                     const waiter = String(t.waiter ?? t.user_name ?? '').toLowerCase();
                                     const client = String(t.client ?? t.clientName ?? t.person_name ?? '').toLowerCase();
                                     const productsText = String(t.products_text ?? '').toLowerCase();
+                                    
+                                    // Unimos todo el texto de la mesa para buscar ahí
                                     const searchable = [name, waiter, client, productsText].join(' ');
-                                    return terms.every(term => searchable.includes(term));
+                                    
+                                    // La mesa DEBE coincidir con TODOS los términos/chips activos (AND logic)
+                                    return searchTerms.every(term => searchable.includes(term));
                                 });
                             }
+                            
                             this.filteredTables = list;
                         } catch (error) {
                             console.error('Error en updateFilteredTables:', error);
