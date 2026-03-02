@@ -38,6 +38,7 @@ use App\Http\Controllers\UnitController;
 use App\Http\Controllers\WarehouseMovementController;
 use App\Http\Controllers\ShiftCashController;
 use App\Http\Controllers\CashRegisterController;
+use App\Http\Controllers\PurchaseController;
 
 
 Route::prefix('restaurante')->name('restaurant.')->group(function () {
@@ -425,5 +426,11 @@ Route::middleware('auth')->group(function () {
     // SELECCIÓN DE CAJA EN CABECERA POR SESSION
     Route::post('/caja/fijar', [CashRegisterController::class, 'set'])->name('caja.fijar');
     Route::get('/caja/seleccionar', [CashRegisterController::class, 'select'])->name('caja.seleccionar');
+
+    //Compras
+    Route::get('/compras/productos/{branchId}', [PurchaseController::class, 'getProductsByBranch'])->name('purchase.get-products-by-branch');
+    Route::resource('compras', PurchaseController::class)
+        ->names('purchase')
+        ->parameters(['compras' => 'purchaseMovement']);
 });
 

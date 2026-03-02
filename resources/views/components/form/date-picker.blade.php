@@ -3,9 +3,14 @@
     'mode' => 'single', // 'single', 'multiple', 'range', 'time'
     'defaultDate' => null,
     'label' => null,
-    'placeholder' => 'Select date',
+    'placeholder' => 'Seleccione una fecha',
     'name' => null,
     'dateFormat' => 'Y-m-d',
+    'enableTime' => false,
+    'time24hr' => false,
+    'altInput' => false,
+    'altFormat' => 'd/m/Y',
+    'locale' => 'es',
 ])
 
 <div x-data="{
@@ -18,6 +23,11 @@
                 monthSelectorType: 'static',
                 dateFormat: '{{ $dateFormat }}',
                 defaultDate: {{ $defaultDate ? (is_array($defaultDate) ? json_encode($defaultDate) : "'" . $defaultDate . "'") : 'null' }},
+                enableTime: {{ $enableTime ? 'true' : 'false' }},
+                time_24hr: {{ $time24hr ? 'true' : 'false' }},
+                altInput: {{ $altInput ? 'true' : 'false' }},
+                altFormat: '{{ $altFormat }}',
+                locale: '{{ $locale }}',
                 onChange: (selectedDates, dateStr, instance) => {
                     this.$dispatch('date-change', {
                         selectedDates,

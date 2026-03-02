@@ -5,6 +5,7 @@
     'required' => false,
     'icon' => 'ri-price-tag-3-line',
     'name' => '',
+    'iconClickEvent' => null, // NUEVA PROPIEDAD: Si se envía, el ícono izquierdo se vuelve un botón
 ])
 
 <div x-data="{
@@ -18,8 +19,6 @@
             this.$watch('value', () => this.syncQueryFromId());
         },
 
-        // ESCUCHADOR DE EVENTO: Aquí recibimos la orden del padre.
-        // No reseteamos value para no pisar el valor por defecto que el padre acaba de asignar (x-model).
         updateOptions(newOptions) {
             this.allOptions = Array.isArray(newOptions) ? newOptions : [];
             this.syncQueryFromId();
@@ -57,7 +56,6 @@
     x-modelable="value"
     {{ $attributes->whereStartsWith('x-model') }} 
     
-    {{-- ESCUCHAMOS EL EVENTO DEL PADRE --}}
     @update-combobox-options.window="
         if (!$event.detail || !$event.detail.options) return;
         if (($event.detail.name || '') !== @js($name ?? '')) return;
@@ -77,10 +75,24 @@
     @endif
 
     <div class="relative">
-        <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
-            <i class="{{ $icon }} text-gray-400"></i>
-        </div>
+        
+        {{-- CONDICIONAL PARA EL ÍCONO IZQUIERDO: ¿ES BOTÓN O ES ADORNO? --}}
+        @if($iconClickEvent)
+            <button 
+                type="button" 
+                @click="$dispatch('{{ $iconClickEvent }}')"
+                class="absolute inset-y-0 left-1 my-auto flex h-9 w-9 items-center justify-center rounded-md text-gray-400 hover:bg-[#244BB3]/10 hover:text-[#244BB3] focus:outline-none transition-colors z-10"
+                title="Acción"
+            >
+                <i class="{{ $icon }} text-[18px]"></i>
+            </button>
+        @else
+            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+                <i class="{{ $icon }} text-gray-400 text-[18px]"></i>
+            </div>
+        @endif
 
+        {{-- Input principal (se ajusta el padding pl-11 para que no pise el ícono) --}}
         <input 
             type="text" 
             x-model="query"
@@ -90,7 +102,7 @@
             @keydown.escape="closeDropdown()"
             @keydown.enter.prevent="if(filteredOptions.length > 0) selectOption(filteredOptions[0])"
             placeholder="{{ $placeholder }}"
-            class="h-11 w-full rounded-lg border border-gray-200 bg-white pl-10 pr-4 text-sm text-gray-800 placeholder-gray-400 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-dark-900 dark:text-white/90 transition-all"
+            class="h-11 w-full rounded-lg border border-gray-200 bg-white pl-11 pr-10 text-sm text-gray-800 placeholder-gray-400 focus:border-[#244BB3] focus:ring-1 focus:ring-[#244BB3] dark:border-gray-700 dark:bg-dark-900 dark:text-white/90 transition-all"
             autocomplete="off"
         >
 
@@ -105,12 +117,12 @@
         <div x-show="open" 
              x-transition.opacity.duration.200ms
              class="absolute z-50 mt-1 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800"
-             style="display: none; max-height: 7.5rem;">
+             style="display: none; max-height: 12rem;">
             
             <ul class="py-1">
                 <template x-for="item in filteredOptions" :key="item.id">
                     <li @click="selectOption(item)"
-                        class="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-brand-50 hover:text-brand-600 dark:text-gray-200 dark:hover:bg-gray-700/50 dark:hover:text-brand-400 transition-colors">
+                        class="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-[#244BB3]/5 hover:text-[#244BB3] font-medium transition-colors">
                         <span x-text="item.description"></span>
                     </li>
                 </template>
