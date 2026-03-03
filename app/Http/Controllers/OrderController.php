@@ -280,7 +280,9 @@ class OrderController extends Controller
             $rawSituation = $table->situation ?? 'libre';
             $situation = strtolower((string) $rawSituation);
             if ($situation !== 'libre' && $situation !== 'ocupada') {
-                $situation = (in_array($rawSituation, ['PENDIENTE', 'OCUPADA', 'ocupada', 'Pendiente'], true)) ? 'ocupada' : 'libre';
+                $situation = (in_array($rawSituation, ['PENDIENTE', 'OCUPADA', 'ocupada', 'Pendiente'], true))
+                    ? 'ocupada'
+                    : 'libre';
             }
 
             $orderMovement = $activeOrderMovements->get($table->id)?->sortByDesc('id')->first();
@@ -288,6 +290,13 @@ class OrderController extends Controller
             $totalAmount = $orderMovement ? (float) $orderMovement->subtotal : 0;
             $taxAmount = $orderMovement ? (float) ($orderMovement->tax ?? 0) : 0;
             $totalWithTax = round($totalAmount + $taxAmount, 2);
+
+            // Si no hay pedido pendiente o el total es 0, la mesa debe considerarse libre
+            if (!$orderMovement || $totalWithTax <= 0) {
+                $situation = 'libre';
+                $totalWithTax = 0;
+                $elapsed = '--:--';
+            }
 
             $productsText = '';
             if ($orderMovement && $orderMovement->details && $orderMovement->details->isNotEmpty()) {
@@ -449,7 +458,9 @@ class OrderController extends Controller
             $rawSituation = $table->situation ?? 'libre';
             $situation = strtolower((string) $rawSituation);
             if ($situation !== 'libre' && $situation !== 'ocupada') {
-                $situation = (in_array($rawSituation, ['PENDIENTE', 'OCUPADA', 'ocupada', 'Pendiente'], true)) ? 'ocupada' : 'libre';
+                $situation = (in_array($rawSituation, ['PENDIENTE', 'OCUPADA', 'ocupada', 'Pendiente'], true))
+                    ? 'ocupada'
+                    : 'libre';
             }
             $orderMovement = OrderMovement::with('movement', 'details')
                 ->where('table_id', $table->id)
@@ -459,6 +470,13 @@ class OrderController extends Controller
             $totalAmount = $orderMovement ? (float) $orderMovement->subtotal : 0;
             $taxAmount = $orderMovement ? (float) ($orderMovement->tax ?? 0) : 0;
             $totalWithTax = round($totalAmount + $taxAmount, 2);
+
+            // Si no hay pedido pendiente o el total es 0, la mesa debe considerarse libre
+            if (!$orderMovement || $totalWithTax <= 0) {
+                $situation = 'libre';
+                $totalWithTax = 0;
+                $elapsed = '--:--';
+            }
             $productsText = '';
             if ($orderMovement && $orderMovement->relationLoaded('details') && $orderMovement->details->isNotEmpty()) {
                 $productsText = $orderMovement->details

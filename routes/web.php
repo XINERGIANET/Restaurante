@@ -173,6 +173,8 @@ Route::middleware('auth')->group(function () {
     //Kardex
     Route::get('/herramientas/kardex', [KardexController::class, 'index'])
         ->name('kardex.index');
+    Route::get('/herramientas/kardex/pdf', [KardexController::class, 'pdf'])
+        ->name('kardex.exportPdf');
     //Rutas de ordenes
     Route::resource('/Pedidos', OrderController::class)
         ->names('orders')
