@@ -138,6 +138,11 @@
             </div>
             <div id="cart-container" class="flex-1 overflow-y-auto p-3 sm:p-5 space-y-2 sm:space-y-3 bg-gray-100 dark:bg-gray-900/50 min-h-0"></div>
 
+            <div id="cancelled-platos-container" class="shrink-0 hidden border-t border-gray-200 dark:border-gray-700 bg-amber-50 dark:bg-amber-900/20 p-3 sm:p-4 max-h-40 overflow-y-auto">
+                <p class="text-xs font-semibold text-amber-800 dark:text-amber-200 mb-2 flex items-center gap-1"><i class="ri-error-warning-line"></i> Platos anulados</p>
+                <div id="cancelled-platos-list" class="space-y-1.5 text-xs"></div>
+            </div>
+
             <div class="shrink-0 p-4 sm:p-6 pt-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
                 <div class="space-y-2 sm:space-y-3 mb-4 sm:mb-5 text-xs sm:text-sm">
                     <div class="flex justify-between text-gray-500 font-medium">
@@ -191,6 +196,10 @@
             // IDs del pedido pendiente que viene directo del servidor (fuente de verdad)
             const serverOrderMovementId = @json($pendingOrderMovementId ?? null);
             const serverMovementId = @json($pendingMovementId ?? null);
+            const serverPendingCancelledDetails = @json($pendingCancelledDetails ?? []);
+            const waiterPinEnabled = @json($waiterPinEnabled ?? false);
+            const validateWaiterPinUrl = @json(route('orders.validateWaiterPin'));
+            const waiterPinBranchId = @json((int) session('branch_id'));
 
             let db = JSON.parse(localStorage.getItem('restaurantDB'));
             if (!db) db = {};
@@ -217,8 +226,109 @@
                 currentTable.order_movement_id = null;
                 currentTable.movement_id = null;
             }
+            // Inicializar estructura de cancelaciones por plato
+            if (!currentTable.cancellations) currentTable.cancellations = [];
+
+            function getStoredWaiter() {
+                try {
+                    const key = `waiterPin:${waiterPinBranchId}`;
+                    const raw = sessionStorage.getItem(key);
+                    if (!raw) return null;
+                    const data = JSON.parse(raw);
+                    if (!data || !data.person_id) return null;
+                    const ts = Number(data.ts || 0);
+                    if (!ts || (Date.now() - ts) > (12 * 60 * 60 * 1000)) {
+                        sessionStorage.removeItem(key);
+                        return null;
+                    }
+                    return data;
+                } catch (e) {
+                    return null;
+                }
+            }
+
+            async function ensureWaiterPin() {
+                if (!waiterPinEnabled) return true;
+                const existing = getStoredWaiter();
+                if (existing) {
+                    // Mostrar mozo real en la UI
+                    currentTable.waiter = existing.name || currentTable.waiter;
+                    const el = document.getElementById('pos-waiter-name');
+                    if (el && existing.name) el.innerText = existing.name;
+                    return true;
+                }
+                if (!window.Swal) return false;
+
+                while (true) {
+                    const result = await Swal.fire({
+                        title: 'PIN de mozo',
+                        input: 'password',
+                        inputLabel: 'Ingrese su PIN para tomar pedidos',
+                        inputPlaceholder: 'PIN',
+                        inputAttributes: { autocomplete: 'off' },
+                        showCancelButton: true,
+                        confirmButtonText: 'Ingresar',
+                        cancelButtonText: 'Cancelar',
+                        reverseButtons: true,
+                        inputValidator: (value) => {
+                            if (!value || !String(value).trim()) {
+                                return 'Ingrese el PIN.';
+                            }
+                            return null;
+                        }
+                    });
+                    if (!result.isConfirmed) {
+                        return false;
+                    }
+                    try {
+                        const pin = String(result.value || '').trim();
+                        const res = await fetch(validateWaiterPinUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                            },
+                            body: JSON.stringify({ pin })
+                        });
+                        const data = await res.json().catch(() => null);
+                        if (data && data.success && data.waiter && data.waiter.person_id) {
+                            const key = `waiterPin:${waiterPinBranchId}`;
+                            const payload = { ...data.waiter, ts: Date.now() };
+                            sessionStorage.setItem(key, JSON.stringify(payload));
+                            currentTable.waiter = payload.name || currentTable.waiter;
+                            const el = document.getElementById('pos-waiter-name');
+                            if (el && payload.name) el.innerText = payload.name;
+                            saveDB();
+                            return true;
+                        }
+                        await Swal.fire({
+                            toast: true,
+                            position: 'bottom-end',
+                            icon: 'error',
+                            title: data?.message || 'PIN inválido.',
+                            showConfirmButton: false,
+                            timer: 2500
+                        });
+                    } catch (e) {
+                        await Swal.fire({
+                            toast: true,
+                            position: 'bottom-end',
+                            icon: 'error',
+                            title: 'No se pudo validar el PIN.',
+                            showConfirmButton: false,
+                            timer: 2500
+                        });
+                    }
+                }
+            }
 
             function init() {
+                // Si requiere PIN, pedirlo al abrir la mesa
+                if (waiterPinEnabled) {
+                    ensureWaiterPin();
+                }
                 // Marcar la mesa como ocupada al abrir la vista
                 const tableId = currentTable.table_id ?? currentTable.id ?? {{ $table->id }};
                 fetch('{{ route('orders.openTable') }}', {
@@ -256,6 +366,7 @@
                 renderCategories();
                 renderProducts();
                 renderTicket();
+                renderCancelledSection();
                 fixScrollLayout();
                 const searchProductsInput = document.getElementById('search-products');
                 if (searchProductsInput) {
@@ -578,9 +689,78 @@
                 renderTicket();
             }
 
-            function updateQty(index, change) {
-                currentTable.items[index].qty += change;
-                if (currentTable.items[index].qty <= 0) currentTable.items.splice(index, 1);
+            async function updateQty(index, change) {
+                const item = currentTable.items[index];
+                const oldQty = item.qty;
+                const newQty = oldQty + change;
+
+                // Aumentar cantidad: no requiere razón
+                if (change > 0) {
+                    item.qty = newQty;
+                    saveDB();
+                    renderTicket();
+                    return;
+                }
+
+                // Disminuir cantidad
+                const hasSavedOrder = !!currentTable.order_movement_id;
+                const isEditingExistingOrder = hasSavedOrder && !!serverOrderMovementId;
+
+                // Si es pedido nuevo (primera vez) o no venía guardado al abrir: bajar sin pedir razón
+                if (!isEditingExistingOrder) {
+                    item.qty = newQty;
+                    if (item.qty <= 0) currentTable.items.splice(index, 1);
+                    saveDB();
+                    renderTicket();
+                    return;
+                }
+
+                // Pedido ya existía al abrir (se va a modificar): pedir razón por CADA unidad que se cancela
+                let reason = null;
+                if (window.Swal) {
+                    const result = await Swal.fire({
+                        title: 'Razón de anulación del plato',
+                        input: 'textarea',
+                        inputPlaceholder: 'Escribe la razón de la anulación...',
+                        showCancelButton: true,
+                        confirmButtonText: 'Anular',
+                        cancelButtonText: 'Volver',
+                        inputValidator: (value) => {
+                            if (!value || !value.trim()) {
+                                return 'Debes ingresar una razón';
+                            }
+                            return null;
+                        }
+                    });
+
+                    // Si se cierra o cancela el diálogo, no cambiar cantidad ni registrar nada
+                    if (!result.isConfirmed || !result.value) {
+                        return;
+                    }
+                    reason = result.value.trim();
+                } else {
+                    const p = window.prompt('Razón de anulación del plato:');
+                    if (!p || !p.trim()) return;
+                    reason = p.trim();
+                }
+
+                const qtyToCancel = Math.min(oldQty, Math.abs(change));
+                currentTable.cancellations = currentTable.cancellations || [];
+                const prod = serverProducts.find(p => p.id === item.pId);
+
+                currentTable.cancellations.push({
+                    pId: item.pId,
+                    name: item.name,
+                    qtyCanceled: qtyToCancel,
+                    price: item.price,
+                    note: item.note || null,
+                    cancel_reason: reason,
+                    product_snapshot: prod ? { ...prod } : null
+                });
+
+                // Aplicar la disminución luego de registrar la cancelación
+                item.qty = newQty;
+                if (item.qty <= 0) currentTable.items.splice(index, 1);
                 saveDB();
                 renderTicket();
             }
@@ -669,6 +849,41 @@
                 if (taxEl) taxEl.innerText = `$${tax.toFixed(2)}`;
                 if (totalEl) totalEl.innerText = `$${total.toFixed(2)}`;
 
+                renderCancelledSection();
+            }
+
+            function renderCancelledSection() {
+                const container = document.getElementById('cancelled-platos-container');
+                const listEl = document.getElementById('cancelled-platos-list');
+                if (!container || !listEl) return;
+
+                const hasSavedOrder = !!currentTable.order_movement_id;
+                const isCurrentPendingOrder = hasSavedOrder && (currentTable.order_movement_id === serverOrderMovementId);
+                const serverCancelled = (isCurrentPendingOrder && serverPendingCancelledDetails && serverPendingCancelledDetails.length) ? serverPendingCancelledDetails : [];
+                const clientCancelled = currentTable.cancellations || [];
+                const hasAny = serverCancelled.length > 0 || clientCancelled.length > 0;
+
+                if (!hasSavedOrder || !hasAny) {
+                    container.classList.add('hidden');
+                    listEl.innerHTML = '';
+                    return;
+                }
+
+                container.classList.remove('hidden');
+                let html = '';
+                serverCancelled.forEach(function (d) {
+                    const desc = escapeHtml(d.description || 'Producto');
+                    const qty = d.quantity != null ? d.quantity : 1;
+                    const reason = escapeHtml((d.comment || '').trim() || '—');
+                    html += `<div class="rounded border border-amber-200 dark:border-amber-700/50 p-1.5 bg-white/60 dark:bg-gray-800/60"><span class="font-medium text-slate-700 dark:text-slate-200">${desc}</span> <span class="text-amber-700 dark:text-amber-300">×${qty}</span><br><span class="text-amber-800 dark:text-amber-200 italic">${reason}</span></div>`;
+                });
+                clientCancelled.forEach(function (c) {
+                    const name = escapeHtml(c.name || 'Producto');
+                    const qty = c.qtyCanceled != null ? c.qtyCanceled : 1;
+                    const reason = escapeHtml((c.cancel_reason || '').trim() || '—');
+                    html += `<div class="rounded border border-amber-200 dark:border-amber-700/50 p-1.5 bg-white/60 dark:bg-gray-800/60"><span class="font-medium text-slate-700 dark:text-slate-200">${name}</span> <span class="text-amber-700 dark:text-amber-300">×${qty}</span><br><span class="text-amber-800 dark:text-amber-200 italic">${reason}</span></div>`;
+                });
+                listEl.innerHTML = html;
             }
 
             function saveDB() {
@@ -678,7 +893,9 @@
                     currentTable.isActive = true;
                     db[activeKey] = currentTable;
                     localStorage.setItem('restaurantDB', JSON.stringify(db));
-                    if (currentTable.items && currentTable.items.length > 0) {
+                    const hasItems = currentTable.items && currentTable.items.length > 0;
+                    const hasCancels = currentTable.cancellations && currentTable.cancellations.length > 0;
+                    if (hasItems || hasCancels) {
                         scheduleAutoSave();
                     }
                 }
@@ -712,7 +929,7 @@
             function autoSaveToServer() {
                 autoSaveTimer = null;
                 const items = currentTable.items || [];
-                if (items.length === 0) return;
+                if (items.length === 0 && (!currentTable.cancellations || currentTable.cancellations.length === 0)) return;
                 const totals = calculateTotalsFromItems(items);
                 const order = {
                     items: items,
@@ -727,6 +944,7 @@
                     delivery_time: currentTable.delivery_time ?? null,
                     delivery_amount: currentTable.delivery_amount ?? 0,
                     order_movement_id: currentTable.order_movement_id ?? null,
+                    cancellations: currentTable.cancellations || [],
                 };
                 fetch('{{ route('orders.process') }}', {
                     method: 'POST',
@@ -742,6 +960,8 @@
                     if (data && data.success) {
                         if (data.order_movement_id) currentTable.order_movement_id = data.order_movement_id;
                         if (data.movement_id) currentTable.movement_id = data.movement_id;
+                        // Cancelaciones de este ciclo ya fueron persistidas
+                        currentTable.cancellations = [];
                         saveDB();
                     } else if (data && isMesaYaCobradaMessage(data.message)) {
                         if (typeof showNotification === 'function') {
@@ -752,7 +972,11 @@
                 .catch(() => {});
             }
 
-            function processOrder() {
+            async function processOrder() {
+                if (waiterPinEnabled) {
+                    const ok = await ensureWaiterPin();
+                    if (!ok) return;
+                }
                 const items = currentTable.items || [];
                 const totals = calculateTotalsFromItems(items);
                 const subtotal = totals.subtotal;
@@ -772,6 +996,7 @@
                     delivery_time: currentTable.delivery_time ?? null,
                     delivery_amount: currentTable.delivery_amount ?? 0,
                     order_movement_id: currentTable.order_movement_id ?? null,
+                    cancellations: currentTable.cancellations || [],
                 };
                 fetch('{{ route('orders.process') }}', {
                         method: 'POST',
@@ -791,8 +1016,11 @@
                         }
                         throw new Error(response.status === 419 ? 'Sesión expirada. Recarga la página.' : (response.status === 401 ? 'Debes iniciar sesión.' : 'Error del servidor. Intenta de nuevo.'));
                     })
-                    .then(data => {
+                    .then(async data => {
                         if (data && data.success) {
+                            // Limpiar cancelaciones ya persistidas
+                            currentTable.cancellations = [];
+                            saveDB();
                             sessionStorage.setItem('flash_success_message', data.message);
                             goToIndexWithTurbo();
                         } else if (data && isMesaYaCobradaMessage(data.message)) {
@@ -800,6 +1028,13 @@
                                 showNotification('Aviso', data.message || 'Esta mesa ya fue cobrada.', 'info');
                             } else {
                                 alert(data.message || 'Esta mesa ya fue cobrada.');
+                            }
+                        } else if (data && data.message && String(data.message).indexOf('PIN') !== -1) {
+                            sessionStorage.removeItem(`waiterPin:${waiterPinBranchId}`);
+                            if (typeof showNotification === 'function') {
+                                showNotification('PIN requerido', data.message || 'Ingrese el PIN del mozo e intente guardar de nuevo.', 'error');
+                            } else {
+                                sessionStorage.setItem('flash_error_message', data.message || 'Ingrese el PIN del mozo e intente guardar de nuevo.');
                             }
                         } else {
                             console.error('Error al guardar:', data);
@@ -813,7 +1048,11 @@
 
             }
 
-            function processOrderPayment() {
+            async function processOrderPayment() {
+                if (waiterPinEnabled) {
+                    const ok = await ensureWaiterPin();
+                    if (!ok) return;
+                }
                 const items = currentTable.items || [];
                 if (items.length === 0) {
                     if (typeof showNotification === 'function') {
@@ -843,6 +1082,7 @@
                     delivery_time: currentTable.delivery_time ?? null,
                     delivery_amount: currentTable.delivery_amount ?? 0,
                     order_movement_id: currentTable.order_movement_id ?? null,
+                    cancellations: currentTable.cancellations || [],
                 };
                 // Guardar el pedido (solo persiste, NO finaliza) y navegar a cobrar
                 fetch('{{ route('orders.process') }}', {
@@ -865,6 +1105,9 @@
                     })
                     .then(data => {
                         if (data && data.success && data.movement_id) {
+                            // Cancelaciones ya persistidas antes de ir a cobrar
+                            currentTable.cancellations = [];
+                            saveDB();
                             const url = new URL("{{ route('orders.charge') }}", window.location.origin);
                             url.searchParams.set('movement_id', data.movement_id);
                             url.searchParams.set('_t', Date.now());
@@ -942,8 +1185,9 @@
 
             function goBack() {
                 const items = currentTable?.items || [];
+                const cancels = currentTable?.cancellations || [];
                 // Si no hay productos en la mesa, liberar la mesa y volver sin guardar nada
-                if (!items.length) {
+                if (!items.length && !cancels.length) {
                     releaseTableAndGoBack();
                     return;
                 }

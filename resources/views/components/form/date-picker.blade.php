@@ -19,8 +19,9 @@
         this.$nextTick(() => {
             this.flatpickrInstance = flatpickr(this.$refs.dateInput, {
                 mode: '{{ $mode }}',
-                static: true,
-                monthSelectorType: 'static',
+                static: false,
+                monthSelectorType: 'dropdown',
+                appendTo: document.body,
                 dateFormat: '{{ $dateFormat }}',
                 defaultDate: {{ $defaultDate ? (is_array($defaultDate) ? json_encode($defaultDate) : "'" . $defaultDate . "'") : 'null' }},
                 enableTime: {{ $enableTime ? 'true' : 'false' }},

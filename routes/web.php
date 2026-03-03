@@ -204,6 +204,10 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/Pedidos/mover-mesa', [OrderController::class, 'moveTable'])
         ->name('orders.moveTable');
+
+    // PIN de mozo (por sucursal)
+    Route::post('/Pedidos/validar-pin-mozo', [OrderController::class, 'validateWaiterPin'])
+        ->name('orders.validateWaiterPin');
     
     // Dashboard pages
     Route::get('/', [\App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');

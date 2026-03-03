@@ -11,10 +11,10 @@
 
             {{-- CONTROLES SUPERIORES: Áreas, Buscador y Chips --}}
             <div class="flex flex-col w-full mb-6 gap-4 shrink-0">
-                
+
                 {{-- Fila 1: Botones de área y buscador --}}
                 <div class="flex flex-col sm:flex-row justify-between items-center gap-4 w-full">
-                    
+
                     <template x-if="areas && areas.length > 0">
                         <div class="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-xl">
                             <template x-for="area in areas" :key="area.id">
@@ -35,13 +35,13 @@
 
                     {{-- Buscador --}}
                     <div class="relative w-full max-w-2xl min-w-0 flex-1 sm:min-w-[20rem]">
-                        <input type="text" 
-                            x-model="searchQuery"
-                            @keydown.enter.prevent="addSearchChip"
+                        <input type="text" x-model="searchQuery" @keydown.enter.prevent="addSearchChip"
                             placeholder="Buscar y presionar Enter para añadir filtro..."
                             class="w-full pl-10 pr-4 py-2.5 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 outline-none transition-all">
-                        <svg class="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        <svg class="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
                     </div>
 
@@ -51,16 +51,19 @@
                 <template x-if="activeFilters && activeFilters.length > 0">
                     <div class="flex flex-wrap gap-2 w-full">
                         <template x-for="(chip, index) in activeFilters" :key="index">
-                            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800 shadow-sm transition-all hover:shadow">
+                            <span
+                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800 shadow-sm transition-all hover:shadow">
                                 <span x-text="chip"></span>
-                                <button @click="removeSearchChip(index)" type="button" class="flex items-center justify-center w-4 h-4 text-blue-600 hover:text-red-500 dark:text-blue-400 dark:hover:text-red-400 focus:outline-none transition-colors">
+                                <button @click="removeSearchChip(index)" type="button"
+                                    class="flex items-center justify-center w-4 h-4 text-blue-600 hover:text-red-500 dark:text-blue-400 dark:hover:text-red-400 focus:outline-none transition-colors">
                                     <i class="ri-close-line text-sm"></i>
                                 </button>
                             </span>
                         </template>
-                        
+
                         {{-- Botón para limpiar todos --}}
-                        <button @click="clearAllChips" type="button" class="text-xs text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400 underline ml-2 self-center transition-colors">
+                        <button @click="clearAllChips" type="button"
+                            class="text-xs text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400 underline ml-2 self-center transition-colors">
                             Limpiar todo
                         </button>
                     </div>
@@ -70,20 +73,23 @@
             {{-- 2. GRID DE MESAS - RESPONSIVO --}}
             <div class="flex justify-center w-full pb-10">
                 <template x-if="filteredTables?.length > 0">
-                    <div class="grid grid-cols-6 sm:grid-cols-6 md:grid-cols-6 lg:grid-cols-6 xl:grid-cols-6 2xl:grid-cols-6 gap-5 w-full">
+                    <div
+                        class="grid grid-cols-6 sm:grid-cols-6 md:grid-cols-6 lg:grid-cols-6 xl:grid-cols-6 2xl:grid-cols-6 gap-5 w-full">
                         <template x-for="table in (filteredTables || [])" :key="table.id">
                             <div @click="openTable(table)"
                                 class="relative rounded-2xl p-2 shadow-lg border overflow-hidden bg-white dark:bg-gray-800 transition-all hover:shadow-lg max-w-[320px] cursor-pointer"
                                 :class="table.situation === 'ocupada' ?
                                     'border-gray-100 dark:border-gray-700 border-l-4' :
                                     'border-blue-200 dark:border-blue-700 border-l-4'"
-                                :style="table.situation === 'ocupada' ? 'border-left-color: #F37022' : 'border-left-color: rgb(59, 130, 246)'">
+                                :style="table.situation === 'ocupada' ? 'border-left-color: #F37022' :
+                                    'border-left-color: rgb(59, 130, 246)'">
                                 <div class="p-3 py-4 pl-3">
                                     {{-- Header --}}
                                     <div class="flex justify-between items-start mb-4">
                                         <div class="flex items-center gap-4">
                                             <template x-if="table.situation === 'ocupada'">
-                                                <div class="bg-gray-100 font-bold text-lg w-11 h-11 flex items-center justify-center rounded-xl shadow-sm dark:bg-gray-700 border-2" style="color: #F37022; border-color: #F37022;">
+                                                <div class="bg-gray-100 font-bold text-lg w-11 h-11 flex items-center justify-center rounded-xl shadow-sm dark:bg-gray-700 border-2"
+                                                    style="color: #F37022; border-color: #F37022;">
                                                     <span x-text="String(table.name || table.id).padStart(2, '0')"></span>
                                                 </div>
                                             </template>
@@ -417,7 +423,103 @@
                     tablesDataUrl: @json(route('orders.tablesData')),
                     cancelOrderUrl: cancelOrderUrl,
                     cancelOrderToken: @json(csrf_token()),
+                    waiterPinEnabled: @json($waiterPinEnabled ?? false),
+                    waiterPinBranchId: @json((int) session('branch_id')),
+                    validateWaiterPinUrl: @json(route('orders.validateWaiterPin')),
                     filteredTables: safeFilteredTables,
+                    waiter: null,
+
+                    getStoredWaiter() {
+                        try {
+                            const key = `waiterPin:${this.waiterPinBranchId}`;
+                            const raw = sessionStorage.getItem(key);
+                            if (!raw) return null;
+                            const data = JSON.parse(raw);
+                            if (!data || !data.person_id) return null;
+                            // expirar en 12 horas
+                            const ts = Number(data.ts || 0);
+                            if (!ts || (Date.now() - ts) > (12 * 60 * 60 * 1000)) {
+                                sessionStorage.removeItem(key);
+                                return null;
+                            }
+                            return data;
+                        } catch (e) {
+                            return null;
+                        }
+                    },
+
+                    async ensureWaiterPin() {
+                        if (!this.waiterPinEnabled) return true;
+                        const existing = this.getStoredWaiter();
+                        if (existing) {
+                            this.waiter = existing;
+                            return true;
+                        }
+                        if (!window.Swal) return false;
+
+                        while (true) {
+                            const result = await Swal.fire({
+                                title: 'PIN de mozo',
+                                input: 'password',
+                                inputLabel: 'Ingrese su PIN para tomar pedidos',
+                                inputPlaceholder: 'PIN',
+                                inputAttributes: { autocomplete: 'off' },
+                                showCancelButton: true,
+                                confirmButtonText: 'Ingresar',
+                                cancelButtonText: 'Cancelar',
+                                reverseButtons: true,
+                                inputValidator: (value) => {
+                                    if (!value || !String(value).trim()) {
+                                        return 'Ingrese el PIN.';
+                                    }
+                                    return null;
+                                }
+                            });
+
+                            if (!result.isConfirmed) {
+                                return false;
+                            }
+
+                            try {
+                                const pin = String(result.value || '').trim();
+                                const res = await fetch(this.validateWaiterPinUrl, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'X-CSRF-TOKEN': this.cancelOrderToken,
+                                        'Accept': 'application/json',
+                                        'X-Requested-With': 'XMLHttpRequest',
+                                    },
+                                    body: JSON.stringify({ pin })
+                                });
+                                const data = await res.json().catch(() => null);
+                                if (data && data.success && data.waiter && data.waiter.person_id) {
+                                    const key = `waiterPin:${this.waiterPinBranchId}`;
+                                    const payload = { ...data.waiter, ts: Date.now() };
+                                    sessionStorage.setItem(key, JSON.stringify(payload));
+                                    this.waiter = payload;
+                                    return true;
+                                }
+                                await Swal.fire({
+                                    toast: true,
+                                    position: 'bottom-end',
+                                    icon: 'error',
+                                    title: data?.message || 'PIN inválido.',
+                                    showConfirmButton: false,
+                                    timer: 2500
+                                });
+                            } catch (e) {
+                                await Swal.fire({
+                                    toast: true,
+                                    position: 'bottom-end',
+                                    icon: 'error',
+                                    title: 'No se pudo validar el PIN.',
+                                    showConfirmButton: false,
+                                    timer: 2500
+                                });
+                            }
+                        }
+                    },
 
                     async refreshTables() {
                         try {
@@ -446,8 +548,8 @@
                         if (val.length > 0 && !this.activeFilters.includes(val)) {
                             this.activeFilters.push(val);
                         }
-                        this.searchQuery = ''; 
-                        this.updateFilteredTables(); 
+                        this.searchQuery = '';
+                        this.updateFilteredTables();
                     },
 
                     removeSearchChip(index) {
@@ -491,9 +593,9 @@
                                 this.filteredTables = [];
                                 return;
                             }
-                            
+
                             let list = [...this.tables];
-                            
+
                             // Filtro por Área
                             if (this.areas && this.areas.length > 0 && this.currentAreaId) {
                                 const areaId = Number(this.currentAreaId);
@@ -504,40 +606,45 @@
                                     });
                                 }
                             }
-                            
+
                             // Filtro por Estado (libre/ocupada)
                             if (this.statusChip) {
                                 const status = String(this.statusChip).toLowerCase();
                                 list = list.filter(t => String(t.situation || '').toLowerCase() === status);
                             }
-                            
+
                             // NUEVO FILTRO MULTIPLE: Combinar input actual + chips guardados
                             const currentInput = String(this.searchQuery || '').trim().toLowerCase();
-                            
+
                             // Extraemos todos los términos de búsqueda activos
                             let searchTerms = [...this.activeFilters.map(f => f.toLowerCase())];
-                            
+
                             // Si el usuario está escribiendo algo pero aún no presiona Enter, lo consideramos también
                             if (currentInput.length > 0) {
-                                searchTerms.push(...currentInput.split(/\s+/).filter(term => term.length > 0));
+                                searchTerms.push(...currentInput.split(/\s+/).filter(term => term.length >
+                                    0));
                             }
 
                             // Si hay términos que buscar, aplicamos el filtro
                             if (searchTerms.length > 0) {
                                 list = list.filter(t => {
                                     const name = String(t.name ?? t.id ?? '').toLowerCase();
-                                    const waiter = String(t.waiter ?? t.user_name ?? '').toLowerCase();
-                                    const client = String(t.client ?? t.clientName ?? t.person_name ?? '').toLowerCase();
-                                    const productsText = String(t.products_text ?? '').toLowerCase();
-                                    
+                                    const waiter = String(t.waiter ?? t.user_name ?? '')
+                                        .toLowerCase();
+                                    const client = String(t.client ?? t.clientName ?? t
+                                        .person_name ?? '').toLowerCase();
+                                    const productsText = String(t.products_text ?? '')
+                                        .toLowerCase();
+
                                     // Unimos todo el texto de la mesa para buscar ahí
-                                    const searchable = [name, waiter, client, productsText].join(' ');
-                                    
+                                    const searchable = [name, waiter, client, productsText].join(
+                                        ' ');
+
                                     // La mesa DEBE coincidir con TODOS los términos/chips activos (AND logic)
                                     return searchTerms.every(term => searchable.includes(term));
                                 });
                             }
-                            
+
                             this.filteredTables = list;
                         } catch (error) {
                             console.error('Error en updateFilteredTables:', error);
@@ -549,7 +656,11 @@
                         this.currentAreaId = Number(area.id);
                     },
 
-                    openTable(table) {
+                    async openTable(table) {
+                        const ok = await this.ensureWaiterPin();
+                        if (!ok) {
+                            return;
+                        }
                         const target = new URL(this.createUrl, window.location.origin);
                         target.searchParams.set('table_id', table.id);
                         if (window.Turbo && typeof window.Turbo.visit === 'function') {
@@ -588,6 +699,15 @@
                             title: '¿Estás seguro de querer cerrar la mesa?',
                             text: 'Esta acción no se puede deshacer.',
                             icon: 'warning',
+                            input: 'text',
+                            inputLabel: 'Razon de anulación',
+                            inputPlaceholder: 'Ej: Cliente se retiró sin consumir',
+                            inputValidator: (value) => {
+                                if (!value) {
+                                    return 'Por favor, ingrese una razón de anulación.';
+                                }
+                                return null;
+                            },
                             showCancelButton: true,
                             confirmButtonText: 'Sí, cerrar',
                             cancelButtonText: 'Cancelar',
@@ -597,7 +717,7 @@
                                 // Usuario canceló: no hacer nada
                                 return;
                             }
-
+                            const reason = (result.value || '').trim();
                             const formData = new FormData();
                             formData.append('table_id', table.id);
                             formData.append('_token', this.cancelOrderToken);
@@ -611,7 +731,8 @@
                                         'X-Requested-With': 'XMLHttpRequest',
                                     },
                                     body: JSON.stringify({
-                                        table_id: table.id
+                                        table_id: table.id,
+                                        cancel_reason: reason,
                                     }),
                                 })
                                 .then(res => res.json())
@@ -688,6 +809,43 @@
                 }
             }
         });
+        (function() {
+            function collapseSidebar() {
+                if (window.Alpine && Alpine.store && Alpine.store('sidebar')) {
+                    Alpine.store('sidebar').isExpanded = false;
+                }
+            }
+
+            function expandSidebar() {
+                if (window.Alpine && Alpine.store && Alpine.store('sidebar')) {
+                    Alpine.store('sidebar').isExpanded = true;
+                    if (window.innerWidth >= 1280) {
+                        localStorage.setItem('sidebarExpanded', 'true');
+                    }
+                }
+            }
+
+            // Contraer al cargar la página de Pedidos
+            collapseSidebar();
+
+            document.addEventListener('turbo:load', function() {
+                const path = window.location.pathname || '';
+                if (path.indexOf('/Pedidos') !== -1 &&
+                    path.indexOf('/cobrar') === -1 &&
+                    path.indexOf('/crear') === -1 &&
+                    path.indexOf('/reporte') === -1) {
+                    collapseSidebar();
+                }
+            });
+
+            // Antes de ir a otra página distinta de Pedidos, volver a expandir
+            document.addEventListener('turbo:before-visit', function(e) {
+                const url = e.detail.url || '';
+                if (url.indexOf('/Pedidos') === -1) {
+                    expandSidebar();
+                }
+            });
+        })();
     </script>
 
     @push('scripts')
