@@ -160,29 +160,29 @@
     </div>
     <div x-data="{ openRow: null }"
         class="table-responsive mt-4 rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
-        <table class="w-full min-w-[1480px]">
-            <thead style="background-color: #63B7EC; color: #FFFFFF;">
-                <tr class="bg-[#63B7EC] text-white">
-                    <th class="w-12 px-3 py-3 text-center first:rounded-tl-xl">
-                        <span class="font-semibold text-theme-xs uppercase">#</span>
+        <table class="w-full table-fixed text-sm">
+            <thead class="bg-[#63B7EC] text-white">
+                <tr>
+                    <th class="w-14 px-2 py-2 text-center first:rounded-tl-xl text-xs font-bold uppercase tracking-wider">
+                        #
                     </th>
-                    <th class="min-w-[100px] px-5 py-3 text-left sm:px-6">
-                        <span class="font-semibold text-theme-xs uppercase">Número</span>
+                    <th class="w-20 px-2 py-2 text-left text-xs font-bold uppercase tracking-wider">
+                        Número
                     </th>
-                    <th class="min-w-[90px] px-5 py-3 text-right sm:px-6">
-                        <span class="font-semibold text-theme-xs uppercase">Total</span>
+                    <th class="w-20 px-2 py-2 text-center text-xs font-bold uppercase tracking-wider">
+                        Total
                     </th>
-                    <th class="min-w-[150px] px-5 py-3 text-left sm:px-6">
-                        <span class="font-semibold text-theme-xs uppercase">Fecha</span>
+                    <th class="w-24 px-2 py-2 text-center text-xs font-bold uppercase tracking-wider">
+                        Fecha
                     </th>
-                    <th class="min-w-[120px] px-5 py-3 text-left sm:px-6">
-                        <span class="font-semibold text-theme-xs uppercase">Persona</span>
+                    <th class="w-24 px-2 py-2 text-left text-xs font-bold uppercase tracking-wider">
+                        Persona
                     </th>
-                    <th class="min-w-[120px] px-5 py-3 text-left sm:px-6">
-                        <span class="font-semibold text-theme-xs uppercase">Responsable</span>
+                    <th class="w-24 px-2 py-2 text-left text-xs font-bold uppercase tracking-wider">
+                        Responsable
                     </th>
-                    <th class="min-w-[100px] px-5 py-3 text-left sm:px-6 last:rounded-tr-xl">
-                        <span class="font-semibold text-theme-xs uppercase">Estado</span>
+                    <th class="w-24 px-2 py-2 text-center last:rounded-tr-xl text-xs font-bold uppercase tracking-wider">
+                        Estado
                     </th>
                 </tr>
             </thead>
@@ -205,19 +205,19 @@
                         $situationText = in_array($situationStatus, ['A', '1'], true) ? 'Activado' : 'Inactivo';
                     @endphp
                     <tr
-                        class="border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-white/5">
-                        <td class="px-4 py-3.5 text-center">
-                            <div class="flex items-center justify-center gap-2">
+                        class="border-b border-gray-100 transition hover:bg-gray-100/50 dark:border-gray-800 dark:hover:bg-white/5 {{ $loop->iteration % 2 === 0 ? 'bg-gray-50/60 dark:bg-gray-800/30' : 'bg-white dark:bg-transparent' }}">
+                        <td class="px-2 py-2 text-center">
+                            <div class="flex items-center justify-center gap-1">
                                 <button type="button"
                                     @click="openRow === {{ $order->id }} ? openRow = null : openRow = {{ $order->id }}"
-                                    class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-500 text-white transition hover:bg-brand-600">
+                                    class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#63B7EC] text-white transition hover:opacity-90">
                                     <i class="ri-add-line text-sm" x-show="openRow !== {{ $order->id }}"></i>
                                     <i class="ri-subtract-line text-sm" x-show="openRow === {{ $order->id }}"></i>
                                 </button>
-                                <span class="text-gray-700 text-theme-sm dark:text-gray-300">{{ $order->id }}</span>
+                                <span class="text-gray-700 text-xs font-medium dark:text-gray-300">{{ $order->id }}</span>
                             </div>
                         </td>
-                        <td class="px-5 py-3.5 sm:px-6">
+                        <td class="px-2 py-2">
                             @php
                                 $num = $order->movement?->number ?? null;
                                 $numDisplay = $num
@@ -226,76 +226,56 @@
                                         : $num)
                                     : '-';
                             @endphp
-                            <span
-                                class="font-medium text-gray-800 text-theme-sm dark:text-white/90">{{ $numDisplay }}</span>
+                            <span class="text-gray-700 text-xs dark:text-gray-300 truncate block max-w-full" title="{{ $numDisplay }}">{{ $numDisplay }}</span>
                         </td>
-                        <td class="px-5 py-3.5 text-right sm:px-6">
-                            <span
-                                class="font-semibold text-gray-800 text-theme-sm dark:text-white/90">{{ number_format((float) ($order->total ?? 0), 2) }}</span>
+                        <td class="px-2 py-2 text-center">
+                            <span class="text-gray-700 text-xs font-medium dark:text-gray-300 tabular-nums">{{ number_format((float) ($order->total ?? 0), 2) }}</span>
                         </td>
-                        <td class="px-5 py-3.5 sm:px-6">
-                            <span
-                                class="text-gray-600 text-theme-sm dark:text-gray-400">{{ $order->movement?->moved_at?->format('Y-m-d H:i') ?? '-' }}</span>
+                        <td class="px-2 py-2 text-center">
+                            <span class="text-gray-600 text-xs dark:text-gray-400 tabular-nums">{{ $order->movement?->moved_at?->format('d/m/Y H:i') ?? '-' }}</span>
                         </td>
-                        <td class="px-5 py-3.5 sm:px-6">
-                            <span
-                                class="text-gray-600 text-theme-sm dark:text-gray-400">{{ $order->movement?->person_name ?? '-' }}</span>
+                        <td class="px-2 py-2 overflow-hidden">
+                            <span class="text-gray-600 text-xs dark:text-gray-400 truncate block max-w-full" title="{{ $order->movement?->person_name ?? '-' }}">{{ $order->movement?->person_name ?? '-' }}</span>
                         </td>
-                        <td class="px-5 py-3.5 sm:px-6">
-                            <span
-                                class="text-gray-600 text-theme-sm dark:text-gray-400">{{ $order->movement?->responsible_name ?? '-' }}</span>
+                        <td class="px-2 py-2 overflow-hidden">
+                            <span class="text-gray-600 text-xs dark:text-gray-400 truncate block max-w-full" title="{{ $order->movement?->responsible_name ?? '-' }}">{{ $order->movement?->responsible_name ?? '-' }}</span>
                         </td>
-                        <td class="px-5 py-3.5 sm:px-6">
+                        <td class="px-2 py-2 text-center">
                             <x-ui.badge variant="light" color="{{ $rowStatusColor }}"
-                                class="inline-flex text-xs font-medium">
+                                class="inline-flex text-[11px] font-medium px-2 py-0.5">
                                 {{ $rowStatusText }}
                             </x-ui.badge>
                         </td>
                     </tr>
                     <tr x-cloak x-show="openRow === {{ $order->id }}"
-                        class="bg-gray-50/70 dark:bg-gray-800/40 border-b border-gray-100 dark:border-gray-800">
-                        <td colspan="1" class="px-5 py-3.5 sm:px-6">
-                            <div class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
-                                Subtotal</div>
-                            <div class="mt-0.5 text-sm text-gray-800 dark:text-white/90">
-                                {{ number_format((float) ($order->subtotal ?? 0), 2) }}</div>
+                        class="bg-gray-50/80 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
+                        <td colspan="1" class="px-2 py-2">
+                            <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Subtotal</div>
+                            <div class="text-sm font-medium text-gray-800 dark:text-white/90 tabular-nums">{{ number_format((float) ($order->subtotal ?? 0), 2) }}</div>
                         </td>
-                        <td colspan="1" class="px-5 py-3.5 sm:px-6">
-                            <div class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">IGV
-                            </div>
-                            <div class="mt-0.5 text-sm text-gray-800 dark:text-white/90">
-                                {{ number_format((float) ($order->tax ?? 0), 2) }}</div>
+                        <td colspan="1" class="px-2 py-2">
+                            <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">IGV</div>
+                            <div class="text-sm font-medium text-gray-800 dark:text-white/90 tabular-nums">{{ number_format((float) ($order->tax ?? 0), 2) }}</div>
                         </td>
-                        <td colspan="1" class="px-5 py-3.5 sm:px-6">
-                            <div class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Total
-                            </div>
-                            <div class="mt-0.5 text-sm text-gray-800 dark:text-white/90">
-                                {{ number_format((float) ($order->total ?? 0), 2) }}</div>
+                        <td colspan="1" class="px-2 py-2">
+                            <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Total</div>
+                            <div class="text-sm font-semibold text-gray-800 dark:text-white/90 tabular-nums">{{ number_format((float) ($order->total ?? 0), 2) }}</div>
                         </td>
-                        <td colspan="1" class="px-5 py-3.5 sm:px-6">
-                            <div class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
-                                Moneda</div>
-                            <div class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
-                                {{ $order->currency ?? '-' }}
-                            </div>
+                        <td colspan="1" class="px-2 py-2">
+                            <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Moneda</div>
+                            <div class="text-sm text-gray-800 dark:text-white/90">{{ $order->currency ?? '-' }}</div>
                         </td>
-                        <td colspan="1" class="px-5 py-3.5 sm:px-6">
-                            <div class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Área
-                            </div>
-                            <div class="mt-0.5 text-sm text-gray-800 dark:text-white/90">{{ $order->area?->name ?? '-' }}
-                            </div>
+                        <td colspan="1" class="px-2 py-2">
+                            <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Área</div>
+                            <div class="text-sm text-gray-800 dark:text-white/90">{{ $order->area?->name ?? '-' }}</div>
                         </td>
-                        <td colspan="1" class="px-5 py-3.5 sm:px-6">
-                            <div class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Mesa
-                            </div>
-                            <div class="mt-0.5 text-sm text-gray-800 dark:text-white/90">{{ $order->table?->name ?? '-' }}
-                            </div>
+                        <td colspan="1" class="px-2 py-2">
+                            <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Mesa</div>
+                            <div class="text-sm text-gray-800 dark:text-white/90">{{ $order->table?->name ?? '-' }}</div>
                         </td>
-                        <td colspan="1" class="px-5 py-3.5 sm:px-6">
-                            <div class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Tipo
-                                de documento</div>
-                            <div class="mt-0.5 text-sm text-gray-800 dark:text-white/90">
-                                {{ $order->movement?->documentType?->name ?? '-' }}</div>
+                        <td colspan="1" class="px-2 py-2">
+                            <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Tipo doc.</div>
+                            <div class="text-sm text-gray-800 dark:text-white/90">{{ $order->movement?->documentType?->name ?? '-' }}</div>
                         </td>
                     </tr>
                 @empty
