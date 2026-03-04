@@ -97,7 +97,7 @@
                 </div>
 
                 {{-- Grid Scrollable --}}
-                <div class="flex-1 overflow-y-auto px-6 pb-24 pt-2 custom-scrollbar">
+                <div class="sticky top-0 z-20 px-6 py-4 bg-[#F3F4F6]/95 dark:bg-[#0B1120]/95 backdrop-blur-sm border-b border-gray-200/50 dark:border-gray-800">
                     <div id="products-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 content-start">
                         {{-- JS Injected --}}
                     </div>
@@ -117,15 +117,14 @@
                         <span id="cart-count-badge" class="bg-indigo-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">0</span>
                     </div>
                     <button onclick="clearCart()" class="p-2 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all" title="Limpiar carrito">
-                        <i class="ri-delete-bin-5-line text-lg"></i>
+                        <i class="ri-delete-bin-5-line text-lg" style="color: #ef4444;"></i>
                     </button>
                 </div>
 
                 {{-- Lista de Items (SCROLLABLE - Ocupa el espacio restante) --}}
-                <div id="cart-container" class="flex-1 overflow-y-auto p-4 space-y-3 bg-white dark:bg-[#151C2C] custom-scrollbar relative">
-                    {{-- Empty State --}}
+                <div id="cart-container" class="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-100 dark:bg-gray-900 custom-scrollbar relative">    
                     <div class="h-full flex flex-col items-center justify-center text-center p-6">
-                        <div class="w-32 h-32 bg-gray-50 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
+                        <div class="w-32 h-32 bg-gray-200 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
                             <img src="https://cdn-icons-png.flaticon.com/512/2038/2038854.png" alt="Empty" class="w-16 h-16 opacity-20 grayscale">
                         </div>
                         <h3 class="text-gray-900 dark:text-white font-bold mb-1">Carrito vacío</h3>
@@ -215,12 +214,9 @@
     <script>
         (function () {
             // --- 1. CARGA DE DATOS (DATA LOGIC) ---
-            // Usamos el operador '??' para evitar errores si la variable viene vacía desde PHP
             const productsRaw = @json($products ?? []);
             const productBranchesRaw = @json($productBranches ?? $productsBranches ?? []);
             const cashRegisters = @json($cashRegisters ?? []);
-            
-            // AQUÍ ESTABA EL PROBLEMA: Necesitamos pasar las categorías con imagen desde PHP
             const categoriesDB = @json($categories ?? []); 
 
             const products = Array.isArray(productsRaw) ? productsRaw : Object.values(productsRaw || {});
@@ -245,37 +241,27 @@
             let searchQuery = '';
 
             // --- FUNCIONES AUXILIARES ---
-            
             function getProductCategory(prod) {
                 const value = (prod && prod.category) ? String(prod.category).trim() : '';
                 return value !== '' ? value : 'General';
             }
 
-            // ESTA ES LA FUNCIÓN CORREGIDA QUE CRUZA DATOS
             function getCategories() {
-                // 1. Obtener nombres únicos de los productos actuales
                 const unique = new Set();
                 products.forEach((prod) => unique.add(getProductCategory(prod)));
                 
-                // 2. Ordenar alfabéticamente (excluyendo General)
                 const sortedNames = Array.from(unique)
                     .filter(c => c !== 'General')
                     .sort((a, b) => a.localeCompare(b));
 
-                // 3. Crear objetos {name, img} buscando la imagen en categoriesDB
                 const processedCategories = sortedNames.map(catName => {
-                    // Buscamos si existe esta categoría en la lista que vino de la BD
-                    // Intentamos coincidir por nombre exacto
                     const found = categoriesDB.find(c => c.name === catName);
-                    
                     return {
                         name: catName,
-                        // Si encontramos la categoría en BD usamos su img, si no, null
                         img: found ? found.img : null 
                     };
                 });
 
-                // 4. Retornar lista final con General al principio
                 return [
                     { name: 'General', img: null }, 
                     ...processedCategories
@@ -284,7 +270,6 @@
 
             function getImageUrl(imgUrl) {
                 if (imgUrl && String(imgUrl).trim() !== '') return imgUrl;
-                // Imagen por defecto (gris) si no hay nada
                 return 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y5ZmFmYiIvPjwvc3ZnPg==';
             }
 
@@ -353,14 +338,12 @@
                     const category = getProductCategory(prod);
 
                     if (typeof price === 'undefined') return;
-                    // Filtro por categoría (comparamos Strings)
                     if (selectedCategory !== 'General' && category !== selectedCategory) return;
                     
-                    // Filtro por búsqueda
                     if (searchQuery) {
                         const q = searchQuery.toLowerCase();
                         const name = (prod.name || '').toLowerCase();
-                        const code = (prod.code || '').toLowerCase(); // Agregado búsqueda por código
+                        const code = (prod.code || '').toLowerCase();
                         if (!name.includes(q) && !code.includes(q)) return;
                     }
 
@@ -374,26 +357,16 @@
                     const safePrice = Number(price).toFixed(2);
 
                     el.innerHTML = `
-                        <div class="h-32 w-full bg-gray-50 dark:bg-gray-800 relative overflow-hidden flex items-center justify-center p-2">
+                        <div class="h-30 w-full relative overflow-hidden flex items-center justify-center p-2">
                             <img src="${getImageUrl(prod.img)}" alt="${safeName}" 
                                 class="w-full h-full object-contain transition-transform duration-500 group-hover:scale-110 drop-shadow-sm" 
                                 loading="lazy" onerror="this.onerror=null; this.src='${getImageUrl(null)}'">
-                            
-                            <div class="absolute top-2 right-2 bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 px-2 py-1 rounded-md">
-                                <span class="text-xs font-extrabold text-gray-900 dark:text-white tabular-nums">S/.${safePrice}</span>
-                            </div>
                         </div>
-                        
-                        <div class="p-3 flex-1 flex flex-col justify-between bg-white dark:bg-[#1e293b]">
-                            <div>
-                                <p class="text-[10px] text-indigo-500 dark:text-indigo-400 font-bold uppercase tracking-wider truncate mb-1">${category}</p>
+
+                        <div class="flex-1 flex flex-col justify-between bg-white dark:bg-[#1e293b] padding-top: 1em;">
+                            <div class="text-center pt-2 pb-2 px-2">
                                 <h4 class="font-bold text-gray-800 dark:text-gray-100 text-sm leading-snug line-clamp-2">${safeName}</h4>
-                            </div>
-                            
-                            <div class="mt-2 w-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 transform translate-y-2 group-hover:translate-y-0">
-                                <span class="block w-full py-1.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-xs font-bold text-center rounded-lg">
-                                    Agregar +
-                                </span>
+                                <span class="text-xs font-extrabold text-gray-900 dark:text-white tabular-nums">S/ ${safePrice}</span>
                             </div>
                         </div>
                     `;
@@ -414,31 +387,24 @@
                 }
             }
 
-            // --- 3. RENDER CATEGORIES (CON IMAGEN) ---
+            // --- 3. RENDER CATEGORIES ---
             function renderCategoryFilters() {
                 const container = document.getElementById('category-filters');
                 if (!container) return;
 
                 container.innerHTML = '';
-                
-                // Obtenemos lista de objetos {name, img}
                 const categories = getCategories();
 
                 categories.forEach((categoryObj) => {
                     const button = document.createElement('button');
                     button.type = 'button';
                     
-                    // Comparamos el NOMBRE de la categoría
                     const isActive = selectedCategory === categoryObj.name;
-                    
-                    // Definir imagen final (con fallback para "General")
                     let imgSrc = categoryObj.img;
                     if (!imgSrc && categoryObj.name === 'General') {
-                        // Icono para opción "Todos/General"
                         imgSrc = 'https://cdn-icons-png.flaticon.com/512/556/556690.png'; 
                     }
 
-                    // Estilos del botón (Imagen arriba, texto abajo)
                     button.className = `
                         shrink-0 min-w-[85px] h-[80px] px-2 py-1 rounded-2xl transition-all duration-200 border select-none
                         flex flex-col items-center justify-center gap-1.5 group relative overflow-hidden
@@ -505,39 +471,45 @@
                         row.className = 'group relative p-3 bg-white dark:bg-[#1e293b] rounded-xl border border-transparent hover:border-gray-200 dark:hover:border-gray-700 hover:shadow-sm transition-all mb-2';
                         
                         row.innerHTML = `
-                            <div class="flex gap-3">
-                                <div class="w-12 h-12 rounded-lg bg-gray-50 dark:bg-gray-800 overflow-hidden shrink-0 border border-gray-100 dark:border-gray-700">
-                                    <img src="${getImageUrl(prod.img)}" class="w-full h-full object-cover mix-blend-multiply dark:mix-blend-normal" alt="img">
+                            <div class="flex items-center gap-2 w-full py-1">
+                                <div class="flex-1 min-w-0 flex items-center gap-2">
+                                    <h4 class="font-bold text-gray-800 dark:text-gray-200 text-xs leading-tight truncate">
+                                        ${(prod.name || 'Item').replace(/</g, '&lt;')}
+                                    </h4>
+                                    
                                 </div>
                                 
-                                <div class="flex-1 min-w-0 flex flex-col justify-between py-0.5">
-                                    <div class="flex justify-between items-start gap-2">
-                                        <h4 class="font-bold text-gray-800 dark:text-gray-200 text-xs leading-tight line-clamp-1">${(prod.name || 'Item').replace(/</g, '&lt;')}</h4>
-                                        <span class="font-bold text-gray-900 dark:text-white text-xs tabular-nums">$${itemTotal.toFixed(2)}</span>
-                                    </div>
-                                    
-                                    <div class="flex justify-between items-end mt-1">
-                                        <p class="text-[10px] text-gray-400 tabular-nums">$${itemPrice.toFixed(2)} un.</p>
-                                        
-                                        <div class="flex items-center bg-gray-100 dark:bg-gray-800 rounded-md p-0.5">
-                                            <button onclick="updateQty(${index}, -1)" class="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-red-500 hover:bg-white dark:hover:bg-gray-700 rounded transition-colors"><i class="ri-subtract-line text-xs"></i></button>
-                                            <span class="w-6 text-center text-xs font-bold text-gray-800 dark:text-gray-200 tabular-nums">${itemQty}</span>
-                                            <button onclick="updateQty(${index}, 1)" class="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-green-600 hover:bg-white dark:hover:bg-gray-700 rounded transition-colors"><i class="ri-add-line text-xs"></i></button>
-                                        </div>
-                                    </div>
+                                <div class="flex flex-col items-center gap-0.5">
+                                    <span class="text-[10px] text-gray-400 tabular-nums shrink-0">S/ ${itemPrice.toFixed(2)} un.</span>
                                 </div>
-                            </div>
-                            
-                            <div class="flex justify-between items-center mt-2 px-1">
-                                <button onclick="toggleNoteInput(${index})" class="text-[10px] font-medium transition-colors flex items-center gap-1 ${hasNote ? 'text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded' : 'text-gray-400 hover:text-indigo-500'}">
-                                    <i class="ri-chat-1-line"></i> ${hasNote ? 'Editar Nota' : 'Nota'}
+
+                                <div class="flex items-center bg-gray-100 dark:bg-gray-800 rounded-md p-0.5 shrink-0">
+                                    <button onclick="updateQty(${index}, -1)" class="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-red-500 hover:bg-white dark:hover:bg-gray-700 rounded transition-colors">
+                                        <i class="ri-subtract-line text-xs"></i>
+                                    </button>
+                                    <span class="w-6 text-center text-xs font-bold text-gray-800 dark:text-gray-200 tabular-nums">${itemQty}</span>
+                                    <button onclick="updateQty(${index}, 1)" class="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-green-600 hover:bg-white dark:hover:bg-gray-700 rounded transition-colors">
+                                        <i class="ri-add-line text-xs"></i>
+                                    </button>
+                                </div>
+                                <div class="shrink-0 w-16 text-right">
+                                    <span class="font-bold text-gray-900 dark:text-white text-xs tabular-nums">S/ ${itemTotal.toFixed(2)}</span>
+                                </div>
+                                <button onclick="removeItem(${index})" class="shrink-0 w-7 h-7 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors ml-1" title="Eliminar ítem">
+                                    <i class="ri-delete-bin-line text-sm" style="color: #ef4444;"></i>
                                 </button>
                             </div>
+                            
+                            <div class="flex items-center gap-2 mt-2 px-1 w-full h-7">
+                                <button onclick="toggleNoteInput(${index})" class="shrink-0 text-[10px] font-medium transition-colors flex items-center gap-1 ${hasNote ? 'text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded' : 'text-gray-400 hover:text-indigo-500'}">
+                                    <i class="ri-chat-1-line"></i> ${hasNote ? 'Editar Nota' : 'Nota'}
+                                </button>
 
-                            <div id="note-box-${index}" class="${hasNote ? '' : 'hidden'} mt-2">
-                                <input type="text" value="${noteEscaped}" oninput="saveNote(${index}, this.value)" 
-                                    placeholder="Escribe una instrucción..." 
-                                    class="w-full text-xs bg-gray-50 dark:bg-gray-900 border-0 rounded-md py-1.5 px-2 text-gray-700 dark:text-gray-300 focus:ring-1 focus:ring-indigo-500/50">
+                                <div id="note-box-${index}" class="${hasNote ? '' : 'hidden'} flex-1 h-full flex items-center">
+                                    <input type="text" value="${noteEscaped}" oninput="saveNote(${index}, this.value)" 
+                                        placeholder="Escribe una instrucción..." 
+                                        class="w-full h-full text-xs bg-yellow-50 dark:bg-yellow-900/30 text-gray-800 dark:text-yellow-100 placeholder-yellow-600/60 dark:placeholder-yellow-500/50 border-0 rounded px-2 focus:ring-1 focus:ring-yellow-400 outline-none transition-colors">
+                                </div>
                             </div>
                         `;
                         container.appendChild(row);
@@ -600,7 +572,17 @@
             function updateQty(index, delta) {
                 if (!currentSale.items[index]) return;
                 currentSale.items[index].qty += delta;
-                if (currentSale.items[index].qty <= 0) currentSale.items.splice(index, 1);
+                if (currentSale.items[index].qty <= 0) {
+                    currentSale.items.splice(index, 1);
+                }
+                saveDB();
+                renderTicket();
+            }
+
+            // NUEVA FUNCIÓN: Para eliminar el ítem completo de una vez
+            function removeItem(index) {
+                if (!currentSale.items[index]) return;
+                currentSale.items.splice(index, 1);
                 saveDB();
                 renderTicket();
             }
@@ -686,6 +668,7 @@
             // Exponer funciones globales para los onclick="" del HTML
             window.getImageUrl = getImageUrl;
             window.updateQty = updateQty;
+            window.removeItem = removeItem; 
             window.clearCart = clearCart;
             window.toggleNoteInput = toggleNoteInput;
             window.saveNote = saveNote;

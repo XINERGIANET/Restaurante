@@ -364,35 +364,6 @@
                                                     </div>
                                                 @endif
                                             @endforeach
-                                            <div class="relative group">
-                                                <x-ui.link-button size="icon" variant="outline"
-                                                    href="{{ route('admin.sales.print.pdf', array_merge([$sale], $viewId ? ['view_id' => $viewId] : [])) }}"
-                                                    className="rounded-xl border border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100"
-                                                    aria-label="Imprimir PDF" target="_blank">
-                                                    <i class="ri-file-pdf-2-line"></i>
-                                                </x-ui.link-button>
-                                                <span
-                                                    class="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-3 whitespace-nowrap rounded-md bg-gray-900 px-2.5 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-[100] shadow-xl">
-                                                    PDF
-                                                    <span
-                                                        class="absolute top-full left-1/2 -ml-1 border-4 border-transparent border-t-gray-900"></span>
-                                                </span>
-                                            </div>
-                                            <div class="relative group">
-                                                <x-ui.link-button size="icon" variant="outline"
-                                                    href="{{ route('admin.sales.print.ticket', array_merge([$sale], $viewId ? ['view_id' => $viewId] : [])) }}"
-                                                    className="rounded-xl border border-slate-300 bg-slate-50 text-slate-700 hover:bg-slate-100"
-                                                    aria-label="Imprimir Ticket" target="_blank">
-                                                    <i class="ri-printer-line"></i>
-                                                    <span
-                                                        class="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-3 whitespace-nowrap rounded-md bg-gray-900 px-2.5 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-[100] shadow-xl">
-                                                        Ticket
-                                                        <span
-                                                            class="absolute top-full left-1/2 -ml-1 border-4 border-transparent border-t-gray-900"></span>
-                                                    </span>
-                                                </x-ui.link-button>
-
-                                            </div>
                                         @else
                                             @if (($sale->status ?? 'A') === 'P')
                                                 <div class="relative group">
