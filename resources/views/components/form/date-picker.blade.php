@@ -3,7 +3,7 @@
     'mode' => 'single', // 'single', 'multiple', 'range', 'time'
     'defaultDate' => null,
     'label' => null,
-    'placeholder' => 'Seleccione una fecha',
+    'placeholder' => 'Fecha',
     'name' => null,
     'dateFormat' => 'Y-m-d',
     'enableTime' => false,

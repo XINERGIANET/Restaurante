@@ -582,6 +582,42 @@ class OrderController extends Controller
             ])->values()->all()
             : [];
 
+        $saleOrOrderTypeIds = MovementType::query()
+            ->where(function ($q) {
+                $q->where('description', 'like', '%venta%')
+                    ->orWhere('description', 'like', '%sale%')
+                    ->orWhere('description', 'like', '%pedido%')
+                    ->orWhere('description', 'like', '%orden%');
+            })
+            ->pluck('id')
+            ->unique()
+            ->values()
+            ->all();
+        $documentTypes = DocumentType::query()
+            ->orderBy('name')
+            ->whereIn('movement_type_id', !empty($saleOrOrderTypeIds) ? $saleOrOrderTypeIds : [2])
+            ->get(['id', 'name']);
+        $paymentMethods = PaymentMethod::query()
+            ->where('status', true)
+            ->orderBy('order_num')
+            ->get(['id', 'description', 'order_num']);
+        $paymentGateways = PaymentGateways::query()
+            ->where('status', true)
+            ->orderBy('order_num')
+            ->get(['id', 'description', 'order_num']);
+        $cards = Card::query()
+            ->where('status', true)
+            ->orderBy('order_num')
+            ->get(['id', 'description', 'type', 'icon', 'order_num']);
+        $digitalWallets = DigitalWallet::query()
+            ->where('status', true)
+            ->orderBy('order_num')
+            ->get(['id', 'description', 'order_num']);
+        $cashRegisters = CashRegister::query()
+            ->where('status', '1')
+            ->orderBy('number')
+            ->get(['id', 'number']);
+
         $response = response()->view('orders.create', [
             'user' => $user,
             'person' => $person,
@@ -598,6 +634,12 @@ class OrderController extends Controller
             'pendingMovementId' => $pendingOrder?->movement_id,
             'pendingPeopleCount' => (int) ($pendingOrder?->people_count ?: ($table->capacity ?? 1)),
             'pendingCancelledDetails' => $pendingCancelledDetails,
+            'documentTypes' => $documentTypes,
+            'paymentMethods' => $paymentMethods,
+            'paymentGateways' => $paymentGateways,
+            'cards' => $cards,
+            'digitalWallets' => $digitalWallets,
+            'cashRegisters' => $cashRegisters,
             'waiterPinEnabled' => $this->shouldRequireWaiterPin((int) $branchId, session('profile_id') ?? $request->user()?->profile_id),
             'turboCacheControl' => 'no-cache',
         ]);
@@ -1153,7 +1195,10 @@ class OrderController extends Controller
                 $paymentConcept = $this->resolveOrderPaymentConcept();
                 $cashMovementTypeId = $this->resolveCashMovementTypeId();
                 $cashDocumentTypeId = $this->resolveCashIncomeDocumentTypeId($cashMovementTypeId);
-                $cashRegisterId = $this->resolveActiveCashRegisterId($branchId);
+                $requestCashRegisterId = $request->input('cash_register_id');
+                $cashRegisterId = ($requestCashRegisterId && CashRegister::find((int) $requestCashRegisterId))
+                    ? (int) $requestCashRegisterId
+                    : $this->resolveActiveCashRegisterId($branchId);
                 $cashRegister = CashRegister::find($cashRegisterId);
                 $shift = Shift::where('branch_id', $branchId)->first() ?? Shift::first();
                 if (!$shift) {

@@ -156,35 +156,35 @@
         <div class="table-responsive mt-4 rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
                 <table class="w-full min-w-[880px]">
                     <thead>
-                        <tr class="text-white">
-                            <th style="background-color: #63B7EC;" class="px-3 py-3 text-left sm:px-6 first:rounded-tl-xl sticky-left-header">
-                                <p class="font-semibold text-white text-theme-xs truncate">ID</p>
+                        <tr style="background-color: #63B7EC;" class="text-white">
+                            <th class="px-3 py-3 text-center sm:px-6 first:rounded-tl-xl sticky-left-header">
+                                <p class="font-semibold text-white text-theme-xs">ID</p>
                             </th>
-                            <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6"><p class="font-semibold text-white text-theme-xs uppercase">Nombre</p></th>
-                            <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6"><p class="font-semibold text-white text-theme-xs uppercase">Abreviatura</p></th>
-                            <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6"><p class="font-semibold text-white text-theme-xs uppercase">Estado</p></th>
-                            <th style="background-color: #63B7EC;" class="px-5 py-3 text-right sm:px-6 last:rounded-tr-xl"><p class="font-semibold text-white text-theme-xs uppercase">Acciones</p></th>
+                            <th class="px-5 py-3 text-center sm:px-6"><p class="font-semibold text-white text-theme-xs uppercase">Nombre</p></th>
+                            <th class="px-5 py-3 text-center sm:px-6"><p class="font-semibold text-white text-theme-xs uppercase">Abreviatura</p></th>
+                            <th class="px-5 py-3 text-center sm:px-6"><p class="font-semibold text-white text-theme-xs uppercase">Estado</p></th>
+                            <th class="px-5 py-3 text-center sm:px-6 last:rounded-tr-xl"><p class="font-semibold text-white text-theme-xs uppercase">Acciones</p></th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse ($views as $view)
                             <tr class="group/row border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-white/5">
-                                <td class="px-3 py-4 sm:px-6 sticky-left">
+                                <td class="px-3 py-4 sm:px-6 sticky-left text-center">
                                     <span class="font-bold text-gray-700 dark:text-gray-200 truncate block text-xs" title="#{{ $view->id }}">#{{ $view->id }}</span>
                                 </td>
-                                <td class="px-5 py-4 sm:px-6">
+                                <td class="px-5 py-4 sm:px-6 text-center">
                                     <p class="font-medium text-gray-800 text-theme-sm dark:text-white/90">{{ $view->name }}</p>
                                 </td>
-                                <td class="px-5 py-4 sm:px-6">
+                                <td class="px-5 py-4 sm:px-6 text-center">
                                     <p class="text-gray-500 text-theme-sm dark:text-gray-400">{{ $view->abbreviation ?? '-' }}</p>
                                 </td>
-                                <td class="px-5 py-4 sm:px-6">
+                                <td class="px-5 py-4 sm:px-6 text-center">
                                     <x-ui.badge variant="light" color="{{ $view->status ? 'success' : 'error' }}">
                                         {{ $view->status ? 'Activo' : 'Inactivo' }}
                                     </x-ui.badge>
                                 </td>
-                                <td class="px-5 py-4 sm:px-6">
-                                    <div class="flex items-center justify-end gap-2">
+                                <td class="px-5 py-4 sm:px-6 text-center">
+                                    <div class="flex items-center justify-center gap-2">
                                         @foreach ($rowOperations as $operation)
                                             @php
                                                 $action = $operation->action ?? '';

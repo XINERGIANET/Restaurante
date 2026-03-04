@@ -74,16 +74,16 @@
             <div class="flex justify-center w-full pb-10">
                 <template x-if="filteredTables?.length > 0">
                     <div
-                        class="grid grid-cols-6 sm:grid-cols-6 md:grid-cols-6 lg:grid-cols-6 xl:grid-cols-6 2xl:grid-cols-6 gap-5 w-full">
+                        class="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-5 gap-5 w-full auto-rows-[220px]">
                         <template x-for="table in (filteredTables || [])" :key="table.id">
                             <div @click="openTable(table)"
-                                class="relative rounded-2xl p-2 shadow-lg border overflow-hidden bg-white dark:bg-gray-800 transition-all hover:shadow-lg max-w-[320px] cursor-pointer"
+                                class="relative rounded-2xl p-2 shadow-lg border overflow-hidden bg-white dark:bg-gray-800 transition-all hover:shadow-lg cursor-pointer flex h-[220px] min-h-[220px] max-h-[220px]"
                                 :class="table.situation === 'ocupada' ?
                                     'border-gray-100 dark:border-gray-700 border-l-4' :
                                     'border-blue-200 dark:border-blue-700 border-l-4'"
                                 :style="table.situation === 'ocupada' ? 'border-left-color: #F37022' :
                                     'border-left-color: rgb(59, 130, 246)'">
-                                <div class="p-3 py-4 pl-3">
+                                <div class="p-3 py-4 pl-3 flex flex-col w-full flex-1 min-h-0 overflow-hidden">
                                     {{-- Header --}}
                                     <div class="flex justify-between items-start mb-4">
                                         <div class="flex items-center gap-4">

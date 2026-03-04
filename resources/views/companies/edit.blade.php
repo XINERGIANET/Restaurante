@@ -23,7 +23,7 @@
         class="max-w-3xl"
     > 
         <div class="p-6 sm:p-8">
-            <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between relative">
                 <div class="flex items-center gap-4">
                     <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-500 dark:bg-brand-500/10">
                         <i class="ri-building-line text-2xl"></i>
@@ -36,7 +36,7 @@
                 <a
                     href="{{ $indexUrl }}"
                     onclick="if (window.Turbo && typeof window.Turbo.visit === 'function') { window.Turbo.visit('{{ $indexUrl }}', { action: 'replace' }); return false; }"
-                    class="flex h-11 w-11 items-center justify-center rounded-full bg-gray-100 text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
+                    class="flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-full bg-gray-100 text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white absolute right-0 top-0 sm:static"
                     aria-label="Cerrar"
                 >
                     <i class="ri-close-line text-xl"></i>
