@@ -76,6 +76,17 @@ class OrderController extends Controller
         return $currentProfileId === $mozoId;
     }
 
+    /** El perfil Mozo puede guardar pedidos pero NO puede cobrar. */
+    private function canCharge($profileId): bool
+    {
+        $mozoId = $this->mozoProfileId();
+        if ($mozoId === null) {
+            return true;
+        }
+        $currentProfileId = $profileId !== null && $profileId !== '' ? (int) $profileId : null;
+        return $currentProfileId !== $mozoId;
+    }
+
     public function validateWaiterPin(Request $request)
     {
         $branchId = (int) session('branch_id');
@@ -322,7 +333,7 @@ class OrderController extends Controller
                 'situation' => $situation,
                 'diners' => (int) ($table->capacity ?? 0),
                 'people_count' => (int) ($orderMovement?->people_count ?? 0),
-                'waiter' => $orderMovement?->movement?->user_name ?? '-',
+                'waiter' => $orderMovement?->movement?->responsible_name ?? $orderMovement?->movement?->user_name ?? '-',
                 'client' => $orderMovement?->movement?->person_name ?? '-',
                 'total' => $totalWithTax,
                 'order_movement_id' => $orderMovement?->id ?? null,
@@ -344,6 +355,7 @@ class OrderController extends Controller
             'tables' => $tablesPayload,
             'user' => $request->user(),
             'waiterPinEnabled' => $waiterPinEnabled,
+            'canCharge' => $this->canCharge($profileId),
             'turboCacheControl' => 'no-cache',
         ]);
 
@@ -492,7 +504,7 @@ class OrderController extends Controller
                 'situation' => $situation,
                 'diners' => (int) ($table->capacity ?? 0),
                 'people_count' => (int) ($orderMovement?->people_count ?? 0),
-                'waiter' => $orderMovement?->movement?->user_name ?? '-',
+                'waiter' => $orderMovement?->movement?->responsible_name ?? $orderMovement?->movement?->user_name ?? '-',
                 'client' => $orderMovement?->movement?->person_name ?? '-',
                 'total' => $totalWithTax,
                 'order_movement_id' => $orderMovement?->id ?? null,
@@ -641,6 +653,7 @@ class OrderController extends Controller
             'digitalWallets' => $digitalWallets,
             'cashRegisters' => $cashRegisters,
             'waiterPinEnabled' => $this->shouldRequireWaiterPin((int) $branchId, session('profile_id') ?? $request->user()?->profile_id),
+            'canCharge' => $this->canCharge(session('profile_id') ?? $request->user()?->profile_id),
             'turboCacheControl' => 'no-cache',
         ]);
         $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
@@ -650,6 +663,12 @@ class OrderController extends Controller
 
     public function charge(Request $request)
     {
+        $profileId = session('profile_id') ?? $request->user()?->profile_id;
+        if (!$this->canCharge($profileId)) {
+            return redirect()
+                ->route('orders.index')
+                ->with('error', 'Tu perfil (Mozo) no tiene permiso para cobrar. Solo puedes guardar pedidos.');
+        }
 
         $saleOrOrderTypeIds = MovementType::query()
             ->where(function ($q) {
@@ -874,7 +893,13 @@ class OrderController extends Controller
         $waiterPinEnabled = $this->shouldRequireWaiterPin($branchId ? (int) $branchId : null, $profileId);
         $waiterPersonId = $waiterPinEnabled ? (int) $request->session()->get('waiter_person_id') : (int) ($user?->person?->id ?? 0);
         $waiterName = $waiterPinEnabled ? (string) $request->session()->get('waiter_name') : trim(($user?->person?->first_name ?? '') . ' ' . ($user?->person?->last_name ?? ''));
-        if (!$waiterPinEnabled && $waiterName === '') {
+        // responsible_name = empleado que insertó el PIN (Person), nunca el usuario (User)
+        if ($waiterPersonId) {
+            $waiterPerson = Person::find($waiterPersonId);
+            $resolvedName = $waiterPerson ? trim(($waiterPerson->first_name ?? '') . ' ' . ($waiterPerson->last_name ?? '')) : '';
+            $waiterName = $resolvedName !== '' ? $resolvedName : ($waiterPerson ? 'Mozo' : $waiterName);
+        }
+        if (trim((string) $waiterName) === '' && !$waiterPinEnabled) {
             $waiterName = $user?->name ?? 'Sistema';
         }
         if ($waiterPinEnabled && !$waiterPersonId) {
@@ -973,8 +998,8 @@ class OrderController extends Controller
                     'moved_at' => now(),
                     'user_id' => $user?->id,
                     'user_name' => $user?->name ?? 'Sistema',
-                    'responsible_id' => $waiterPersonId ?: ($user?->person?->id ?? null),
-                    'responsible_name' => $waiterName ?: (($user?->person?->first_name ?? '') . ' ' . ($user?->person?->last_name ?? '')),
+                    'responsible_id' => $user?->id,
+                    'responsible_name' => $waiterName ?: (($user?->person?->first_name ?? '') . ' ' . ($user?->person?->last_name ?? '-')),
                 ]);
 
                 // Eliminar detalles antiguos ACTIVOS y crear los nuevos (mantener histórico de cancelaciones status='C')
@@ -1011,7 +1036,7 @@ class OrderController extends Controller
                     'user_name' => $user?->name ?? 'Sistema',
                     'person_id' => null,
                     'person_name' => 'Público General',
-                    'responsible_id' => $waiterPersonId ?: ($user?->person?->id ?? null),
+                    'responsible_id' => $user?->id,
                     'responsible_name' => $waiterName ?: (($user?->person?->first_name ?? '') . ' ' . ($user?->person?->last_name ?? '-')),
                     'comment' => 'Pedido desde punto de venta',
                     'status' => 'A',
@@ -1155,6 +1180,14 @@ class OrderController extends Controller
 
     public function processOrderPayment(Request $request)
     {
+        $profileId = session('profile_id') ?? $request->user()?->profile_id;
+        if (!$this->canCharge($profileId)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tu perfil (Mozo) no tiene permiso para cobrar. Solo puedes guardar pedidos.',
+            ], 403);
+        }
+
         $movementId = $request->input('movement_id');
         $tableId = $request->input('table_id');
         $branchId = (int) session('branch_id');
@@ -1215,8 +1248,8 @@ class OrderController extends Controller
                         'user_name' => $user?->name ?? 'Sistema',
                         'person_id' => $orderBaseMovement?->person_id,
                         'person_name' => $orderBaseMovement?->person_name ?? 'Publico General',
-                        'responsible_id' => $user?->person->id,
-                        'responsible_name' => $user?->person->first_name . ' ' . $user?->person->last_name ?? '-',
+                        'responsible_id' => $user?->id,
+                        'responsible_name' => $user?->person ? trim(($user->person->first_name ?? '') . ' ' . ($user->person->last_name ?? '')) : ($user?->name ?? 'Sistema'),
                         'comment' => 'Cobro de pedido ' . ($orderBaseMovement?->number ?? ''),
                         'status' => '1',
                         'movement_type_id' => $cashMovementTypeId,

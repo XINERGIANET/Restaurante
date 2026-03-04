@@ -113,17 +113,17 @@
                 </div>
             </header>
 
-            <div class="flex flex-row flex-1 min-h-0 min-w-0 p-5 overflow-hidden">
-                <div class="flex-1 min-w-0 p-3 sm:p-5 md:p-6 bg-white flex flex-col min-h-0 overflow-hidden">                
+            <div class="flex flex-row flex-1 min-h-0 min-w-0 p-5 overflow-y-auto overflow-x-hidden" style="-webkit-overflow-scrolling: touch;">
+                <div class="flex-1 min-w-0 p-3 sm:p-5 md:p-6 bg-white flex flex-col min-h-0">                
                     <div class="flex flex-col flex-1 min-h-0 min-w-0 overflow-hidden">
                         <div class="shrink-0 border-gray-300 px-2 sm:px-4 pt-3 pb-4">
                             <div class="flex items-center justify-between">
                             </div>
-                            <div id="categories-grid" class="flex flex-row flex-wrap gap-1.5 sm:gap-2 overflow-x-auto pb-3">
+                            <div id="categories-grid" class="flex flex-row flex-wrap gap-1.5 sm:gap-2 overflow-x-auto pb-3 overscroll-x-contain">
                             </div>
                         </div>
-                        <div class="flex-1 min-h-0 min-w-0 pt-2 sm:pt-3 flex flex-col overflow-hidden">
-                            <div id="products-grid" class="px-2 sm:px-4 md:px-5 p-3 grid grid-cols-3 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5 2xl:grid-cols-5 gap-2 sm:gap-4 overflow-y-auto overflow-x-hidden min-h-0 flex-1 content-start overscroll-contain">
+                        <div class="flex-1 min-h-0 min-w-0 pt-2 sm:pt-3 flex flex-col overflow-hidden min-h-[200px]">
+                            <div id="products-grid" class="px-2 sm:px-4 md:px-5 p-3 grid grid-cols-3 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5 2xl:grid-cols-5 gap-2 sm:gap-4 overflow-y-auto overflow-x-hidden min-h-0 flex-1 content-start overscroll-contain" style="-webkit-overflow-scrolling: touch;">
                             </div>
                         </div>
                     </div>
@@ -143,7 +143,7 @@
 
                     {{-- Contenido Resumen --}}
                     <div id="aside-resumen" class="flex flex-col flex-1 min-h-0 overflow-hidden">
-                        <div id="cart-container" class="flex-1 overflow-y-auto p-3 sm:p-5 space-y-2 sm:space-y-3 bg-gray-50 dark:bg-gray-900/50 min-h-0"></div>
+                        <div id="cart-container" class="flex-1 overflow-y-auto p-3 sm:p-5 space-y-2 sm:space-y-3 bg-gray-50 dark:bg-gray-900/50 min-h-0 overscroll-contain" style="-webkit-overflow-scrolling: touch;"></div>
                         <div id="cancelled-platos-container" class="shrink-0 hidden border-t border-gray-200 dark:border-gray-700 bg-amber-50 dark:bg-amber-900/20 p-3 sm:p-4 max-h-40 overflow-y-auto">
                             <p class="text-xs font-semibold text-amber-800 dark:text-amber-200 mb-2 flex items-center gap-1"><i class="ri-error-warning-line"></i> Platos anulados</p>
                             <div id="cancelled-platos-list" class="space-y-1.5 text-xs"></div>
@@ -222,19 +222,28 @@
                         </div>
                     </div>
 
-                    {{-- Botones Guardar y Cobrar (siempre visibles) --}}
+                    {{-- Botones Guardar y Cobrar (siempre visibles; Mozo no puede cobrar) --}}
                     <div class="shrink-0 p-4 sm:p-5 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
                         <div class="grid grid-cols-2 gap-2">
-                            <button onclick="processOrder()"
+                            <button type="button" id="btn-guardar" onclick="processOrder()"
                                 class="py-2.5 px-3 rounded-xl bg-gray-500 text-white font-bold text-xs sm:text-sm shadow-lg hover:bg-gray-600 active:scale-95 transition-all flex justify-center items-center gap-2">
                                 <i class="ri-save-line text-base"></i>
                                 <span>Guardar</span>
                             </button>
+                            @if($canCharge ?? true)
                             <button onclick="processOrderPayment()"
                                 class="py-2.5 px-3 rounded-xl bg-brand-500 text-white font-bold text-xs sm:text-sm shadow-lg hover:bg-brand-600 active:scale-95 transition-all flex justify-center items-center gap-2">
                                 <i class="ri-bank-card-line text-base"></i>
                                 <span>Cobrar</span>
                             </button>
+                            @else
+                            <button type="button" disabled
+                                class="py-2.5 px-3 rounded-xl bg-gray-300 text-gray-500 font-bold text-xs sm:text-sm cursor-not-allowed flex justify-center items-center gap-2"
+                                title="Tu perfil (Mozo) no puede cobrar. Solo puedes guardar pedidos.">
+                                <i class="ri-bank-card-line text-base"></i>
+                                <span>Cobrar</span>
+                            </button>
+                            @endif
                         </div>
                     </div>
                 </aside>
@@ -990,11 +999,25 @@
             }
 
             function goToIndexWithTurbo() {
-                const url = "{{ route('orders.index') }}?_=" + Date.now();
-                if (window.Turbo && typeof window.Turbo.visit === 'function') {
-                    window.Turbo.visit(url, { action: 'replace' });
-                } else {
-                    window.location.href = url;
+                const base = "{{ route('orders.index') }}";
+                const params = new URLSearchParams(window.location.search);
+                const viewId = params.get('view_id');
+                let url = base + '?_=' + Date.now();
+                if (viewId) url += '&view_id=' + encodeURIComponent(viewId);
+                const win = (typeof window.top !== 'undefined' ? window.top : window);
+                try {
+                    win.location.replace(url);
+                } catch (e1) {
+                    try {
+                        win.location.href = url;
+                    } catch (e2) {
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.target = '_top';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                    }
                 }
             }
 
@@ -1065,6 +1088,8 @@
                     const ok = await ensureWaiterPin();
                     if (!ok) return;
                 }
+                const btnGuardar = document.getElementById('btn-guardar');
+                if (btnGuardar) { btnGuardar.disabled = true; }
                 const items = currentTable.items || [];
                 const totals = calculateTotalsFromItems(items);
                 const subtotal = totals.subtotal;
@@ -1088,12 +1113,14 @@
                 };
                 fetch('{{ route('orders.process') }}', {
                         method: 'POST',
+                        cache: 'no-store',
                         headers: {
                             'Content-Type': 'application/json',
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute(
                                     'content') ||
                                 '',
-                            'Accept': 'application/json'
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
                         },
                         body: JSON.stringify(order)
                     })
@@ -1128,10 +1155,12 @@
                             console.error('Error al guardar:', data);
                             sessionStorage.setItem('flash_error_message', data?.message || 'Error al guardar.');
                         }
+                        if (btnGuardar) { btnGuardar.disabled = false; }
                     })
                     .catch(error => {
                         console.error('Error:', error);
                         sessionStorage.setItem('flash_error_message', 'Error al guardar el pedido. Revisa la consola.');
+                        if (btnGuardar) { btnGuardar.disabled = false; }
                     });
 
             }
@@ -1190,109 +1219,6 @@
                     }
                     return;
                 }
-
-                // Validaciones de la pestaña Cobro
-                const docTypeEl = document.getElementById('cobro-document-type');
-                const docTypeId = docTypeEl ? parseInt(docTypeEl.value, 10) : 0;
-                if (!docTypeId) {
-                    switchAsideTab('cobro');
-                    if (typeof showNotification === 'function') {
-                        showNotification('Error', 'Selecciona un tipo de documento en la pestaña Cobro.', 'error');
-                    } else {
-                        alert('Selecciona un tipo de documento en la pestaña Cobro.');
-                    }
-                    return;
-                }
-
-                const cashRegisterEl = document.getElementById('cobro-cash-register');
-                const cashRegisterId = cashRegisterEl ? parseInt(cashRegisterEl.value, 10) : 0;
-                if (!cashRegisterId) {
-                    switchAsideTab('cobro');
-                    if (typeof showNotification === 'function') {
-                        showNotification('Error', 'Selecciona una caja en la pestaña Cobro.', 'error');
-                    } else {
-                        alert('Selecciona una caja en la pestaña Cobro.');
-                    }
-                    return;
-                }
-
-                const paymentMethodsData = getCobroPaymentMethodsFromForm();
-                if (paymentMethodsData.length === 0) {
-                    switchAsideTab('cobro');
-                    if (typeof showNotification === 'function') {
-                        showNotification('Error', 'Agrega al menos un método de pago con monto mayor a 0.', 'error');
-                    } else {
-                        alert('Agrega al menos un método de pago con monto mayor a 0.');
-                    }
-                    return;
-                }
-
-                // Validar tarjeta: pasarela y tarjeta requeridos
-                const rows = document.querySelectorAll('#cobro-payment-methods-list .cobro-pm-row');
-                for (let i = 0; i < rows.length; i++) {
-                    const row = rows[i];
-                    const methodSelect = row.querySelector('.cobro-pm-method');
-                    const desc = (methodSelect?.options[methodSelect?.selectedIndex]?.text || '').toLowerCase();
-                    const isCard = (desc.includes('tarjeta') || desc.includes('card')) && !desc.includes('billetera');
-                    const isWallet = desc.includes('billetera');
-                    const amount = parseFloat(row.querySelector('.cobro-pm-amount')?.value || 0) || 0;
-                    if (amount <= 0) continue;
-                    if (isCard) {
-                        const gw = row.querySelector('.cobro-pm-gateway');
-                        const card = row.querySelector('.cobro-pm-card');
-                        if (!gw?.value || !card?.value) {
-                            switchAsideTab('cobro');
-                            if (typeof showNotification === 'function') {
-                                showNotification('Error', 'El método "' + (methodSelect?.options[methodSelect?.selectedIndex]?.text || 'Tarjeta') + '" requiere seleccionar pasarela y tarjeta.', 'error');
-                            } else {
-                                alert('El método Tarjeta requiere seleccionar pasarela y tarjeta.');
-                            }
-                            return;
-                        }
-                    }
-                    if (isWallet) {
-                        const wallet = row.querySelector('.cobro-pm-wallet');
-                        if (!wallet?.value) {
-                            switchAsideTab('cobro');
-                            if (typeof showNotification === 'function') {
-                                showNotification('Error', 'El método "' + (methodSelect?.options[methodSelect?.selectedIndex]?.text || 'Billetera') + '" requiere elegir billetera (Yape, Plin, etc.).', 'error');
-                            } else {
-                                alert('El método Billetera requiere elegir billetera (Yape, Plin, etc.).');
-                            }
-                            return;
-                        }
-                    }
-                }
-
-                const orderTotal = getCobroOrderTotal();
-                const totalPaid = getCobroTotalPaid();
-                const diff = Math.abs(totalPaid - orderTotal);
-                if (diff > 0.01) {
-                    switchAsideTab('cobro');
-                    const fmt = (n) => 'S/ ' + (n || 0).toFixed(2);
-                    if (typeof showNotification === 'function') {
-                        showNotification('Error', 'La suma de los métodos de pago (' + fmt(totalPaid) + ') debe ser igual al total (' + fmt(orderTotal) + ').', 'error');
-                    } else {
-                        alert('La suma de los métodos de pago (' + fmt(totalPaid) + ') debe ser igual al total (' + fmt(orderTotal) + ').');
-                    }
-                    return;
-                }
-
-                // Confirmación antes de cobrar
-                if (window.Swal) {
-                    const confirmResult = await Swal.fire({
-                        title: '¿Confirmar cobro?',
-                        html: 'Se cobrará <strong>S/ ' + orderTotal.toFixed(2) + '</strong> y se liberará la mesa.',
-                        icon: 'question',
-                        showCancelButton: true,
-                        confirmButtonText: 'Sí, cobrar',
-                        cancelButtonText: 'Cancelar',
-                        reverseButtons: true,
-                    });
-                    if (!confirmResult.isConfirmed) return;
-                }
-
-                // Cancelar auto-guardado pendiente
                 if (autoSaveTimer) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
 
                 const totals = calculateTotalsFromItems(items);
@@ -1331,7 +1257,18 @@
                         throw new Error(processRes.status === 419 ? 'Sesión expirada. Recarga la página.' : (processRes.status === 401 ? 'Debes iniciar sesión.' : (processRes.status === 500 ? 'Error al procesar. Intenta de nuevo.' : 'Error del servidor.')));
                     }
 
-                    if (!processData || !processData.success || !processData.movement_id) {
+                    if (processData && processData.success && processData.movement_id) {
+                        currentTable.cancellations = [];
+                        saveDB();
+                        const url = new URL("{{ route('orders.charge') }}", window.location.origin);
+                        url.searchParams.set('movement_id', processData.movement_id);
+                        url.searchParams.set('_t', Date.now());
+                        if (window.Turbo && typeof window.Turbo.visit === 'function') {
+                            window.Turbo.visit(url.toString(), { action: 'advance' });
+                        } else {
+                            window.location.href = url.toString();
+                        }
+                    } else {
                         const msg = processData?.message || 'No se pudo guardar el pedido. Intenta de nuevo.';
                         if (String(msg || '').indexOf('PIN') !== -1) {
                             sessionStorage.removeItem(`waiterPin:${waiterPinBranchId}`);
@@ -1341,59 +1278,13 @@
                         } else {
                             alert(msg);
                         }
-                        return;
-                    }
-
-                    const movementId = processData.movement_id;
-                    const tableId = currentTable.table_id ?? currentTable.id;
-
-                    const paymentPayload = {
-                        movement_id: movementId,
-                        table_id: tableId,
-                        document_type_id: docTypeId,
-                        cash_register_id: cashRegisterId,
-                        payment_methods: paymentMethodsData,
-                        notes: '',
-                    };
-
-                    const payRes = await fetch('{{ route('orders.processOrderPayment') }}', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-                            'Accept': 'application/json'
-                        },
-                        body: JSON.stringify(paymentPayload)
-                    });
-
-                    const payCt = payRes.headers.get('content-type');
-                    let payData = null;
-                    if (payCt && payCt.includes('application/json')) {
-                        payData = await payRes.json();
-                    } else {
-                        throw new Error(payRes.status === 419 ? 'Sesión expirada.' : (payRes.status === 401 ? 'Debes iniciar sesión.' : 'Error al procesar el cobro.'));
-                    }
-
-                    if (payData && payData.success) {
-                        currentTable.cancellations = [];
-                        currentTable.items = [];
-                        currentTable.order_movement_id = null;
-                        saveDB();
-                        sessionStorage.setItem('flash_success_message', payData.message || 'Cobro procesado correctamente.');
-                        goToIndexWithTurbo();
-                    } else {
-                        if (typeof showNotification === 'function') {
-                            showNotification('Error', payData?.message || 'No se pudo completar el cobro. Intenta de nuevo.', 'error');
-                        } else {
-                            alert(payData?.message || 'No se pudo completar el cobro.');
-                        }
                     }
                 } catch (error) {
                     console.error('Error:', error);
                     if (typeof showNotification === 'function') {
-                        showNotification('Error', error?.message || 'Error al procesar el cobro.', 'error');
+                        showNotification('Error', error?.message || 'Error al procesar.', 'error');
                     } else {
-                        alert(error?.message || 'Error al procesar el cobro.');
+                        alert(error?.message || 'Error al procesar.');
                     }
                 }
             }

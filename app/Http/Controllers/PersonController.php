@@ -274,7 +274,12 @@ class PersonController extends Controller
             $rules['password'] = ['required', 'string', 'min:8', 'confirmed'];
         }
 
-        return $request->validate($rules);
+        $messages = [
+            'password.min' => 'La contraseña debe tener al menos 8 caracteres.',
+            'password.required' => 'La contraseña es obligatoria y debe tener al menos 8 caracteres.',
+        ];
+
+        return $request->validate($rules, $messages);
     }
 
     private function syncRoles(Person $person, array $roleIds, int $branchId): void

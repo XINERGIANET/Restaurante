@@ -100,19 +100,18 @@
                                                     <span x-text="String(table.name || table.id).padStart(2, '0')"></span>
                                                 </div>
                                             </template>
-                                            <div>
-                                                <div class="flex">
-                                                    <p class="font-semibold text-theme-xs text-gray-500 dark:text-gray-400">
+                                            <div class="min-w-0 flex-1 overflow-hidden">
+                                                <div class="flex min-w-0">
+                                                    <p class="font-semibold text-theme-xs text-gray-500 dark:text-gray-400 shrink-0">
                                                         Mozo:
                                                     </p>
-                                                    <p class="font-medium text-gray-800 text-theme-xs dark:text-white/90 ml-1"
-                                                        x-text="table.waiter || '-'"></p>
+                                                    <p class="font-medium text-gray-800 text-theme-xs dark:text-white/90 ml-1 truncate min-w-0"
+                                                        x-text="table.waiter || '-'" :title="(table.waiter || '-')"></p>
                                                 </div>
-                                                <div class="flex min-w-0 flex-1">
-                                                    <p
-                                                        class="font-semibold text-theme-xs text-gray-500 dark:text-gray-400 shrink-0">
+                                                <div class="flex min-w-0">
+                                                    <p class="font-semibold text-theme-xs text-gray-500 dark:text-gray-400 shrink-0">
                                                         Cliente:</p>
-                                                    <p class="font-medium text-gray-800 text-theme-xs dark:text-white/90 ml-1"
+                                                    <p class="font-medium text-gray-800 text-theme-xs dark:text-white/90 ml-1 truncate min-w-0"
                                                         x-text="(table.client && table.client !== 'Público General') ? table.client : 'Público'">
                                                     </p>
                                                 </div>
@@ -155,10 +154,12 @@
                                     <template x-if="table && table.situation === 'ocupada'">
                                         <div
                                             class="border-blue-500 dark:border-blue-700 pt-3 flex justify-end gap-2 items-center">
-                                            <button type="button" @click.stop="chargeTable(table)" title="Cobrar"
-                                                class="inline-flex items-center justify-center bg-green-500 hover:bg-green-600 active:bg-green-700 text-white py-1.5 px-3 rounded-lg transition shadow-sm hover:shadow w-9">
-                                                <i class="ri-bank-card-line text-white"></i>
-                                            </button>
+                                            <template x-if="canCharge">
+                                                <button type="button" @click.stop="chargeTable(table)" title="Cobrar"
+                                                    class="inline-flex items-center justify-center bg-green-500 hover:bg-green-600 active:bg-green-700 text-white py-1.5 px-3 rounded-lg transition shadow-sm hover:shadow w-9">
+                                                    <i class="ri-bank-card-line text-white"></i>
+                                                </button>
+                                            </template>
                                             <button type="button"
                                                 @click.stop="$dispatch('open-move-table-modal', { table: table })"
                                                 title="Mover mesa"
@@ -423,6 +424,7 @@
                     tablesDataUrl: @json(route('orders.tablesData')),
                     cancelOrderUrl: cancelOrderUrl,
                     cancelOrderToken: @json(csrf_token()),
+                    canCharge: @json($canCharge ?? true),
                     waiterPinEnabled: @json($waiterPinEnabled ?? false),
                     waiterPinBranchId: @json((int) session('branch_id')),
                     validateWaiterPinUrl: @json(route('orders.validateWaiterPin')),
