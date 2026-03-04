@@ -138,9 +138,22 @@ class BranchController extends Controller
     {
         $branch = $this->resolveBranch($company, $branch);
 
+        // Parámetro por sucursal: requerir PIN de mozo al tomar pedidos
+        // Parámetro global: usar la descripción del parámetro creado en la pantalla de Parámetros
+        // Descripción configurada: "Requerir PIN a mozo"
+        $waiterPinEnabledValue = DB::table('branch_parameters as bp')
+            ->join('parameters as p', 'p.id', '=', 'bp.parameter_id')
+            ->whereNull('bp.deleted_at')
+            ->whereNull('p.deleted_at')
+            ->where('bp.branch_id', $branch->id)
+            ->where('p.description', 'Requerir PIN a mozo')
+            ->value('bp.value');
+        $waiterPinEnabled = $waiterPinEnabledValue !== null && (string) $waiterPinEnabledValue !== '0';
+
         return view('branches.edit', [
             'company' => $company,
             'branch' => $branch,
+            'waiterPinEnabled' => $waiterPinEnabled,
         ] + $this->getLocationData($branch));
     }
 
@@ -1020,6 +1033,42 @@ class BranchController extends Controller
         }
 
         $branch->update($data);
+
+        // Actualizar parámetro por sucursal: requerir PIN de mozo al tomar pedidos
+        // Buscar el parámetro global por su descripción visible en la UI
+        $parameterId = DB::table('parameters')
+            ->whereNull('deleted_at')
+            ->where('description', 'Requerir PIN a mozo')
+            ->value('id');
+
+        if ($parameterId) {
+            $value = $request->has('waiter_pin_enabled') ? '1' : '0';
+            $now = now();
+
+            $existing = DB::table('branch_parameters')
+                ->where('branch_id', $branch->id)
+                ->where('parameter_id', $parameterId)
+                ->first();
+
+            if ($existing) {
+                DB::table('branch_parameters')
+                    ->where('branch_id', $branch->id)
+                    ->where('parameter_id', $parameterId)
+                    ->update([
+                        'value' => $value,
+                        'deleted_at' => null,
+                        'updated_at' => $now,
+                    ]);
+            } else {
+                DB::table('branch_parameters')->insert([
+                    'parameter_id' => $parameterId,
+                    'branch_id' => $branch->id,
+                    'value' => $value,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]);
+            }
+        }
 
         $params = [];
         if ($request->filled('view_id')) {

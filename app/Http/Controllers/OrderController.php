@@ -35,6 +35,98 @@ use Illuminate\Support\Facades\Log;
 
 class OrderController extends Controller
 {
+    private function waiterPinEnabled(?int $branchId): bool
+    {
+        if (!$branchId) {
+            return false;
+        }
+        $value = DB::table('branch_parameters as bp')
+            ->join('parameters as p', 'p.id', '=', 'bp.parameter_id')
+            ->whereNull('bp.deleted_at')
+            ->whereNull('p.deleted_at')
+            ->where('bp.branch_id', $branchId)
+            ->where('p.description', 'Requerir PIN a mozo')
+            ->value('bp.value');
+
+        $v = strtolower(trim((string) ($value ?? '0')));
+        return in_array($v, ['1', 'true', 'si', 'sí', 'yes', 'y', 'on'], true);
+    }
+
+    /** Perfil "Mozo" por nombre (solo se pide PIN a este perfil). */
+    private function mozoProfileId(): ?int
+    {
+        $id = Profile::query()
+            ->whereNull('deleted_at')
+            ->whereRaw('LOWER(TRIM(name)) = ?', ['mozo'])
+            ->value('id');
+        return $id ? (int) $id : null;
+    }
+
+    /** Solo pedir PIN cuando la sucursal lo tiene activo Y el usuario tiene perfil Mozo. */
+    private function shouldRequireWaiterPin(?int $branchId, $profileId): bool
+    {
+        if (!$this->waiterPinEnabled($branchId)) {
+            return false;
+        }
+        $mozoId = $this->mozoProfileId();
+        if ($mozoId === null) {
+            return false;
+        }
+        $currentProfileId = $profileId !== null && $profileId !== '' ? (int) $profileId : null;
+        return $currentProfileId === $mozoId;
+    }
+
+    /** El perfil Mozo puede guardar pedidos pero NO puede cobrar. */
+    private function canCharge($profileId): bool
+    {
+        $mozoId = $this->mozoProfileId();
+        if ($mozoId === null) {
+            return true;
+        }
+        $currentProfileId = $profileId !== null && $profileId !== '' ? (int) $profileId : null;
+        return $currentProfileId !== $mozoId;
+    }
+
+    public function validateWaiterPin(Request $request)
+    {
+        $branchId = (int) session('branch_id');
+        $pin = trim((string) $request->input('pin'));
+
+        if ($pin === '') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ingrese el PIN.',
+            ], 422);
+        }
+
+        $person = Person::query()
+            ->where('branch_id', $branchId)
+            ->where('pin', $pin)
+            ->first();
+
+        if (!$person) {
+            return response()->json([
+                'success' => false,
+                'message' => 'PIN inválido.',
+            ], 422);
+        }
+
+        $name = trim(($person->first_name ?? '') . ' ' . ($person->last_name ?? ''));
+        if ($name === '') {
+            $name = 'Mozo';
+        }
+
+        $request->session()->put('waiter_person_id', (int) $person->id);
+        $request->session()->put('waiter_name', $name);
+
+        return response()->json([
+            'success' => true,
+            'waiter' => [
+                'person_id' => (int) $person->id,
+                'name' => $name,
+            ],
+        ]);
+    }
     public function list(Request $request)
     {
         $search = $request->input('search');
@@ -168,6 +260,8 @@ class OrderController extends Controller
     public function index(Request $request)
     {
         $branchId = session('branch_id');
+        $profileId = session('profile_id') ?? $request->user()?->profile_id;
+        $waiterPinEnabled = $this->shouldRequireWaiterPin($branchId ? (int) $branchId : null, $profileId);
 
         $areas = Area::query()
             ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
@@ -184,7 +278,7 @@ class OrderController extends Controller
             ->whereIn('table_id', $tables->pluck('id'))
             ->whereIn('status', ['PENDIENTE', 'P'])
             ->get()
-            ->groupBy('table_id'); 
+            ->groupBy('table_id');
 
         $tablesPayload = $tables->map(function (Table $table) use ($activeOrderMovements) {
             $elapsed = '--:--';
@@ -197,7 +291,9 @@ class OrderController extends Controller
             $rawSituation = $table->situation ?? 'libre';
             $situation = strtolower((string) $rawSituation);
             if ($situation !== 'libre' && $situation !== 'ocupada') {
-                $situation = (in_array($rawSituation, ['PENDIENTE', 'OCUPADA', 'ocupada', 'Pendiente'], true)) ? 'ocupada' : 'libre';
+                $situation = (in_array($rawSituation, ['PENDIENTE', 'OCUPADA', 'ocupada', 'Pendiente'], true))
+                    ? 'ocupada'
+                    : 'libre';
             }
 
             $orderMovement = $activeOrderMovements->get($table->id)?->sortByDesc('id')->first();
@@ -205,11 +301,18 @@ class OrderController extends Controller
             $totalAmount = $orderMovement ? (float) $orderMovement->subtotal : 0;
             $taxAmount = $orderMovement ? (float) ($orderMovement->tax ?? 0) : 0;
             $totalWithTax = round($totalAmount + $taxAmount, 2);
-            
+
+            // Si no hay pedido pendiente o el total es 0, la mesa debe considerarse libre
+            if (!$orderMovement || $totalWithTax <= 0) {
+                $situation = 'libre';
+                $totalWithTax = 0;
+                $elapsed = '--:--';
+            }
+
             $productsText = '';
             if ($orderMovement && $orderMovement->details && $orderMovement->details->isNotEmpty()) {
                 $productsText = $orderMovement->details
-                    ->map(function($d) {
+                    ->map(function ($d) {
                         if (!empty($d->description)) {
                             return $d->description;
                         }
@@ -220,7 +323,7 @@ class OrderController extends Controller
                     })
                     ->filter()
                     ->unique()
-                    ->implode(' '); 
+                    ->implode(' ');
             }
 
             return [
@@ -230,13 +333,13 @@ class OrderController extends Controller
                 'situation' => $situation,
                 'diners' => (int) ($table->capacity ?? 0),
                 'people_count' => (int) ($orderMovement?->people_count ?? 0),
-                'waiter' => $orderMovement?->movement?->user_name ?? '-',
+                'waiter' => $orderMovement?->movement?->responsible_name ?? $orderMovement?->movement?->user_name ?? '-',
                 'client' => $orderMovement?->movement?->person_name ?? '-',
                 'total' => $totalWithTax,
                 'order_movement_id' => $orderMovement?->id ?? null,
                 'movement_id' => $orderMovement?->movement_id ?? null,
                 'elapsed' => $elapsed,
-                'products_text' => strtolower($productsText), 
+                'products_text' => strtolower($productsText),
             ];
         })->values();
 
@@ -251,12 +354,14 @@ class OrderController extends Controller
             'areas' => $areasArray,
             'tables' => $tablesPayload,
             'user' => $request->user(),
+            'waiterPinEnabled' => $waiterPinEnabled,
+            'canCharge' => $this->canCharge($profileId),
             'turboCacheControl' => 'no-cache',
         ]);
-        
+
         $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
         $response->headers->set('Pragma', 'no-cache');
-        
+
         return $response;
     }
 
@@ -365,7 +470,9 @@ class OrderController extends Controller
             $rawSituation = $table->situation ?? 'libre';
             $situation = strtolower((string) $rawSituation);
             if ($situation !== 'libre' && $situation !== 'ocupada') {
-                $situation = (in_array($rawSituation, ['PENDIENTE', 'OCUPADA', 'ocupada', 'Pendiente'], true)) ? 'ocupada' : 'libre';
+                $situation = (in_array($rawSituation, ['PENDIENTE', 'OCUPADA', 'ocupada', 'Pendiente'], true))
+                    ? 'ocupada'
+                    : 'libre';
             }
             $orderMovement = OrderMovement::with('movement', 'details')
                 ->where('table_id', $table->id)
@@ -375,10 +482,17 @@ class OrderController extends Controller
             $totalAmount = $orderMovement ? (float) $orderMovement->subtotal : 0;
             $taxAmount = $orderMovement ? (float) ($orderMovement->tax ?? 0) : 0;
             $totalWithTax = round($totalAmount + $taxAmount, 2);
+
+            // Si no hay pedido pendiente o el total es 0, la mesa debe considerarse libre
+            if (!$orderMovement || $totalWithTax <= 0) {
+                $situation = 'libre';
+                $totalWithTax = 0;
+                $elapsed = '--:--';
+            }
             $productsText = '';
             if ($orderMovement && $orderMovement->relationLoaded('details') && $orderMovement->details->isNotEmpty()) {
                 $productsText = $orderMovement->details
-                    ->map(fn ($d) => $d->description ?? ($d->product_snapshot['description'] ?? $d->product_snapshot['name'] ?? ''))
+                    ->map(fn($d) => $d->description ?? ($d->product_snapshot['description'] ?? $d->product_snapshot['name'] ?? ''))
                     ->filter()
                     ->unique()
                     ->implode(' ');
@@ -390,7 +504,7 @@ class OrderController extends Controller
                 'situation' => $situation,
                 'diners' => (int) ($table->capacity ?? 0),
                 'people_count' => (int) ($orderMovement?->people_count ?? 0),
-                'waiter' => $orderMovement?->movement?->user_name ?? '-',
+                'waiter' => $orderMovement?->movement?->responsible_name ?? $orderMovement?->movement?->user_name ?? '-',
                 'client' => $orderMovement?->movement?->person_name ?? '-',
                 'total' => $totalWithTax,
                 'order_movement_id' => $orderMovement?->id ?? null,
@@ -464,12 +578,57 @@ class OrderController extends Controller
         $units = Unit::orderBy('description')->get();
 
         // Pedido pendiente activo para esta mesa (si existe, lo cargamos para no duplicar)
-        $pendingOrder = OrderMovement::with('movement')
+        $pendingOrder = OrderMovement::with(['movement', 'details'])
             ->where('table_id', $table->id)
             ->whereIn('status', ['PENDIENTE', 'P'])
             ->orderByDesc('id')
             ->first();
         $startFresh = !$pendingOrder;
+
+        // Detalles cancelados del pedido pendiente (para mostrar razón cuando se abre la orden para cambiar)
+        $pendingCancelledDetails = $pendingOrder
+            ? $pendingOrder->details->where('status', 'C')->map(fn ($d) => [
+                'description' => $d->description,
+                'quantity' => (float) $d->quantity,
+                'comment' => $d->comment ?? '',
+            ])->values()->all()
+            : [];
+
+        $saleOrOrderTypeIds = MovementType::query()
+            ->where(function ($q) {
+                $q->where('description', 'like', '%venta%')
+                    ->orWhere('description', 'like', '%sale%')
+                    ->orWhere('description', 'like', '%pedido%')
+                    ->orWhere('description', 'like', '%orden%');
+            })
+            ->pluck('id')
+            ->unique()
+            ->values()
+            ->all();
+        $documentTypes = DocumentType::query()
+            ->orderBy('name')
+            ->whereIn('movement_type_id', !empty($saleOrOrderTypeIds) ? $saleOrOrderTypeIds : [2])
+            ->get(['id', 'name']);
+        $paymentMethods = PaymentMethod::query()
+            ->where('status', true)
+            ->orderBy('order_num')
+            ->get(['id', 'description', 'order_num']);
+        $paymentGateways = PaymentGateways::query()
+            ->where('status', true)
+            ->orderBy('order_num')
+            ->get(['id', 'description', 'order_num']);
+        $cards = Card::query()
+            ->where('status', true)
+            ->orderBy('order_num')
+            ->get(['id', 'description', 'type', 'icon', 'order_num']);
+        $digitalWallets = DigitalWallet::query()
+            ->where('status', true)
+            ->orderBy('order_num')
+            ->get(['id', 'description', 'order_num']);
+        $cashRegisters = CashRegister::query()
+            ->where('status', '1')
+            ->orderBy('number')
+            ->get(['id', 'number']);
 
         $response = response()->view('orders.create', [
             'user' => $user,
@@ -486,6 +645,15 @@ class OrderController extends Controller
             'pendingOrderMovementId' => $pendingOrder?->id,
             'pendingMovementId' => $pendingOrder?->movement_id,
             'pendingPeopleCount' => (int) ($pendingOrder?->people_count ?: ($table->capacity ?? 1)),
+            'pendingCancelledDetails' => $pendingCancelledDetails,
+            'documentTypes' => $documentTypes,
+            'paymentMethods' => $paymentMethods,
+            'paymentGateways' => $paymentGateways,
+            'cards' => $cards,
+            'digitalWallets' => $digitalWallets,
+            'cashRegisters' => $cashRegisters,
+            'waiterPinEnabled' => $this->shouldRequireWaiterPin((int) $branchId, session('profile_id') ?? $request->user()?->profile_id),
+            'canCharge' => $this->canCharge(session('profile_id') ?? $request->user()?->profile_id),
             'turboCacheControl' => 'no-cache',
         ]);
         $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
@@ -495,6 +663,12 @@ class OrderController extends Controller
 
     public function charge(Request $request)
     {
+        $profileId = session('profile_id') ?? $request->user()?->profile_id;
+        if (!$this->canCharge($profileId)) {
+            return redirect()
+                ->route('orders.index')
+                ->with('error', 'Tu perfil (Mozo) no tiene permiso para cobrar. Solo puedes guardar pedidos.');
+        }
 
         $saleOrOrderTypeIds = MovementType::query()
             ->where(function ($q) {
@@ -712,8 +886,31 @@ class OrderController extends Controller
     public function processOrder(Request $request)
     {
         $items = $request->input('items', []);
+        $cancellations = (array) $request->input('cancellations', []);
         $branchId = session('branch_id');
         $user = $request->user();
+        $profileId = session('profile_id') ?? $user?->profile_id;
+        $waiterPinEnabled = $this->shouldRequireWaiterPin($branchId ? (int) $branchId : null, $profileId);
+        $waiterPersonId = $waiterPinEnabled ? (int) $request->session()->get('waiter_person_id') : (int) ($user?->person?->id ?? 0);
+        $waiterName = $waiterPinEnabled ? (string) $request->session()->get('waiter_name') : trim(($user?->person?->first_name ?? '') . ' ' . ($user?->person?->last_name ?? ''));
+        // responsible_name = empleado que insertó el PIN (Person), nunca el usuario (User)
+        if ($waiterPersonId) {
+            $waiterPerson = Person::find($waiterPersonId);
+            $resolvedName = $waiterPerson ? trim(($waiterPerson->first_name ?? '') . ' ' . ($waiterPerson->last_name ?? '')) : '';
+            $waiterName = $resolvedName !== '' ? $resolvedName : ($waiterPerson ? 'Mozo' : $waiterName);
+        }
+        if (trim((string) $waiterName) === '' && !$waiterPinEnabled) {
+            $waiterName = $user?->name ?? 'Sistema';
+        }
+        if ($waiterPinEnabled && !$waiterPersonId) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Debe ingresar el PIN del mozo.',
+                ], 422);
+            }
+            return redirect()->back()->with('error', 'Debe ingresar el PIN del mozo.');
+        }
 
         // Subtotal: usar el enviado por el front o recalcular desde items
         $subtotal = $request->has('subtotal') ? (float) $request->subtotal : 0;
@@ -759,7 +956,7 @@ class OrderController extends Controller
             }
 
             // Si ya hay pedido pendiente en la mesa pero items vacío: no crear duplicado (p. ej. al guardar sin productos al ir a cobrar)
-            if ($existingOrderMovement && empty($items)) {
+            if ($existingOrderMovement && empty($items) && empty($cancellations)) {
                 DB::commit();
                 if ($request->expectsJson()) {
                     return response()->json([
@@ -773,7 +970,7 @@ class OrderController extends Controller
             }
 
             // Mesa concreta pero sin items y sin pedido previo: no crear pedido vacío
-            if ($tableId && empty($items)) {
+            if ($tableId && empty($items) && empty($cancellations)) {
                 DB::rollBack();
                 if ($request->expectsJson()) {
                     return response()->json([
@@ -784,8 +981,8 @@ class OrderController extends Controller
                 return redirect()->back()->with('error', 'Agregue productos al pedido.');
             }
 
-            if ($existingOrderMovement && !empty($items)) {
-                // ACTUALIZAR pedido existente
+            if ($existingOrderMovement) {
+                // ACTUALIZAR pedido existente (aunque quede sin items, para registrar cancelaciones)
                 $existingOrderMovement->update([
                     'subtotal' => $subtotal,
                     'tax' => $tax,
@@ -801,10 +998,16 @@ class OrderController extends Controller
                     'moved_at' => now(),
                     'user_id' => $user?->id,
                     'user_name' => $user?->name ?? 'Sistema',
+                    'responsible_id' => $user?->id,
+                    'responsible_name' => $waiterName ?: (($user?->person?->first_name ?? '') . ' ' . ($user?->person?->last_name ?? '-')),
                 ]);
 
-                // Eliminar detalles antiguos y crear los nuevos
-                $existingOrderMovement->details()->forceDelete();
+                // Eliminar detalles antiguos ACTIVOS y crear los nuevos (mantener histórico de cancelaciones status='C')
+                $existingOrderMovement->details()
+                    ->where(function ($q) {
+                        $q->whereNull('status')->orWhere('status', '!=', 'C');
+                    })
+                    ->forceDelete();
 
                 $orderMovement = $existingOrderMovement;
                 $movement = $orderMovement->movement;
@@ -833,8 +1036,8 @@ class OrderController extends Controller
                     'user_name' => $user?->name ?? 'Sistema',
                     'person_id' => null,
                     'person_name' => 'Público General',
-                    'responsible_id' => $user?->person->id,
-                    'responsible_name' => $user?->person->first_name . ' ' . $user?->person->last_name ?? '-',
+                    'responsible_id' => $user?->id,
+                    'responsible_name' => $waiterName ?: (($user?->person?->first_name ?? '') . ' ' . ($user?->person?->last_name ?? '-')),
                     'comment' => 'Pedido desde punto de venta',
                     'status' => 'A',
                     'movement_type_id' => $movementType->id,
@@ -904,6 +1107,49 @@ class OrderController extends Controller
                 ]);
             }
 
+            // Registrar cancelaciones por plato como detalles con estado 'C'
+            foreach ($cancellations as $rawCancel) {
+                $productId = $rawCancel['product_id'] ?? $rawCancel['pId'] ?? null;
+                $product = $productId ? Product::find($productId) : null;
+
+                $qty = (float) ($rawCancel['qtyCanceled'] ?? $rawCancel['quantity'] ?? 0);
+                if ($qty <= 0) {
+                    continue;
+                }
+
+                $price = (float) ($rawCancel['price'] ?? 0);
+                $amount = $qty * $price;
+
+                $unitId = $rawCancel['unit_id'] ?? ($product?->unit_id ?? null);
+                if (!$unitId) {
+                    $unitId = Unit::query()->value('id'); // unidad por defecto
+                }
+
+                $code = $rawCancel['code'] ?? ($product?->code ?? (string) $productId);
+                $description = $rawCancel['description'] ?? ($product?->description ?? ($rawCancel['name'] ?? 'Producto'));
+
+                $productSnapshot = $rawCancel['product_snapshot'] ?? null;
+                if (!is_array($productSnapshot) && $product) {
+                    $productSnapshot = $product->toArray();
+                }
+
+                OrderMovementDetail::create([
+                    'order_movement_id' => $orderMovement->id,
+                    'product_id' => $productId,
+                    'code' => $code,
+                    'description' => $description,
+                    'product_snapshot' => $productSnapshot,
+                    'unit_id' => $unitId,
+                    'tax_rate_id' => $rawCancel['tax_rate_id'] ?? null,
+                    'tax_rate_snapshot' => $rawCancel['tax_rate_snapshot'] ?? null,
+                    'quantity' => $qty,
+                    'amount' => $amount,
+                    'branch_id' => $branchId,
+                    'comment' => $rawCancel['cancel_reason'] ?? null,
+                    'status' => 'C',
+                ]);
+            }
+
             DB::commit();
 
             if ($request->expectsJson()) {
@@ -934,6 +1180,14 @@ class OrderController extends Controller
 
     public function processOrderPayment(Request $request)
     {
+        $profileId = session('profile_id') ?? $request->user()?->profile_id;
+        if (!$this->canCharge($profileId)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tu perfil (Mozo) no tiene permiso para cobrar. Solo puedes guardar pedidos.',
+            ], 403);
+        }
+
         $movementId = $request->input('movement_id');
         $tableId = $request->input('table_id');
         $branchId = (int) session('branch_id');
@@ -974,7 +1228,10 @@ class OrderController extends Controller
                 $paymentConcept = $this->resolveOrderPaymentConcept();
                 $cashMovementTypeId = $this->resolveCashMovementTypeId();
                 $cashDocumentTypeId = $this->resolveCashIncomeDocumentTypeId($cashMovementTypeId);
-                $cashRegisterId = $this->resolveActiveCashRegisterId($branchId);
+                $requestCashRegisterId = $request->input('cash_register_id');
+                $cashRegisterId = ($requestCashRegisterId && CashRegister::find((int) $requestCashRegisterId))
+                    ? (int) $requestCashRegisterId
+                    : $this->resolveActiveCashRegisterId($branchId);
                 $cashRegister = CashRegister::find($cashRegisterId);
                 $shift = Shift::where('branch_id', $branchId)->first() ?? Shift::first();
                 if (!$shift) {
@@ -991,8 +1248,8 @@ class OrderController extends Controller
                         'user_name' => $user?->name ?? 'Sistema',
                         'person_id' => $orderBaseMovement?->person_id,
                         'person_name' => $orderBaseMovement?->person_name ?? 'Publico General',
-                        'responsible_id' => $user?->person->id,
-                        'responsible_name' => $user?->person->first_name . ' ' . $user?->person->last_name ?? '-',
+                        'responsible_id' => $user?->id,
+                        'responsible_name' => $user?->person ? trim(($user->person->first_name ?? '') . ' ' . ($user->person->last_name ?? '')) : ($user?->name ?? 'Sistema'),
                         'comment' => 'Cobro de pedido ' . ($orderBaseMovement?->number ?? ''),
                         'status' => '1',
                         'movement_type_id' => $cashMovementTypeId,
@@ -1286,7 +1543,9 @@ class OrderController extends Controller
 
     public function cancelOrder(Request $request)
     {
+        $cancelReason = trim((string) $request->input('cancel_reason'));
         $tableId = $request->input('table_id');
+
         if (!$tableId) {
             return response()->json([
                 'success' => false,
@@ -1301,13 +1560,26 @@ class OrderController extends Controller
             ], 404);
         }
 
-        // Cancelar pedidos pendientes asociados a la mesa
-        OrderMovement::where('table_id', $tableId)
+        $orderMovement = OrderMovement::where('table_id', $tableId)
             ->whereIn('status', ['PENDIENTE', 'P'])
-            ->update([
-                'status' => 'CANCELADO',
-                'finished_at' => now(),
+            ->first();
+        if (!$orderMovement) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No se encontró un pedido pendiente para esta mesa.',
+            ], 404);
+        }
+
+        $orderMovement->update([
+            'status' => 'CANCELADO',
+            'finished_at' => now(),
+        ]);
+
+        if ($cancelReason !== '') {
+            Movement::where('id', $orderMovement->movement_id)->update([
+                'comment' => $cancelReason,
             ]);
+        }
 
         Table::where('id', $table->id)->update([
             'situation' => 'libre',

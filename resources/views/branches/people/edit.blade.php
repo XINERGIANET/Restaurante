@@ -44,7 +44,13 @@
 
             @if ($errors->any())
                 <div class="mb-5">
-                    <x-ui.alert variant="error" title="Revisa los campos" message="Hay errores en el formulario, corrige los datos e intenta nuevamente." />
+                    <x-ui.alert variant="error" title="Revisa los campos">
+                        <ul class="list-disc list-inside text-sm text-red-700 dark:text-red-300 mt-2 space-y-1">
+                            @foreach ($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                    </x-ui.alert>
                 </div>
             @endif
 

@@ -19,6 +19,7 @@ class Person extends Model
         'person_type',
         'phone',
         'email',
+        'pin',
         'document_number',
         'address',
         'location_id',

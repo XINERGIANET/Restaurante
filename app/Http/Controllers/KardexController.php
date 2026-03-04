@@ -10,8 +10,10 @@ use App\Models\WarehouseMovementDetail;
 use App\Models\OrderMovementDetail;
 use App\Models\OrderMovement;
 use App\Models\DocumentType;
+use App\Models\Operation;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Barryvdh\Snappy\Facades\SnappyPdf as PDF;
 
 class KardexController extends Controller
 {
@@ -113,12 +115,27 @@ class KardexController extends Controller
             ]
         );
 
+        $topOperations = Operation::where('view_id', $viewId)->where('type', 'T')->orderBy('id')->get();
+        $resolveActionUrl = function ($action, $model = null, $operation = null) use ($viewId) {
+            if (!$action) {
+                return '#';
+            }
+
+            return route($action, $model ?? []);
+        };
+        $resolveTextColor = function ($operation) {
+            // Texto siempre en blanco para asegurar contraste sobre el color de fondo
+            return '#FFFFFF';
+        };
         return view('kardex.index', compact(
             'viewId', 'productId', 'branchId', 'dateFrom', 'dateTo',
             'products', 'branch', 'movements', 'showAllProducts', 
             'sourceFilter', 'typeFilter', 
             'availableTypes',
-            'perPage' 
+            'perPage',
+            'topOperations',
+            'resolveActionUrl',
+            'resolveTextColor'
         ));
     }
 
@@ -423,5 +440,110 @@ class KardexController extends Controller
         );
 
         return $ids->unique()->filter()->values()->all();
+    }
+
+    public function exportPdf(Request $request)
+    {
+        $viewId = $request->input('view_id');
+        $productId = $request->input('product_id') ?? 'all';
+        $branchId = $request->session()->get('branch_id');
+        $dateFrom = $request->input('date_from') ?? now()->startOfMonth()->format('Y-m-d');
+        $dateTo = $request->input('date_to') ?? now()->format('Y-m-d');
+
+        $sourceFilter = $request->input('source') ?? 'all';
+        $typeFilter = $request->input('movement_type') ?? 'all';
+
+        $products = Product::where('kardex', 'S')->with('baseUnit')->orderBy('description')->get();
+        $branch = $branchId ? Branch::find($branchId) : null;
+        $movementsCollection = collect();
+        $showAllProducts = ($productId === 'all');
+
+        $orderSeriesMap = $this->buildOrderSeriesMap($branchId ? (int) $branchId : null, $dateFrom, $dateTo);
+
+        if ($showAllProducts) {
+            $productIds = $this->getProductIdsWithMovements($branchId ? (int) $branchId : null, $dateFrom, $dateTo);
+            $productIds = array_values(array_intersect($productIds, $products->pluck('id')->all()));
+
+            if (!empty($productIds)) {
+                $productMap = Product::whereIn('id', $productIds)->get()->keyBy('id');
+
+                foreach ($productIds as $pid) {
+                    $rows = $this->buildKardexMovements($pid, $branchId ? (int) $branchId : null, $dateFrom, $dateTo, $orderSeriesMap);
+
+                    $p = $productMap->get($pid);
+                    foreach ($rows as $r) {
+                        $r['product_code'] = $p?->code ?? '-';
+                        $r['product_description'] = $p?->description ?? '-';
+                        $movementsCollection->push($r);
+                    }
+                }
+                $movementsCollection = $movementsCollection->sortBy([
+                    ['date', 'desc'],
+                    ['product_code', 'asc']
+                ])->values();
+            }
+        } elseif ($productId && is_numeric($productId)) {
+            $data = $this->buildKardexMovements((int) $productId, $branchId ? (int) $branchId : null, $dateFrom, $dateTo, $orderSeriesMap);
+            $movementsCollection = collect($data);
+        }
+
+        if ($sourceFilter !== 'all') {
+            $movementsCollection = $movementsCollection->filter(function ($m) use ($sourceFilter) {
+                $origin = $m['origin'] ?? '';
+                $isSale = str_starts_with($origin, 'V - ') || str_starts_with($origin, 'O - ');
+                $typeLower = strtolower($m['type'] ?? '');
+                if (!$isSale) {
+                    $isSale = str_contains($typeLower, 'boleta') || str_contains($typeLower, 'factura')
+                        || str_contains($typeLower, 'nota') || str_contains($typeLower, 'ticket');
+                }
+
+                if ($sourceFilter === 'sales') return $isSale;
+                if ($sourceFilter === 'warehouse') return !$isSale && ($m['type'] ?? '') !== 'Saldo inicial';
+                return true;
+            });
+        }
+
+        if ($typeFilter !== 'all') {
+            $movementsCollection = $movementsCollection->filter(function ($m) use ($typeFilter) {
+                return ($m['type'] ?? '') === $typeFilter;
+            });
+        }
+
+        $movementsCollection = $movementsCollection->sortByDesc('date')->values();
+
+        $movements = $movementsCollection;
+
+        $pdf = PDF::loadView('kardex.pdf.pdf_report', [
+            'movements' => $movements,
+            'branch' => $branch,
+            'products' => $products,
+            'productId' => $productId,
+            'dateFrom' => $dateFrom,
+            'dateTo' => $dateTo,
+            'showAllProducts' => $showAllProducts,
+            'sourceFilter' => $sourceFilter,
+            'typeFilter' => $typeFilter,
+            'viewId' => $viewId,
+        ]);
+
+        $pdf->setPaper('a4')
+            ->setOption('margin-bottom', 10)
+            ->setOption('orientation', 'landscape')
+            ->setOption('encoding', 'utf-8')
+            ->setOption('enable-local-file-access', true);
+
+        $output = $pdf->output();
+
+        return response($output, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="Kardex.pdf"',
+            'Content-Length' => strlen($output),
+        ]);
+    }
+
+    public function pdf(Request $request)
+    {
+        // Alias para mantener compatibilidad si ya tienes rutas antiguas apuntando a pdf()
+        return $this->exportPdf($request);
     }
 }

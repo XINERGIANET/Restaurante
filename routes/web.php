@@ -174,6 +174,8 @@ Route::middleware('auth')->group(function () {
     //Kardex
     Route::get('/herramientas/kardex', [KardexController::class, 'index'])
         ->name('kardex.index');
+    Route::get('/herramientas/kardex/pdf', [KardexController::class, 'pdf'])
+        ->name('kardex.exportPdf');
     //Rutas de ordenes
     Route::resource('/Pedidos', OrderController::class)
         ->names('orders')
@@ -205,6 +207,10 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/Pedidos/mover-mesa', [OrderController::class, 'moveTable'])
         ->name('orders.moveTable');
+
+    // PIN de mozo (por sucursal)
+    Route::post('/Pedidos/validar-pin-mozo', [OrderController::class, 'validateWaiterPin'])
+        ->name('orders.validateWaiterPin');
     
     // Dashboard pages
     Route::get('/', [\App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');

@@ -94,7 +94,7 @@
                             onchange="this.form.submit()">
                             @foreach ([10, 20, 50, 100] as $size)
                                 <option value="{{ $size }}" @selected($perPage == $size)>{{ $size }} /
-                                    página</option>
+                                    pág</option>
                             @endforeach
                         </select>
                     </div>
@@ -109,39 +109,39 @@
                                 class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 pl-11 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30" />
                         </div>
                     </div>
-                    <div class="flex items-center gap-2 flex-none">
-                        <x-ui.button size="md" variant="primary" type="submit" class="flex-1 sm:flex-none h-11 px-4 shadow-sm hover:shadow-md transition-all duration-200 active:scale-95" style="background-color: #244BB3; border-color: #244BB3;">
+                    <div class="flex items-center gap-2 flex-none sm:flex-row sm:w-full flex-col">
+                        <x-ui.button size="md" variant="primary" type="submit" class="w-full sm:w-auto h-11 px-4 shadow-sm hover:shadow-md transition-all duration-200 active:scale-95" style="background-color: #244BB3; border-color: #244BB3;">
                             <i class="ri-search-line text-gray-100"></i>
                             <span class="font-medium text-gray-100">Buscar</span>
                         </x-ui.button>
 
-                        <x-ui.link-button size="md" variant="outline" href="{{ route('admin.companies.index', $viewId ? ['view_id' => $viewId] : []) }}" class="flex-1 sm:flex-none h-11 px-4 border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200">
+                        <x-ui.link-button size="md" variant="outline" href="{{ route('admin.companies.index', $viewId ? ['view_id' => $viewId] : []) }}" class="flex-1 sm:flex-none w-full sm:w-auto h-11 px-4 border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200">
                             <i class="ri-refresh-line"></i>
                             <span class="font-medium">Limpiar</span>
                         </x-ui.link-button>
                     </div>
                 </form>
 
-                <div class="flex items-center gap-3 border-t border-gray-100 pt-4 lg:border-0 lg:pt-0 flex-none ml-auto">
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 flex-none ml-auto w-full sm:w-auto">
                     @foreach ($topOperations as $operation)
                         @php
                             $topTextColor = $resolveTextColor($operation);
-                            $topColor = $operation->color ?: '#3B82F6';
+                            $topColor = $operation->color ?: '#63B7EC';
                             $topStyle = "background-color: {$topColor}; color: {$topTextColor};";
                             $topActionUrl = $resolveActionUrl($operation->action ?? '', null, $operation);
                         @endphp
                         @if ($operation->action === 'companies.create')
-                            <x-ui.button size="md" variant="primary" type="button"
-                                class="w-full sm:w-auto h-11 px-6 shadow-sm"
+                            <x-ui.button size="sm" variant="primary" type="button"
+                                class="w-full sm:w-auto flex-1 sm:flex-none h-11 px-4 border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200"
                                 style="{{ $topStyle }}" @click="$dispatch('open-company-modal')">
                                 <i class="{{ $operation->icon }} text-lg"></i>
                                 <span>{{ $operation->name }}</span>
                             </x-ui.button>
                         @else
-                            <x-ui.link-button size="md" variant="primary"
-                                class="w-full sm:w-auto h-11 px-6 shadow-sm"
+                            <x-ui.link-button size="sm" variant="primary"
+                                class="w-full sm:w-auto flex-1 sm:flex-none h-11 px-4 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200"
                                 style="{{ $topStyle }}"
-                                href="{{ $topActionUrl }}">
+                                href="{{ $topActionUrl }}"> 
                                 <i class="{{ $operation->icon }} text-lg"></i>
                                 <span>{{ $operation->name }}</span>
                             </x-ui.link-button>
@@ -155,17 +155,17 @@
                 class="table-responsive rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
                 <table class="w-full min-w-max">
                         <thead>
-                            <tr class="text-white">
-                                <th style="background-color: #63B7EC;" class="px-3 py-4 text-left whitespace-nowrap first:rounded-tl-xl sticky-left-header w-32 max-w-[128px] sm:w-auto sm:max-w-none">
-                                    <p class="font-bold text-gray-100 text-xs uppercase tracking-wider truncate">Razón social</p>
+                            <tr style="background-color: #63B7EC;" class="text-white">
+                                <th class="px-3 py-4 text-center whitespace-nowrap first:rounded-tl-xl sticky-left-header w-32 max-w-[128px] sm:w-auto sm:max-w-none">
+                                    <p class="font-bold text-gray-100 text-xs uppercase tracking-wider">Razón social</p>
                                 </th>
-                                <th style="background-color: #63B7EC;" class="px-5 py-4 text-center whitespace-nowrap">
+                                <th class="px-5 py-4 text-center whitespace-nowrap">
                                     <p class="font-bold text-gray-100 text-xs uppercase tracking-wider">RUC</p>
                                 </th>
-                                <th style="background-color: #63B7EC;" class="px-5 py-4 text-left whitespace-nowrap">
+                                <th class="px-5 py-4 text-center whitespace-nowrap">
                                     <p class="font-bold text-gray-100 text-xs uppercase tracking-wider">Dirección</p>
                                 </th>
-                                <th style="background-color: #63B7EC;" class="px-5 py-4 text-center whitespace-nowrap last:rounded-tr-xl">
+                                <th class="px-5 py-4 text-center whitespace-nowrap last:rounded-tr-xl">
                                     <p class="font-bold text-gray-100 text-xs uppercase tracking-wider">Acciones</p>
                                 </th>
                             </tr>
@@ -173,12 +173,12 @@
                         <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
                             @forelse ($companies as $company)
                                 <tr class="group/row transition hover:bg-gray-50/80 dark:hover:bg-white/5">
-                                    <td class="px-3 py-4 whitespace-nowrap sticky-left w-32 max-w-[128px] sm:w-auto sm:max-w-none">
-                                        <div class="flex items-center gap-2">
-                                            <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/10 shrink-0">
-                                                <i class="ri-building-line text-xs"></i>
+                                    <td class="px-3 py-4 text-center whitespace-nowrap w-32 sm:sticky-left-header max-w-[128px] sm:w-auto sm:max-w-none">
+                                        <div class="flex items-center justify-center gap-2">
+                                            <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100 text-gray-600 dark:bg-gray-800/50 dark:text-gray-400 shrink-0">
+                                                <i class="ri-building-line text-sm"></i>
                                             </div>
-                                            <p class="font-semibold text-gray-800 text-theme-sm dark:text-white/90 truncate" title="{{ $company->legal_name }}">
+                                            <p class="font-semibold text-gray-800 text-theme-sm dark:text-white/90 text-center" title="{{ $company->legal_name }}">
                                                 {{ $company->legal_name }}
                                             </p>
                                         </div>
@@ -188,12 +188,12 @@
                                             {{ $company->tax_id }}
                                         </span>
                                     </td>
-                                    <td class="px-5 py-4 min-w-[200px]">
+                                    <td class="px-5 py-4 text-center whitespace-nowrap">
                                         <p class="text-gray-600 text-theme-sm dark:text-gray-400 line-clamp-1" title="{{ $company->address }}">
                                             {{ $company->address }}
                                         </p>
                                     </td>
-                                    <td class="px-5 py-4 whitespace-nowrap">
+                                    <td class="px-5 py-4 text-center whitespace-nowrap">
                                         <div class="flex items-center justify-center gap-2">
                                             @foreach ($rowOperations as $operation)
                                                 @php
@@ -201,7 +201,7 @@
                                                     $isDelete = str_contains($action, 'destroy');
                                                     $actionUrl = $resolveActionUrl($action, $company, $operation);
                                                     $textColor = $resolveTextColor($operation);
-                                                    $buttonColor = $operation->color ?: '#3B82F6';
+                                                    $buttonColor = $operation->color ?: '#63B7EC';
                                                     $buttonStyle = "background-color: {$buttonColor}; color: {$textColor};";
                                                     $variant = $isDelete ? 'eliminate' : (str_contains($action, 'edit') ? 'edit' : 'primary');
                                                 @endphp
@@ -217,13 +217,13 @@
                                                             <input type="hidden" name="view_id" value="{{ $viewId }}">
                                                         @endif
                                                         <x-ui.button size="icon" variant="{{ $variant }}" type="submit"
-                                                            className="h-9 w-9 rounded-xl shadow-sm transition-transform active:scale-95 group-hover:shadow-md"
+                                                            className="h-9 w-9 rounded-xl shadow-sm transform transition duration-150 hover:-translate-y-0.5 hover:shadow-md active:scale-95"
                                                             style="{{ $buttonStyle }}"
                                                             aria-label="{{ $operation->name }}">
                                                             <i class="{{ $operation->icon }} text-lg"></i>
                                                         </x-ui.button>
                                                         <span
-                                                            class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">
+                                                            class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.3s;">
                                                             {{ $operation->name }}
                                                         </span>
                                                     </form>
@@ -231,13 +231,13 @@
                                                     <div class="relative group">
                                                         <x-ui.link-button size="icon" variant="{{ $variant }}"
                                                             href="{{ $actionUrl }}"
-                                                            className="h-9 w-9 rounded-xl shadow-sm transition-transform active:scale-95 group-hover:shadow-md"
+                                                            className="h-9 w-9 rounded-xl shadow-sm transform transition duration-150 hover:-translate-y-0.5 hover:shadow-md active:scale-95"
                                                             style="{{ $buttonStyle }}"
                                                             aria-label="{{ $operation->name }}">
                                                             <i class="{{ $operation->icon }} text-lg"></i>
                                                         </x-ui.link-button>
                                                     <span
-                                                        class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.5s;">
+                                                        class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.3s;">
                                                         {{ $operation->name }}
                                                     </span>
                                                     </div>
@@ -281,16 +281,17 @@
                     <span class="font-semibold text-gray-700 dark:text-gray-200">{{ $companies->total() }}</span>
                 </div>
                 <div class="flex-none pagination-simple">
-                    {{ $companies->links() }}
+                    {{ $companies->links('components.ui.pagination-simple-rounded') }}
                 </div>
             </div>
+
         </x-common.component-card>
 
 
         <x-ui.modal x-data="{ open: false }" @open-company-modal.window="open = true"
             @close-company-modal.window="open = false" :isOpen="false" :showCloseButton="false" class="max-w-3xl">
             <div class="p-6 sm:p-8">
-                <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between relative">
                     <div class="flex items-center gap-4">
                         <div
                             class="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-500 dark:bg-brand-500/10">
@@ -302,7 +303,7 @@
                         </div>
                     </div>
                     <button type="button" @click="open = false"
-                        class="flex h-11 w-11 items-center justify-center rounded-full bg-gray-100 text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
+                        class="flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-full bg-gray-100 text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white absolute right-0 top-0 sm:static"
                         aria-label="Cerrar">
                         <i class="ri-close-line text-xl"></i>
                     </button>

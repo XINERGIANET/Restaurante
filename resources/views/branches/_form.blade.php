@@ -48,6 +48,7 @@
     $selectedDepartmentId = old('department_id', $selectedDepartmentId ?? null);
     $selectedProvinceId = old('province_id', $selectedProvinceId ?? null);
     $selectedDistrictId = old('location_id', $selectedDistrictId ?? ($branch->location_id ?? null));
+    $waiterPinEnabledLocal = old('waiter_pin_enabled', ($waiterPinEnabled ?? false) ? '1' : '0');
 @endphp
 
 <div
@@ -234,5 +235,24 @@
         @enderror
     </div>
 
-   
+    <div class="sm:col-span-1 lg:col-span-3 mt-4">
+        <label class="flex items-start gap-2 cursor-pointer">
+            <input
+                type="checkbox"
+                name="waiter_pin_enabled"
+                value="1"
+                class="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                {{ (string) $waiterPinEnabledLocal === '1' ? 'checked' : '' }}
+            />
+            <span>
+                <span class="block text-sm font-medium text-gray-700 dark:text-gray-200">
+                    Requerir PIN de mozo en salones de pedidos
+                </span>
+                <span class="block text-xs text-gray-500 dark:text-gray-400">
+                    Si está activo, al tomar pedidos en esta sucursal se pedirá el PIN del mozo. Si está desactivado, se usará solo el usuario con el que se inicia sesión.
+                </span>
+            </span>
+        </label>
+    </div>
+
 </div>

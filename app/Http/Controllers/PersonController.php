@@ -143,6 +143,9 @@ class PersonController extends Controller
         $branch = $this->resolveBranch($company, $branch);
         $person = $this->resolvePerson($branch, $person);
         $data = $this->validatePerson($request);
+        if (array_key_exists('pin', $data) && (string) $data['pin'] === '') {
+            unset($data['pin']);
+        }
         $roleIds = $this->validateRoles($request);
         $hasUserRole = in_array(1, $roleIds, true);
         $userData = $this->validateUserData($request, $hasUserRole, $person);
@@ -227,7 +230,7 @@ class PersonController extends Controller
 
     private function validatePerson(Request $request): array
     {
-        return $request->validate([
+        $data = $request->validate([
             'first_name' => ['required', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
             'fecha_nacimiento' => ['nullable', 'date'],
@@ -238,7 +241,10 @@ class PersonController extends Controller
             'document_number' => ['required', 'string', 'max:50'],
             'address' => ['required', 'string', 'max:255'],
             'location_id' => ['required', 'integer', 'exists:locations,id'],
+            'pin' => ['nullable', 'string', 'max:20'],
         ]);
+
+        return $data;
     }
 
     private function validateRoles(Request $request): array
@@ -268,7 +274,12 @@ class PersonController extends Controller
             $rules['password'] = ['required', 'string', 'min:8', 'confirmed'];
         }
 
-        return $request->validate($rules);
+        $messages = [
+            'password.min' => 'La contraseña debe tener al menos 8 caracteres.',
+            'password.required' => 'La contraseña es obligatoria y debe tener al menos 8 caracteres.',
+        ];
+
+        return $request->validate($rules, $messages);
     }
 
     private function syncRoles(Person $person, array $roleIds, int $branchId): void

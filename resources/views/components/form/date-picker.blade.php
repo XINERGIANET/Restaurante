@@ -3,7 +3,7 @@
     'mode' => 'single', // 'single', 'multiple', 'range', 'time'
     'defaultDate' => null,
     'label' => null,
-    'placeholder' => 'Seleccione una fecha',
+    'placeholder' => 'Fecha',
     'name' => null,
     'dateFormat' => 'Y-m-d',
     'enableTime' => false,
@@ -19,8 +19,9 @@
         this.$nextTick(() => {
             this.flatpickrInstance = flatpickr(this.$refs.dateInput, {
                 mode: '{{ $mode }}',
-                static: true,
-                monthSelectorType: 'static',
+                static: false,
+                monthSelectorType: 'dropdown',
+                appendTo: document.body,
                 dateFormat: '{{ $dateFormat }}',
                 defaultDate: {{ $defaultDate ? (is_array($defaultDate) ? json_encode($defaultDate) : "'" . $defaultDate . "'") : 'null' }},
                 enableTime: {{ $enableTime ? 'true' : 'false' }},
