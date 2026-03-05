@@ -242,7 +242,7 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
             @include('layouts.app-header')
             <!-- app header end -->
             
-            <main class="flex-1 p-4 w-full md:p-6 flex flex-col min-w-0 overflow-hidden">
+            <main class="flex-1 p-4 w-full md:p-6 flex flex-col min-w-0 min-h-0 overflow-y-auto overflow-x-hidden">
                 <div class="flex-1 min-w-0 w-full">
                     @yield('content')
                 </div>

@@ -459,32 +459,47 @@
             @include('products.select_type')
         </x-ui.modal>
 
-        {{-- Modal de formulario de creación --}}
+        {{-- Modal de formulario de creación: componente definido aquí para no depender del bundle --}}
         @php
             $productModalOpen = ($errors->any() ?? false) ? 'true' : 'false';
             $productModalType = json_encode(old('type', 'PRODUCT'));
         @endphp
         <script>
-            window.__productModalInit = { open: {!! $productModalOpen !!}, type: {!! $productModalType !!} };
-            document.addEventListener('alpine:init', () => {
-                Alpine.data('productCreateModal', () => ({
-                    open: window.__productModalInit?.open ?? false,
-                    selectedType: window.__productModalInit?.type ?? 'PRODUCT',
-                    init() {
-                        this.$watch('open', (val) => {
-                            if (val && this.selectedType) {
-                                this.$nextTick(() => {
-                                    const sel = document.querySelector('#create-product-form select[name="type"]');
-                                    if (sel) {
-                                        sel.value = this.selectedType;
-                                        sel.dispatchEvent(new Event('change'));
-                                    }
-                                });
-                            }
-                        });
-                    }
-                }));
-            });
+            (function() {
+                window.__productModalInit = { open: {!! $productModalOpen !!}, type: {!! $productModalType !!} };
+                function productCreateModal() {
+                    var init = window.__productModalInit || {};
+                    var open = init.open === true || init.open === 'true';
+                    var type = typeof init.type === 'string' ? init.type : 'PRODUCT';
+                    return {
+                        open: open,
+                        selectedType: type,
+                        init: function() {
+                            var self = this;
+                            this.$watch('open', function(val) {
+                                if (val && self.selectedType) {
+                                    self.$nextTick(function() {
+                                        var form = document.getElementById('create-product-form');
+                                        if (!form) return;
+                                        var sel = form.querySelector('#product-type-select');
+                                        var hid = form.querySelector('#product-type-value');
+                                        if (sel) sel.value = self.selectedType;
+                                        if (hid) hid.value = self.selectedType;
+                                        if (sel) sel.dispatchEvent(new Event('change'));
+                                    });
+                                }
+                            });
+                        }
+                    };
+                }
+                if (window.Alpine && window.Alpine.data) {
+                    Alpine.data('productCreateModal', productCreateModal);
+                }
+                window.productCreateModal = productCreateModal;
+                document.addEventListener('alpine:init', function() {
+                    Alpine.data('productCreateModal', productCreateModal);
+                });
+            })();
         </script>
         <x-ui.modal
             x-data="productCreateModal()"

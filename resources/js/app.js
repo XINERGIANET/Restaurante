@@ -286,6 +286,31 @@ const bindSelectAllCheckboxes = () => {
 
 bindSelectAllCheckboxes();
 
+const productCreateModal = () => {
+    const init = window.__productModalInit || {};
+    const open = init.open === true || init.open === 'true';
+    const type = typeof init.type === 'string' ? init.type : 'PRODUCT';
+    return {
+        open,
+        selectedType: type,
+        init() {
+            this.$watch('open', (val) => {
+                if (val && this.selectedType) {
+                    this.$nextTick(() => {
+                        const sel = document.querySelector('#create-product-form select[name="type"]');
+                        if (sel) {
+                            sel.value = this.selectedType;
+                            sel.dispatchEvent(new Event('change'));
+                        }
+                    });
+                }
+            });
+        },
+    };
+};
+Alpine.data('productCreateModal', productCreateModal);
+window.productCreateModal = productCreateModal;
+
 Alpine.data('crudModal', (el) => {
     const parseJson = (value, fallback) => {
         if (value === undefined || value === null || value === '') {

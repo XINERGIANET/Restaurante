@@ -172,7 +172,9 @@
             <div>
                 <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Tipo <span
                         class="text-red-500">*</span></label>
-                <select name="type" disabled required @change="handleTypeChange($event)"
+                {{-- Hidden enviado con el form (el select está disabled y no se envía) --}}
+                <input type="hidden" name="type" id="product-type-value" value="{{ old('type', $product->type ?? 'PRODUCT') }}">
+                <select id="product-type-select" disabled required @change="handleTypeChange($event)"
                     class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-gray-100 dark:bg-gray-900 dark:text-white/90 text-gray-500 cursor-not-allowed">
                     <option value="PRODUCT" @selected(old('type', $product->type ?? 'PRODUCT') === 'PRODUCT')>Producto final</option>
                     <option value="INGREDENT" @selected(old('type', $product->type ?? 'PRODUCT') === 'INGREDENT')>Ingrediente</option>
@@ -323,7 +325,9 @@
                     :min="Number(branchFields.stock_minimum || 0)"
                     :max="Number(branchFields.stock_maximum || 0) > 0 ? Number(branchFields.stock_maximum) : undefined"
                     class="dark:bg-dark-900 shadow-theme-xs h-11 w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm placeholder:text-gray-400 dark:border-gray-700 dark:text-white/90 dark:placeholder:text-white/30"
-                    :class="(isEdit && branchStore && (branchStore[selectedBranchId] !== undefined))\n                        ? 'bg-gray-100 dark:bg-gray-800 cursor-not-allowed text-gray-500'\n                        : 'bg-transparent focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 text-gray-800 focus:ring-3 focus:outline-hidden dark:bg-gray-900'"
+                    :class="(isEdit && branchStore && (branchStore[selectedBranchId] !== undefined))
+                        ? 'bg-gray-100 dark:bg-gray-800 cursor-not-allowed text-gray-500'
+                        : 'bg-transparent focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 text-gray-800 focus:ring-3 focus:outline-hidden dark:bg-gray-900'"
                     placeholder="0.00" />
                 @error('stock')
                     <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
