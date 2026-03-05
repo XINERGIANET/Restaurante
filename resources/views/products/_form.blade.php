@@ -172,8 +172,8 @@
             <div>
                 <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Tipo <span
                         class="text-red-500">*</span></label>
-                <select name="type" required @change="handleTypeChange($event)"
-                    class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90">
+                <select name="type" disabled required @change="handleTypeChange($event)"
+                    class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-gray-100 dark:bg-gray-900 dark:text-white/90 text-gray-500 cursor-not-allowed">
                     <option value="PRODUCT" @selected(old('type', $product->type ?? 'PRODUCT') === 'PRODUCT')>Producto final</option>
                     <option value="INGREDENT" @selected(old('type', $product->type ?? 'PRODUCT') === 'INGREDENT')>Ingrediente</option>
                 </select>
@@ -211,10 +211,11 @@
     <div class="mb-8 p-6 bg-gray-50 dark:bg-gray-800/30 rounded-lg border border-gray-200 dark:border-gray-700">
         <h3 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Configuración</h3>
         <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            <div>
+            <div x-show="showComplements">
                 <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Receta <span
                         class="text-red-500">*</span></label>
-                <select name="recipe"
+                <input type="hidden" name="recipe" value="0" x-show="!showComplements" x-cloak>
+                <select x-bind:name="showComplements ? 'recipe' : 'recipe_skip'" x-bind:required="showComplements"
                     class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90">
                     <option value="0" @selected(old('recipe', $product?->recipe ?? 0) == 0)>No</option>
                     <option value="1" @selected(old('recipe', $product?->recipe ?? 0) == 1)>Sí</option>
@@ -414,8 +415,8 @@
         </div>
     </div>
 
-    <!-- CONFIGURACIÓN AVANZADA -->
-    <div class="mb-8 p-6 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+    <!-- CONFIGURACIÓN AVANZADA (solo Producto final) -->
+    <div x-show="showComplements" x-transition class="mb-8 p-6 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
         <h3 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">⚙️ Configuración Avanzada</h3>
         <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             <div>
@@ -445,7 +446,7 @@
     </div>
 
     <!-- COMPLEMENTOS -->
-    <div x-show="showComplements" x-transition
+    <div x-show="showComplements"
         class="mb-8 p-6 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
         <h3 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">🎁 Complementos</h3>
         <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">

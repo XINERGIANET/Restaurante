@@ -100,12 +100,16 @@
             });
 
             Alpine.store('sidebar', {
-                // Initialize based on screen size and localStorage
-                isExpanded: (window.innerWidth >= 1280) ? (localStorage.getItem('sidebarExpanded') !== 'false') : false,
+                // Mozo: siempre contraído. Varios módulos: siempre expandido. Otros: localStorage
+                isMozoUser: @json($isMozo ?? false),
+                isExpanded: (window.innerWidth >= 1280)
+                    ? (@json($isMozo ?? false) ? false : (@json($hasMultipleModules ?? false) ? true : (localStorage.getItem('sidebarExpanded') !== 'false')))
+                    : false,
                 isMobileOpen: false,
                 isHovered: false,
 
                 toggleExpanded() {
+                    if (this.isMozoUser) return; // Mozo no puede expandir
                     this.isExpanded = !this.isExpanded;
                     // Save preference on desktop
                     if (window.innerWidth >= 1280) {
@@ -125,7 +129,8 @@
                 },
 
                 setHovered(val) {
-                    // Only allow hover effects on desktop when sidebar is collapsed
+                    // Mozo: no permitir hover. Otros: solo en desktop cuando está contraído
+                    if (this.isMozoUser) return;
                     if (window.innerWidth >= 1280 && !this.isExpanded) {
                         this.isHovered = val;
                     }
@@ -199,15 +204,16 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
 <body class="min-h-screen flex flex-col"
     x-data="{ 'loaded': true}"
     x-init="
+    const isMozo = @json($isMozo ?? false);
+    const hasMultipleModules = @json($hasMultipleModules ?? false);
     const checkMobile = () => {
         if (window.innerWidth < 1280) {
             $store.sidebar.setMobileOpen(false);
             $store.sidebar.isExpanded = false;
         } else {
             $store.sidebar.isMobileOpen = false;
-            // Respect stored preference on desktop
-            const saved = localStorage.getItem('sidebarExpanded');
-            $store.sidebar.isExpanded = (saved !== 'false');
+            // Mozo: siempre contraído. Varios módulos: siempre expandido. Otros: preferencia guardada
+            $store.sidebar.isExpanded = isMozo ? false : (hasMultipleModules ? true : (localStorage.getItem('sidebarExpanded') !== 'false'));
         }
     };
     if (window.__sidebarResizeHandler) {

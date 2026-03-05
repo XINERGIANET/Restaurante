@@ -210,10 +210,10 @@
                             <th class= "px-5 py-3 text-left sm:px-6">
                                 <p class="font-semibold text-white text-theme-xs uppercase">Subtotal</p>
                             </th>
-                            <th class="px-5 py-3 text-left sm:px-6">
+                            <th class="px-5 py-3 text-center sm:px-6">
                                 <p class="font-semibold text-white text-theme-xs uppercase">IGV</p>
                             </th>
-                            <th class="px-5 py-3 text-left sm:px-6">
+                            <th class="px-5 py-3 text-center sm:px-6">
                                 <p class="font-semibold text-white text-theme-xs uppercase">Total</p>
                             </th>
                             <th class="px-5 py-3 text-left sm:px-6">
@@ -222,7 +222,7 @@
                             <th class="px-5 py-3 text-left sm:px-6">
                                 <p class="font-semibold text-white text-theme-xs uppercase">Situación</p>
                             </th>
-                            <th class="px-5 py-3 text-right sm:px-6 last:rounded-tr-xl">
+                            <th class="px-5 py-3 text-center sm:px-6 last:rounded-tr-xl">
                                 <p class="font-semibold text-white text-theme-xs uppercase">Acciones</p>
                             </th>
                         </tr>
@@ -231,16 +231,14 @@
                         @forelse ($sales as $sale)
                             <tr
                                 class="border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-white/5">
-                                <td class="px-4 py-4 sm:px-6 sticky-left">
-                                    <div class="flex items-center gap-2">
+                                <td class="px-4 text-center justify-center py-4 sm:px-6 sticky-left">
+                                    <div class="flex items-center justify-center gap-2">
                                         <button type="button"
                                             @click="openRow === {{ $sale->id }} ? openRow = null : openRow = {{ $sale->id }}"
                                             class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-500 text-white transition hover:bg-brand-600">
                                             <i class="ri-add-line" x-show="openRow !== {{ $sale->id }}"></i>
                                             <i class="ri-subtract-line" x-show="openRow === {{ $sale->id }}"></i>
                                         </button>
-                                        <p class="font-bold text-gray-800 text-center text-theme-sm dark:text-white/90">
-                                            {{ $sale->id }}</p>
                                     </div>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
@@ -257,11 +255,11 @@
                                     <p class="text-gray-800 text-theme-sm dark:text-white/90">S/
                                         {{ number_format((float) ($sale->salesMovement?->subtotal ?? 0), 2) }}</p>
                                 </td>
-                                <td class="px-5 py-4 sm:px-6">
+                                <td class="px-5 text-center py-4 sm:px-6">
                                     <p class="text-gray-800 text-theme-sm dark:text-white/90">S/
                                         {{ number_format((float) ($sale->salesMovement?->tax ?? 0), 2) }}</p>
                                 </td>
-                                <td class="px-5 py-4 sm:px-6">
+                                <td class="px-5 text-center py-4 sm:px-6">
                                     <p class="font-bold text-brand-600 text-theme-sm dark:text-brand-400">S/
                                         {{ number_format((float) ($sale->salesMovement?->total ?? 0), 2) }}</p>
                                 </td>
@@ -288,8 +286,8 @@
                                         {{ $badgeText }}
                                     </x-ui.badge>
                                 </td>
-                                <td class="px-5 py-4 sm:px-6">
-                                    <div class="flex items-center justify-end gap-2">
+                                <td class="px-5 text-center py-4 sm:px-6">
+                                    <div class="flex items-center justify-center gap-2">
                                         @if ($rowOperations->isNotEmpty())
                                             @foreach ($rowOperations as $operation)
                                                 @php
@@ -432,7 +430,7 @@
                                 </td>
                             </tr>
                             <tr x-show="openRow === {{ $sale->id }}" x-cloak
-                                class="bg-gray-50/70 dark:bg-gray-800/40 border-b border-gray-100 dark:border-gray-800">
+                                class="bg-gray-50/70 dark:bg-gray-800/40 border-b border-gray-100 justify-center dark:border-gray-800">
                                 <td colspan="8" class="px-5 py-3 sm:px-6">
                                     <div class="grid w-full grid-cols-5 gap-x-6 gap-y-3">
                                         {{-- Fila 1 --}}

@@ -237,9 +237,10 @@ class SalesController extends Controller
                 return [
                     'id' => (int) $product->id,
                     'name' => $product->description,
-                    'img' => $imageUrl, // Aquí ya va la URL correcta (producto o default)
+                    'img' => $imageUrl,
                     'note' => $product->note ?? null,
                     'category' => $product->category ? $product->category->description : 'Sin categoria',
+                    'category_id' => $product->category_id,
                 ];
             })
             ->values();
@@ -262,6 +263,42 @@ class SalesController extends Controller
             })
             ->values();
 
+        $people = Person::query()
+            ->when($branchId, fn ($query) => $query->where('branch_id', $branchId))
+            ->orderBy('first_name')
+            ->orderBy('last_name')
+            ->get(['id', 'first_name', 'last_name', 'document_number']);
+
+        $documentTypes = DocumentType::query()
+            ->orderBy('name')
+            ->where('movement_type_id', 2)
+            ->get(['id', 'name']);
+
+        $paymentMethods = PaymentMethod::query()
+            ->where('status', true)
+            ->orderBy('order_num')
+            ->get(['id', 'description', 'order_num']);
+
+        $paymentGateways = PaymentGateways::query()
+            ->where('status', true)
+            ->orderBy('order_num')
+            ->get(['id', 'description', 'order_num']);
+
+        $cards = Card::query()
+            ->where('status', true)
+            ->orderBy('order_num')
+            ->get(['id', 'description', 'type', 'icon', 'order_num']);
+
+        $digitalWallets = DigitalWallet::query()
+            ->where('status', true)
+            ->orderBy('order_num')
+            ->get(['id', 'description', 'order_num']);
+
+        $cashRegisters = CashRegister::query()
+            ->orderByRaw("CASE WHEN status = 'A' THEN 0 ELSE 1 END")
+            ->orderBy('number')
+            ->get(['id', 'number', 'status']);
+
         return view('sales.create', [
             'products' => $products,
             'productBranches' => $productBranches,
@@ -269,6 +306,13 @@ class SalesController extends Controller
             'user' => $user,
             'person' => $person,
             'categories' => $categories,
+            'people' => $people,
+            'documentTypes' => $documentTypes,
+            'paymentMethods' => $paymentMethods,
+            'paymentGateways' => $paymentGateways,
+            'cards' => $cards,
+            'digitalWallets' => $digitalWallets,
+            'cashRegisters' => $cashRegisters,
         ]);
     }
 
@@ -422,6 +466,7 @@ class SalesController extends Controller
                 // Compatibilidad: algunos flujos pueden enviar `comment` en lugar de `note`
                 'items.*.comment' => 'nullable|string|max:65535',
                 'document_type_id' => 'required|integer|exists:document_types,id',
+                'cash_register_id' => 'nullable|integer|exists:cash_registers,id',
                 'person_id' => 'nullable|integer|exists:people,id',
                 'payment_methods' => 'required|array|min:1',
                 'payment_methods.*.payment_method_id' => 'required|integer|exists:payment_methods,id',
@@ -459,10 +504,10 @@ class SalesController extends Controller
                 throw new \Exception('No hay turno disponible. Por favor, crea un turno primero.');
             }
 
-            // Obtener caja desde la sesión
-            $cashRegisterId = session('cash_register_id');
+            // Obtener caja: del request (formulario Cobro) o de la sesión
+            $cashRegisterId = $request->input('cash_register_id') ?: session('cash_register_id');
             if (!$cashRegisterId) {
-                throw new \Exception('No hay caja seleccionada en la sesión.');
+                throw new \Exception('Selecciona una caja en el formulario de cobro.');
             }
 
             // Verificar si la caja está abierta basándose en los movimientos

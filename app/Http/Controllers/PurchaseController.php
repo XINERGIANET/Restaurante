@@ -8,6 +8,7 @@ use App\Models\PurchaseMovementDetail;
 use App\Models\Person;
 use App\Models\Branch;
 use App\Models\ProductBranch;
+use App\Models\Category;
 use App\Models\DocumentType;
 use App\Models\Unit;
 use App\Models\Product;
@@ -23,6 +24,7 @@ use App\Models\Card;
 use App\Models\Bank;
 use App\Models\DigitalWallet;
 use App\Models\PaymentGateways;
+use App\Models\PaymentMethod;
 use App\Models\Operation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -117,29 +119,48 @@ class PurchaseController extends Controller
         $purchase = null; 
 
         $products = ProductBranch::where('branch_id', $branchId)
-            ->with(['product', 'product.baseUnit'])
-            ->where('status', 'E')
+            ->with(['product', 'product.baseUnit', 'product.category'])
             ->get()
             ->map(function ($pb) {
+                $product = $pb->product;
+                if (!$product) return null;
+                $imgPath = $product->image ?? null;
+                $baseUnit = $product->baseUnit;
                 return (object) [
                     'id' => $pb->product_id,
-                    'code' => $pb->product->code ?? '',
-                    'description' => $pb->product->description ?? '',
-                    'unit_sale' => $pb->product->base_unit_id ?? 0,
-                    'unit_name' => $pb->product->baseUnit->description ?? $pb->product->baseUnit->name ?? '',
+                    'code' => $product->code ?? '',
+                    'description' => $product->description ?? '',
+                    'name' => $product->description ?? '',
+                    'unit_sale' => $product->base_unit_id ?? 0,
+                    'unit_id' => $product->base_unit_id ?? 0,
+                    'unit_name' => $baseUnit ? ($baseUnit->description ?? $baseUnit->name ?? '') : '',
                     'price' => $pb->price ?? 0,
+                    'cost' => $pb->price ?? 0,
+                    'stock' => (float) ($pb->stock ?? 0),
+                    'category_id' => $pb->product->category_id ?? null,
+                    'category' => $pb->product->category ? $pb->product->category->description : 'General',
+                    'image' => $imgPath,
+                    'image_url' => $imgPath ? asset('storage/' . $imgPath) : null,
                 ];
-            });
+            })
+            ->filter()
+            ->values();
+
+        $categories = Category::orderBy('description')->get();
 
         // Cargamos los datos de pago para los selectores del formulario
-        $cards = Card::all(); 
-        $paymentGateways = PaymentGateways::all(); 
-        $digitalWallets = DigitalWallet::all(); 
-        $banks = Bank::all(); 
+        $cards = Card::all();
+        $paymentGateways = PaymentGateways::all();
+        $digitalWallets = DigitalWallet::all();
+        $banks = Bank::all();
+        $paymentMethods = PaymentMethod::where('status', true)->orderBy('order_num', 'asc')->get(['id', 'description']);
+
+        $viewId = $request->input('view_id');
 
         return view('purchases._form', compact(
-            'people', 'documentTypes', 'units', 'products', 'defaultTaxRate', 
-            'purchase', 'branches', 'branchId', 'cards', 'paymentGateways', 'digitalWallets', 'banks'
+            'people', 'documentTypes', 'units', 'products', 'defaultTaxRate',
+            'purchase', 'branches', 'branchId', 'cards', 'paymentGateways', 'digitalWallets', 'banks',
+            'categories', 'viewId', 'paymentMethods'
         ));
     }
 
@@ -151,6 +172,8 @@ class PurchaseController extends Controller
             'person_id' => ['required', 'integer', 'exists:people,id'],
             'document_type_id' => ['required', 'integer', 'exists:document_types,id'],
             'series' => ['required', 'string', 'max:50'],
+            'number' => ['nullable', 'string', 'max:50'],
+            'tipo_detalle' => ['nullable', 'string', 'in:DETALLADO,GLOSA'],
             'includes_tax' => ['required', 'string', 'in:S,N'],
             'tax_rate_percent' => ['required', 'numeric', 'min:0', 'max:100'],
             'payment_type' => ['required', 'string', 'in:CONTADO,CREDITO'],
@@ -165,8 +188,8 @@ class PurchaseController extends Controller
             'items.*.product_id' => ['required', 'integer'],
             'items.*.unit_id' => ['required', 'integer'],
             'items.*.description' => ['required', 'string'],
-            'items.*.quantity' => ['required', 'numeric', 'min:0.01'],
-            'items.*.amount' => ['required', 'numeric', 'min:0'],
+            'items.*.quantity' => ['required', 'numeric', 'min:0.01', 'max:999999.99'],
+            'items.*.amount' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
             'items.*.comment' => ['nullable', 'string'],
 
             // Validar pagos
@@ -182,6 +205,33 @@ class PurchaseController extends Controller
             
             'payment_image' => ['nullable', 'image', 'mimes:jpeg,png,jpg,pdf', 'max:2048'],
         ]);
+
+        $branchId = (int) $data['branch_id'];
+
+        // CONTADO: requiere al menos un método de pago y la suma debe coincidir con el total
+        if ($data['payment_type'] === 'CONTADO') {
+            $payments = $data['payments'] ?? [];
+            if (empty($payments) || !is_array($payments)) {
+                return back()->withErrors(['payments' => 'Para pago al contado debe registrar al menos un método de pago.'])->withInput();
+            }
+            $lineTotal = collect($data['items'])->reduce(fn ($c, $i) => $c + ($i['quantity'] * $i['amount']), 0);
+            $taxRate = $data['tax_rate_percent'] / 100;
+            $total = $data['includes_tax'] === 'S'
+                ? $lineTotal
+                : $lineTotal * (1 + $taxRate);
+            $totalPaid = collect($payments)->sum(fn ($p) => (float) ($p['amount'] ?? 0));
+            if (abs($totalPaid - $total) > 0.02) {
+                return back()->withErrors(['payments' => 'La suma de los pagos (S/ ' . number_format($totalPaid, 2) . ') no coincide con el total a pagar (S/ ' . number_format($total, 2) . ').'])->withInput();
+            }
+        }
+
+        // Validar que los productos existan en la sucursal
+        $productIds = collect($data['items'])->pluck('product_id')->unique();
+        $validProductIds = ProductBranch::where('branch_id', $branchId)->pluck('product_id');
+        $invalidIds = $productIds->diff($validProductIds);
+        if ($invalidIds->isNotEmpty()) {
+            return back()->withErrors(['items' => 'Uno o más productos no están registrados en la sucursal seleccionada.'])->withInput();
+        }
 
         $cashRegisterId = session('cash_register_id');
         $activeShiftRelation = null;
@@ -252,7 +302,7 @@ class PurchaseController extends Controller
                     'json_persona' => $person->toJson(),
                     'serie' => $data['series'], 
                     'anio' => Carbon::parse($data['moved_at'])->format('Y'),
-                    'tipo_detalle' => 'DETALLADO',
+                    'tipo_detalle' => $data['tipo_detalle'] ?? 'DETALLADO',
                     'incluye_igv' => $data['includes_tax'],
                     'tipo_pago' => $data['payment_type'],
                     'afecta_caja' => $data['affects_cash'],
@@ -310,7 +360,7 @@ class PurchaseController extends Controller
                     PurchaseMovementDetail::create([
                         'purchase_movement_id' => $purchase->id,
                         'branch_id' => $branchId,
-                        'tipo_detalle' => 'DETALLADO',
+                        'tipo_detalle' => $data['tipo_detalle'] ?? 'DETALLADO',
                         'producto_id' => $item['product_id'],
                         'codigo' => $product ? $product->code : null,
                         'descripcion' => $item['description'],
@@ -433,6 +483,8 @@ class PurchaseController extends Controller
             'person_id' => ['required', 'integer', 'exists:people,id'],
             'document_type_id' => ['required', 'integer', 'exists:document_types,id'],
             'series' => ['required', 'string', 'max:50'],
+            'number' => ['nullable', 'string', 'max:50'],
+            'tipo_detalle' => ['nullable', 'string', 'in:DETALLADO,GLOSA'],
             'includes_tax' => ['required', 'string', 'in:S,N'],
             'tax_rate_percent' => ['required', 'numeric', 'min:0', 'max:100'],
             'payment_type' => ['required', 'string', 'in:CONTADO,CREDITO'],
@@ -446,8 +498,8 @@ class PurchaseController extends Controller
             'items.*.product_id' => ['required', 'integer'],
             'items.*.unit_id' => ['required', 'integer'],
             'items.*.description' => ['required', 'string'],
-            'items.*.quantity' => ['required', 'numeric', 'min:0.01'],
-            'items.*.amount' => ['required', 'numeric', 'min:0'],
+            'items.*.quantity' => ['required', 'numeric', 'min:0.01', 'max:999999.99'],
+            'items.*.amount' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
             'items.*.comment' => ['nullable', 'string'],
 
             'payments' => ['nullable', 'array'],
@@ -460,6 +512,29 @@ class PurchaseController extends Controller
             'payments.*.digital_wallet_id' => ['nullable', 'integer'],
             'payments.*.payment_gateway_id' => ['nullable', 'integer'],
         ]);
+
+        $branchId = (int) $data['branch_id'];
+
+        if ($data['payment_type'] === 'CONTADO') {
+            $payments = $data['payments'] ?? [];
+            if (empty($payments) || !is_array($payments)) {
+                return back()->withErrors(['payments' => 'Para pago al contado debe registrar al menos un método de pago.'])->withInput();
+            }
+            $lineTotal = collect($data['items'])->reduce(fn ($c, $i) => $c + ($i['quantity'] * $i['amount']), 0);
+            $taxRate = $data['tax_rate_percent'] / 100;
+            $total = $data['includes_tax'] === 'S' ? $lineTotal : $lineTotal * (1 + $taxRate);
+            $totalPaid = collect($payments)->sum(fn ($p) => (float) ($p['amount'] ?? 0));
+            if (abs($totalPaid - $total) > 0.02) {
+                return back()->withErrors(['payments' => 'La suma de los pagos no coincide con el total a pagar.'])->withInput();
+            }
+        }
+
+        $invalidIds = collect($data['items'])->pluck('product_id')->unique()->diff(
+            ProductBranch::where('branch_id', $branchId)->pluck('product_id')
+        );
+        if ($invalidIds->isNotEmpty()) {
+            return back()->withErrors(['items' => 'Uno o más productos no están registrados en la sucursal seleccionada.'])->withInput();
+        }
 
         $cashRegisterId = session('cash_register_id');
         $activeShiftRelation = null;
@@ -521,6 +596,7 @@ class PurchaseController extends Controller
                     'json_persona' => $person->toJson(),
                     'serie' => $data['series'],
                     'anio' => Carbon::parse($data['moved_at'])->format('Y'),
+                    'tipo_detalle' => $data['tipo_detalle'] ?? 'DETALLADO',
                     'incluye_igv' => $data['includes_tax'],
                     'tipo_pago' => $data['payment_type'],
                     'moneda' => $data['currency'],
@@ -546,7 +622,7 @@ class PurchaseController extends Controller
                     PurchaseMovementDetail::create([
                         'purchase_movement_id' => $purchaseMovement->id,
                         'branch_id' => $branchId,
-                        'tipo_detalle' => 'DETALLADO',
+                        'tipo_detalle' => $data['tipo_detalle'] ?? 'DETALLADO',
                         'producto_id' => $item['product_id'],
                         'codigo' => $product ? $product->code : null,
                         'descripcion' => $item['description'],
@@ -662,30 +738,48 @@ class PurchaseController extends Controller
         $purchase = $purchaseMovement->movement; 
         
         $products = ProductBranch::where('branch_id', $branchId)
-            ->with(['product', 'product.baseUnit'])
-            ->where('status', 'E')
+            ->with(['product', 'product.baseUnit', 'product.category'])
             ->get()
             ->map(function ($pb) {
+                $product = $pb->product;
+                if (!$product) return null;
+                $imgPath = $product->image ?? null;
+                $baseUnit = $product->baseUnit;
                 return (object) [
                     'id' => $pb->product_id,
-                    'code' => $pb->product->code ?? '',
-                    'description' => $pb->product->description ?? '',
-                    'unit_sale' => $pb->product->base_unit_id ?? 0,
-                    'unit_name' => $pb->product->baseUnit->description ?? $pb->product->baseUnit->name ?? '',
+                    'code' => $product->code ?? '',
+                    'description' => $product->description ?? '',
+                    'name' => $product->description ?? '',
+                    'unit_sale' => $product->base_unit_id ?? 0,
+                    'unit_id' => $product->base_unit_id ?? 0,
+                    'unit_name' => $baseUnit ? ($baseUnit->description ?? $baseUnit->name ?? '') : '',
                     'price' => $pb->price ?? 0,
+                    'cost' => $pb->price ?? 0,
+                    'stock' => (float) ($pb->stock ?? 0),
+                    'category_id' => $pb->product->category_id ?? null,
+                    'category' => $pb->product->category ? $pb->product->category->description : 'General',
+                    'image' => $imgPath,
+                    'image_url' => $imgPath ? asset('storage/' . $imgPath) : null,
                 ];
-            });
+            })
+            ->filter()
+            ->values();
+
+        $categories = Category::orderBy('description')->get();
+        $paymentMethods = PaymentMethod::where('status', true)->orderBy('order_num', 'asc')->get(['id', 'description']);
 
         // Mandar los modelos de pago
-        $cards = Card::all(); 
-        $paymentGateways = PaymentGateways::all(); 
-        $digitalWallets = DigitalWallet::all(); 
-        $banks = Bank::all(); 
+        $cards = Card::all();
+        $paymentGateways = PaymentGateways::all();
+        $digitalWallets = DigitalWallet::all();
+        $banks = Bank::all();
+        $viewId = $request->input('view_id');
 
         return view('purchases._form', compact(
-            'purchaseMovement', 'purchase', 'people', 'documentTypes', 'units', 
+            'purchaseMovement', 'purchase', 'people', 'documentTypes', 'units',
             'products', 'defaultTaxRate', 'branches', 'branchId',
-            'cards', 'paymentGateways', 'digitalWallets', 'banks'
+            'cards', 'paymentGateways', 'digitalWallets', 'banks',
+            'categories', 'viewId', 'paymentMethods'
         ));
     }
 

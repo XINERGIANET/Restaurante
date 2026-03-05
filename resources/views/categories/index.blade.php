@@ -143,17 +143,17 @@
             <div class="table-responsive mt-4 rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
                 <table class="w-full min-w-[1100px]">
                     <thead>
-                        <tr class="text-white">
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6 first:rounded-tl-xl sticky-left-header transition-colors">
+                        <tr style="background-color: #63B7EC; color: #FFFFFF;" class="text-white">
+                            <th class="px-5 py-3 text-left sm:px-6 first:rounded-tl-xl sticky-left-header transition-colors">
                                 <p class="font-semibold text-white text-theme-xs">Imagen</p>
                             </th>
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                            <th class="px-5 py-3 text-left sm:px-6">
                                 <p class="font-semibold text-white text-theme-xs">Descripción</p>
                             </th>
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
+                            <th class="px-5 py-3 text-left sm:px-6">
                                 <p class="font-semibold text-white text-theme-xs uppercase">Abreviatura</p>
                             </th>
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-right sm:px-6 last:rounded-tr-xl transition-colors">
+                            <th class="px-5 py-3 text-center sm:px-6 last:rounded-tr-xl transition-colors">
                                 <p class="font-semibold text-white text-theme-xs">Acciones</p>
                             </th>
                         </tr>
@@ -183,7 +183,7 @@
                                     <p class="text-gray-500 text-theme-sm dark:text-gray-400">{{ $category->abbreviation }}</p>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
-                                    <div class="flex items-center justify-end gap-2">
+                                    <div class="flex items-center justify-center gap-2">
                                         @if ($rowOperations->isNotEmpty())
                                             @foreach ($rowOperations as $operation)
                                                 @php

@@ -56,12 +56,15 @@
                         </div>
                     </div>
                     <div class="flex items-center gap-2 sm:gap-4 md:gap-6 text-xs sm:text-sm text-gray-500 font-medium min-w-0 flex-nowrap flex-1">
-                        <div class="flex items-center justify-end shrink-0">
+                        <div class="flex items-center justify-end shrink-0 gap-1">
                             <div class="w-50 sm:w-50 md:w-60 relative">
-                                <input type="text" id="search-products" placeholder="Buscar..."
-                                    class="w-full pl-8 pr-3 py-2 text-sm bg-white border border-gray-200 dark:border-slate-600 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-200 transition-all">
-                                <i class="fas fa-search absolute left-2.5 sm:left-3 top-2.5 text-gray-400 text-xs"></i>
+                                <input type="text" id="search-products" placeholder="Buscar producto..." autocomplete="off"
+                                    class="w-full pl-8 pr-9 py-2 text-sm bg-white border border-gray-200 dark:border-slate-600 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-200 transition-all">
+                                <i class="fas fa-search absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
                             </div>
+                            <x-ui.button size="sm" variant="outline" onclick="clearProductSearch()">
+                                Limpiar
+                            </x-ui.button>
                         </div>
                         <div class="flex items-center gap-2 sm:gap-4 md:gap-6 flex-nowrap shrink-0 ml-auto">
                             <div class="flex items-center gap-1 sm:gap-2 group min-w-0">
@@ -454,11 +457,31 @@
                 renderCancelledSection();
                 fixScrollLayout();
                 const searchProductsInput = document.getElementById('search-products');
+                const searchProductsClearBtn = document.getElementById('search-products-clear');
+                function updateSearchClearVisibility() {
+                    if (searchProductsClearBtn) {
+                        searchProductsClearBtn.classList.toggle('hidden', !searchProductsInput || !searchProductsInput.value.trim());
+                    }
+                }
+                window.clearProductSearch = function() {
+                    if (searchProductsInput) {
+                        searchProductsInput.value = '';
+                        productSearchQuery = '';
+                        searchProductsInput.focus();
+                        updateSearchClearVisibility();
+                        renderProducts();
+                    }
+                };
                 if (searchProductsInput) {
                     searchProductsInput.addEventListener('input', function() {
                         productSearchQuery = this.value.trim();
+                        updateSearchClearVisibility();
                         renderProducts();
                     });
+                    searchProductsInput.addEventListener('keydown', function(e) {
+                        if (e.key === 'Escape') clearProductSearch();
+                    });
+                    updateSearchClearVisibility();
                 }
                 if (currentTable.items && currentTable.items.length > 0) {
                     setTimeout(scheduleAutoSave, 800);
@@ -675,6 +698,8 @@
                     const imageUrl = getImageUrl(prod.img);
                     const priceFormatted = 'S/ ' + parseFloat(productBranch.price).toFixed(2);
                     const hasImg = prod.img && String(prod.img).trim() !== '';
+                    const stockVal = Number(productBranch.stock);
+                    const stockText = !isNaN(stockVal) ? stockVal.toFixed(2) : '0.00';
 
                     el.innerHTML = `
                         <div class="rounded-2xl overflow-hidden p-4 sm:p-5 bg-white dark:bg-slate-800/60 border-2 border-blue-200 dark:border-blue-500/40 hover:border-blue-400 dark:hover:border-blue-400 transition-all duration-200 hover:-translate-y-0.5 flex flex-col items-center text-center h-full w-full">
@@ -690,6 +715,7 @@
                             <span class="text-base sm:text-lg font-bold text-blue-600 dark:text-blue-400">
                                 ${priceFormatted}
                             </span>
+                            <span class="mt-1 text-xs font-medium text-gray-500 dark:text-gray-400">Stock: ` + stockText + `</span>
                         </div>
                     `;
                     grid.appendChild(el);
@@ -846,6 +872,25 @@
                 renderTicket();
             }
 
+            async function setQtyFromInput(index, inputEl) {
+                const item = currentTable.items[index];
+                if (!item) return;
+                const raw = parseInt(inputEl.value, 10);
+                const newQty = isNaN(raw) || raw < 1 ? 1 : raw;
+                const oldQty = item.qty;
+                if (newQty === oldQty) {
+                    inputEl.value = newQty;
+                    return;
+                }
+                if (newQty > oldQty) {
+                    item.qty = newQty;
+                    saveDB();
+                    renderTicket();
+                    return;
+                }
+                await updateQty(index, newQty - oldQty);
+            }
+
             function toggleNoteInput(index) {
                 const box = document.getElementById(`note-box-${index}`);
                 if (box) box.classList.toggle('hidden');
@@ -910,7 +955,7 @@
                                     <button type="button" onclick="updateQty(${index}, -1)" class="w-7 h-7 flex items-center justify-center rounded-full text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
                                         <i class="ri-subtract-line text-sm"></i>
                                     </button>
-                                    <input type="number" value="${item.qty}" min="1" readonly class="w-8 h-7 text-center text-xs font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-gray-800 border-0 rounded [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
+                                    <input type="number" value="${item.qty}" min="1" onchange="setQtyFromInput(${index}, this)" class="w-8 h-7 text-center text-xs font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
                                     <button type="button" onclick="updateQty(${index}, 1)" class="w-7 h-7 flex items-center justify-center rounded-full text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
                                         <i class="ri-add-line text-sm"></i>
                                     </button>
@@ -1607,6 +1652,7 @@
             // Exponer funciones usadas desde onclick en el HTML (mismo ámbito tras re-render)
             window.toggleNoteInput = toggleNoteInput;
             window.updateQty = updateQty;
+            window.setQtyFromInput = setQtyFromInput;
             window.removeFromCart = removeFromCart;
             window.saveNote = saveNote;
             window.getImageUrl = getImageUrl;

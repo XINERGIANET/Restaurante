@@ -184,6 +184,9 @@
                             <th style="background-color: #63B7EC; color: #FFFFFF;" class="hidden xl:table-cell px-5 py-3 text-left sm:px-6">
                                 <p class="font-semibold text-white text-theme-xs uppercase">Tipo</p>
                             </th>
+                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-right sm:px-6">
+                                <p class="font-semibold text-white text-theme-xs uppercase">Stock</p>
+                            </th>
                             <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-right sm:px-6 last:rounded-tr-xl">
                                 <p class="font-semibold text-white text-theme-xs uppercase">Acciones</p>
                             </th>
@@ -219,6 +222,15 @@
                                 </td>
                                 <td class="hidden xl:table-cell px-5 py-4 sm:px-6">
                                     <p class="text-gray-500 text-theme-sm dark:text-gray-400">{{ $product->type }}</p>
+                                </td>
+                                <td class="px-5 py-4 sm:px-6 text-right">
+                                    @php
+                                        $branchId = session('branch_id');
+                                        $productBranch = $product->productBranches->where('branch_id', $branchId)->first();
+                                    @endphp
+                                    <p class="font-medium text-gray-800 text-theme-sm dark:text-white/90">
+                                        {{ $productBranch ? number_format($productBranch->stock, 2) : '-' }}
+                                    </p>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
                                     <div class="flex items-center justify-end gap-2">
@@ -275,7 +287,7 @@
                                 </td>
                             </tr>
                             <tr x-show="openRow === {{ $product->id }}" x-cloak class="bg-gray-50/60 dark:bg-gray-800/40">
-                                <td colspan="7" class="px-6 py-4">
+                                <td colspan="8" class="px-6 py-4">
                                     @php
                                         $branchId = session('branch_id');
                                         $productBranch = $product->productBranches->where('branch_id', $branchId)->first();
@@ -317,7 +329,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="px-6 py-12">
+                                <td colspan="8" class="px-6 py-12">
                                     <div class="flex flex-col items-center gap-3 text-center text-sm text-gray-500">
                                         <div
                                             class="rounded-full bg-gray-100 p-3 text-gray-400 dark:bg-gray-800 dark:text-gray-300">
@@ -434,14 +446,57 @@
             </div>
         </x-ui.modal>
 
-        <x-ui.modal x-data="{ open: false }" @open-product-modal.window="open = true"
-            @close-product-modal.window="open = false" :isOpen="false" :showCloseButton="false" class="w-full max-w-5xl sm:max-w-6xl lg:max-w-7xl">
-            <template x-if="open">
-            <div class="flex w-full flex-col min-h-0 p-6 sm:p-8">
+        {{-- Modal de selección de tipo de producto --}}
+        {{-- TEMP: testing --}}
+        <x-ui.modal
+            x-data="{ open: false }"
+            @open-product-modal.window="open = true"
+            @close-product-type-modal.window="open = false"
+            :isOpen="false"
+            :showCloseButton="false"
+            class="w-full max-w-2xl"
+        >
+            @include('products.select_type')
+        </x-ui.modal>
+
+        {{-- Modal de formulario de creación --}}
+        @php
+            $productModalOpen = ($errors->any() ?? false) ? 'true' : 'false';
+            $productModalType = json_encode(old('type', 'PRODUCT'));
+        @endphp
+        <script>
+            window.__productModalInit = { open: {!! $productModalOpen !!}, type: {!! $productModalType !!} };
+            document.addEventListener('alpine:init', () => {
+                Alpine.data('productCreateModal', () => ({
+                    open: window.__productModalInit?.open ?? false,
+                    selectedType: window.__productModalInit?.type ?? 'PRODUCT',
+                    init() {
+                        this.$watch('open', (val) => {
+                            if (val && this.selectedType) {
+                                this.$nextTick(() => {
+                                    const sel = document.querySelector('#create-product-form select[name="type"]');
+                                    if (sel) {
+                                        sel.value = this.selectedType;
+                                        sel.dispatchEvent(new Event('change'));
+                                    }
+                                });
+                            }
+                        });
+                    }
+                }));
+            });
+        </script>
+        <x-ui.modal
+            x-data="productCreateModal()"
+            @open-product-form-with-type.window="selectedType = $event.detail?.type || 'PRODUCT'; open = true"
+            @close-product-modal.window="open = false"
+            :showCloseButton="false"
+            class="w-full max-w-5xl sm:max-w-6xl lg:max-w-7xl"
+        >
+            <div x-show="open" x-cloak class="flex w-full flex-col min-h-0 p-6 sm:p-8">
                 <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div class="flex items-center gap-4">
-                        <div
-                            class="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-500 dark:bg-brand-500/10">
+                        <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-500 dark:bg-brand-500/10">
                             <i class="ri-restaurant-line text-2xl"></i>
                         </div>
                         <div>
@@ -456,7 +511,7 @@
                     </button>
                 </div>
 
-                @if ($errors->any())
+                @if(($errors->any() ?? false))
                     <div class="mb-5">
                         <x-ui.alert variant="error" title="Revisa los campos"
                             message="Hay errores en el formulario, corrige los datos e intenta nuevamente." />
@@ -465,7 +520,7 @@
 
                 <form id="create-product-form" method="POST" action="{{ route('products.store') }}" enctype="multipart/form-data" class="flex w-full flex-col min-h-0 space-y-6">
                     @csrf
-                    @if ($viewId)
+                    @if ($viewId ?? false)
                         <input type="hidden" name="view_id" value="{{ $viewId }}">
                     @endif
 
@@ -490,7 +545,6 @@
                     </div>
                 </form>
             </div>
-            </template>
         </x-ui.modal>
     </div>
 @endsection

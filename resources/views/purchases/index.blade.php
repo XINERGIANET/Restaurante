@@ -154,7 +154,7 @@
                 <table class="w-full min-w-[1100px]">
                     <thead>
                         <tr class="text-white" style="background-color: #63B7EC; color: #FFFFFF;">
-                            <th class="px-5 py-3 text-left sm:px-6 first:rounded-tl-xl sticky-left-header">
+                            <th class="px-5 py-3 text-center sm:px-6 first:rounded-tl-xl sticky-left-header">
                                 <p class="font-semibold text-white text-theme-xs uppercase">#</p>
                             </th>
                             <th class="px-5 py-3 text-left sm:px-6">
@@ -163,22 +163,22 @@
                             <th class="px-5 py-3 text-left sm:px-6">
                                 <p class="font-semibold text-white text-theme-xs uppercase">Subtotal</p>
                             </th>
-                            <th class="px-5 py-3 text-left sm:px-6">
+                            <th class="px-5 py-3 text-center sm:px-6">
                                 <p class="font-semibold text-white text-theme-xs uppercase">IGV</p>
                             </th>
-                            <th class="px-5 py-3 text-left sm:px-6">
+                            <th class="px-5 py-3 text-center sm:px-6">
                                 <p class="font-semibold text-white text-theme-xs uppercase">Total</p>
                             </th>
-                            <th class="px-5 py-3 text-left sm:px-6">
+                            <th class="px-5 py-3 text-center sm:px-6">
                                 <p class="font-semibold text-white text-theme-xs uppercase">Persona</p>
                             </th>
-                            <th class="px-5 py-3 text-left sm:px-6">
+                            <th class="px-5 py-3 text-center sm:px-6">
                                 <p class="font-semibold text-white text-theme-xs uppercase">Moneda</p>
                             </th>
-                            <th class="px-5 py-3 text-left sm:px-6">
+                            <th class="px-5 py-3 text-center sm:px-6">
                                 <p class="font-semibold text-white text-theme-xs uppercase">Fecha</p>
                             </th>
-                            <th class="px-5 py-3 text-right sm:px-6 last:rounded-tr-xl">
+                            <th class="px-5 py-3 text-center sm:px-6 last:rounded-tr-xl">
                                 <p class="font-semibold text-white text-theme-xs uppercase">Acciones</p>
                             </th>
                         </tr>
@@ -191,15 +191,14 @@
                             @endphp
 
                             <tr class="border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-white/5">
-                                <td class="px-4 py-4 sm:px-6 sticky-left">
-                                    <div class="flex items-center gap-2">
+                                <td class="px-4 text-center justify-center py-4 sm:px-6 sticky-left">
+                                    <div class="flex items-center justify-center gap-2">
                                         <button type="button"
                                             class="h-6 w-6 flex items-center justify-center rounded-full bg-brand-500 text-white hover:bg-brand-600 transition"
                                             @click="openRow === {{ $purchase->id }} ? openRow = null : openRow = {{ $purchase->id }}">
                                             <i class="ri-add-line" x-show="openRow !== {{ $purchase->id }}"></i>
                                             <i class="ri-subtract-line" x-show="openRow === {{ $purchase->id }}" x-cloak></i>
                                         </button>
-                                        <p class="font-bold text-gray-800 text-center text-theme-sm dark:text-white/90">{{ $purchase->id }}</p>
                                     </div>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
@@ -209,19 +208,19 @@
                                     </div>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6 text-gray-600 dark:text-gray-400">S/ {{ number_format($purchase->subtotal, 2) }}</td>
-                                <td class="px-5 py-4 sm:px-6 text-gray-600 dark:text-gray-400">S/ {{ number_format($purchase->igv, 2) }}</td>
-                                <td class="px-5 py-4 sm:px-6">
+                                <td class="px-5 text-center py-4 sm:px-6 text-gray-600 dark:text-gray-400">S/ {{ number_format($purchase->igv, 2) }}</td>
+                                <td class="px-5 text-center py-4 sm:px-6">
                                     <p class="font-bold text-brand-600 text-theme-sm dark:text-brand-400">S/ {{ number_format($purchase->total, 2) }}</p>
                                 </td>
-                                <td class="px-5 py-4 sm:px-6">
-                                    <p class="text-gray-800 text-theme-sm dark:text-white/90 truncate max-w-[150px]" title="{{ $nombreProveedor }}">{{ $nombreProveedor }}</p>
+                                <td class="px-5 py-4 text-center justify-center sm:px-6">
+                                    <p class="text-gray-800 text-center text-theme-sm dark:text-white/90 truncate max-w-[150px]" title="{{ $nombreProveedor }}">{{ $nombreProveedor }}</p>
                                 </td>
-                                <td class="px-5 py-4 sm:px-6 text-gray-600 dark:text-gray-400">{{ $purchase->moneda ?? 'PEN' }}</td>
-                                <td class="px-5 py-4 sm:px-6 text-gray-600 dark:text-gray-400">{{ $purchase->created_at->format('d/m/Y H:i') }}</td>
+                                <td class="px-5 py-4 text-center sm:px-6 text-gray-600 dark:text-gray-400">{{ $purchase->moneda ?? 'PEN' }}</td>
+                                <td class="px-5 py-4 text-center sm:px-6 text-gray-600 dark:text-gray-400">{{ $purchase->created_at->format('d/m/Y H:i') }}</td>
                                 
                                 {{-- 2. BOTONES DE ACCIÓN DINÁMICOS DE LA FILA (Tipo 'R') --}}
-                                <td class="px-5 py-4 sm:px-6">
-                                    <div class="flex items-center justify-end gap-2">
+                                <td class="px-5 py-4 text-center sm:px-6">
+                                    <div class="flex items-center justify-center gap-2">
                                         @if ($rowOperations->isNotEmpty())
                                             @foreach ($rowOperations as $operation)
                                                 @php

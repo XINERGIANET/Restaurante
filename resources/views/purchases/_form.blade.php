@@ -3,514 +3,586 @@
 @section('content')
     <x-common.page-breadcrumb pageTitle="Nueva Compra" />
 
-    <x-common.component-card title="Compras | Nuevo" desc="Registra una compra con su detalle, totales, impacto de stock/caja y pagos.">
-        
-        @if($errors->any())
-            <div class="mb-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-600">
-                <div class="font-bold flex items-center gap-2 mb-2">
-                    <i class="ri-error-warning-line text-lg"></i> Por favor corrige los siguientes errores:
-                </div>
-                <ul class="list-disc pl-6 space-y-1">
-                    @foreach($errors->all() as $err)
-                        <li>{{ $err }}</li>
-                    @endforeach
-                </ul>
+    @if($errors->any())
+        <div class="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-600">
+            <div class="font-bold flex items-center gap-2 mb-2">
+                <i class="ri-error-warning-line text-lg"></i> Por favor corrige los siguientes errores:
             </div>
+            <ul class="list-disc pl-6 space-y-1">
+                @foreach($errors->all() as $err)
+                    <li>{{ $err }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
+    @php
+        $purchaseMovement = $purchaseMovement ?? optional($purchase ?? null)->purchaseMovement ?? null;
+        $productsForForm = $products ?? collect();
+        $existingItems = collect($purchaseMovement?->details ?? [])->map(function ($detail) use ($productsForForm) {
+            $product = $productsForForm->first(fn($p) => ($p->id ?? $p['id'] ?? 0) == ($detail->producto_id ?? $detail->product_id ?? 0));
+            $imageUrl = $product && isset($product->image_url) ? $product->image_url : null;
+            return [
+                'product_id' => (int) ($detail->producto_id ?? $detail->product_id ?? 0),
+                'unit_id' => (int) ($detail->unidad_id ?? $detail->unit_id ?? 0),
+                'description' => (string) ($detail->descripcion ?? $detail->description ?? ''),
+                'quantity' => (float) ($detail->cantidad ?? $detail->quantity ?? 1),
+                'amount' => (float) ($detail->monto ?? $detail->amount ?? 0),
+                'comment' => (string) ($detail->comentario ?? $detail->comment ?? ''),
+                'image_url' => $imageUrl,
+            ];
+        })->values();
+    @endphp
+
+    <form class="space-y-4 w-full max-w-full"
+        method="POST"
+        action="{{ isset($purchaseMovement) ? route('purchase.update', $purchaseMovement) : route('purchase.store', !empty($viewId) ? ['view_id' => $viewId] : []) }}"
+        enctype="multipart/form-data"
+        x-data="purchaseFormCatalog({
+            products: @js(($products ?? collect())->map(fn($p) => [
+                'id' => (int) $p->id,
+                'code' => (string) ($p->code ?? ''),
+                'name' => (string) ($p->description ?? ''),
+                'unit_id' => (int) ($p->unit_sale ?? 0),
+                'unit_name' => (string) ($p->unit_name ?? ''),
+                'cost' => (float) ($p->price ?? 0),
+                'stock' => (float) ($p->stock ?? 0),
+                'category_id' => $p->category_id ?? null,
+                'category' => (string) ($p->category ?? 'General'),
+                'image_url' => $p->image_url ?? null,
+            ])->values()),
+            categories: @js(($categories ?? collect())->map(fn($c) => ['id' => $c->id, 'name' => $c->description ?? ''])->values()->all()),
+            units: @js($units),
+            initialProviderId: @js((int) old('person_id', $purchase?->person_id ?? 0)),
+            initialItems: @js(old('items', $existingItems->all())),
+            taxRate: @js((float) old('tax_rate_percent', $defaultTaxRate ?? 18)),
+            includesTax: @js((string) old('includes_tax', $purchaseMovement?->incluye_igv ?? 'S')),
+            initialCurrency: @js((string) old('currency', $purchaseMovement?->moneda ?? 'PEN')),
+            initialBranchId: @js((int) old('branch_id', $purchaseMovement?->branch_id ?? $branchId ?? 0)),
+            initialPaymentType: @js((string) old('payment_type', $purchaseMovement?->tipo_pago ?? 'CONTADO')),
+            defaultExchangeRate: @js((float) old('exchange_rate', $purchaseMovement?->tipocambio ?? 3.5)),
+            initialAffectsKardex: @js((string) old('affects_kardex', $purchaseMovement?->afecta_kardex ?? 'S')),
+            paymentMethods: @js(($paymentMethods ?? collect())->map(fn($pm) => ['id' => $pm->id, 'description' => $pm->description ?? ''])->values()->all()),
+            cards: @js(($cards ?? collect())->map(fn($c) => ['id' => $c->id, 'description' => $c->description ?? '', 'type' => $c->type ?? ''])->values()->all()),
+            paymentGateways: @js(($paymentGateways ?? collect())->map(fn($pg) => ['id' => $pg->id, 'description' => $pg->description ?? ''])->values()->all()),
+            digitalWallets: @js(($digitalWallets ?? collect())->map(fn($dw) => ['id' => $dw->id, 'description' => $dw->description ?? ''])->values()->all()),
+            banks: @js(($banks ?? collect())->map(fn($b) => ['id' => $b->id, 'description' => $b->description ?? ''])->values()->all()),
+        })"
+        x-init="initForm()"
+        @submit.prevent="
+            if (!canSubmit) {
+                alert(submitErrorMessage);
+                return;
+            }
+            let firstInvalid = null;
+            const elements = $el.querySelectorAll('input[name]:not([type=hidden]), select[name], textarea[name]');
+            for (let el of elements) {
+                if (!el.checkValidity()) {
+                    firstInvalid = el;
+                    break;
+                }
+            }
+            if (firstInvalid) {
+                firstInvalid.reportValidity();
+            } else {
+                isSubmitting = true;
+                $el.submit();
+            }
+        "
+    >
+        @csrf
+        @if(isset($purchaseMovement))
+            @method('PUT')
         @endif
 
-        @php
-            $purchaseMovement = optional($purchase ?? null)->purchaseMovement;
-            $existingItems = collect($purchaseMovement?->details ?? [])->map(function ($detail) {
-                return [
-                    'product_id' => (int) ($detail->product_id ?? 0),
-                    'unit_id' => (int) ($detail->unit_id ?? 0),
-                    'description' => (string) ($detail->description ?? ''),
-                    'quantity' => (float) ($detail->quantity ?? 1),
-                    'amount' => (float) ($detail->amount ?? 0),
-                    'comment' => (string) ($detail->comment ?? ''),
-                    'product_query' => '',
-                    'product_open' => false,
-                    'product_cursor' => 0,
-                ];
-            })->values();
-        @endphp
-
-        <form 
-            method="POST" 
-            action="{{ route('purchase.store', !empty($viewId) ? ['view_id' => $viewId] : []) }}" 
-            class="space-y-6" 
-            enctype="multipart/form-data"
-            x-data="purchaseForm({
-                products: @js($products->map(fn($p) => [
-                    'id' => (int) $p->id,
-                    'code' => (string) ($p->code ?? ''),
-                    'name' => (string) ($p->description ?? ''),
-                    'unit_id' => (int) ($p->unit_sale ?? 0),
-                    'unit_name' => (string) ($p->unit_name ?? ''),
-                    'cost' => (float) ($p->price ?? 0),
-                ])->values()),
-                units: @js($units),
-                initialProviderId: @js((int) old('person_id', $purchase?->person_id ?? 0)),
-                initialItems: @js(old('items', $existingItems->all())),
-                taxRate: @js((float) old('tax_rate_percent', $defaultTaxRate ?? 18)),
-                includesTax: @js((string) old('includes_tax', $purchaseMovement?->includes_tax ?? 'N')),
-                initialCurrency: @js((string) old('currency', $purchaseMovement?->currency ?? 'PEN')),
-                initialBranchId: @js((int) old('branch_id', $purchaseMovement?->branch_id ?? $branchId ?? 0)),
-                initialPaymentType: @js((string) old('payment_type', $purchaseMovement?->payment_type ?? 'CONTADO'))
-            })"
-            x-init="initForm()"
-            @submit.prevent="
-                let firstInvalid = null;
-                const elements = $el.querySelectorAll('input[name]:not([type=hidden]), select[name], textarea[name]');
-                for (let el of elements) {
-                    if (!el.checkValidity()) {
-                        firstInvalid = el;
-                        break;
-                    }
-                }
-                if (firstInvalid) {
-                    firstInvalid.reportValidity();
-                } else {
-                    isSubmitting = true;
-                    $el.submit();
-                }
-            "
-        >
-            @csrf
-            
-            <div class="space-y-5">
-                
+        <div class="rounded-xl bg-white border border-gray-200 shadow-sm p-6">
+            <div class="flex flex-nowrap gap-6 w-full overflow-x-auto">
+            {{-- Panel izquierdo: Productos y categorías (2/3 del ancho) --}}
+            <div class="flex-1 min-w-[280px] space-y-4">
+                {{-- Fecha de compra --}}
                 <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-                    <h3 class="mb-4 text-sm font-bold uppercase tracking-wide text-gray-700">Cabecera de compra</h3>
-                    
-                    <div class="grid grid-cols-1 gap-4 md:grid-cols-12 md:items-end"> 
-                        <div class="md:col-span-3">
-                            <label class="mb-1.5 block text-xs font-semibold uppercase text-gray-500 tracking-wider">Sucursal de Destino</label>
-                            <select name="branch_id" x-model.number="selectedBranchId" class="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm focus:border-[#244BB3] focus:outline-none focus:ring-1 focus:ring-[#244BB3] bg-white" required>
-                                <option value="">Selecciona una sucursal</option>
-                                @foreach($branches as $branch)
-                                    <option value="{{ $branch->id }}">{{ $branch->legal_name ?? $branch->name ?? 'Sucursal ' . $branch->id }}</option>
-                                @endforeach
-                            </select>
-                        </div>
+                    <label class="mb-2 block text-xs font-semibold uppercase text-gray-500 tracking-wider">Fecha de compra</label>
+                    <div class="relative">
+                        <input type="text" name="moved_at" x-ref="movedAtInput"
+                            value="{{ old('moved_at', optional($purchase)->moved_at?->format('Y-m-d H:i') ?? now()->format('Y-m-d H:i')) }}"
+                            placeholder="dd/mm/yyyy hh:mm"
+                            class="h-10 w-full rounded-lg border border-gray-300 px-3 pr-10 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 bg-white"
+                            required
+                        />
+                        <i class="ri-calendar-line absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg pointer-events-none"></i>
+                    </div>
+                </div>
 
-                        <div class="md:col-span-2">
-                            <x-form.date-picker name="moved_at" label="Fecha" placeholder="dd/mm/yyyy hh:mm" :defaultDate="old('moved_at', optional($purchase?->moved_at ?? now())->format('Y-m-d H:i'))" dateFormat="Y-m-d H:i" :enableTime="true" :time24hr="true" :altInput="true" altFormat="d/m/Y H:i" locale="es" :compact="true" />
-                        </div>
-
-                        <div class="md:col-span-3">
-                            <x-form.select.combobox 
-                                label="Proveedor"
-                                name="person_id"
-                                x-model="selectedProviderId"
-                                :options="$people->map(fn($person) => [
-                                    'id' => $person->id,
-                                    'description' => trim(($person->first_name ?? '') . ' ' . ($person->last_name ?? '')) . ' - ' . ($person->document_number ?? '')
-                                ])->values()->all()"
-                                :required="true"
-                                placeholder="Buscar proveedor..."
-                                icon="ri-user-shared-line"
-                                iconClickEvent="open-modal-proveedor"
-                            />
-                        </div>
-
-                        <div class="md:col-span-2">
-                            <label class="mb-1.5 block text-xs font-semibold uppercase text-gray-500 tracking-wider">Documento</label>
-                            <select name="document_type_id" class="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm focus:border-[#244BB3] focus:outline-none focus:ring-1 focus:ring-[#244BB3] bg-white" required>
+                {{-- Documento y Número --}}
+                <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                            <label class="mb-1.5 block text-xs font-semibold uppercase text-gray-500 tracking-wider">DOCUMENTO</label>
+                            <select name="document_type_id" class="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 bg-white" required>
                                 @foreach($documentTypes as $documentType)
-                                    <option value="{{ $documentType->id }}" @selected((int) old('document_type_id', $purchase?->document_type_id ?? 0) === (int) $documentType->id)>{{ str_replace(' de compra', '', $documentType->name) }}</option>
+                                    <option value="{{ $documentType->id }}" @selected((int) old('document_type_id', $purchase?->document_type_id ?? 0) === (int) $documentType->id)>{{ $documentType->name }}</option>
                                 @endforeach
                             </select>
                         </div>
-
-                        <div class="md:col-span-2">
-                            <label class="mb-1.5 block text-xs font-semibold uppercase text-gray-500 tracking-wider">Serie</label>
-                            <input type="text" name="series" class="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm focus:border-[#244BB3] focus:outline-none focus:ring-1 focus:ring-[#244BB3]" value="{{ old('series', $purchaseMovement?->series ?? '001') }}" placeholder="001" required>
+                        <div>
+                            <label class="mb-1.5 block text-xs font-semibold uppercase text-gray-500 tracking-wider">SERIE</label>
+                            <input type="text" name="series" class="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500" value="{{ old('series', $purchaseMovement?->serie ?? '001') }}" placeholder="001" required>
+                        </div>
+                        <div>
+                            <label class="mb-1.5 block text-xs font-semibold uppercase text-gray-500 tracking-wider">NUMERO</label>
+                            <input type="text" name="number" class="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500" value="{{ old('number', $purchaseMovement?->numero ?? '001') }}" placeholder="001" required>
                         </div>
                     </div>
-                </div>  
+                    <div class="mt-4">
+                        <label class="mb-1.5 block text-xs font-semibold uppercase text-gray-500 tracking-wider">Proveedor</label>
+                        <x-form.select.combobox
+                            label=""
+                            name="person_id"
+                            x-model="selectedProviderId"
+                            :options="$people->map(fn($person) => [
+                                'id' => $person->id,
+                                'description' => trim(($person->first_name ?? '') . ' ' . ($person->last_name ?? '')) . ' - ' . ($person->document_number ?? '')
+                            ])->values()->all()"
+                            :required="true"
+                            placeholder="Buscar proveedor..."
+                            icon="ri-user-shared-line"
+                            iconClickEvent="open-modal-proveedor"
+                        />
+                    </div>
+                </div>
 
+                {{-- Catálogo Productos --}}
                 <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-                    <div class="mb-4 flex items-center justify-between">
-                        <h3 class="text-sm font-bold uppercase tracking-wide text-gray-700">Detalle de compra</h3>
-                        <button type="button" @click="addItem()" class="inline-flex items-center rounded-lg bg-[#244BB3] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[#1f3f98] transition-colors">
-                            <i class="ri-add-line mr-1 text-base"></i>Agregar item
+                    <h3 class="mb-4 text-sm font-bold uppercase tracking-wide text-gray-700">CATÁLOGO Productos</h3>
+                    <div class="relative mb-4">
+                        <i class="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg"></i>
+                        <input type="text" x-model="catalogSearch" placeholder="Buscar por nombre o categoría"
+                            class="h-10 w-full rounded-lg border border-gray-300 pl-10 pr-3 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                        />
+                    </div>
+                    <div class="flex flex-wrap gap-2 mb-4">
+                        <button type="button" @click="selectedCategory = null"
+                            class="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                            :class="selectedCategory === null ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'">
+                            General
+                        </button>
+                        <template x-for="cat in categories" :key="cat.id">
+                            <button type="button" @click="selectedCategory = cat.id"
+                                class="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                                :class="selectedCategory === cat.id ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                                x-text="cat.name">
+                            </button>
+                        </template>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 max-h-[400px] overflow-y-auto">
+                        <template x-for="product in filteredCatalogProducts" :key="product.id">
+                            <button type="button" @click="addProductToCart(product)"
+                                class="flex flex-col rounded-xl border border-gray-200 bg-white p-3 text-left hover:border-orange-400 hover:shadow-md transition-all group">
+                                <div class="relative aspect-square mb-2 rounded-lg bg-gray-100 overflow-hidden">
+                                    <img :src="product.image_url || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3Crect fill=%22%23e5e7eb%22 width=%22100%22 height=%22100%22/%3E%3C/svg%3E'" :alt="product.name"
+                                        class="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                                        @@error="$el.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3Crect fill=%22%23e5e7eb%22 width=%22100%22 height=%22100%22/%3E%3C/svg%3E'"
+                                    />
+                                    <span class="absolute top-1 right-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-orange-500/90 text-white" x-text="'Stock: ' + (product.stock ?? 0)"></span>
+                                </div>
+                                <p class="text-xs font-medium text-gray-800 line-clamp-2 mb-1" x-text="product.name"></p>
+                                <p class="text-sm font-bold text-orange-600" x-text="money(product.cost)"></p>
+                            </button>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Panel derecho: Resumen y Pago (altura igual al panel izquierdo) --}}
+            <div class="w-[420px] min-w-[420px] max-w-[420px] min-h-[680px] shrink-0 flex flex-col gap-4 self-stretch">
+                <div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden flex flex-col flex-1 min-h-0">
+                    {{-- Tabs --}}
+                    <div class="flex border-b border-gray-200">
+                        <button type="button" @click="activeTab = 'resumen'"
+                            class="flex-1 px-4 py-3 text-sm font-semibold transition-colors"
+                            :class="activeTab === 'resumen' ? 'bg-brand-500 text-white' : 'text-gray-600 hover:bg-gray-50'">
+                            Resumen
+                        </button>
+                        <button type="button" @click="activeTab = 'pago'"
+                            class="flex-1 px-4 py-3 text-sm font-semibold transition-colors"
+                            :class="activeTab === 'pago' ? 'bg-brand-500 text-white' : 'text-gray-600 hover:bg-gray-50'">
+                            Pago
                         </button>
                     </div>
 
-                    <div class="overflow-visible rounded-lg border border-gray-200">
-                        <table class="w-full table-fixed">
-                            <colgroup>
-                                <col style="width:36%">
-                                <col style="width:20%">
-                                <col style="width:6%">
-                                <col style="width:6%">
-                                <col style="width:25%">
-                                <col style="width:4%">
-                                <col style="width:3%">
-                            </colgroup>
-                            <thead style="background-color: #f8fafc; border-bottom: 1px solid #e2e8f0;">
-                                <tr>
-                                    <th class="px-3 py-3 text-left text-xs font-bold uppercase text-gray-600 tracking-wider">Codigo / Producto</th>
-                                    <th class="px-3 py-3 text-left text-xs font-bold uppercase text-gray-600 tracking-wider">Unidad</th>
-                                    <th class="px-3 py-3 text-center text-xs font-bold uppercase text-gray-600 tracking-wider">Cant.</th>
-                                    <th class="px-3 py-3 text-right text-xs font-bold uppercase text-gray-600 tracking-wider">P. Unit.</th>
-                                    <th class="px-3 py-3 text-left text-xs font-bold uppercase text-gray-600 tracking-wider">Notas</th>
-                                    <th class="px-3 py-3 text-right text-xs font-bold uppercase text-gray-600 tracking-wider">Importe</th>
-                                    <th class="px-3 py-3 text-center text-xs font-bold uppercase text-gray-600 tracking-wider"></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <template x-for="(item, idx) in items" :key="idx">
-                                    <tr class="border-b border-gray-100 last:border-b-0 hover:bg-gray-50/50 transition-colors">
-                                        
-                                        <td class="relative overflow-visible px-2 py-2">
-                                            <input type="hidden" :name="`items[${idx}][product_id]`" :value="item.product_id">
-                                            <input type="hidden" :name="`items[${idx}][description]`" :value="item.description">
-                                            
-                                            <div class="relative z-20" @click.outside="item.product_open = false">
-                                                <input type="text" x-model="item.product_query" @focus="item.product_open = true" @input="item.product_open = true" @keydown.arrow-down.prevent="moveProductCursor(idx, 1)" @keydown.arrow-up.prevent="moveProductCursor(idx, -1)" @keydown.enter.prevent="selectProductByCursor(idx)" class="h-9 w-full rounded-md border border-gray-300 px-3 text-sm focus:border-[#244BB3] focus:ring-1 focus:ring-[#244BB3]" placeholder="Buscar producto..." autocomplete="off" required>
-                                                <button type="button" x-show="item.product_id" @click="clearProduct(idx)" class="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-gray-400 hover:text-gray-700" title="Limpiar producto"><i class="ri-close-line"></i></button>
-                                                
-                                                <div x-show="item.product_open" x-cloak class="absolute left-0 top-full z-[999] mt-1 max-h-56 min-w-[22rem] max-w-[30rem] overflow-y-auto overflow-x-hidden rounded-lg border border-gray-200 bg-white shadow-xl">
-                                                    <template x-if="filteredProducts(item).length === 0"><p class="px-3 py-2 text-xs text-gray-500">Sin resultados</p></template>
-                                                    <template x-for="(product, pIndex) in filteredProducts(item)" :key="product.id">
-                                                        <button type="button" @click="selectProduct(idx, product)" @mouseenter="item.product_cursor = pIndex" class="flex w-full items-center justify-between px-3 py-2.5 text-left text-sm hover:bg-gray-50" :class="item.product_cursor === pIndex ? 'bg-gray-100' : ''">
-                                                            <span class="font-medium text-gray-800" x-text="`${product.code || 'SIN'} - ${product.name}`"></span>
-                                                            <span class="text-xs text-gray-500" x-text="product.unit_name || ''"></span>
-                                                        </button>
-                                                    </template>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        
-                                        <td class="px-2 py-2">
-                                            <input type="hidden" :name="`items[${idx}][unit_id]`" :value="item.unit_id">
-                                            <x-form.select.combobox x-model.number="item.unit_id" :options="$units" :required="true" placeholder="Unidad..." />
-                                        </td>
-
-                                        <td class="px-2 py-2">
-                                            <input :name="`items[${idx}][quantity]`" type="number" step="1" min="1" x-model.number="item.quantity" class="h-9 w-20 max-w-full rounded-md border border-gray-300 px-2 text-center text-sm font-semibold focus:border-[#244BB3] focus:ring-1 focus:ring-[#244BB3]" required>
-                                        </td>
-                                        <td class="px-2 py-2">
-                                            <input :name="`items[${idx}][amount]`" type="number" step="0.01" min="0" x-model.number="item.amount" class="h-9 w-20 max-w-full rounded-md border border-gray-300 px-2 text-right text-sm font-semibold focus:border-[#244BB3] focus:ring-1 focus:ring-[#244BB3]" required>
-                                        </td>
-                                        <td class="px-2 py-2">
-                                            <input :name="`items[${idx}][comment]`" x-model="item.comment" class="h-9 w-full rounded-md border border-gray-300 px-3 text-sm focus:border-[#244BB3] focus:ring-1 focus:ring-[#244BB3]" placeholder="Opcional">
-                                        </td>
-                                        <td class="px-2 py-2 text-right">
-                                            <p class="text-sm font-bold text-gray-800" x-text="money((item.quantity || 0) * (item.amount || 0))"></p>
-                                        </td>
-                                        <td class="px-2 py-2 text-center">
-                                            <button type="button" @click="removeItem(idx)" class="inline-flex h-8 w-8 items-center justify-center rounded text-gray-400 hover:text-red-500 hover:bg-red-50" title="Eliminar item">
-                                                <i class="ri-delete-bin-line text-lg"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                </template>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <div class="rounded-xl border border-gray-200 bg-white p-5 lg:p-6 shadow-sm">
-                    <div class="flex flex-col lg:flex-row gap-8">
-
-                        <div class="w-full lg:w-[65%] xl:w-[70%]">
-                            <h3 class="mb-5 text-sm font-bold uppercase tracking-wide text-gray-700 border-b border-gray-100 pb-2">Datos de compra</h3>
-                            
-                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                    <div class="p-4 flex-1 overflow-y-auto min-h-0">
+                        {{-- Tab Resumen: Config, carrito, totales, notas --}}
+                        <div x-show="activeTab === 'resumen'" x-cloak class="space-y-4">
+                            <div class="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label class="mb-1.5 block text-[11px] font-bold uppercase text-gray-500 tracking-wider">Incluye IGV</label>
-                                    <select name="includes_tax" x-model="includesTax" class="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm focus:border-[#244BB3] focus:ring-1 focus:ring-[#244BB3] bg-white">
-                                        <option value="N">No</option>
+                                    <label class="mb-1 block text-[11px] font-bold uppercase text-gray-500 tracking-wider">TIPO DETALLE</label>
+                                    <select name="tipo_detalle" class="h-9 w-full rounded-lg border border-gray-300 px-2 text-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500 bg-white">
+                                        <option value="DETALLADO" @selected(old('tipo_detalle', $purchaseMovement?->tipo_detalle ?? 'DETALLADO') === 'DETALLADO')>DETALLADO</option>
+                                        <option value="GLOSA" @selected(old('tipo_detalle', $purchaseMovement?->tipo_detalle ?? 'DETALLADO') === 'GLOSA')>GLOSA</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="mb-1 block text-[11px] font-bold uppercase text-gray-500 tracking-wider">AFECTA KARDEX</label>
+                                    <select name="affects_kardex" x-model="affectsKardex" class="h-9 w-full rounded-lg border border-gray-300 px-2 text-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500 bg-white">
                                         <option value="S">Si</option>
+                                        <option value="N">No</option>
                                     </select>
                                 </div>
                                 <div>
-                                    <label class="mb-1.5 block text-[11px] font-bold uppercase text-gray-500 tracking-wider">IGV %</label>
-                                    <input type="number" step="0.01" min="0" max="100" name="tax_rate_percent" x-model.number="taxRate" class="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm focus:border-[#244BB3] focus:ring-1 focus:ring-[#244BB3]" required>
-                                </div>
-                                <div>
-                                    <label class="mb-1.5 block text-[11px] font-bold uppercase text-gray-500 tracking-wider">Tipo pago</label>
-                                    <select name="payment_type" x-model="payment_type" class="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm focus:border-[#244BB3] focus:ring-1 focus:ring-[#244BB3] bg-white">
-                                        @foreach(['CONTADO','CREDITO'] as $option)
-                                            <option value="{{ $option }}">{{ $option }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label class="mb-1.5 block text-[11px] font-bold uppercase text-gray-500 tracking-wider">Moneda</label>
-                                    <select name="currency" x-model="currency" class="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm focus:border-[#244BB3] focus:ring-1 focus:ring-[#244BB3] bg-white" required>
-                                        <option value="PEN">PEN - Soles</option>
-                                        <option value="USD">USD - Dólares</option>
+                                    <label class="mb-1 block text-[11px] font-bold uppercase text-gray-500 tracking-wider">INCLUYE IGV</label>
+                                    <select name="includes_tax" x-model="includesTax" class="h-9 w-full rounded-lg border border-gray-300 px-2 text-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500 bg-white">
+                                        <option value="S">Si</option>
+                                        <option value="N">No</option>
                                     </select>
                                 </div>
                                 <div>
-                                    <label class="mb-1.5 block text-[11px] font-bold uppercase text-gray-500 tracking-wider">Tipo de Cambio</label>
-                                    <input type="number" step="0.001" min="0.001" name="exchange_rate" class="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm focus:border-[#244BB3] focus:ring-1 focus:ring-[#244BB3]" value="{{ old('exchange_rate', $purchaseMovement?->exchange_rate ?? 3.5) }}" required>
+                                    <label class="mb-1 block text-[11px] font-bold uppercase text-gray-500 tracking-wider">IGV %</label>
+                                    <input type="number" name="tax_rate_percent" x-model.number="taxRate" step="0.01" min="0" max="100" class="h-9 w-full rounded-lg border border-gray-300 px-2 text-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500" required>
                                 </div>
                                 <div>
-                                    <label class="mb-1.5 block text-[11px] font-bold uppercase text-gray-500 tracking-wider">Afecta caja</label>
-                                    <select name="affects_cash" class="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm focus:border-[#244BB3] focus:ring-1 focus:ring-[#244BB3] bg-white">
-                                        <option value="N" @selected(old('affects_cash', $purchaseMovement?->affects_cash ?? 'N') === 'N')>No</option>
-                                        <option value="S" @selected(old('affects_cash', $purchaseMovement?->affects_cash ?? 'N') === 'S')>Si</option>
+                                    <label class="mb-1 block text-[11px] font-bold uppercase text-gray-500 tracking-wider">MONEDA</label>
+                                    <select name="currency" x-model="currency" class="h-9 w-full rounded-lg border border-gray-300 px-2 text-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500 bg-white" required>
+                                        <option value="PEN">PEN</option>
+                                        <option value="USD">USD</option>
                                     </select>
                                 </div>
-
                                 <div>
-                                    <label class="mb-1.5 block text-[11px] font-bold uppercase text-gray-500 tracking-wider">Afecta kardex</label>
-                                    <select name="affects_kardex" class="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm focus:border-[#244BB3] focus:ring-1 focus:ring-[#244BB3] bg-white">
-                                        <option value="S" @selected(old('affects_kardex', $purchaseMovement?->affects_kardex ?? 'S') === 'S')>Si</option>
-                                        <option value="N" @selected(old('affects_kardex', $purchaseMovement?->affects_kardex ?? 'S') === 'N')>No</option>
-                                    </select>
-                                </div>
-                                <div class="lg:col-span-2">
-                                    <label class="mb-1.5 block text-[11px] font-bold uppercase text-gray-500 tracking-wider">Notas de compra</label>
-                                    <input type="text" name="comment" class="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm focus:border-[#244BB3] focus:ring-1 focus:ring-[#244BB3]" placeholder="Comentario opcional..." value="{{ old('comment', $purchase?->comment ?? '') }}">
+                                    <label class="mb-1 block text-[11px] font-bold uppercase text-gray-500 tracking-wider">TIPO CAMBIO</label>
+                                    <input type="number" name="exchange_rate" x-model.number="exchangeRate" step="0.001" min="0.001" class="h-9 w-full rounded-lg border border-gray-300 px-2 text-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500" required>
                                 </div>
                             </div>
-                        </div>
+                            <input type="hidden" name="branch_id" :value="selectedBranchId">
 
-                        <div class="w-full lg:w-[35%] xl:w-[30%] min-w-[280px]">
-                            <div class="h-full rounded-xl border border-gray-200 bg-[#f8f9fa] p-5 flex flex-col">
-                                <h3 class="mb-5 text-sm font-bold uppercase tracking-wide text-gray-700 border-b border-gray-200 pb-2">Resumen</h3>
-                                
-                                <div class="space-y-3 flex-grow">
-                                    <div class="flex items-center justify-between text-sm">
-                                        <span class="text-gray-500 font-medium">Subtotal</span>
-                                        <span class="font-bold text-gray-900" x-text="money(summary.subtotal)"></span>
+                        {{-- Artículos en carrito --}}
+                        <div class="space-y-3">
+                            <template x-for="(item, idx) in items" :key="idx">
+                                <div class="flex gap-3 items-center rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
+                                    <div class="w-14 h-14 shrink-0 rounded-lg overflow-hidden bg-gray-100">
+                                        <img :src="item.image_url || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%23d1d5db%22%3E%3Cpath d=%22M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z%22/%3E%3C/svg%3E'" class="w-full h-full object-cover" :alt="item.description">
                                     </div>
-                                    <div class="flex items-center justify-between text-sm">
-                                        <span class="text-gray-500 font-medium">IGV (<span x-text="taxRate"></span>%)</span>
-                                        <span class="font-bold text-gray-900" x-text="money(summary.tax)"></span>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-sm font-bold text-gray-800 truncate uppercase" x-text="(item.description || '').toUpperCase()"></p>
+                                        <p class="text-sm font-bold text-orange-500 mt-0.5" x-text="money((item.quantity || 0) * (item.amount || 0))"></p>
+                                        <p class="text-xs text-gray-500" x-text="money(item.amount) + ' c/u'"></p>
                                     </div>
-                                </div>
-
-                                <div class="mt-6 flex items-end justify-between border-t border-gray-300 pt-5">
-                                    <span class="text-[13px] font-bold uppercase tracking-wider text-gray-700">Total</span>
-                                    <span class="text-3xl font-black text-[#1a2a5d]" x-text="money(summary.total)"></span>
-                                </div>
-                            </div>
-                        </div>
-
-                    </div>
-                </div>
-
-                <div class="flex flex-col lg:flex-row gap-6" x-show="payment_type === 'CONTADO'" x-cloak>
-                    
-                    <div class="w-full lg:w-[75%] xl:w-[80%]">
-                        <div class="rounded-xl border border-gray-200 bg-white p-5 lg:p-6 shadow-sm">
-                            
-                            <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-4 pb-2 border-b border-gray-100">
-                                <div>
-                                    <h3 class="text-sm font-semibold uppercase tracking-wide text-gray-700 flex items-center gap-1 mb-0">
-                                        <i class="ri-wallet-3-line text-[#244BB3] text-lg"></i> Pagos
-                                    </h3>
-                                    <p class="text-xs text-gray-500">Añade métodos para cubrir el total.</p>
-                                </div>
-
-                                <div class="mt-2 sm:mt-0 flex flex-col items-end px-3 py-1.5 rounded-lg border border-gray-200 bg-white shadow-sm text-xs">
-                                    <span class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-0.5">
-                                        Faltante por Pagar
-                                    </span>
-                                    <span class="block text-2xl font-black transition-colors"
-                                          :class="paymentDifference > 0 ? 'text-[#2ecc71]' : 'text-gray-400'">
-                                        <span x-text="currency === 'USD' ? '$' : 'S/'"></span> 
-                                        <span x-text="Number(paymentDifference).toFixed(2)"></span>
-                                    </span>
-                                </div>
-                            </div>
-
-                            <fieldset :disabled="payment_type !== 'CONTADO'" class="w-full border-0 p-0 m-0">
-                                
-                                <div class="hidden md:flex items-center px-4 pb-2 border-b border-gray-100 text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-2">
-                                    <div class="w-[35%] pl-2">Método</div>
-                                    <div class="w-[20%]">Monto</div>
-                                    <div class="w-[40%] pl-6"></div> 
-                                    <div class="w-[5%]"></div>
-                                </div>
-
-                                <div class="space-y-1">
-                                    <template x-for="(row, index) in paymentRows" :key="row.id">
-                                        <div class="flex flex-col md:flex-row md:items-center px-4 py-3 bg-white border border-gray-100 md:border-transparent md:border-b md:border-b-gray-100 rounded-xl md:rounded-none hover:bg-gray-50 transition-colors group">
-                                            
-                                            <div class="w-full md:w-[35%] flex items-center relative">
-                                                <span class="md:hidden text-[11px] font-bold uppercase text-gray-500 mb-1 w-full block absolute -top-5">Método</span>
-                                                <i class="text-[18px] mr-2"
-                                                    :class="{
-                                                        'ri-money-dollar-circle-line text-emerald-500': row.methodId == '1',
-                                                        'ri-bank-card-line text-blue-500': row.methodId == '2',
-                                                        'ri-bank-line text-indigo-500': row.methodId == '3',
-                                                        'ri-smartphone-line text-purple-500': row.methodId == '5',
-                                                        'ri-wallet-3-line text-gray-400': row.methodId == ''
-                                                    }"></i>
-                                                <select x-model="row.methodId" @change="row.methodName = $event.target.options[$event.target.selectedIndex].text" :name="`payments[${index}][payment_method_id]`" required class="w-full bg-transparent border-0 focus:ring-0 text-[14px] font-medium text-gray-800 px-0 cursor-pointer appearance-none">
-                                                    <option value="1">Efectivo</option>
-                                                    <option value="2">Tarjeta de Crédito / Débito</option>
-                                                    <option value="3">Transferencia Bancaria</option>
-                                                    <option value="5">Billetera Digital</option>
-                                                </select>
-                                                <i class="ri-arrow-down-s-line text-gray-400 pointer-events-none -ml-4"></i>
-                                                <input type="hidden" :name="`payments[${index}][payment_method]`" :value="row.methodName">
-                                            </div>
-
-                                            <div class="w-full md:w-[20%] flex items-center mt-6 md:mt-0 relative">
-                                                <span class="md:hidden text-[11px] font-bold uppercase text-gray-500 mb-1 block absolute -top-5">Monto</span>
-                                                <span class="text-gray-400 font-medium text-[15px] mr-1" x-text="currency === 'USD' ? '$' : 'S/.'"></span>
-                                                <input type="number" step="0.01" min="0.00" x-model.number="row.amount" :name="`payments[${index}][amount]`" required class="w-full bg-transparent border-0 focus:ring-0 text-[15px] font-bold text-gray-800 px-1 p-0 placeholder-gray-300" placeholder="0.00">
-                                            </div>
-
-                                            <div class="hidden md:block w-px h-8 bg-gray-200 mx-4"></div>
-
-                                            <div class="w-full md:w-[40%] flex items-center mt-6 md:mt-0 relative min-h-[36px]">
-                                                
-                                                <template x-if="['1', ''].includes(row.methodId)">
-                                                    <div class="w-full"></div> 
-                                                </template>
-
-                                                <template x-if="row.methodId == '2'">
-                                                    <div class="flex gap-4 w-full">
-                                                        <div class="w-1/2 relative">
-                                                            <label class="block text-[10px] text-gray-400 font-semibold mb-0.5 absolute -top-4 left-0 uppercase">Tipo Tarjeta</label>
-                                                            <select :name="`payments[${index}][card_id]`" required class="w-full border-0 border-b border-gray-200 bg-transparent px-0 py-1 text-sm font-medium text-gray-700 focus:ring-0 focus:border-[#244BB3] appearance-none">
-                                                                <option value="">Seleccionar v</option>
-                                                                @foreach ($cards ?? [] as $card)
-                                                                    <option value="{{ $card->id }}">{{ $card->description }}</option>
-                                                                @endforeach
-                                                            </select>
-                                                        </div>
-                                                        <div class="w-1/2 relative">
-                                                            <label class="block text-[10px] text-gray-400 font-semibold mb-0.5 absolute -top-4 left-0 uppercase">N° Lote (Op.)</label>
-                                                            <input type="text" :name="`payments[${index}][number]`" placeholder="Ej: 001234" class="w-full border-0 border-b border-gray-200 bg-transparent px-0 py-1 text-sm font-medium text-gray-700 focus:ring-0 focus:border-[#244BB3] placeholder-gray-300">
-                                                        </div>
-                                                    </div>
-                                                </template>
-
-                                                <template x-if="row.methodId == '3'">
-                                                    <div class="flex gap-4 w-full">
-                                                        <div class="w-1/2 relative">
-                                                            <label class="block text-[10px] text-gray-400 font-semibold mb-0.5 absolute -top-4 left-0 uppercase">Banco Destino</label>
-                                                            <select :name="`payments[${index}][bank_id]`" required class="w-full border-0 border-b border-gray-200 bg-transparent px-0 py-1 text-sm font-medium text-gray-700 focus:ring-0 focus:border-[#244BB3] appearance-none">
-                                                                <option value="">Seleccionar v</option>
-                                                                @foreach ($banks ?? [] as $bank)
-                                                                    <option value="{{ $bank->id }}">{{ $bank->description }}</option>
-                                                                @endforeach
-                                                            </select>
-                                                        </div>
-                                                        <div class="w-1/2 relative">
-                                                            <label class="block text-[10px] text-gray-400 font-semibold mb-0.5 absolute -top-4 left-0 uppercase">N° Operación</label>
-                                                            <input type="text" :name="`payments[${index}][number]`" required placeholder="Ej: 987654" class="w-full border-0 border-b border-gray-200 bg-transparent px-0 py-1 text-sm font-medium text-gray-700 focus:ring-0 focus:border-[#244BB3] placeholder-gray-300">
-                                                        </div>
-                                                    </div>
-                                                </template>
-
-                                                <template x-if="row.methodId == '5'">
-                                                    <div class="flex gap-4 w-full">
-                                                        <div class="w-1/2 relative">
-                                                            <label class="block text-[10px] text-gray-400 font-semibold mb-0.5 absolute -top-4 left-0 uppercase">Aplicación</label>
-                                                            <select :name="`payments[${index}][digital_wallet_id]`" required class="w-full border-0 border-b border-gray-200 bg-transparent px-0 py-1 text-sm font-medium text-gray-700 focus:ring-0 focus:border-[#244BB3] appearance-none">
-                                                                <option value="">Seleccionar v</option>
-                                                                @foreach ($digitalWallets ?? [] as $dw)
-                                                                    <option value="{{ $dw->id }}">{{ $dw->description }}</option>
-                                                                @endforeach
-                                                            </select>
-                                                        </div>
-                                                        <div class="w-1/2 relative">
-                                                            <label class="block text-[10px] text-gray-400 font-semibold mb-0.5 absolute -top-4 left-0 uppercase">N° Celular / Ref.</label>
-                                                            <input type="text" :name="`payments[${index}][number]`" required placeholder="Ej: 999..." class="w-full border-0 border-b border-gray-200 bg-transparent px-0 py-1 text-sm font-medium text-gray-700 focus:ring-0 focus:border-[#244BB3] placeholder-gray-300">
-                                                        </div>
-                                                    </div>
-                                                </template>
-                                            </div>
-
-                                            <div class="w-full md:w-[5%] flex justify-end mt-4 md:mt-0">
-                                                <template x-if="paymentRows.length > 1">
-                                                    <button type="button" @click="removePaymentRow(index)" class="text-gray-300 hover:text-red-500 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity p-1" title="Eliminar pago">
-                                                        <i class="ri-delete-bin-line text-lg"></i>
-                                                    </button>
-                                                </template>
-                                            </div>
-
+                                    <div class="flex items-center gap-2 shrink-0">
+                                        <div class="inline-flex items-center rounded-lg border border-gray-200 bg-gray-50 overflow-hidden">
+                                            <button type="button" @click="updateQuantity(idx, -1)" class="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-200 text-base font-bold transition-colors">−</button>
+                                            <input type="number" :name="`items[${idx}][quantity]`" x-model.number="item.quantity" min="0.01" max="999999.99" step="0.01" class="w-12 h-8 text-center text-sm font-bold text-gray-800 border-x border-gray-200 bg-white focus:ring-0 focus:outline-none">
+                                            <button type="button" @click="updateQuantity(idx, 1)" class="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-200 text-base font-bold transition-colors">+</button>
                                         </div>
-                                    </template>
+                                        <button type="button" @click="removeItem(idx)" class="w-9 h-9 rounded-lg border border-red-200 flex items-center justify-center text-gray-500 hover:text-red-500 hover:bg-red-50 transition-colors">
+                                            <i class="ri-delete-bin-line text-lg"></i>
+                                        </button>
+                                    </div>
+                                    <input type="hidden" :name="`items[${idx}][product_id]`" :value="item.product_id">
+                                    <input type="hidden" :name="`items[${idx}][unit_id]`" :value="item.unit_id">
+                                    <input type="hidden" :name="`items[${idx}][description]`" :value="item.description">
+                                    <input type="hidden" :name="`items[${idx}][amount]`" :value="item.amount">
+                                    <input type="hidden" :name="`items[${idx}][comment]`" :value="item.comment || ''">
                                 </div>
-                            </fieldset>
-
-                            <div class="mt-4 pt-3 border-t border-gray-50">
-                                <button type="button" @click="addPaymentRow()" :disabled="payment_type !== 'CONTADO'" class="inline-flex items-center gap-1 text-[12px] font-bold text-gray-600 hover:text-gray-900 transition-colors py-1.5 px-3 rounded border border-gray-300 hover:bg-gray-50 bg-white disabled:opacity-50 disabled:cursor-not-allowed">
-                                    <i class="ri-add-circle-line text-base"></i>
-                                    <span>Agregar otro método de pago</span>
-                                </button>
-                            </div>
+                            </template>
                         </div>
-                    </div>
 
-                    <div class="w-full lg:w-[25%] xl:w-[20%] min-w-[280px]">
-                        <div class="rounded-xl border border-gray-200 bg-white p-5 h-full flex flex-col shadow-sm">
-                            <h3 class="text-xs font-bold uppercase tracking-wide text-gray-700 mb-3 flex items-center gap-1.5">
-                                <i class="ri-image-add-line text-lg text-[#244BB3]"></i> Adjuntar comprobante
-                            </h3>
-                            <div class="flex-grow border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:bg-gray-50 transition-colors relative cursor-pointer flex flex-col items-center justify-center">
+                        {{-- Totales --}}
+                        <div class="mt-4 pt-4 border-t-2 border-gray-200">
+                            <div class="grid grid-cols-[1fr_auto] gap-x-6 items-center py-1">
+                                <span class="text-sm text-gray-500 font-medium text-left">Subtotal</span>
+                                <span class="text-sm font-semibold text-gray-800 text-right" x-text="money(summary.subtotal)"></span>
+                            </div>
+                            <div class="grid grid-cols-[1fr_auto] gap-x-6 items-center py-1">
+                                <span class="text-sm text-gray-500 font-medium text-left">IGV</span>
+                                <span class="text-sm font-semibold text-gray-800 text-right" x-text="money(summary.tax)"></span>
+                            </div>
+                            <div class="grid grid-cols-[1fr_auto] gap-x-6 items-center pt-3 mt-2 border-t border-gray-200">
+                                <span class="text-base font-bold uppercase tracking-wide text-gray-700 text-left">TOTAL A PAGAR</span>
+                                <span class="text-xl font-black text-orange-600 text-right" x-text="money(summary.total)"></span>
+                            </div>
+                            <p x-show="payment_type === 'CONTADO' && totalPaid > 0 && Math.abs(totalPaid - summary.total) > 0.02" x-cloak class="mt-2 text-xs text-red-600 font-medium">
+                                La suma de pagos (<span x-text="money(totalPaid)"></span>) no coincide con el total.
+                            </p>
+                        </div>
+
+                        {{-- Notas --}}
+                        <div>
+                            <label class="mb-1 block text-[11px] font-bold uppercase text-gray-500 tracking-wider">NOTAS</label>
+                            <textarea name="comment" rows="2" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500" placeholder="Comentario opcional...">{{ old('comment', $purchase?->comment ?? '') }}</textarea>
+                        </div>
+                        </div>
+
+                        {{-- Tab Pago: Tipo pago, afecta caja, métodos, adjuntar --}}
+                        <div x-show="activeTab === 'pago'" x-cloak class="space-y-2">
+                            <div>
+                                <label class="mb-1 block text-[11px] font-bold uppercase text-gray-500 tracking-wider">TIPO DE PAGO</label>
+                                <select name="payment_type" x-model="payment_type" class="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm focus:border-orange-500 bg-white">
+                                    <option value="CONTADO">Contado</option>
+                                    <option value="CREDITO">Crédito</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="mb-1 block text-[11px] font-bold uppercase text-gray-500 tracking-wider">AFECTA CAJA</label>
+                                <select name="affects_cash" class="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm focus:border-orange-500 bg-white">
+                                    <option value="N" @selected(old('affects_cash', $purchaseMovement?->afecta_caja ?? 'N') === 'N')>No</option>
+                                    <option value="S" @selected(old('affects_cash', $purchaseMovement?->afecta_caja ?? 'N') === 'S')>Si</option>
+                                </select>
+                            </div>
+                            <div x-show="payment_type === 'CONTADO'" class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <h4 class="text-sm font-bold text-gray-700">Métodos de pago</h4>
+                            <button type="button" @click="addPaymentRow()" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-brand-500 text-white text-xs font-bold hover:bg-orange-600 transition-colors">
+                                <i class="ri-add-line text-sm"></i> Agregar método
+                            </button>
+                        </div>
+                        <template x-for="(row, index) in paymentRows" :key="row.id">
+                            <div class="space-y-2 p-3 rounded-lg border border-gray-200 bg-white">
+                                <div class="flex gap-2 items-start flex-wrap">
+                                    {{-- Autocomplete método de pago --}}
+                                    <div class="flex-1 min-w-[180px] relative" x-data="{ open: false, query: '' }" x-init="query = row.methodName || ''" @click.outside="open = false">
+                                        <label class="block text-[10px] text-gray-500 mb-0.5">Método</label>
+                                        <input type="text" x-model="query" @focus="open = true" @input="open = true"
+                                            placeholder="Buscar método..."
+                                            class="w-full h-9 rounded-lg border border-gray-300 pl-2 pr-8 text-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+                                            autocomplete="off">
+                                        <i class="ri-arrow-down-s-line absolute right-2 top-7 text-gray-400 pointer-events-none"></i>
+                                        <div x-show="open" x-cloak class="absolute z-20 left-0 right-0 mt-1 max-h-40 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg"
+                                            x-transition>
+                                            <template x-for="pm in paymentMethods.filter(p => (p.description || '').toLowerCase().includes((query || '').toLowerCase()))" :key="pm.id">
+                                                <button type="button" @click="row.methodId = pm.id; row.methodName = pm.description; query = pm.description; open = false"
+                                                    class="w-full px-3 py-2 text-left text-sm hover:bg-orange-50"
+                                                    :class="{ 'bg-orange-50': row.methodId == pm.id }"
+                                                    x-text="pm.description">
+                                                </button>
+                                            </template>
+                                            <p x-show="paymentMethods.filter(p => (p.description || '').toLowerCase().includes((query || '').toLowerCase())).length === 0"
+                                                class="px-3 py-2 text-xs text-gray-500">Sin resultados</p>
+                                        </div>
+                                        <input type="hidden" :name="`payments[${index}][payment_method_id]`" :value="row.methodId">
+                                        <input type="hidden" :name="`payments[${index}][payment_method]`" :value="row.methodName">
+                                    </div>
+                                    <div class="flex items-end gap-2">
+                                        <div>
+                                            <label class="block text-[10px] text-gray-500 mb-0.5">Monto</label>
+                                            <div class="flex items-center gap-1">
+                                                <span class="text-gray-500 text-sm" x-text="currency === 'USD' ? '$' : 'S/'"></span>
+                                                <input type="number" x-model.number="row.amount" :name="`payments[${index}][amount]`" step="0.01" min="0" max="99999999.99" placeholder="0.00" class="w-24 h-9 rounded-lg border border-gray-300 px-2 text-sm" :required="payment_type === 'CONTADO'">
+                                            </div>
+                                        </div>
+                                        <button type="button" @click="paymentRows.length > 1 && removePaymentRow(index)" class="h-9 px-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded" title="Eliminar">
+                                            <i class="ri-delete-bin-line text-lg"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                {{-- Tarjeta: tipo tarjeta + pasarela --}}
+                                <div x-show="needsCard(row.methodName)" class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-gray-200">
+                                    <div>
+                                        <label class="block text-[10px] text-gray-500 mb-0.5">Tipo Tarjeta</label>
+                                        <select :name="`payments[${index}][card_id]`" class="w-full h-8 rounded border border-gray-300 px-2 text-xs bg-white">
+                                            <option value="">Seleccionar</option>
+                                            @php $cardsCr = collect($cards ?? [])->where('type', 'C'); $cardsDb = collect($cards ?? [])->where('type', 'D'); @endphp
+                                            @if($cardsCr->count())
+                                                <optgroup label="Crédito">
+                                                    @foreach($cardsCr as $card)
+                                                        <option value="{{ $card->id ?? '' }}">{{ $card->description ?? '' }}</option>
+                                                    @endforeach
+                                                </optgroup>
+                                            @endif
+                                            @if($cardsDb->count())
+                                                <optgroup label="Débito">
+                                                    @foreach($cardsDb as $card)
+                                                        <option value="{{ $card->id ?? '' }}">{{ $card->description ?? '' }}</option>
+                                                    @endforeach
+                                                </optgroup>
+                                            @endif
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] text-gray-500 mb-0.5">Pasarela (POS)</label>
+                                        <select :name="`payments[${index}][payment_gateway_id]`" class="w-full h-8 rounded border border-gray-300 px-2 text-xs bg-white">
+                                            <option value="">Ninguno</option>
+                                            @foreach($paymentGateways ?? [] as $pg)
+                                                <option value="{{ $pg->id ?? '' }}">{{ $pg->description ?? '' }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div class="sm:col-span-2">
+                                        <input type="text" :name="`payments[${index}][number]`" placeholder="N° Lote / Operación (Opcional)" class="w-full h-8 rounded border border-gray-300 px-2 text-xs">
+                                    </div>
+                                </div>
+                                {{-- Transferencia: banco --}}
+                                <div x-show="needsBank(row.methodName)" class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-gray-200">
+                                    <div>
+                                        <label class="block text-[10px] text-gray-500 mb-0.5">Banco Destino</label>
+                                        <select :name="`payments[${index}][bank_id]`" class="w-full h-8 rounded border border-gray-300 px-2 text-xs bg-white">
+                                            <option value="">Seleccionar</option>
+                                            @foreach($banks ?? [] as $bank)
+                                                <option value="{{ $bank->id ?? '' }}">{{ $bank->description ?? '' }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] text-gray-500 mb-0.5">N° Operación</label>
+                                        <input type="text" :name="`payments[${index}][number]`" placeholder="Ej: 001234" class="w-full h-8 rounded border border-gray-300 px-2 text-xs">
+                                    </div>
+                                </div>
+                                {{-- Billetera digital: Yape, Plin, etc. --}}
+                                <div x-show="needsWallet(row.methodName)" class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-gray-200">
+                                    <div>
+                                        <label class="block text-[10px] text-gray-500 mb-0.5">Aplicación</label>
+                                        <select :name="`payments[${index}][digital_wallet_id]`" class="w-full h-8 rounded border border-gray-300 px-2 text-xs bg-white">
+                                            <option value="">Seleccionar</option>
+                                            @foreach($digitalWallets ?? [] as $dw)
+                                                <option value="{{ $dw->id ?? '' }}">{{ $dw->description ?? '' }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] text-gray-500 mb-0.5">N° Celular / Ref.</label>
+                                        <input type="text" :name="`payments[${index}][number]`" placeholder="Ej: 999..." class="w-full h-8 rounded border border-gray-300 px-2 text-xs">
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                            </div>
+                            <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:bg-gray-50 cursor-pointer relative">
                                 <input type="file" name="payment_image" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                                <i class="ri-upload-cloud-2-line text-3xl text-gray-400 mb-1 block"></i>
-                                <span class="text-[13px] text-gray-600 font-medium block">Haz clic para subir imagen</span>
-                                <span class="text-[11px] text-gray-400">JPG, PNG o PDF</span>
+                                <i class="ri-upload-cloud-2-line text-2xl text-gray-400 block mb-1"></i>
+                                <span class="text-xs text-gray-600">Adjuntar comprobante</span>
                             </div>
                         </div>
                     </div>
+                     {{-- Botones --}}
+                <div class="flex gap-3 justify-end shrink-0 mb-3 mr-3">
+                    <a href="{{ route('purchase.index', !empty($viewId) ? ['view_id' => $viewId] : []) }}"
+                        class="inline-flex items-center rounded-lg border border-gray-300 px-5 py-2.5 text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors"
+                        :class="{'opacity-50 pointer-events-none': isSubmitting}">
+                        <i class="ri-close-line mr-2"></i>Cancelar
+                    </a>
+                    <button type="submit"
+                        class="inline-flex items-center rounded-lg bg-brand-500 px-6 py-2.5 text-sm font-bold text-white shadow-md hover:bg-brand-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        :disabled="!canSubmit || isSubmitting"
+                        :class="isSubmitting ? 'opacity-75 cursor-wait pointer-events-none' : ''"
+                        :title="submitErrorMessage">
+                        <i class="ri-save-line mr-2" x-show="!isSubmitting"></i>
+                        <i class="ri-loader-4-line mr-2 animate-spin" x-show="isSubmitting" style="display: none;"></i>
+                        <span x-text="isSubmitting ? 'Guardando...' : 'Guardar compra'"></span>
+                    </button>
                 </div>
-
+                </div>
             </div>
-
-            <div class="flex flex-wrap items-center justify-end gap-3 border-t border-gray-200 pt-5 mt-5">
-                <a href="{{ route('purchase.index', !empty($viewId) ? ['view_id' => $viewId] : []) }}" 
-                   class="inline-flex items-center rounded-lg border border-gray-300 px-6 py-2.5 text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors shadow-sm"
-                   :class="{'opacity-50 pointer-events-none': isSubmitting}">
-                    <i class="ri-close-line mr-2 text-lg"></i>Cancelar
-                </a>
-                
-                <button type="submit" 
-                        class="inline-flex items-center rounded-lg bg-[#1a2a5d] px-7 py-2.5 text-sm font-bold text-white shadow-md transition-colors"
-                        :class="isSubmitting ? 'opacity-75 cursor-wait pointer-events-none' : 'hover:bg-[#121d3f]'">
-                    <i class="ri-save-line mr-2 text-lg" x-show="!isSubmitting"></i>
-                    <i class="ri-loader-4-line mr-2 text-lg animate-spin" x-show="isSubmitting" style="display: none;"></i>
-                    <span x-text="isSubmitting ? 'Guardando...' : 'Guardar compra'">Guardar compra</span>
-                </button>
-            </div>
-        </form>
-    </x-common.component-card>
+        </div>
+    </form>
 
     @once
         @push('scripts')
+            <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+            <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
+            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
             <script>
-                function purchaseForm({ products, units, initialProviderId, initialItems, taxRate, includesTax, initialCurrency, initialBranchId, initialPaymentType }) {
+                function purchaseFormCatalog({
+                    products, categories, units, initialProviderId, initialItems, taxRate, includesTax,
+                    initialCurrency, initialBranchId, initialPaymentType, defaultExchangeRate, initialAffectsKardex,
+                    paymentMethods, cards, paymentGateways, digitalWallets, banks
+                }) {
+                    const toItem = (p, qty = 1) => ({
+                        product_id: Number(p.id),
+                        unit_id: Number(p.unit_id) || (units[0]?.id ?? 0),
+                        description: String(p.name || ''),
+                        quantity: qty,
+                        amount: Number(p.cost) || 0,
+                        comment: '',
+                        image_url: p.image_url || null,
+                    });
+
                     return {
-                        isSubmitting: false, 
-                        
+                        isSubmitting: false,
                         products,
-                        units,
+                        categories: categories || [],
+                        units: Array.isArray(units) ? units : Object.values(units || {}),
                         selectedProviderId: initialProviderId || '',
-                        items: (initialItems && initialItems.length) 
-                            ? initialItems 
-                            : [{ product_id: 0, unit_id: '', description: '', quantity: 1, amount: 0, comment: '', product_query: '', product_open: false, product_cursor: 0 }],
+                        items: (initialItems && initialItems.length)
+                            ? initialItems.map(i => ({
+                                ...i,
+                                product_id: Number(i.product_id || 0),
+                                unit_id: Number(i.unit_id || 0),
+                                description: String(i.description || ''),
+                                quantity: Number(i.quantity || 1),
+                                amount: Number(i.amount || 0),
+                                comment: String(i.comment || ''),
+                                image_url: i.image_url || null,
+                            }))
+                            : [],
                         taxRate: Number(taxRate || 18),
-                        includesTax: includesTax || 'N',
+                        includesTax: includesTax || 'S',
                         currency: initialCurrency || 'PEN',
                         selectedBranchId: Number(initialBranchId || 0),
                         payment_type: initialPaymentType || 'CONTADO',
-                        
-                        paymentRows: [{ id: Date.now(), methodId: '1', methodName: 'Efectivo', amount: '' }],
+                        exchangeRate: Number(defaultExchangeRate || 3.5),
+                        affectsKardex: initialAffectsKardex || 'S',
+                        catalogSearch: '',
+                        selectedCategory: null,
+                        activeTab: 'resumen',
+                        paymentMethods: paymentMethods || [],
+                        paymentRows: [{ id: Date.now(), methodId: '{{ ($paymentMethods ?? collect())->first()?->id ?? '' }}', methodName: '{{ ($paymentMethods ?? collect())->first()?->description ?? '' }}', amount: '' }],
                         _previousTotal: 0,
-                        
-                        initForm() {
-                            this.$watch('summary.total', (value) => {
-                                if (this.paymentRows.length === 1 && (this.paymentRows[0].amount === '' || this.paymentRows[0].amount == this._previousTotal)) {
-                                    this.paymentRows[0].amount = Number(value).toFixed(2);
-                                }
-                                this._previousTotal = value;
-                            });
+
+                        needsCard(desc) {
+                            const d = (desc || '').toLowerCase();
+                            return /tarjeta|crédito|débito|débito|credito|debito/.test(d);
+                        },
+                        needsBank(desc) {
+                            const d = (desc || '').toLowerCase();
+                            return /transferencia|banco/.test(d);
+                        },
+                        needsWallet(desc) {
+                            const d = (desc || '').toLowerCase();
+                            return /yape|plin|tunki|billetera|wallet|digital/.test(d);
+                        },
+
+                        get filteredCatalogProducts() {
+                            let list = this.products || [];
+                            const term = String(this.catalogSearch || '').toLowerCase().trim();
+                            if (term) {
+                                list = list.filter(p =>
+                                    String(p.name || '').toLowerCase().includes(term) ||
+                                    String(p.code || '').toLowerCase().includes(term) ||
+                                    String(p.category || '').toLowerCase().includes(term)
+                                );
+                            }
+                            if (this.selectedCategory) {
+                                list = list.filter(p => Number(p.category_id) === Number(this.selectedCategory));
+                            }
+                            return list.slice(0, 50);
+                        },
+
+                        addProductToCart(product) {
+                            const existing = this.items.find(i => Number(i.product_id) === Number(product.id));
+                            if (existing) {
+                                existing.quantity = (existing.quantity || 1) + 1;
+                            } else {
+                                this.items.push(toItem(product, 1));
+                            }
+                        },
+
+                        updateQuantity(idx, delta) {
+                            const item = this.items[idx];
+                            if (!item) return;
+                            const next = Math.max(0.01, (item.quantity || 1) + delta);
+                            item.quantity = next;
+                            if (next < 0.01) this.items.splice(idx, 1);
+                        },
+
+                        removeItem(idx) {
+                            this.items.splice(idx, 1);
+                        },
+
+                        addPaymentRow() {
+                            const firstId = (this.paymentMethods && this.paymentMethods[0]) ? this.paymentMethods[0].id : '';
+                            const firstDesc = (this.paymentMethods && this.paymentMethods[0]) ? this.paymentMethods[0].description : '';
+                            this.paymentRows.push({ id: Date.now(), methodId: String(firstId), methodName: firstDesc, amount: this.paymentDifference > 0 ? this.paymentDifference.toFixed(2) : '' });
+                        },
+
+                        removePaymentRow(index) {
+                            if (this.paymentRows.length > 1) this.paymentRows.splice(index, 1);
                         },
 
                         get summary() {
@@ -526,78 +598,70 @@
                             return { subtotal, tax, total: subtotal + tax };
                         },
 
-                        addPaymentRow() {
-                            const faltante = this.paymentDifference;
-                            this.paymentRows.push({ 
-                                id: Date.now(), methodId: '1', methodName: 'Efectivo', amount: faltante > 0 ? faltante.toFixed(2) : '' 
-                            });
-                        },
-
-                        removePaymentRow(index) {
-                            if (this.paymentRows.length > 1) this.paymentRows.splice(index, 1);
-                        },
-
                         get totalPaid() {
                             return this.paymentRows.reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
                         },
 
                         get paymentDifference() {
-                            const diff = this.summary.total - this.totalPaid;
-                            return diff > 0 ? diff : 0;
+                            return Math.max(0, this.summary.total - this.totalPaid);
                         },
 
-                        addItem() {
-                            this.items.push({ product_id: 0, unit_id: '', description: '', quantity: 1, amount: 0, comment: '', product_query: '', product_open: false, product_cursor: 0 });
+                        get canSubmit() {
+                            if (!this.items || this.items.length === 0) return false;
+                            if (this.payment_type === 'CONTADO') {
+                                const total = this.summary.total;
+                                const paid = this.totalPaid;
+                                if (paid <= 0) return false;
+                                if (Math.abs(paid - total) > 0.02) return false;
+                            }
+                            return true;
                         },
-                        removeItem(idx) {
-                            this.items.splice(idx, 1);
-                            if (!this.items.length) this.addItem();
+
+                        get submitErrorMessage() {
+                            if (!this.items || this.items.length === 0) return 'Agregue al menos un producto al carrito.';
+                            if (this.payment_type === 'CONTADO') {
+                                if (this.totalPaid <= 0) return 'Registre un método de pago con monto.';
+                                if (Math.abs(this.totalPaid - this.summary.total) > 0.02) {
+                                    return 'La suma de pagos (' + this.money(this.totalPaid) + ') no coincide con el total (' + this.money(this.summary.total) + ').';
+                                }
+                            }
+                            return '';
                         },
-                        filteredProducts(item) {
-                            const term = String(item.product_query || '').toLowerCase().trim();
-                            const list = term === '' ? this.products : this.products.filter(p => String(p.code || '').toLowerCase().includes(term) || String(p.name || '').toLowerCase().includes(term));
-                            if (item.product_cursor >= list.length) item.product_cursor = 0;
-                            return list.slice(0, 40);
-                        },
-                        selectProduct(idx, product) {
-                            this.items[idx].product_id = Number(product.id);
-                            this.items[idx].product_query = `${product.code || 'SIN'} - ${product.name}`;
-                            this.items[idx].description = product.name || '';
-                            this.items[idx].product_open = false;
-                            this.setProductMeta(idx);
-                        },
-                        clearProduct(idx) {
-                            const c = this.items[idx];
-                            c.product_id = 0; c.product_query = ''; c.description = ''; c.unit_id = ''; c.amount = 0; c.product_open = true; c.product_cursor = 0;
-                        },
-                        moveProductCursor(idx, step) {
-                            const current = this.items[idx];
-                            const list = this.filteredProducts(current);
-                            if (!list.length) return;
-                            const max = list.length - 1;
-                            const next = current.product_cursor + step;
-                            if (next < 0) current.product_cursor = max;
-                            else if (next > max) current.product_cursor = 0;
-                            else current.product_cursor = next;
-                        },
-                        selectProductByCursor(idx) {
-                            const current = this.items[idx];
-                            const list = this.filteredProducts(current);
-                            if (!list.length) return;
-                            this.selectProduct(idx, list[current.product_cursor] || list[0]);
-                        },
-                        setProductMeta(idx) {
-                            const product = this.products.find(p => Number(p.id) === Number(this.items[idx].product_id));
-                            if (!product) return;
-                            if (!this.items[idx].product_query) this.items[idx].product_query = `${product.code || 'SIN'} - ${product.name}`;
-                            this.items[idx].description = product.name || '';
-                            if (!this.items[idx].unit_id && product.unit_id) this.items[idx].unit_id = Number(product.unit_id);
-                            if (!this.items[idx].amount && product.cost) this.items[idx].amount = Number(product.cost);
-                        },
+
                         money(v) {
                             return `${this.currency === 'USD' ? '$' : 'S/'} ${Number(v || 0).toFixed(2)}`;
+                        },
+
+                        initForm() {
+                            const applyAutofill = (total) => {
+                                if (this.paymentRows.length >= 1 && total > 0) {
+                                    const first = this.paymentRows[0];
+                                    const isEmpty = first.amount === '' || first.amount === undefined || first.amount === null;
+                                    const matchesPrev = Number(first.amount) === Number(this._previousTotal);
+                                    if (isEmpty || (this.paymentRows.length === 1 && matchesPrev)) {
+                                        first.amount = Number(total).toFixed(2);
+                                    }
+                                }
+                                this._previousTotal = total;
+                            };
+                            this.$watch('summary.total', (value) => applyAutofill(value));
+                            this.$nextTick(() => applyAutofill(this.summary.total));
+                            if (typeof flatpickr !== 'undefined') {
+                                const input = this.$refs?.movedAtInput;
+                                if (input) {
+                                    flatpickr(input, {
+                                        enableTime: true,
+                                        time_24hr: true,
+                                        dateFormat: 'Y-m-d H:i',
+                                        altInput: true,
+                                        altFormat: 'd/m/Y H:i',
+                                        defaultDate: input.value || new Date(),
+                                        locale: 'es',
+                                    });
+                                }
+                            }
                         }
-                    }
+                    };
                 }
             </script>
         @endpush
