@@ -249,11 +249,13 @@
     <script>
         (function () {
             // --- 1. CARGA DE DATOS (DATA LOGIC) ---
-            // Usamos el operador '??' para evitar errores si la variable viene vacía desde PHP
             const productsRaw = @json($products ?? []);
             const productBranchesRaw = @json($productBranches ?? $productsBranches ?? []);
+            const cashRegisters = @json($cashRegisters ?? []);
             
             // AQUÍ ESTABA EL PROBLEMA: Necesitamos pasar las categorías con imagen desde PHP
+            const categoriesDB = @json($categories ?? []); 
+
             const products = Array.isArray(productsRaw) ? productsRaw : Object.values(productsRaw || {});
             const productBranches = Array.isArray(productBranchesRaw) ? productBranchesRaw : Object.values(productBranchesRaw || {});
 
@@ -308,7 +310,6 @@
 
             function getImageUrl(imgUrl) {
                 if (imgUrl && String(imgUrl).trim() !== '') return imgUrl;
-                // Imagen por defecto (gris) si no hay nada
                 return 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y5ZmFmYiIvPjwvc3ZnPg==';
             }
 
@@ -420,7 +421,7 @@
                 }
             }
 
-            // --- 3. RENDER CATEGORIES (mismo estilo que orders: pills con imagen) ---
+            // --- 3. RENDER CATEGORIES (CON IMAGEN) ---
             function renderCategoryFilters() {
                 const container = document.getElementById('categories-grid');
                 if (!container) return;
@@ -598,7 +599,17 @@
             function updateQty(index, delta) {
                 if (!currentSale.items[index]) return;
                 currentSale.items[index].qty += delta;
-                if (currentSale.items[index].qty <= 0) currentSale.items.splice(index, 1);
+                if (currentSale.items[index].qty <= 0) {
+                    currentSale.items.splice(index, 1);
+                }
+                saveDB();
+                renderTicket();
+            }
+
+            // NUEVA FUNCIÓN: Para eliminar el ítem completo de una vez
+            function removeItem(index) {
+                if (!currentSale.items[index]) return;
+                currentSale.items.splice(index, 1);
                 saveDB();
                 renderTicket();
             }
@@ -996,7 +1007,6 @@
             // Exponer funciones globales para los onclick="" del HTML
             window.getImageUrl = getImageUrl;
             window.updateQty = updateQty;
-            window.removeFromCart = removeFromCart;
             window.clearCart = clearCart;
             window.toggleNoteInput = toggleNoteInput;
             window.saveNote = saveNote;

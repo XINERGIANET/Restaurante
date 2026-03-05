@@ -39,6 +39,7 @@ use App\Http\Controllers\WarehouseMovementController;
 use App\Http\Controllers\ShiftCashController;
 use App\Http\Controllers\CashRegisterController;
 use App\Http\Controllers\PurchaseController;
+use App\Http\Controllers\BranchParameterController;
 
 
 Route::prefix('restaurante')->name('restaurant.')->group(function () {
@@ -439,5 +440,11 @@ Route::middleware('auth')->group(function () {
     Route::resource('compras', PurchaseController::class)
         ->names('purchase')
         ->parameters(['compras' => 'purchaseMovement']);
+
+    // Configuración de parámetros
+    Route::get('/configuracion/parametros-sucursal', [BranchParameterController::class, 'index'])
+        ->name('branch-parameter.index');
+    Route::post('/configuracion/parametros-sucursal/guardar', [BranchParameterController::class, 'store'])
+        ->name('branch-parameter.store');
 });
 

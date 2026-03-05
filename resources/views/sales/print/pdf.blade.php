@@ -11,11 +11,17 @@
         .doc-box { border: 1px solid #334155; padding: 16px; min-width: 300px; text-align: center; }
         .doc-box h1 { margin: 0; font-size: 30px; }
         .doc-box p { margin: 4px 0; font-size: 18px; }
-        .meta { margin-top: 18px; display: grid; grid-template-columns: 180px 1fr; row-gap: 4px; column-gap: 12px; }
-        .meta b { font-weight: 700; }
-        table { width: 100%; border-collapse: collapse; margin-top: 18px; }
-        th, td { border: 1px solid #cbd5e1; padding: 8px; font-size: 13px; }
-        th { background: #0f172a; color: #fff; text-align: left; }
+        
+        /* --- ESTILOS EXCLUSIVOS PARA LA TABLA DE METADATOS (Cliente, Fecha, etc) --- */
+        .table-meta { width: 100%; border-collapse: collapse; margin-top: 18px; }
+        .table-meta td { padding: 4px 0; font-size: 15px; border: none; vertical-align: top; }
+        .table-meta .label { width: 160px; font-weight: 700; }
+
+        /* --- ESTILOS EXCLUSIVOS PARA LA TABLA DE PRODUCTOS --- */
+        .table-items { width: 100%; border-collapse: collapse; margin-top: 18px; }
+        .table-items th, .table-items td { border: 1px solid #cbd5e1; padding: 8px; font-size: 13px; }
+        .table-items th { background: #0f172a; color: #fff; text-align: left; }
+        
         .num { text-align: right; }
         .totals { margin-top: 18px; width: 360px; margin-left: auto; }
         .totals div { display: flex; justify-content: space-between; padding: 3px 0; }
@@ -47,16 +53,34 @@
     </div>
 </div>
 
-<div class="meta">
-    <b>Fecha de emision:</b><span>{{ optional($sale->moved_at)->format('d/m/Y H:i') ?? '-' }}</span>
-    <b>Cliente:</b><span>{{ $sale->person_name ?? 'CLIENTES VARIOS' }}</span>
-    <b>RUC/DNI:</b><span>{{ $sale->person?->document_number ?? '-' }}</span>
-    <b>Direccion:</b><span>{{ $sale->person?->address ?? '-' }}</span>
-    <b>Moneda:</b><span>{{ $sale->salesMovement?->currency ?? 'PEN' }}</span>
-    <b>Forma de pago:</b><span>{{ $paymentLabel }}</span>
-</div>
+<table class="table-meta">
+    <tr>
+        <td class="label">Fecha de emision:</td>
+        <td>{{ optional($sale->moved_at)->format('d/m/Y H:i') ?? '-' }}</td>
+    </tr>
+    <tr>
+        <td class="label">Cliente:</td>
+        <td>{{ $sale->person_name ?? 'CLIENTES VARIOS' }}</td>
+    </tr>
+    <tr>
+        <td class="label">RUC/DNI:</td>
+        <td>{{ $sale->person?->document_number ?? '-' }}</td>
+    </tr>
+    <tr>
+        <td class="label">Direccion:</td>
+        <td>{{ $sale->person?->address ?? '-' }}</td>
+    </tr>
+    <tr>
+        <td class="label">Moneda:</td>
+        <td>{{ $sale->salesMovement?->currency ?? 'PEN' }}</td>
+    </tr>
+    <tr>
+        <td class="label">Forma de pago:</td>
+        <td>{{ $paymentLabel }}</td>
+    </tr>
+</table>
 
-<table>
+<table class="table-items">
     <thead>
     <tr>
         <th style="width:50px;">Item</th>

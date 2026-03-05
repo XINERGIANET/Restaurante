@@ -128,7 +128,6 @@ class BoxController extends Controller
                 ->with('success', 'Caja actualizada correctamente');
 
         } catch (\Exception $e) {
-            \Log::error('Error al actualizar la caja: ' . $e->getMessage());
             $viewId = $request->input('view_id');
             return redirect()->route('boxes.index', $viewId ? ['view_id' => $viewId] : [])
                 ->withErrors(['error' => 'Error al actualizar: ' . $e->getMessage()])
