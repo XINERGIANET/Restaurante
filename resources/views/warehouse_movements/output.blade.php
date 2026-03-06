@@ -1,285 +1,314 @@
 @extends('layouts.app')
-
-@section('title', 'Salida de Productos')
-
 @section('content')
-    <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
-        <div class="flex items-center gap-2">
-            <span class="text-gray-500 dark:text-gray-400"><i class="ri-archive-line"></i></span>
-            <h2 class="text-xl font-semibold text-gray-800 dark:text-white/90">
-                Salida de Productos del almacén
-            </h2>
+    @php
+        $products = $products ?? collect();
+        $productBranches = $productBranches ?? collect();
+        $productsForBranch = $productBranches->isNotEmpty()
+            ? $products->filter(fn($p) => $productBranches->has($p->id))
+            : $products;
+    @endphp
+    <x-common.page-breadcrumb pageTitle="Nuevo movimiento" />
+    <x-common.component-card title="Nueva salida de productos" desc="Registra una nueva salida de productos del almacén." :show-header="false">
+        <div class="flex flex-row items-center gap-4 border-b border-gray-200 pb-4 mb-5">
+            <a href="{{ route('warehouse_movements.index', request('view_id') ? ['view_id' => request('view_id')] : []) }}" class="text-sm text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg p-2 shrink-0">
+                <i class="ri-arrow-left-line text-xl"></i>
+            </a>
+            <div class="flex flex-col gap-1">
+                <h2 class="text-xl font-bold text-gray-700">Nueva salida</h2>
+                <p class="text-sm text-gray-500">Movimiento de almacén</p>
+            </div>
         </div>
-        <nav>
-            <ol class="flex items-center gap-1.5">
-                <li>
-                    <a class="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400" href="{{ url('/') }}">
-                        Home
-                        <svg class="stroke-current" width="17" height="16" viewBox="0 0 17 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M6.0765 12.667L10.2432 8.50033L6.0765 4.33366" stroke="" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"></path>
-                        </svg>
-                    </a>
-                </li>
-                <li>
-                    <a class="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400" href="{{ route('warehouse_movements.index', request('view_id') ? ['view_id' => request('view_id')] : []) }}">
-                        Movimientos de Almacén
-                        <svg class="stroke-current" width="17" height="16" viewBox="0 0 17 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M6.0765 12.667L10.2432 8.50033L6.0765 4.33366" stroke="" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"></path>
-                        </svg>
-                    </a>
-                </li>
-                <li class="text-sm text-gray-800 dark:text-white/90">
-                    Salida de Productos
-                </li>
-            </ol>
-        </nav>
-    </div>
 
-    <div class="flex items-start w-full bg-slate-100 fade-in min-h-screen" style="--brand:#3B82F6;">
-        
-        <main class="flex-1 flex flex-col min-w-0">
-            <header class="h-20 px-6 flex items-center justify-between bg-white border-b border-gray-200 shadow-sm z-10">
-                <div class="flex items-center gap-4">
-                    <button onclick="goBack()" class="h-10 w-10 rounded-lg bg-gray-50 border border-gray-200 text-gray-500 hover:text-blue-600 hover:border-blue-600 transition-colors flex items-center justify-center">
-                        <i class="fas fa-arrow-left"></i>
-                    </button>
-                    <div>
-                        <h2 class="text-xl font-bold text-slate-800">
-                            Salida de Productos
-                        </h2>
-                        <p class="text-xs text-gray-500 mt-0.5">Registrar salida del inventario</p>
-                    </div>
-                </div>
-                <div class="w-64 hidden md:block relative">
-                    <input type="text" id="search-products" placeholder="Buscar productos..." 
-                        class="w-full pl-9 pr-4 py-2 bg-gray-100 border-transparent focus:bg-white focus:border-blue-500 focus:ring-0 rounded-lg text-sm transition-all">
-                    <i class="fas fa-search absolute left-3 top-2.5 text-gray-400 text-xs"></i>
-                </div>
-            </header>
-
-            <div class="p-6 bg-[#F3F4F6]">
-                <h3 class="font-bold text-slate-700 mb-4 text-base" id="category-title">Categoría: General</h3>
-                <div id="products-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; width: 100%;">
+        <div class="flex flex-col gap-4 px-5">
+            <div class="flex items-center justify-between gap-4">
+                <h2 class="text-lg font-semibold text-gray-700">Productos</h2>
+                <x-ui.button size="sm" variant="dark" type="button" class="w-fit" onclick="addSelectedProduct()">
+                    <i class="ri-add-line mr-1"></i> Agregar producto
+                </x-ui.button>
+            </div>
+            <div class="bg-gray-100 rounded-lg p-5">
+                <p class="text-sm font-medium text-gray-700">Buscar producto</p>
+                <div class="flex flex-col gap-3 mt-3">
+                    <x-form.select.combobox name="product_id" :options="$productsForBranch" />
                 </div>
             </div>
-        </main>
 
-        <aside class="w-[400px] bg-white border-l border-gray-300 flex flex-col shadow-2xl z-20 shrink-0 sticky top-0 h-screen">
-            <div class="h-16 px-6 border-b border-gray-200 bg-white flex justify-between items-center shrink-0">
-                <h3 class="text-xl font-bold text-slate-800">Productos a Sacar</h3>
-                <span class="px-3 py-1 bg-orange-50 text-orange-700 rounded-full text-xs font-bold border border-orange-100">Salida</span>
+            {{-- Lista de productos: solo visible cuando hay al menos un producto --}}
+            <div id="output-empty-state" class="mt-4 rounded-xl border border-dashed border-gray-300 bg-gray-50 py-6 text-center text-sm text-gray-500">
+                No hay productos agregados. Selecciona un producto y haz clic en <strong>Agregar producto</strong>.
             </div>
 
-            <div id="cart-container" class="flex-1 overflow-y-auto p-5 space-y-3 bg-white"></div>
+            <div id="output-table-wrapper" class="mt-4 border border-gray-300 rounded-xl overflow-hidden hidden">
+                <table class="w-full text-md border border-gray-300 rounded-xl overflow-hidden">
+                    <thead class="bg-gray-100 text-sm font-bold text-gray-500 uppercase tracking-wider">
+                        <tr>
+                            <th class="px-2 py-2 text-center w-24">Producto</th>
+                            <th class="px-2 py-2 text-center w-24">Stock</th>
+                            <th class="px-2 py-2 text-center w-24">Cantidad</th>
+                            <th class="px-2 py-2 text-center w-24">Stock después</th>
+                            <th class="px-2 py-2 text-center w-24">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="output-items" class="bg-white divide-y divide-gray-100">
+                    </tbody>
+                </table>
+            </div>
+        </div>
 
-            <div id="stock-warning" class="hidden mx-5 mb-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700"></div>
+        <div class="flex flex-col gap-4 px-5 mt-6">
+            <div>
+                <p class="mb-1 text-sm font-medium text-gray-700">Comentario (opcional)</p>
+                <textarea name="comment" id="output-comment" class="w-full h-24 rounded-lg border border-gray-300 p-2 text-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500" placeholder="Ej: Merma, vencimiento, transferencia..."></textarea>
+            </div>
 
-            <div class="p-6 bg-slate-100 border-t border-gray-300 shadow-[0_-5px_25px_rgba(0,0,0,0.05)] shrink-0 z-30">
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Comentario (opcional)</label>
-                    <textarea id="movement-comment" rows="2" 
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                        placeholder="Ej: Merma, Vencimiento, Transferencia..."></textarea>
+            <div class="space-y-2 text-sm border-t border-gray-200 pt-3">
+                <div class="flex justify-between text-gray-500 font-medium">
+                    <span>Total de productos</span>
+                    <span class="text-gray-800" id="total-products">0</span>
                 </div>
-                <div class="space-y-3 mb-5 text-sm">
-                    <div class="flex justify-between text-gray-500 font-medium">
-                        <span>Total de productos</span>
-                        <span class="text-slate-700" id="total-products">0</span>
-                    </div>
-                    <div class="flex justify-between text-gray-500 font-medium">
-                        <span>Total de unidades</span>
-                        <span class="text-slate-700" id="total-quantity">0</span>
-                    </div>
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <button onclick="goBack()" class="py-3.5 rounded-xl border border-gray-300 bg-white text-gray-700 font-bold hover:bg-gray-50 shadow-sm transition-all">
-                        Cancelar
-                    </button>
-                    <button onclick="saveOutput()" class="py-3.5 rounded-xl bg-orange-600 text-white font-bold shadow-lg hover:bg-orange-700 active:scale-95 transition-all flex justify-center items-center gap-2">
-                        <span>Guardar salida</span> <i class="fas fa-box-open"></i>
-                    </button>
+                <div class="flex justify-between text-gray-500 font-medium">
+                    <span>Total de unidades</span>
+                    <span class="text-gray-800" id="total-units">0</span>
                 </div>
             </div>
-        </aside>
-    </div>
+
+            <div id="output-error" class="hidden rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700"></div>
+
+            <div class="flex flex-row items-center gap-2">
+                <x-ui.button size="sm" variant="dark" type="button" class="w-fit" onclick="saveOutputMovement()">
+                    <i class="ri-save-line mr-1"></i> Guardar salida
+                </x-ui.button>
+                <x-ui.button size="sm" variant="outline" type="button" class="w-fit" onclick="goBackFromOutput()">
+                    <i class="ri-close-line mr-1"></i> Cancelar
+                </x-ui.button>
+            </div>
+        </div>
+    </x-common.component-card>
+
+    @php
+        $outputProducts = $products->map(function ($p) use ($productBranches) {
+            $branch = $productBranches->get($p->id);
+            $unit = $p->baseUnit ?? null;
+            $unitType = $unit ? ($unit->type ?? 'OTRO') : 'OTRO';
+            $allowsDecimal = in_array($unitType, ['MASA', 'LONGITUD', 'VOLUMEN'], true);
+            return [
+                'id' => $p->id,
+                'code' => $p->code ?? '',
+                'name' => $p->description ?? 'Sin nombre',
+                'stock' => $branch ? (float) ($branch->stock ?? 0) : 0,
+                'unit_id' => $unit ? ($unit->id ?? null) : null,
+                'unit_name' => $unit ? ($unit->description ?? 'Unidad') : 'Unidad',
+                'allows_decimal' => $allowsDecimal,
+            ];
+        })->values();
+    @endphp
 
     <script>
-        const productsData = @json($productsMapped ?? []);
-        const branchId = @json($branchId ?? null);
-        let selectedProducts = [];
-        let filteredProducts = productsData;
+        const outputProductsData = @json($outputProducts);
+        let outputItems = [];
 
-        function getImageUrl(imgUrl) {
-            if (imgUrl && imgUrl.trim() !== '') return imgUrl;
-            return 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MDAiIGhlaWdodD0iNDAwIj48cmVjdCBmaWxsPSIjZTdlOWViIiB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTgiIGZpbGw9IiM5Y2EzYWYiPlNpbiBpbWFnZW48L3RleHQ+PC9zdmc+';
-        }
-
-        function renderProducts() {
-            const grid = document.getElementById('products-grid');
-            if (!grid) return;
-
-            if (filteredProducts.length === 0) {
-                grid.innerHTML = '<div class="col-span-full text-center py-8 text-gray-500">No se encontraron productos</div>';
-                return;
-            }
-
-            const html = filteredProducts.map((prod) => {
-                const safeName = String(prod.name || 'Sin nombre').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-                const safeCode = String(prod.code || 'N/A').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-                const safeUnit = String(prod.unit || 'Unidad').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-                const imageUrl = getImageUrl(prod.img);
-                const hasStock = (prod.currentStock || 0) > 0;
-                return `
-                <div class="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-all overflow-hidden ${hasStock ? 'cursor-pointer' : 'opacity-60 cursor-not-allowed'}"
-                    onclick="${hasStock ? 'addProduct(' + prod.id + ')' : ''}">
-                    <div class="aspect-square bg-gray-100 flex items-center justify-center overflow-hidden">
-                        <img src="${imageUrl}" alt="${safeName}" class="w-full h-full object-cover" loading="lazy"
-                            onerror="this.onerror=null; this.src='https://via.placeholder.com/200x200?text=Sin+Imagen';">
-                    </div>
-                    <div class="p-3">
-                        <h4 class="font-semibold text-sm text-gray-800 line-clamp-2 mb-1">${safeName}</h4>
-                        <p class="text-xs text-gray-500 mb-2">Código: ${safeCode}</p>
-                        <div class="flex items-center justify-between">
-                            <span class="text-xs text-gray-600">
-                                <i class="ri-stack-line"></i> Stock: <strong>${prod.currentStock || 0}</strong>
-                            </span>
-                            <span class="text-xs font-medium text-orange-600">${safeUnit}</span>
-                        </div>
-                        ${!hasStock ? '<p class="text-xs text-red-600 mt-1">Sin stock</p>' : ''}
-                    </div>
-                </div>`;
-            }).join('');
-            grid.innerHTML = html;
-        }
-
-        function addProduct(productId) {
-            const product = productsData.find(p => p.id === productId);
-            if (!product || (product.currentStock || 0) <= 0) return;
-
-            const existing = selectedProducts.find(p => p.id === productId);
-            const maxQty = product.currentStock || 0;
-            if (existing) {
-                existing.quantity = Math.min(existing.quantity + 1, maxQty);
-            } else {
-                selectedProducts.push({
-                    id: product.id,
-                    code: product.code,
-                    name: product.name,
-                    unit: product.unit,
-                    currentStock: product.currentStock,
-                    quantity: 1,
-                    comment: ''
+        function showToast(message, icon) {
+            if (window.Swal && typeof window.Swal.fire === 'function') {
+                Swal.fire({
+                    toast: true,
+                    position: 'bottom-end',
+                    icon: icon || 'info',
+                    title: message,
+                    showConfirmButton: false,
+                    timer: 4000,
+                    timerProgressBar: true
                 });
             }
-            renderCart();
         }
 
-        function removeProduct(productId) {
-            selectedProducts = selectedProducts.filter(p => p.id !== productId);
-            renderCart();
-        }
-
-        function updateQuantity(productId, delta) {
-            const product = selectedProducts.find(p => p.id === productId);
-            if (!product) return;
-            const maxQty = product.currentStock || 0;
-            product.quantity = Math.max(0, Math.min(maxQty, product.quantity + delta));
-            if (product.quantity <= 0) {
-                selectedProducts = selectedProducts.filter(p => p.id !== productId);
-            }
-            renderCart();
-        }
-
-        function checkStockValidation() {
-            const invalid = selectedProducts.filter(p => p.quantity > (p.currentStock || 0));
-            const warnEl = document.getElementById('stock-warning');
-            if (invalid.length > 0) {
-                warnEl.textContent = 'Cantidad mayor al stock disponible en: ' + invalid.map(p => p.name).join(', ');
-                warnEl.classList.remove('hidden');
-                return false;
-            }
-            warnEl.classList.add('hidden');
-            return true;
-        }
-
-        function renderCart() {
-            const container = document.getElementById('cart-container');
+        function renderOutputItems() {
+            const container = document.getElementById('output-items');
+            const tableWrapper = document.getElementById('output-table-wrapper');
+            const emptyState = document.getElementById('output-empty-state');
             if (!container) return;
 
-            checkStockValidation();
-
-            if (selectedProducts.length === 0) {
-                container.innerHTML = `
-                    <div class="text-center py-12 text-gray-400">
-                        <i class="ri-shopping-cart-line text-4xl mb-3"></i>
-                        <p class="text-sm">No hay productos seleccionados</p>
-                        <p class="text-xs mt-1">Haz clic en un producto con stock para sacarlo</p>
-                    </div>`;
+            if (outputItems.length === 0) {
+                if (tableWrapper) tableWrapper.classList.add('hidden');
+                if (emptyState) emptyState.classList.remove('hidden');
+                container.innerHTML = '';
                 document.getElementById('total-products').textContent = '0';
-                document.getElementById('total-quantity').textContent = '0';
+                document.getElementById('total-units').textContent = '0';
                 return;
             }
 
-            container.innerHTML = selectedProducts.map(prod => {
-                const safeName = String(prod.name || '').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-                const overStock = (prod.quantity || 0) > (prod.currentStock || 0);
+            if (tableWrapper) tableWrapper.classList.remove('hidden');
+            if (emptyState) emptyState.classList.add('hidden');
+
+            const rows = outputItems.map((item, index) => {
+                const safeName = String(item.name || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                const safeCode = String(item.code || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                const stockActual = parseFloat(item.stock) || 0;
+                const cantidadSalida = parseFloat(item.quantity) || 0;
+                const stockDespues = Math.max(0, stockActual - cantidadSalida);
+                const overStock = cantidadSalida > stockActual;
+                const allowsDecimal = item.allows_decimal === true;
+                const inputMin = allowsDecimal ? '0.01' : '1';
+                const inputStep = allowsDecimal ? '0.01' : '1';
+                const stepNum = allowsDecimal ? 0.01 : 1;
                 return `
-                <div class="bg-white border rounded-lg p-4 shadow-sm ${overStock ? 'border-red-300 bg-red-50' : 'border-gray-200'}">
-                    <div class="flex items-start justify-between mb-2">
-                        <div class="flex-1">
-                            <h4 class="font-semibold text-sm text-gray-800">${safeName}</h4>
-                            <p class="text-xs text-gray-500">Código: ${prod.code || 'N/A'} | Stock: ${prod.currentStock} ${overStock ? '<span class="text-red-600">(cantidad > stock)</span>' : ''}</p>
-                        </div>
-                        <button onclick="removeProduct(${prod.id})" class="text-red-500 hover:text-red-700 transition-colors ml-2">
-                            <i class="ri-close-line text-lg"></i>
-                        </button>
-                    </div>
-                    <div class="flex items-center gap-3">
-                        <div class="flex items-center gap-2 border border-gray-300 rounded-lg">
-                            <button onclick="updateQuantity(${prod.id}, -1)" class="px-3 py-1 text-gray-600 hover:bg-gray-100 transition-colors">
-                                <i class="ri-subtract-line"></i>
+                    <tr class="hover:bg-gray-50 transition-colors ${overStock ? 'bg-red-50' : ''}">
+                        <td class="px-4 py-2 align-middle">
+                            <div class="flex flex-col">
+                                <span class="font-semibold text-gray-800 truncate">${safeName}</span>
+                                <span class="text-xs text-gray-500">Código: ${safeCode || 'N/A'}</span>
+                            </div>
+                        </td>
+                        <td class="px-4 py-2 text-center align-middle">
+                            <span class="text-sm font-medium text-gray-800">${stockActual}</span>
+                        </td>
+                        <td class="px-4 py-2 text-center align-middle">
+                            <div class="inline-flex items-center rounded-lg border border-gray-300 bg-white overflow-hidden ${overStock ? 'border-red-500' : ''}">
+                                <button type="button" onclick="var r=this.closest('tr');var i=r.querySelector('input[type=number]');var v=parseFloat(i.value)||0; updateOutputQuantity(${index}, (v-${stepNum}).toString());" class="w-9 h-9 flex items-center justify-center text-gray-600 hover:bg-gray-100 border-r border-gray-300 transition-colors" title="Menos">−</button>
+                                <input type="number" min="${inputMin}" step="${inputStep}" max="${stockActual}" value="${item.quantity}" class="w-14 text-center border-0 px-1 py-1.5 text-sm focus:ring-0 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" onchange="updateOutputQuantity(${index}, this.value)">
+                                <button type="button" onclick="var r=this.closest('tr');var i=r.querySelector('input[type=number]');var v=parseFloat(i.value)||0; var m=Math.min(v+${stepNum},${stockActual}); updateOutputQuantity(${index}, m.toString());" class="w-9 h-9 flex items-center justify-center text-gray-600 hover:bg-gray-100 border-l border-gray-300 transition-colors" title="Más">+</button>
+                            </div>
+                        </td>
+                        <td class="px-4 py-2 text-center align-middle">
+                            <span class="text-sm font-medium ${overStock ? 'text-red-600' : 'text-gray-800'}">${stockDespues}</span>
+                        </td>
+                        <td class="px-4 py-2 text-center align-middle">
+                            <button
+                                type="button"
+                                onclick="removeOutputItem(${index})"
+                                class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-red-500 text-white hover:bg-red-600 shadow-sm transition-colors"
+                                title="Borrar"
+                            >
+                                <i class="ri-delete-bin-line text-base"></i>
                             </button>
-                            <span class="px-3 py-1 font-semibold text-gray-800 min-w-[3rem] text-center">${prod.quantity}</span>
-                            <button onclick="updateQuantity(${prod.id}, 1)" class="px-3 py-1 text-gray-600 hover:bg-gray-100 transition-colors">
-                                <i class="ri-add-line"></i>
-                            </button>
-                        </div>
-                        <span class="text-sm text-gray-600">Máx: ${prod.currentStock} ${prod.unit}</span>
-                    </div>
-                </div>`;
+                        </td>
+                    </tr>
+                `;
             }).join('');
 
-            document.getElementById('total-products').textContent = selectedProducts.length;
-            document.getElementById('total-quantity').textContent = selectedProducts.reduce((sum, p) => sum + p.quantity, 0);
+            container.innerHTML = rows;
+            const totalUnits = outputItems.reduce((sum, item) => sum + item.quantity, 0);
+            document.getElementById('total-products').textContent = outputItems.length.toString();
+            document.getElementById('total-units').textContent = totalUnits.toFixed(2).replace(/\.00$/, '');
         }
 
-        function goBack() {
+        function addSelectedProduct() {
+            const hiddenInput = document.querySelector('input[name="product_id"]');
+            if (!hiddenInput) return;
+            const productId = parseInt(hiddenInput.value, 10);
+            if (!productId) {
+                showToast('Por favor selecciona un producto.', 'warning');
+                return;
+            }
+
+            const product = outputProductsData.find(function (p) { return p.id === productId; });
+            if (!product) {
+                showToast('No se pudo encontrar la información del producto seleccionado.', 'error');
+                return;
+            }
+            const stockDisponible = product.stock ?? 0;
+            if (stockDisponible <= 0) {
+                showToast('Este producto no tiene stock disponible en esta sucursal.', 'error');
+                return;
+            }
+
+            const allowsDecimal = product.allows_decimal === true;
+            const quantityToAdd = allowsDecimal ? 1 : 1;
+            const existing = outputItems.find(function (item) { return item.product_id === productId; });
+            if (existing) {
+                const newQty = existing.quantity + quantityToAdd;
+                existing.quantity = allowsDecimal ? parseFloat(newQty.toFixed(2)) : Math.floor(newQty);
+                if (existing.quantity > existing.stock) existing.quantity = existing.stock;
+            } else {
+                outputItems.push({
+                    product_id: product.id,
+                    code: product.code,
+                    name: product.name,
+                    stock: product.stock ?? 0,
+                    unit_id: product.unit_id ?? null,
+                    unit_name: product.unit_name ?? 'Unidad',
+                    allows_decimal: allowsDecimal,
+                    quantity: quantityToAdd <= stockDisponible ? quantityToAdd : stockDisponible,
+                });
+            }
+            renderOutputItems();
+            window.dispatchEvent(new CustomEvent('clear-combobox', { detail: { name: 'product_id' } }));
+        }
+
+        function updateOutputQuantity(index, newValue) {
+            const item = outputItems[index];
+            if (!item) return;
+            const allowsDecimal = item.allows_decimal === true;
+            let qty = allowsDecimal ? parseFloat(newValue) : parseInt(newValue, 10);
+            const maxStock = item.stock ?? 0;
+            if (allowsDecimal) {
+                if (isNaN(qty) || qty < 0.01) {
+                    outputItems.splice(index, 1);
+                } else {
+                    item.quantity = parseFloat(Math.min(qty, maxStock).toFixed(2));
+                }
+            } else {
+                if (isNaN(qty) || qty < 1) {
+                    outputItems.splice(index, 1);
+                } else {
+                    item.quantity = Math.min(qty, maxStock);
+                }
+            }
+            renderOutputItems();
+        }
+
+        function removeOutputItem(index) {
+            outputItems.splice(index, 1);
+            renderOutputItems();
+        }
+
+        function showOutputError(message) {
+            const el = document.getElementById('output-error');
+            if (!el) return;
+            if (!message) {
+                el.classList.add('hidden');
+                el.textContent = '';
+                return;
+            }
+            el.textContent = message;
+            el.classList.remove('hidden');
+            showToast(message, 'error');
+        }
+
+        function goBackFromOutput() {
             const viewId = new URLSearchParams(window.location.search).get('view_id');
-            const url = viewId 
+            const url = viewId
                 ? `{{ route('warehouse_movements.index') }}?view_id=${viewId}`
                 : `{{ route('warehouse_movements.index') }}`;
             window.location.href = url;
         }
 
-        async function saveOutput() {
-            if (selectedProducts.length === 0) {
-                alert('Por favor, selecciona al menos un producto');
-                return;
-            }
-            if (!checkStockValidation()) {
-                alert('Hay productos con cantidad mayor al stock disponible. Ajusta las cantidades.');
-                return;
-            }
+        function hasOverStock() {
+            return outputItems.some(function (item) { return (item.quantity || 0) > (item.stock || 0); });
+        }
 
-            const comment = document.getElementById('movement-comment').value.trim();
+        async function saveOutputMovement() {
+            if (outputItems.length === 0) {
+                showOutputError('Agrega al menos un producto antes de guardar la salida.');
+                return;
+            }
+            if (hasOverStock()) {
+                showOutputError('Hay productos con cantidad mayor al stock disponible. Ajusta las cantidades.');
+                return;
+            }
+            showOutputError('');
+
+            const commentEl = document.getElementById('output-comment');
+            const comment = (commentEl && commentEl.value) ? commentEl.value.trim() : '';
+
             const payload = {
-                items: selectedProducts.map(p => ({
-                    product_id: p.id,
-                    quantity: p.quantity,
-                    comment: p.comment || ''
-                })),
+                items: outputItems.map(function (item) {
+                    return {
+                        product_id: item.product_id,
+                        quantity: item.quantity,
+                        comment: '',
+                    };
+                }),
                 comment: comment || 'Salida de productos del almacén',
-                branch_id: branchId,
             };
 
             try {
@@ -287,40 +316,31 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json',
                     },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify(payload),
                 });
-
                 const data = await response.json();
 
                 if (response.ok && data.success) {
                     sessionStorage.setItem('flash_success_message', data.message || 'Salida de productos guardada correctamente');
-                    goBack();
+                    goBackFromOutput();
                 } else {
-                    sessionStorage.setItem('flash_error_message', data.message || 'No se pudo guardar la salida');
+                    const msg = data.message || 'No se pudo guardar la salida de productos.';
+                    sessionStorage.setItem('flash_error_message', msg);
+                    showOutputError(msg);
                 }
             } catch (error) {
-                console.error('Error:', error);
-                sessionStorage.setItem('flash_error_message', 'Error al guardar la salida de productos');
+                console.error(error);
+                const msg = 'Error inesperado al guardar la salida de productos.';
+                sessionStorage.setItem('flash_error_message', msg);
+                showOutputError(msg);
             }
         }
 
-        document.getElementById('search-products')?.addEventListener('input', function(e) {
-            const search = e.target.value.toLowerCase();
-            filteredProducts = productsData.filter(p => 
-                (p.name && p.name.toLowerCase().includes(search)) || 
-                (p.code && p.code.toLowerCase().includes(search))
-            );
-            renderProducts();
+        document.addEventListener('DOMContentLoaded', function () {
+            renderOutputItems();
         });
-
-        document.addEventListener('DOMContentLoaded', function() {
-            renderProducts();
-            renderCart();
-        });
-        if (document.readyState !== 'loading') {
-            setTimeout(function() { renderProducts(); renderCart(); }, 100);
-        }
     </script>
 @endsection

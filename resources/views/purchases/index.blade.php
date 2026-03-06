@@ -131,7 +131,7 @@
                                     $topActionUrl = $resolveActionUrl($operation->action ?? '', null, $operation);
                                 @endphp
                                 
-                                <a href="{{ $topActionUrl }}" class="h-11 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium shadow-sm hover:shadow-md transition-all duration-200" style="{{ $topStyle }}">
+                                <a href="{{ $topActionUrl }}" class="h-11 inline-flex items-center text-sm justify-center gap-2 px-4 py-2 rounded-lg font-medium shadow-sm hover:shadow-md transition-all duration-200" style="{{ $topStyle }}">
                                     <i class="{{ $operation->icon ?? 'ri-add-line' }}"></i>
                                     <span>{{ $operation->name }}</span>
                                 </a>

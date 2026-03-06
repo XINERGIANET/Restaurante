@@ -26,6 +26,7 @@
         'eliminate' => 'bg-error-500 text-white shadow-theme-xs hover:bg-error-700 disabled:bg-error-300 dark:bg-error-600 dark:hover:bg-error-700',
         'edit' => 'bg-yellow-500 text-white shadow-theme-xs hover:bg-yellow-600 disabled:bg-yellow-300 dark:bg-yellow-600 dark:hover:bg-yellow-700',
         'create' => 'bg-green-500 text-black shadow-theme-xs hover:bg-green-600 disabled:bg-green-300 dark:bg-green-600 dark:hover:bg-green-700',
+        'dark' => 'bg-gray-600 text-white shadow-theme-xs hover:bg-gray-800 disabled:bg-gray-300',
     ];
     $variantClass = $variantMap[$variant] ?? $variantMap['primary'];
 

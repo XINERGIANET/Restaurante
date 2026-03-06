@@ -51,6 +51,12 @@
                 this.open = false;
                 this.syncQueryFromId();
             }
+        },
+
+        clear() {
+            this.value = null;
+            this.query = '';
+            this.open = false;
         }
     }"
     x-modelable="value"
@@ -60,6 +66,10 @@
         if (!$event.detail || !$event.detail.options) return;
         if (($event.detail.name || '') !== @js($name ?? '')) return;
         updateOptions($event.detail.options)
+    "
+    @clear-combobox.window="
+        if (($event.detail?.name || '') !== @js($name ?? '')) return;
+        clear()
     "
 
     class="space-y-1.5 relative"
