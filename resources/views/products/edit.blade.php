@@ -37,6 +37,7 @@
                     'taxRates' => $taxRates ?? collect(),
                     'productBranch' => $productBranch ?? null,
                     'branches' => $branches ?? collect(),
+                    'productTypes' => $productTypes ?? collect(),
                     'productBranchesByBranchId' => $productBranchesByBranchId ?? collect(),
                     'igvByBranchId' => $igvByBranchId ?? [],
                 ])

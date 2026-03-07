@@ -51,6 +51,16 @@ class User extends Authenticatable
         return $this->belongsTo(Profile::class);
     }
 
+    /**
+     * Indica si el usuario es administrador de sistema (puede ver todo, sin filtrar por sucursal).
+     */
+    public function isSystemAdmin(): bool
+    {
+        $profile = $this->profile ?? $this->profile()->first();
+
+        return $profile && $profile->name === 'Administrador de sistema';
+    }
+
     public function person()
     {
         return $this->belongsTo(Person::class);

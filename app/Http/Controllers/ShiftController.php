@@ -20,7 +20,7 @@ class ShiftController extends Controller
         }
 
         $viewId = $request->input('view_id');
-        $branchId = $request->session()->get('branch_id');
+        $branchId = \effective_branch_id();
         $profileId = $request->session()->get('profile_id') ?? $request->user()?->profile_id;
         $operaciones = collect();
 
@@ -50,6 +50,7 @@ class ShiftController extends Controller
 
         $shifts = Shift::query()
             ->with('branch')
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
             ->when($search, function ($query, $search) {
                 $query->where('name', 'ILIKE', "%{$search}%")
                     ->orWhere('abbreviation', 'ILIKE', "%{$search}%");

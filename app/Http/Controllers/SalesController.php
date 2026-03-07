@@ -19,6 +19,7 @@ use App\Models\Category;
 use App\Models\User;
 use App\Models\Product;
 use App\Models\ProductBranch;
+use App\Models\ProductType;
 use App\Models\SalesMovement;
 use App\Models\SalesMovementDetail;
 use App\Models\Shift;
@@ -219,8 +220,13 @@ class SalesController extends Controller
             ];
         })->values();
 
+        // Solo productos vendibles (SELLABLE); sin tipo o tipo distinto se excluyen de ventas
         $products = Product::query()
             ->where('type', 'PRODUCT')
+            ->where(function ($q) {
+                $q->whereNull('product_type_id')
+                    ->orWhereHas('productType', fn ($q2) => $q2->where('behavior', ProductType::BEHAVIOR_SELLABLE));
+            })
             ->with('category')
             ->orderBy('description')
             ->get()
@@ -247,9 +253,13 @@ class SalesController extends Controller
 
         $productBranches = ProductBranch::query()
             ->where('branch_id', $branchId)
-            ->with(['product', 'taxRate'])
+            ->with(['product.productType', 'taxRate'])
             ->get()
-            ->filter(fn ($productBranch) => $productBranch->product !== null)
+            ->filter(function ($productBranch) {
+                if ($productBranch->product === null) return false;
+                $pt = $productBranch->product->productType;
+                return $pt === null || $pt->isSellable();
+            })
             ->map(function ($productBranch) {
                 $taxRate = $productBranch->taxRate;
                 $taxRatePct = $taxRate ? (float) $taxRate->tax_rate : null;
@@ -428,8 +438,12 @@ class SalesController extends Controller
 
         $productBranches = ProductBranch::query()
             ->where('branch_id', $branchId ?? 0)
-            ->with('taxRate')
+            ->with(['product.productType', 'taxRate'])
             ->get()
+            ->filter(function ($pb) {
+                $pt = $pb->product?->productType;
+                return $pt === null || $pt->isSellable();
+            })
             ->map(fn ($pb) => [
                 'product_id' => (int) $pb->product_id,
                 'price' => (float) $pb->price,

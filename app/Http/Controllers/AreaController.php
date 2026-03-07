@@ -10,7 +10,7 @@ class AreaController extends Controller
 {
     public function index(Request $request)
     {
-        $branchId = session('branch_id');
+        $branchId = \effective_branch_id();
         $search = $request->input('search');
         $perPage = (int) $request->input('per_page', 10);
         $allowedPerPage = [10, 20, 50, 100];

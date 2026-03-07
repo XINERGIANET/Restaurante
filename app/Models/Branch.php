@@ -41,4 +41,9 @@ class Branch extends Model
             ->withTimestamps()
             ->withPivot('deleted_at');
     }
+
+    public function productTypes()
+    {
+        return $this->hasMany(ProductType::class, 'branch_id');
+    }
 }

@@ -1,4 +1,8 @@
 @php
+    $productTypes = $productTypes ?? collect();
+    $productTypeIdInit = old('product_type_id', $product->product_type_id ?? null);
+    $productTypeIdInit = is_numeric($productTypeIdInit) ? (int) $productTypeIdInit : null;
+
     $unitSaleInit = old('unit_sale', $productBranch->unit_sale ?? null);
     $unitSaleInit = is_numeric($unitSaleInit) ? (int) $unitSaleInit : null;
 
@@ -11,11 +15,20 @@
         ->values();
 
     $igvByBranchId = $igvByBranchId ?? [];
+    $productTypesById = $productTypes->keyBy('id')->map(fn($pt) => ['id' => $pt->id, 'name' => $pt->name, 'behavior' => $pt->behavior]);
 @endphp
 
 <div x-data="{
-    // Variable que controla si se muestran los campos (True si NO es ingrediente)
-    showComplements: '{{ old('type', $product->type ?? 'PRODUCT') }}'.trim() !== 'INGREDENT',
+    productTypeId: {{ $productTypeIdInit === null ? 'null' : $productTypeIdInit }},
+    productTypesById: {{ \Illuminate\Support\Js::from($productTypesById) }},
+    get showComplements() {
+        const pt = this.productTypeId != null ? this.productTypesById[this.productTypeId] : null;
+        return pt ? (pt.behavior === 'SELLABLE' || pt.behavior === 'BOTH') : true;
+    },
+    get showBranchDetail() {
+        const pt = this.productTypeId != null ? this.productTypesById[this.productTypeId] : null;
+        return pt ? (pt.behavior === 'SELLABLE' || pt.behavior === 'BOTH') : true;
+    },
     complementValue: '{{ old('complement', $product->complement ?? 'NO') }}',
     complementMode: '{{ old('complement_mode', $product->complement_mode ?? '') }}',
     classificationValue: '{{ old('classification', $product->classification ?? 'GOOD') }}',
@@ -33,6 +46,7 @@
     branchDrafts: {},
     branchFields: {
         price: @js(old('price', $productBranch->price ?? '')),
+        purchase_price: @js(old('purchase_price', $productBranch->purchase_price ?? 0)),
         stock: @js(old('stock', $productBranch->stock ?? '')),
         stock_minimum: @js(old('stock_minimum', $productBranch->stock_minimum ?? 0)),
         stock_maximum: @js(old('stock_maximum', $productBranch->stock_maximum ?? 0)),
@@ -51,6 +65,7 @@
     init() {
         const defaults = () => ({
             price: '',
+            purchase_price: 0,
             stock: '',
             stock_minimum: 0,
             stock_maximum: 0,
@@ -114,15 +129,25 @@
         this.$watch('supplierId', (val) => {
             if (this.branchFields) this.branchFields.supplier_id = val;
         });
+
+        this.$watch('productTypeId', (id) => {
+            const pt = id != null ? this.productTypesById[id] : null;
+            if (pt && pt.behavior === 'SUPPLY') {
+                this.complementValue = 'NO';
+                this.complementMode = '';
+                this.classificationValue = 'GOOD';
+            }
+        });
     },
 
     addComplement() { this.complements.push({ product: '', qty: 1 }); },
     removeComplement(i) { this.complements.splice(i, 1); },
 
-    handleTypeChange(e) {
-        const isIngredient = e.target.value.trim() === 'INGREDENT';
-        this.showComplements = !isIngredient;
-        if (isIngredient) {
+    handleProductTypeChange(e) {
+        const id = e.target.value ? Number(e.target.value) : null;
+        this.productTypeId = id;
+        const pt = id != null ? this.productTypesById[id] : null;
+        if (pt && pt.behavior === 'SUPPLY') {
             this.complementValue = 'NO';
             this.complementMode = '';
             this.classificationValue = 'GOOD';
@@ -170,16 +195,18 @@
             </div>
 
             <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Tipo <span
+                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Tipo de producto <span
                         class="text-red-500">*</span></label>
-                {{-- Hidden enviado con el form (el select está disabled y no se envía) --}}
-                <input type="hidden" name="type" id="product-type-value" value="{{ old('type', $product->type ?? 'PRODUCT') }}">
-                <select id="product-type-select" disabled required @change="handleTypeChange($event)"
-                    class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-gray-100 dark:bg-gray-900 dark:text-white/90 text-gray-500 cursor-not-allowed">
-                    <option value="PRODUCT" @selected(old('type', $product->type ?? 'PRODUCT') === 'PRODUCT')>Producto final</option>
-                    <option value="INGREDENT" @selected(old('type', $product->type ?? 'PRODUCT') === 'INGREDENT')>Ingrediente</option>
+                <select name="product_type_id" id="product-type-id-select" required
+                    x-model.number="productTypeId"
+                    @change="handleProductTypeChange($event)"
+                    class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90">
+                    <option value="">Seleccione tipo</option>
+                    @foreach ($productTypes as $pt)
+                        <option value="{{ $pt->id }}" @selected($productTypeIdInit === (int) $pt->id)>{{ $pt->name }}</option>
+                    @endforeach
                 </select>
-                @error('type')
+                @error('product_type_id')
                     <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
                 @enderror
             </div>
@@ -268,10 +295,25 @@
         </div>
     </div>
 
-    <!-- INFORMACIÓN DE PRECIOS Y STOCK (DETALLE POR SEDE) -->
-    <div class="mb-8 p-6 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+    <!-- INFORMACIÓN DE PRECIOS Y STOCK (DETALLE POR SEDE) - solo para tipo vendible (SELLABLE) -->
+    <template x-if="!showBranchDetail">
+        <div class="mb-8 p-6 bg-gray-50 dark:bg-gray-800/30 rounded-lg border border-gray-200 dark:border-gray-700" x-cloak>
+            <p class="text-sm text-gray-600 dark:text-gray-400">Los suministros no requieren precio ni stock por sede. Los valores se gestionan en taller/producción.</p>
+            <input type="hidden" name="price" value="0">
+            <input type="hidden" name="purchase_price" value="0">
+            <input type="hidden" name="stock" value="0">
+            <input type="hidden" name="stock_minimum" value="0">
+            <input type="hidden" name="stock_maximum" value="0">
+            <input type="hidden" name="minimum_sell" value="0">
+            <input type="hidden" name="minimum_purchase" value="0">
+            <input type="hidden" name="tax_rate_id" value="">
+            <input type="hidden" name="unit_sale" value="">
+            <input type="hidden" name="expiration_date" value="">
+        </div>
+    </template>
+    <div class="mb-8 p-6 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800" x-show="showBranchDetail" x-cloak x-transition>
         <h3 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">💰 Información Detalle por Sede</h3>
-        <p class="mb-4 text-xs text-gray-600 dark:text-gray-400">Estos campos se configuran por cada sucursal</p>
+        <p class="mb-4 text-xs text-gray-600 dark:text-gray-400">Estos campos se configuran por cada sucursal (solo productos vendibles)</p>
         @if (isset($branches) && $branches->isNotEmpty())
             <div class="mb-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
                 <div>
@@ -292,12 +334,25 @@
             <div>
                 <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Precio <span
                         class="text-red-500">*</span></label>
-                <input type="number" name="price" step="0.01"
+                <input type="number" :name="showBranchDetail ? 'price' : 'price_skip'" step="0.01"
                     x-model.number="branchFields.price"
-                    value="{{ old('price', $productBranch->price ?? '') }}" required
+                    value="{{ old('price', $productBranch->price ?? '') }}" :required="showBranchDetail"
                     class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
                     placeholder="0.00" />
                 @error('price')
+                    <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
+                @enderror
+            </div>
+
+            <div>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Precio de compra <span
+                        class="text-red-500">*</span></label>
+                <input type="number" :name="showBranchDetail ? 'purchase_price' : 'purchase_price_skip'" step="0.01"
+                    x-model.number="branchFields.purchase_price"
+                    value="{{ old('purchase_price', $productBranch->purchase_price ?? 0) }}" :required="showBranchDetail" min="0"
+                    class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
+                    placeholder="0.00" />
+                @error('purchase_price')
                     <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
                 @enderror
             </div>
@@ -319,7 +374,7 @@
                 </template>
 
                 <input type="number" step="0.01"
-                    name="stock" required
+                    :name="showBranchDetail ? 'stock' : 'stock_skip'" :required="showBranchDetail"
                     x-model.number="branchFields.stock"
                     x-bind:disabled="isEdit && branchStore && (branchStore[selectedBranchId] !== undefined)"
                     :min="Number(branchFields.stock_minimum || 0)"
@@ -337,10 +392,10 @@
             <div>
                 <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Stock mínimo <span
                         class="text-red-500">*</span></label>
-                <input type="number" name="stock_minimum" step="0.01"
+                <input type="number" :name="showBranchDetail ? 'stock_minimum' : 'stock_minimum_skip'" step="0.01"
                     value="{{ old('stock_minimum', $productBranch->stock_minimum ?? '') }}"
                     x-model.number="branchFields.stock_minimum"
-                    required min="0"
+                    :required="showBranchDetail" min="0"
                     class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
                     placeholder="0.00" />
                 @error('stock_minimum')
@@ -351,10 +406,10 @@
             <div>
                 <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Stock máximo <span
                         class="text-red-500">*</span></label>
-                <input type="number" name="stock_maximum" step="0.01"
+                <input type="number" :name="showBranchDetail ? 'stock_maximum' : 'stock_maximum_skip'" step="0.01"
                     value="{{ old('stock_maximum', $productBranch->stock_maximum ?? '') }}"
                     x-model.number="branchFields.stock_maximum"
-                    required min="0"
+                    :required="showBranchDetail" min="0"
                     class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
                     placeholder="0.00" />
                 @error('stock_maximum')
@@ -364,9 +419,9 @@
 
             <div>
                 <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Venta mínima</label>
-                <input type="number" name="minimum_sell" step="0.01"
+                <input type="number" :name="showBranchDetail ? 'minimum_sell' : 'minimum_sell_skip'" step="0.01"
                     x-model.number="branchFields.minimum_sell"
-                    value="{{ old('minimum_sell', $productBranch->minimum_sell ?? '') }}" required
+                    value="{{ old('minimum_sell', $productBranch->minimum_sell ?? '') }}" :required="showBranchDetail"
                     class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
                     placeholder="0.00" />
                 @error('minimum_sell')
@@ -396,7 +451,7 @@
             <div>
                 <x-form.select.combobox
                     label="Unidad de venta"
-                    :required="false"
+                    :required="true"
                     :options="$units"
                     name="unit_sale"
                     x-model="unitSaleId"
@@ -408,7 +463,7 @@
             <div>
                 <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Fecha de
                     expiración</label>
-                <input type="date" name="expiration_date"
+                <input type="date" name="expiration_date" :required="showBranchDetail"
                     x-model="branchFields.expiration_date"
                     value="{{ old('expiration_date', $productBranch->expiration_date ?? '') }}"
                     class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90" />

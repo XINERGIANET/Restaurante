@@ -131,12 +131,13 @@
                             $topActionUrl = $resolveActionUrl($operation->action ?? '', null, $operation);
                         @endphp
                         @if ($operation->action === 'companies.create')
-                            <x-ui.button size="sm" variant="primary" type="button"
-                                class="w-full sm:w-auto flex-1 sm:flex-none h-11 px-4 border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200"
-                                style="{{ $topStyle }}" @click="$dispatch('open-company-modal')">
+                            <x-ui.link-button size="sm" variant="primary"
+                                class="w-full sm:w-auto flex-1 sm:flex-none h-11 px-4 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200"
+                                style="{{ $topStyle }}"
+                                href="{{ route('admin.companies.create', $viewId ? ['view_id' => $viewId] : []) }}">
                                 <i class="{{ $operation->icon }} text-lg"></i>
                                 <span>{{ $operation->name }}</span>
-                            </x-ui.button>
+                            </x-ui.link-button>
                         @else
                             <x-ui.link-button size="sm" variant="primary"
                                 class="w-full sm:w-auto flex-1 sm:flex-none h-11 px-4 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200"
@@ -223,7 +224,7 @@
                                                             <i class="{{ $operation->icon }} text-lg"></i>
                                                         </x-ui.button>
                                                         <span
-                                                            class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.3s;">
+                                                            class="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.3s;">
                                                             {{ $operation->name }}
                                                         </span>
                                                     </form>
@@ -237,7 +238,7 @@
                                                             <i class="{{ $operation->icon }} text-lg"></i>
                                                         </x-ui.link-button>
                                                     <span
-                                                        class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.3s;">
+                                                        class="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50" style="transition-delay: 0.3s;">
                                                         {{ $operation->name }}
                                                     </span>
                                                     </div>
@@ -257,11 +258,11 @@
                                                 <p class="text-base font-semibold text-gray-800 dark:text-white/90">No hay empresas registradas</p>
                                                 <p class="text-sm text-gray-500">Comienza registrando tu primera empresa para gestionar el sistema.</p>
                                             </div>
-                                            <x-ui.button size="md" variant="primary" type="button" class="mt-2"
-                                                @click="$dispatch('open-company-modal')">
+                                            <x-ui.link-button size="md" variant="primary" class="mt-2"
+                                                href="{{ route('admin.companies.create', $viewId ? ['view_id' => $viewId] : []) }}">
                                                 <i class="ri-add-line text-lg"></i>
                                                 <span>Registrar empresa</span>
-                                            </x-ui.button>
+                                            </x-ui.link-button>
                                         </div>
                                     </td>
                                 </tr>

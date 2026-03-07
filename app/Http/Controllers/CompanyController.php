@@ -6,6 +6,7 @@ use App\Models\Branch;
 use App\Models\Company;
 use App\Models\Operation;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class CompanyController extends Controller
@@ -19,6 +20,36 @@ class CompanyController extends Controller
         $branchId = $request->session()->get('branch_id');
         $profileId = $request->session()->get('profile_id') ?? $request->user()?->profile_id;
         $operaciones = collect();
+
+        if (!$viewId && $branchId) {
+            $defaultViewId = (int) DB::table('operations')
+                ->join('view_branch', function ($join) use ($branchId) {
+                    $join->on('view_branch.view_id', '=', 'operations.view_id')
+                        ->where('view_branch.branch_id', $branchId)
+                        ->whereNull('view_branch.deleted_at');
+                })
+                ->where(function ($q) {
+                    $q->where('operations.action', 'like', 'admin.companies.%')
+                        ->orWhere('operations.action', 'like', 'companies.%');
+                })
+                ->where('operations.status', 1)
+                ->whereNull('operations.deleted_at')
+                ->orderBy('operations.view_id')
+                ->value('operations.view_id');
+            if ($defaultViewId <= 0) {
+                $defaultViewId = (int) DB::table('view_branch')
+                    ->where('branch_id', $branchId)
+                    ->whereNull('deleted_at')
+                    ->orderBy('view_id')
+                    ->value('view_id');
+            }
+            if ($defaultViewId > 0) {
+                return redirect()->route('admin.companies.index', array_merge(
+                    array_filter($request->only(['search', 'per_page'])),
+                    ['view_id' => $defaultViewId]
+                ));
+            }
+        }
 
         if ($viewId && $branchId && $profileId) {
             $operaciones = Operation::query()
@@ -67,9 +98,10 @@ class CompanyController extends Controller
         ]);
     }
 
-    public function create()
+    public function create(Request $request)
     {
-        return view('companies.create');
+        $viewId = $request->input('view_id');
+        return view('companies.create', compact('viewId'));
     }
 
     public function store(Request $request)
@@ -98,7 +130,7 @@ class CompanyController extends Controller
             Storage::disk('public')->copy($logoPath, $branchLogoPath);
         }
 
-        Branch::create([
+        $branch = Branch::create([
             'ruc' => $data['tax_id'],
             'company_id' => $company->id,
             'legal_name' => $data['legal_name'],
@@ -107,7 +139,43 @@ class CompanyController extends Controller
             'location_id' => 1477,
         ]);
 
-        $redirectParams = $request->filled('view_id') ? ['view_id' => $request->input('view_id')] : [];
+        $this->replicateCategoryBranches($branch->id);
+
+        $branchController = app(BranchController::class);
+        $branchController->replicateBranchConfiguration($branch->id);
+        $branchController->setupNewBranch($branch);
+
+        $request->session()->put('branch_id', $branch->id);
+
+        $redirectParams = [];
+        if ($request->filled('view_id')) {
+            $redirectParams['view_id'] = $request->input('view_id');
+        } else {
+            $defaultViewId = (int) DB::table('operations')
+                ->join('view_branch', function ($join) use ($branch) {
+                    $join->on('view_branch.view_id', '=', 'operations.view_id')
+                        ->where('view_branch.branch_id', $branch->id)
+                        ->whereNull('view_branch.deleted_at');
+                })
+                ->where(function ($q) {
+                    $q->where('operations.action', 'like', 'admin.companies.%')
+                        ->orWhere('operations.action', 'like', 'companies.%');
+                })
+                ->where('operations.status', 1)
+                ->whereNull('operations.deleted_at')
+                ->orderBy('operations.view_id')
+                ->value('operations.view_id');
+            if ($defaultViewId <= 0) {
+                $defaultViewId = (int) DB::table('view_branch')
+                    ->where('branch_id', $branch->id)
+                    ->whereNull('deleted_at')
+                    ->orderBy('view_id')
+                    ->value('view_id');
+            }
+            if ($defaultViewId > 0) {
+                $redirectParams['view_id'] = $defaultViewId;
+            }
+        }
 
         return redirect()->route('admin.companies.index', $redirectParams)
             ->with('status', 'Empresa y sucursal creadas correctamente.');
@@ -179,5 +247,47 @@ class CompanyController extends Controller
 
         return redirect()->route('admin.companies.index', $redirectParams)
             ->with('status', 'Empresa eliminada correctamente.');
+    }
+
+    private function replicateCategoryBranches(int $newBranchId): void
+    {
+        $templateBranchId = (int) env('BRANCH_TEMPLATE_ID', 4);
+        if ($newBranchId === $templateBranchId) {
+            return;
+        }
+
+        $now = now();
+
+        $templateCategoryBranches = DB::table('category_branch')
+            ->where('branch_id', $templateBranchId)
+            ->whereNull('deleted_at')
+            ->get(['category_id', 'menu_type', 'status']);
+
+        foreach ($templateCategoryBranches as $row) {
+            $existing = DB::table('category_branch')
+                ->where('branch_id', $newBranchId)
+                ->where('category_id', $row->category_id)
+                ->where('menu_type', $row->menu_type)
+                ->first();
+
+            if ($existing) {
+                DB::table('category_branch')
+                    ->where('id', $existing->id)
+                    ->update([
+                        'status' => (string) $row->status,
+                        'deleted_at' => null,
+                        'updated_at' => $now,
+                    ]);
+            } else {
+                DB::table('category_branch')->insert([
+                    'menu_type' => (string) $row->menu_type,
+                    'status' => (string) $row->status,
+                    'category_id' => $row->category_id,
+                    'branch_id' => $newBranchId,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]);
+            }
+        }
     }
 }

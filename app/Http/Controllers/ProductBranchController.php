@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ProductBranch;
 use App\Models\Product;
+use App\Models\ProductType;
 use App\Models\TaxRate;
 use App\Models\Branch;
 use Illuminate\Http\Request;
@@ -47,6 +48,9 @@ class ProductBranchController extends Controller
     {
         $viewId = $request->input('view_id');
         $branchId = session('branch_id');
+
+        $product->load('productType');
+        $isSupply = $product->productType && $product->productType->isSupply();
         
         if (!$branchId) {
             return redirect()->route('products.index', $viewId ? ['view_id' => $viewId] : [])
@@ -60,35 +64,73 @@ class ProductBranchController extends Controller
 
         if ($productBranch) {
             // Si ya existe, actualizar el registro existente
-            $validated = $request->validate([
-                'stock' => 'required|integer|min:0',
-                'price' => 'required|numeric|min:0',
+            $validated = $request->validate($isSupply ? [
+                'stock' => 'nullable|numeric|min:0',
+                'price' => 'nullable|numeric|min:0',
+                'purchase_price' => 'nullable|numeric|min:0',
                 'stock_minimum' => 'nullable|numeric|min:0',
                 'stock_maximum' => 'nullable|numeric|min:0|gte:stock_minimum',
                 'minimum_sell' => 'nullable|numeric|min:0',
                 'minimum_purchase' => 'nullable|numeric|min:0',
+                'tax_rate_id' => 'nullable|exists:tax_rates,id',
+                'unit_sale' => 'nullable|integer|exists:units,id',
+                'expiration_date' => 'nullable|date',
+            ] : [
+                'stock' => 'required|numeric|min:0',
+                'price' => 'required|numeric|min:0',
+                'purchase_price' => 'required|numeric|min:0',
+                'stock_minimum' => 'required|numeric|min:0',
+                'stock_maximum' => 'required|numeric|min:0|gte:stock_minimum',
+                'minimum_sell' => 'required|numeric|min:0',
+                'minimum_purchase' => 'required|numeric|min:0',
                 'tax_rate_id' => 'required|exists:tax_rates,id',
-                'unit_sale' => 'nullable|string|in:Y,N',
+                'unit_sale' => 'required|integer|exists:units,id',
+                'expiration_date' => 'required|date',
             ]);
 
             $validated['stock_minimum'] = $validated['stock_minimum'] ?? 0.0;
             $validated['stock_maximum'] = $validated['stock_maximum'] ?? 0.0;
-            $validated['unit_sale'] = $validated['unit_sale'] ?? 'N';
+
+            if ($isSupply) {
+                $validated['price'] = 0;
+                $validated['purchase_price'] = 0;
+                $validated['stock'] = 0;
+                $validated['stock_minimum'] = 0;
+                $validated['stock_maximum'] = 0;
+                $validated['minimum_sell'] = 0;
+                $validated['minimum_purchase'] = 0;
+                $validated['tax_rate_id'] = null;
+                $validated['unit_sale'] = 'N';
+                $validated['expiration_date'] = null;
+            }
 
             $productBranch->update($validated);
             return redirect()->route('products.index', $viewId ? ['view_id' => $viewId] : [])
                 ->with('status', 'Producto actualizado en sucursal correctamente. Stock: ' . $validated['stock'] . ', Precio: $' . number_format($validated['price'], 2));
         }
 
-        $data = $request->validate([
-            'stock' => 'required|integer|min:0',
-            'price' => 'required|numeric|min:0',
+        $data = $request->validate($isSupply ? [
+            'stock' => 'nullable|numeric|min:0',
+            'price' => 'nullable|numeric|min:0',
+            'purchase_price' => 'nullable|numeric|min:0',
             'stock_minimum' => 'nullable|numeric|min:0',
             'stock_maximum' => 'nullable|numeric|min:0|gte:stock_minimum',
             'minimum_sell' => 'nullable|numeric|min:0',
             'minimum_purchase' => 'nullable|numeric|min:0',
+            'tax_rate_id' => 'nullable|exists:tax_rates,id',
+            'unit_sale' => 'nullable|integer|exists:units,id',
+            'expiration_date' => 'nullable|date',
+        ] : [
+            'stock' => 'required|numeric|min:0',
+            'price' => 'required|numeric|min:0',
+            'purchase_price' => 'required|numeric|min:0',
+            'stock_minimum' => 'required|numeric|min:0',
+            'stock_maximum' => 'required|numeric|min:0|gte:stock_minimum',
+            'minimum_sell' => 'required|numeric|min:0',
+            'minimum_purchase' => 'required|numeric|min:0',
             'tax_rate_id' => 'required|exists:tax_rates,id',
-            'unit_sale' => 'nullable|string|in:Y,N',
+            'unit_sale' => 'required|integer|exists:units,id',
+            'expiration_date' => 'required|date',
         ]);
 
         // Campos requeridos por la migración
@@ -104,7 +146,20 @@ class ProductBranchController extends Controller
             : 0.0;
         
         // Campos con valores por defecto
-        $data['unit_sale'] = $data['unit_sale'] ?? 'N';
+        if ($isSupply) {
+            $data['price'] = 0;
+            $data['purchase_price'] = 0;
+            $data['stock'] = 0;
+            $data['stock_minimum'] = 0;
+            $data['stock_maximum'] = 0;
+            $data['minimum_sell'] = 0;
+            $data['minimum_purchase'] = 0;
+            $data['tax_rate_id'] = null;
+            $data['unit_sale'] = 'N';
+            $data['expiration_date'] = null;
+        } else {
+            $data['unit_sale'] = $data['unit_sale'] ?? 'N';
+        }
         $data['status'] = 'E';
         $data['favorite'] = 'N';
         $data['duration_minutes'] = 0.0;
@@ -117,15 +172,31 @@ class ProductBranchController extends Controller
     public function update(Request $request, ProductBranch $productBranch)
     {
         $viewId = $request->input('view_id');
-        $data = $request->validate([
-            'stock' => 'required|integer|min:0',
-            'price' => 'required|numeric|min:0',
+        $productBranch->load('product.productType');
+        $isSupply = $productBranch->product && $productBranch->product->productType && $productBranch->product->productType->isSupply();
+
+        $data = $request->validate($isSupply ? [
+            'stock' => 'nullable|numeric|min:0',
+            'price' => 'nullable|numeric|min:0',
+            'purchase_price' => 'nullable|numeric|min:0',
             'stock_minimum' => 'nullable|numeric|min:0',
             'stock_maximum' => 'nullable|numeric|min:0|gte:stock_minimum',
             'minimum_sell' => 'nullable|numeric|min:0',
             'minimum_purchase' => 'nullable|numeric|min:0',
+            'tax_rate_id' => 'nullable|exists:tax_rates,id',
+            'unit_sale' => 'nullable|integer|exists:units,id',
+            'expiration_date' => 'nullable|date',
+        ] : [
+            'stock' => 'required|numeric|min:0',
+            'price' => 'required|numeric|min:0',
+            'purchase_price' => 'required|numeric|min:0',
+            'stock_minimum' => 'required|numeric|min:0',
+            'stock_maximum' => 'required|numeric|min:0|gte:stock_minimum',
+            'minimum_sell' => 'required|numeric|min:0',
+            'minimum_purchase' => 'required|numeric|min:0',
             'tax_rate_id' => 'required|exists:tax_rates,id',
-            'unit_sale' => 'nullable|string|in:Y,N',
+            'unit_sale' => 'required|integer|exists:units,id',
+            'expiration_date' => 'required|date',
         ]);
 
         // Campos decimal(24, 6) - Laravel manejará el formato automáticamente
@@ -136,8 +207,21 @@ class ProductBranchController extends Controller
             ? (float) $data['stock_maximum'] 
             : 0.0;
         
-        // Campos con valores por defecto
-        $data['unit_sale'] = $data['unit_sale'] ?? 'N';
+        // Campos con valores por defecto / forzado para suministro
+        if ($isSupply) {
+            $data['price'] = 0;
+            $data['purchase_price'] = 0;
+            $data['stock'] = 0;
+            $data['stock_minimum'] = 0;
+            $data['stock_maximum'] = 0;
+            $data['minimum_sell'] = 0;
+            $data['minimum_purchase'] = 0;
+            $data['tax_rate_id'] = null;
+            $data['unit_sale'] = 'N';
+            $data['expiration_date'] = null;
+        } else {
+            $data['unit_sale'] = $data['unit_sale'] ?? 'N';
+        }
 
         $productBranch->update($data);
         return redirect()->route('products.index', $viewId ? ['view_id' => $viewId] : [])->with('status', 'Producto actualizado en sucursal correctamente.');

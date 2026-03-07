@@ -15,7 +15,7 @@ class TableController extends Controller
         $perPage = (int) $request->input('per_page', 10);
         $allowedPerPage = [10, 20, 50, 100];
         $viewId = $request->input('view_id');
-        $branchId = $request->session()->get('branch_id');
+        $branchId = \effective_branch_id();
         $profileId = $request->session()->get('profile_id') ?? $request->user()?->profile_id;
         $operaciones = collect();
 
@@ -48,6 +48,7 @@ class TableController extends Controller
         }
 
         $tables = Table::query()
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
             ->when($search, function ($query) use ($search) {
                 $query->where('name', 'ILIKE', "%{$search}%");
             })
@@ -55,7 +56,6 @@ class TableController extends Controller
             ->paginate($perPage)
             ->withQueryString();
 
-        $branchId = session('branch_id');
         $areas = Area::query()
             ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
             ->orderBy('name')

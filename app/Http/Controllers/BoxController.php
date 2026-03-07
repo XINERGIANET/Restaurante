@@ -17,7 +17,7 @@ class BoxController extends Controller
             $perPage = 10;
         }
         $viewId = $request->input('view_id');
-        $branchId = $request->session()->get('branch_id');
+        $branchId = \effective_branch_id();
         $profileId = $request->session()->get('profile_id') ?? $request->user()?->profile_id;
         $operaciones = collect();
         if ($viewId && $branchId && $profileId) {
@@ -45,6 +45,7 @@ class BoxController extends Controller
         }
 
         $cash = CashRegister::query()
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
             ->when($search, function ($query, $search) {
                 $query->where(function ($inner) use ($search) {
                     $inner->where('number', 'ILIKE', "%{$search}%")
@@ -98,8 +99,11 @@ class BoxController extends Controller
 
     public function edit(Request $request, CashRegister $box)
     {
-        $cash = CashRegister::paginate(10); 
-        
+        $branchId = \effective_branch_id();
+        $cash = CashRegister::query()
+            ->when($branchId !== null, fn ($q) => $q->where('branch_id', $branchId))
+            ->paginate(10);
+
         return view('boxes.edit', [
             'title' => 'Cajas',
             'cash'  => $cash,

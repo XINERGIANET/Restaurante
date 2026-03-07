@@ -40,7 +40,7 @@ use App\Http\Controllers\ShiftCashController;
 use App\Http\Controllers\CashRegisterController;
 use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\BranchParameterController;
-
+use App\Http\Controllers\ProductTypeController;
 
 Route::prefix('restaurante')->name('restaurant.')->group(function () {
     Route::view('/', 'restaurant.home', ['title' => 'Xinergia Restaurante'])->name('home');
@@ -126,7 +126,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/admin/ventas/pdf', [SalesController::class, 'exportPdf'])->name('admin.sales.pdf');
     Route::get('/admin/ventas/pdf/{sale}', [SalesController::class, 'printPdf'])->name('admin.sales.print.pdf');
     Route::get('/admin/ventas/ticket/{sale}', [SalesController::class, 'printTicket'])->name('admin.sales.print.ticket');
-    
+
     // POS: vista de cobro (antes era modal)
     Route::get('/ventas/cobrar', [SalesController::class, 'charge'])
         ->name('sales.charge');
@@ -162,6 +162,11 @@ Route::middleware('auth')->group(function () {
         ->parameters(['productos' => 'product'])
         ->only(['index', 'store', 'edit', 'update', 'destroy']);
 
+    Route::resource('/tipos-producto', ProductTypeController::class)
+        ->names('product_types')
+        ->parameters(['tipos-producto' => 'productType'])
+        ->only(['index', 'store', 'edit', 'update', 'destroy']);
+
     Route::get('/products/productos/{product}/product-branches/create', [ProductBranchController::class, 'create'])
         ->name('products.product_branches.create');
     Route::post('/products/productos/{product}/product-branches', [ProductBranchController::class, 'store'])
@@ -186,7 +191,7 @@ Route::middleware('auth')->group(function () {
         ->name('orders.tablesData');
 
     Route::get('/Pedidos/reporte', [OrderController::class, 'list'])
-        ->name('orders.list');  
+        ->name('orders.list');
     Route::get('/Pedidos/cobrar', [OrderController::class, 'charge'])
         ->name('orders.charge');
     Route::get('/Pedidos/reporte/pdf', [OrderController::class, 'pdfReport'])
@@ -211,7 +216,7 @@ Route::middleware('auth')->group(function () {
     // PIN de mozo (por sucursal)
     Route::post('/Pedidos/validar-pin-mozo', [OrderController::class, 'validateWaiterPin'])
         ->name('orders.validateWaiterPin');
-    
+
     // Dashboard pages
     Route::get('/', [\App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
 
@@ -410,7 +415,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('/admin/herramientas/movimientos_almacen', WarehouseMovementController::class)
         ->names('warehouse_movements')
         ->parameters(['movimientos_almacen' => 'warehouseMovement'])
-        ->only(['index', 'store', 'show', 'edit', 'update']); 
+        ->only(['index', 'store', 'show', 'edit', 'update']);
 
     Route::get('/admin/herramientas/movimientos-almacen/entrada', [WarehouseMovementController::class, 'input'])
         ->name('warehouse_movements.input');
@@ -429,7 +434,10 @@ Route::middleware('auth')->group(function () {
     //Recetario
     Route::resource('/cocina/recetario', RecipeBookController::class)
         ->names('recipe-book')
-        ->parameters(['recetario' => 'recipe']); 
+        ->parameters(['recetario' => 'recipe']);
+
+    // SELECCIÓN DE SUCURSAL EN SESIÓN (categorías, productos, etc. se filtran por esta sucursal)
+    Route::post('/sucursal/fijar', [BranchController::class, 'setSessionBranch'])->name('sucursal.fijar');
 
     // SELECCIÓN DE CAJA EN CABECERA POR SESSION
     Route::post('/caja/fijar', [CashRegisterController::class, 'set'])->name('caja.fijar');
@@ -437,6 +445,7 @@ Route::middleware('auth')->group(function () {
 
     //Compras
     Route::get('/compras/productos/{branchId}', [PurchaseController::class, 'getProductsByBranch'])->name('purchase.get-products-by-branch');
+    Route::post('/compras/proveedor', [PurchaseController::class, 'storeProveedor'])->name('purchase.store-proveedor');
     Route::resource('compras', PurchaseController::class)
         ->names('purchase')
         ->parameters(['compras' => 'purchaseMovement']);
@@ -447,4 +456,3 @@ Route::middleware('auth')->group(function () {
     Route::post('/configuracion/parametros-sucursal/guardar', [BranchParameterController::class, 'store'])
         ->name('branch-parameter.store');
 });
-

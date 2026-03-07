@@ -172,10 +172,16 @@
                             $topTextColor = $resolveTextColor($operation);
                             $topColor = $operation->color ?: '#3B82F6';
                             $topStyle = "background-color: {$topColor}; color: {$topTextColor};";
-                            $topActionUrl = $resolveActionUrl($operation->action ?? '', [$company, $branch], $operation);
-                            $isCreate = str_contains($operation->action ?? '', 'profiles.create');
-                            $isAssign = str_contains($operation->action ?? '', 'profiles.assign')
-                                || $operation->action === 'admin.companies.branches.profiles.index';
+                            $action = $operation->action ?? '';
+                            $isPermissionsIndex = str_contains($action, 'profiles.permissions.index');
+                            $routeParams = [$company, $branch];
+                            if ($isPermissionsIndex && $profiles->isNotEmpty()) {
+                                $routeParams[] = $profiles->first();
+                            }
+                            $topActionUrl = $resolveActionUrl($action, $routeParams, $operation);
+                            $isCreate = str_contains($action, 'profiles.create');
+                            $isAssign = str_contains($action, 'profiles.assign')
+                                || $action === 'admin.companies.branches.profiles.index';
                         @endphp
                         @if ($isCreate)
                             <x-ui.button size="md" variant="primary" type="button"

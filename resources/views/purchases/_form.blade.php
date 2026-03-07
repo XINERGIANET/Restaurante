@@ -67,6 +67,7 @@
             paymentGateways: @js(($paymentGateways ?? collect())->map(fn($pg) => ['id' => $pg->id, 'description' => $pg->description ?? ''])->values()->all()),
             digitalWallets: @js(($digitalWallets ?? collect())->map(fn($dw) => ['id' => $dw->id, 'description' => $dw->description ?? ''])->values()->all()),
             banks: @js(($banks ?? collect())->map(fn($b) => ['id' => $b->id, 'description' => $b->description ?? ''])->values()->all()),
+            initialProviderOptions: @js(($people ?? collect())->map(fn($person) => ['id' => $person->id, 'description' => trim(($person->first_name ?? '') . ' ' . ($person->last_name ?? '')) . ' - ' . ($person->document_number ?? '')])->values()->all()),
         })"
         x-init="initForm()"
         @submit.prevent="
@@ -148,6 +149,95 @@
                             icon="ri-user-shared-line"
                             iconClickEvent="open-modal-proveedor"
                         />
+                        <button type="button" @click="openModalCreateProveedor()" class="px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-orange-500 text-white"> <i class="ri-add-line"></i> Crear proveedor</button>
+                    </div>
+                </div>
+
+                {{-- Modal Crear proveedor --}}
+                <div x-show="showModalProveedor"
+                    x-cloak
+                    class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm"
+                    x-transition:enter="transition ease-out duration-200"
+                    x-transition:enter-start="opacity-0"
+                    x-transition:enter-end="opacity-100"
+                    x-transition:leave="transition ease-in duration-150"
+                    x-transition:leave-start="opacity-100"
+                    x-transition:leave-end="opacity-0"
+                    @keydown.escape.window="closeModalProveedor()">
+                    <div class="w-full max-w-md rounded-2xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-900"
+                        @click.stop
+                        x-transition:enter="transition ease-out duration-200"
+                        x-transition:enter-start="opacity-0 scale-95"
+                        x-transition:enter-end="opacity-100 scale-100"
+                        x-transition:leave="transition ease-in duration-150"
+                        x-transition:leave-start="opacity-100 scale-100"
+                        x-transition:leave-end="opacity-0 scale-95">
+                        {{-- Header --}}
+                        <div class="flex items-center justify-between border-b border-gray-200 px-5 py-4 dark:border-gray-700">
+                            <h3 class="text-base font-semibold text-gray-800 dark:text-white">Crear proveedor</h3>
+                            <button type="button" @click="closeModalProveedor()"
+                                class="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-300 transition-colors"
+                                aria-label="Cerrar">
+                                <i class="ri-close-line text-xl"></i>
+                            </button>
+                        </div>
+                        {{-- Body --}}
+                        <div class="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
+                            <p x-show="providerError" x-text="providerError"
+                                class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-900/20 dark:text-red-400"></p>
+                            @php $inputClass = 'h-10 w-full rounded-lg border border-gray-300 px-3 text-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500 bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-white placeholder:text-gray-400'; @endphp
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Tipo doc.</label>
+                                    <select x-model="providerForm.person_type" class="{{ $inputClass }}">
+                                        <option value="DNI">DNI</option>
+                                        <option value="RUC">RUC</option>
+                                        <option value="CARNET DE EXTRANGERIA">Carné extranjería</option>
+                                        <option value="PASAPORTE">Pasaporte</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Nº documento <span class="text-red-500">*</span></label>
+                                    <input type="text" x-model="providerForm.document_number" placeholder="Ej. 20123456789" class="{{ $inputClass }}" />
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Nombres <span class="text-red-500">*</span></label>
+                                    <input type="text" x-model="providerForm.first_name" placeholder="Ej. Juan" class="{{ $inputClass }}" />
+                                </div>
+                                <div>
+                                    <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Apellidos <span class="text-red-500">*</span></label>
+                                    <input type="text" x-model="providerForm.last_name" placeholder="Ej. Pérez" class="{{ $inputClass }}" />
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Teléfono <span class="text-red-500">*</span></label>
+                                    <input type="text" x-model="providerForm.phone" placeholder="Ej. 999888777" class="{{ $inputClass }}" />
+                                </div>
+                                <div>
+                                    <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Email <span class="text-red-500">*</span></label>
+                                    <input type="email" x-model="providerForm.email" placeholder="proveedor@correo.com" class="{{ $inputClass }}" />
+                                </div>
+                            </div>
+                            <div>
+                                <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Dirección <span class="text-red-500">*</span></label>
+                                <input type="text" x-model="providerForm.address" placeholder="Ej. Av. Principal 123" class="{{ $inputClass }}" />
+                            </div>
+                        </div>
+                        {{-- Footer --}}
+                        <div class="flex justify-end gap-2 border-t border-gray-200 px-5 py-4 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/30 rounded-b-2xl">
+                            <button type="button" @click="closeModalProveedor()"
+                                class="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 bg-white border border-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
+                                Cancelar
+                            </button>
+                            <button type="button" @click="submitProviderModal()" :disabled="providerLoading"
+                                class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                                <span x-show="!providerLoading">Guardar proveedor</span>
+                                <span x-show="providerLoading" x-cloak>Guardando...</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -481,7 +571,7 @@
                 function purchaseFormCatalog({
                     products, categories, units, initialProviderId, initialItems, taxRate, includesTax,
                     initialCurrency, initialBranchId, initialPaymentType, defaultExchangeRate, initialAffectsKardex,
-                    paymentMethods, cards, paymentGateways, digitalWallets, banks
+                    paymentMethods, cards, paymentGateways, digitalWallets, banks, initialProviderOptions
                 }) {
                     const toItem = (p, qty = 1) => ({
                         product_id: Number(p.id),
@@ -499,6 +589,48 @@
                         categories: categories || [],
                         units: Array.isArray(units) ? units : Object.values(units || {}),
                         selectedProviderId: initialProviderId || '',
+                        providerOptions: Array.isArray(initialProviderOptions) ? initialProviderOptions : [],
+                        showModalProveedor: false,
+                        providerForm: { first_name: '', last_name: '', person_type: 'RUC', document_number: '', phone: '', email: '', address: '' },
+                        providerLoading: false,
+                        providerError: '',
+                        openModalCreateProveedor() {
+                            this.providerError = '';
+                            this.providerForm = { first_name: '', last_name: '', person_type: 'RUC', document_number: '', phone: '', email: '', address: '' };
+                            this.showModalProveedor = true;
+                        },
+                        closeModalProveedor() {
+                            this.showModalProveedor = false;
+                            this.providerError = '';
+                        },
+                        async submitProviderModal() {
+                            this.providerError = '';
+                            if (!this.providerForm.first_name?.trim() || !this.providerForm.last_name?.trim() || !this.providerForm.document_number?.trim() || !this.providerForm.phone?.trim() || !this.providerForm.email?.trim() || !this.providerForm.address?.trim()) {
+                                this.providerError = 'Complete todos los campos obligatorios.';
+                                return;
+                            }
+                            this.providerLoading = true;
+                            try {
+                                const res = await fetch('{{ route("purchase.store-proveedor") }}', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value, 'Accept': 'application/json' },
+                                    body: JSON.stringify(this.providerForm),
+                                });
+                                const data = await res.json().catch(() => ({}));
+                                if (!res.ok) {
+                                    this.providerError = data.message || data.errors ? Object.values(data.errors || {}).flat().join(' ') : 'Error al crear el proveedor.';
+                                    return;
+                                }
+                                this.providerOptions.push({ id: data.id, description: data.description });
+                                window.dispatchEvent(new CustomEvent('update-combobox-options', { detail: { name: 'person_id', options: this.providerOptions } }));
+                                this.selectedProviderId = data.id;
+                                this.closeModalProveedor();
+                            } catch (e) {
+                                this.providerError = 'Error de conexión. Intente de nuevo.';
+                            } finally {
+                                this.providerLoading = false;
+                            }
+                        },
                         items: (initialItems && initialItems.length)
                             ? initialItems.map(i => ({
                                 ...i,

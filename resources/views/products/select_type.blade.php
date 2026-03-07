@@ -21,62 +21,72 @@
         </button>
     </div>
 
-    {{-- Cards --}}
+    @php
+        $productTypes = $productTypes ?? collect();
+        $isSellable = function ($pt) {
+            return $pt->behavior === \App\Models\ProductType::BEHAVIOR_SELLABLE
+                || $pt->behavior === \App\Models\ProductType::BEHAVIOR_BOTH;
+        };
+        $isBoth = function ($pt) { return $pt->behavior === \App\Models\ProductType::BEHAVIOR_BOTH; };
+    @endphp
+    {{-- Cards: una por cada tipo de producto de la sucursal --}}
     <div class="mb-8 grid gap-6 sm:grid-cols-2">
-        {{-- Ingrediente --}}
-        <button type="button"
-            @click="$dispatch('open-product-form-with-type', { type: 'INGREDENT' }); $dispatch('close-product-type-modal')"
-            class="group flex flex-col rounded-2xl border-2 border-transparent bg-white p-6 text-left shadow-sm ring-2 ring-orange-200/60 transition-all duration-200 hover:border-orange-300 hover:ring-orange-300 hover:shadow-md dark:bg-gray-800/50 dark:ring-orange-500/30 dark:hover:ring-orange-500/50">
-            <div class="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-orange-400 to-orange-600 text-white shadow-lg">
-                <i class="ri-seedling-line text-3xl"></i>
-            </div>
-            <h3 class="mb-2 text-lg font-bold text-gray-900 dark:text-white">Ingrediente</h3>
-            <p class="mb-4 text-sm text-gray-500 dark:text-gray-400">Materia prima o insumo utilizado en la elaboración de productos finales</p>
-            <hr class="mb-4 border-gray-200 dark:border-gray-700" />
-            <ul class="space-y-2 text-sm text-gray-600 dark:text-gray-300">
-                <li class="flex items-center gap-2">
-                    <span class="h-1.5 w-1.5 rounded-full bg-orange-500"></span>
-                    No requiere receta
-                </li>
-                <li class="flex items-center gap-2">
-                    <span class="h-1.5 w-1.5 rounded-full bg-orange-500"></span>
-                    Control de stock básico
-                </li>
-                <li class="flex items-center gap-2">
-                    <span class="h-1.5 w-1.5 rounded-full bg-orange-500"></span>
-                    Configuración simplificada
-                </li>
-            </ul>
-        </button>
-
-        {{-- Producto Final --}}
-        <button type="button"
-            @click="$dispatch('open-product-form-with-type', { type: 'PRODUCT' }); $dispatch('close-product-type-modal')"
-            class="group flex flex-col rounded-2xl border-2 border-transparent bg-white p-6 text-left shadow-sm ring-2 ring-blue-200/60 transition-all duration-200 hover:border-blue-300 hover:ring-blue-300 hover:shadow-md dark:bg-gray-800/50 dark:ring-blue-500/30 dark:hover:ring-blue-500/50">
-            <div class="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg">
-                <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                </svg>
-            </div>
-            <h3 class="mb-2 text-lg font-bold text-gray-900 dark:text-white">Producto Final</h3>
-            <p class="mb-4 text-sm text-gray-500 dark:text-gray-400">Producto elaborado listo para la venta que puede incluir receta</p>
-            <hr class="mb-4 border-gray-200 dark:border-gray-700" />
-            <ul class="space-y-2 text-sm text-gray-600 dark:text-gray-300">
-                <li class="flex items-center gap-2">
-                    <span class="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
-                    Puede tener receta
-                </li>
-                <li class="flex items-center gap-2">
-                    <span class="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
-                    Control completo de kardex
-                </li>
-                <li class="flex items-center gap-2">
-                    <span class="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
-                    Configuración avanzada
-                </li>
-            </ul>
-        </button>
+        @foreach ($productTypes as $pt)
+            @php
+                $isSellableType = $isSellable($pt);
+                $ringClass = $isSellableType
+                    ? 'ring-blue-200/60 hover:border-blue-300 hover:ring-blue-300 dark:ring-blue-500/30 dark:hover:ring-blue-500/50'
+                    : 'ring-orange-200/60 hover:border-orange-300 hover:ring-orange-300 dark:ring-orange-500/30 dark:hover:ring-orange-500/50';
+                $iconBgClass = $isSellableType
+                    ? 'from-blue-500 to-blue-600'
+                    : 'from-orange-400 to-orange-600';
+                $bulletClass = $isSellableType ? 'bg-blue-500' : 'bg-orange-500';
+                $iconHtml = $pt->icon && preg_match('/^ri-[a-z0-9-]+$/', $pt->icon)
+                    ? '<i class="' . e($pt->icon) . ' text-3xl"></i>'
+                    : ($isSellableType
+                        ? '<svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>'
+                        : '<i class="ri-seedling-line text-3xl"></i>');
+            @endphp
+            <button type="button"
+                @click="$dispatch('open-product-form-with-type', { product_type_id: {{ $pt->id }} }); $dispatch('close-product-type-modal')"
+                class="group flex flex-col rounded-2xl border-2 border-transparent bg-white p-6 text-left shadow-sm ring-2 transition-all duration-200 hover:shadow-md dark:bg-gray-800/50 {{ $ringClass }}">
+                <div class="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br {{ $iconBgClass }} text-white shadow-lg">
+                    {!! $iconHtml !!}
+                </div>
+                <h3 class="mb-2 text-lg font-bold text-gray-900 dark:text-white">{{ $pt->name }}</h3>
+                <p class="mb-4 text-sm text-gray-500 dark:text-gray-400">{{ $pt->description ?? ($isBoth($pt) ? 'Aparece en compras y en ventas. Requiere precio y stock por sucursal.' : ($isSellableType ? 'Productos listos para la venta. Requieren precio y stock por sucursal.' : 'Repuestos, insumos o materiales de apoyo. No requieren precio ni stock de venta por sede.')) }}</p>
+                <hr class="mb-4 border-gray-200 dark:border-gray-700" />
+                <ul class="space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                    @if($isSellableType)
+                        <li class="flex items-center gap-2">
+                            <span class="h-1.5 w-1.5 rounded-full {{ $bulletClass }}"></span>
+                            Puede tener receta
+                        </li>
+                        <li class="flex items-center gap-2">
+                            <span class="h-1.5 w-1.5 rounded-full {{ $bulletClass }}"></span>
+                            Control completo de kardex
+                        </li>
+                        <li class="flex items-center gap-2">
+                            <span class="h-1.5 w-1.5 rounded-full {{ $bulletClass }}"></span>
+                            Detalle por sede (precio, stock)
+                        </li>
+                    @else
+                        <li class="flex items-center gap-2">
+                            <span class="h-1.5 w-1.5 rounded-full {{ $bulletClass }}"></span>
+                            No requiere receta
+                        </li>
+                        <li class="flex items-center gap-2">
+                            <span class="h-1.5 w-1.5 rounded-full {{ $bulletClass }}"></span>
+                            Configuración simplificada
+                        </li>
+                    @endif
+                </ul>
+            </button>
+        @endforeach
     </div>
+    @if($productTypes->isEmpty())
+        <p class="mb-6 text-sm text-amber-600 dark:text-amber-400">No hay tipos de producto para esta sucursal. Crea tipos en <strong>Productos → Tipos de producto</strong> o asegúrate de tener una sucursal seleccionada.</p>
+    @endif
 
     {{-- Footer --}}
     <div class="flex justify-end">

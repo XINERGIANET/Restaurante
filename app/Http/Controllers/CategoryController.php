@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Branch;
 use App\Models\Category;
 use App\Models\Operation;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class CategoryController extends Controller
@@ -15,7 +17,7 @@ class CategoryController extends Controller
         $perPage = (int) $request->input('per_page', 10);
         $allowedPerPage = [10, 20, 50, 100];
         $viewId = $request->input('view_id');
-        $branchId = $request->session()->get('branch_id');
+        $branchId = (int) ($request->input('branch_id') ?? $request->session()->get('branch_id') ?? 0) ?: null;
         $profileId = $request->session()->get('profile_id') ?? $request->user()?->profile_id;
         $operaciones = collect();
         if ($viewId && $branchId && $profileId) {
@@ -46,10 +48,28 @@ class CategoryController extends Controller
             $perPage = 10;
         }
 
-        $categories = Category::query()
+        // Solo categorías que tienen registro en category_branch para ESTA sucursal
+        $categoriesQuery = Category::query();
+
+        if ($branchId !== null) {
+            $categoryIdsInBranch = DB::table('category_branch')
+                ->where('branch_id', $branchId)
+                ->whereNull('deleted_at')
+                ->pluck('category_id')
+                ->unique()
+                ->values()
+                ->all();
+            $categoriesQuery->whereIn('id', $categoryIdsInBranch);
+        } else {
+            $categoriesQuery->whereRaw('1 = 0');
+        }
+
+        $categories = $categoriesQuery
             ->when($search, function ($query) use ($search) {
-                $query->where('description', 'ILIKE', "%{$search}%")
-                    ->orWhere('abbreviation', 'ILIKE', "%{$search}%");
+                $query->where(function ($q) use ($search) {
+                    $q->where('description', 'ILIKE', "%{$search}%")
+                        ->orWhere('abbreviation', 'ILIKE', "%{$search}%");
+                });
             })
             ->orderByDesc('id')
             ->paginate($perPage)
@@ -72,12 +92,25 @@ class CategoryController extends Controller
         ]);
 
         if ($request->hasFile('image')) {
-    
             $path = $request->file('image')->store('category', 'public');
             $data['image'] = $path;
         }
-        
-        Category::create($data);
+
+        $category = Category::create($data);
+
+        $branchId = $request->session()->get('branch_id');
+        if ($branchId) {
+            $now = now();
+            DB::table('category_branch')->insert([
+                'category_id' => $category->id,
+                'branch_id' => $branchId,
+                'menu_type' => 'PLATOS A LA CARTA',
+                'status' => 'E',
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+        }
+
         $viewId = $request->input('view_id');
 
         return redirect()
@@ -119,13 +152,67 @@ class CategoryController extends Controller
             ->with('status', 'Categoria actualizada correctamente.');
     }
 
+    /**
+     * Elimina la categoría solo de la sucursal actual (desvincula en category_branch).
+     * La categoría maestra se mantiene; otras sucursales siguen pudiendo usarla.
+     */
     public function destroy(Request $request, Category $category)
     {
-        $category->delete();
+        $branchId = (int) ($request->input('branch_id') ?? $request->session()->get('branch_id') ?? 0);
+        if (!$branchId) {
+            return redirect()
+                ->route('categories.index', $request->only('view_id'))
+                ->with('error', 'Debe tener una sucursal seleccionada para eliminar una categoría de ella.');
+        }
+
+        $updated = DB::table('category_branch')
+            ->where('category_id', $category->id)
+            ->where('branch_id', $branchId)
+            ->whereNull('deleted_at')
+            ->update(['deleted_at' => now(), 'updated_at' => now()]);
+
         $viewId = $request->input('view_id');
+        if ($updated) {
+            return redirect()
+                ->route('categories.index', $viewId ? ['view_id' => $viewId] : [])
+                ->with('status', 'Categoría eliminada de esta sucursal.');
+        }
 
         return redirect()
             ->route('categories.index', $viewId ? ['view_id' => $viewId] : [])
-            ->with('status', 'Categoria eliminada correctamente.');
+            ->with('error', 'La categoría no estaba asignada a esta sucursal.');
+    }
+
+    /**
+     * Sincroniza categorías existentes a todas las sucursales: para cada categoría y cada sucursal,
+     * si no existe la pareja (category_id, branch_id) en category_branch, se inserta.
+     */
+    private function syncExistingCategoriesToAllBranches(): void
+    {
+        $categoryIds = Category::query()->pluck('id')->all();
+        $branchIds = Branch::query()->pluck('id')->all();
+        if (empty($categoryIds) || empty($branchIds)) {
+            return;
+        }
+        $now = now();
+        foreach ($categoryIds as $categoryId) {
+            foreach ($branchIds as $branchId) {
+                $exists = DB::table('category_branch')
+                    ->where('category_id', $categoryId)
+                    ->where('branch_id', $branchId)
+                    ->whereNull('deleted_at')
+                    ->exists();
+                if (!$exists) {
+                    DB::table('category_branch')->insert([
+                        'category_id' => $categoryId,
+                        'branch_id' => $branchId,
+                        'menu_type' => 'GENERAL',
+                        'status' => 'E',
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ]);
+                }
+            }
+        }
     }
 }

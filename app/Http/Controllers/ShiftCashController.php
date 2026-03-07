@@ -21,7 +21,12 @@ class ShiftCashController extends Controller
 {
     public function redirectBase(Request $request)
     {
-        $firstBox = CashRegister::where('status', '1')->first();
+        $branchId = \effective_branch_id();
+        $query = CashRegister::where('status', '1');
+        if ($branchId !== null) {
+            $query->where('branch_id', $branchId);
+        }
+        $firstBox = $query->first();
         if ($firstBox) {
             $params = ['cash_register_id' => $firstBox->id];
             if ($request->filled('view_id')) {
@@ -34,7 +39,12 @@ class ShiftCashController extends Controller
 
     public function index(Request $request, $cash_register_id = null)
     {
-        $cashRegisters = CashRegister::where('status', '1')->orderBy('number', 'asc')->get();
+        $branchId = \effective_branch_id();
+        $cashRegistersQuery = CashRegister::where('status', '1');
+        if ($branchId) {
+            $cashRegistersQuery->where('branch_id', $branchId);
+        }
+        $cashRegisters = $cashRegistersQuery->orderBy('number', 'asc')->get();
 
         if (empty($cash_register_id)) {
             if ($cashRegisters->isNotEmpty()) {
@@ -61,7 +71,6 @@ class ShiftCashController extends Controller
         }
 
         $viewId = $request->input('view_id');
-        $branchId = $request->session()->get('branch_id');
         $profileId = $request->session()->get('profile_id') ?? $request->user()?->profile_id;
         $operaciones = collect();
 
@@ -89,8 +98,6 @@ class ShiftCashController extends Controller
                 ->get();
         }
 
-        $cashRegisters = CashRegister::where('status', '1')->orderBy('number', 'asc')->get();        
-
         $selectedBoxId = $request->input('cash_register_id') ?? $cash_register_id;
         if (empty($selectedBoxId) && $cashRegisters->isNotEmpty()) {
             $selectedBoxId = $cashRegisters->first()->id;
@@ -111,6 +118,7 @@ class ShiftCashController extends Controller
                     $query->where('status', 'FINALIZADO');
                 }
             ])
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
             ->whereHas('cashMovementStart', function($q) use ($selectedBoxId) {
                 $q->where('cash_register_id', $selectedBoxId);
             })

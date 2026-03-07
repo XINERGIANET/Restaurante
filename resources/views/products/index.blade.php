@@ -456,36 +456,37 @@
             :showCloseButton="false"
             class="w-full max-w-2xl"
         >
-            @include('products.select_type')
+            @include('products.select_type', ['productTypes' => $productTypes ?? collect()])
         </x-ui.modal>
 
         {{-- Modal de formulario de creación: componente definido aquí para no depender del bundle --}}
         @php
             $productModalOpen = ($errors->any() ?? false) ? 'true' : 'false';
-            $productModalType = json_encode(old('type', 'PRODUCT'));
+            $productModalTypeId = old('product_type_id', optional(($productTypes ?? collect())->firstWhere('behavior', 'SELLABLE'))->id);
+            $productModalTypeId = is_numeric($productModalTypeId) ? (int) $productModalTypeId : 'null';
         @endphp
         <script>
             (function() {
-                window.__productModalInit = { open: {!! $productModalOpen !!}, type: {!! $productModalType !!} };
+                window.__productModalInit = { open: {!! $productModalOpen !!}, productTypeId: {!! $productModalTypeId !!} };
                 function productCreateModal() {
                     var init = window.__productModalInit || {};
                     var open = init.open === true || init.open === 'true';
-                    var type = typeof init.type === 'string' ? init.type : 'PRODUCT';
+                    var productTypeId = init.productTypeId != null ? Number(init.productTypeId) : null;
                     return {
                         open: open,
-                        selectedType: type,
+                        selectedProductTypeId: productTypeId,
                         init: function() {
                             var self = this;
                             this.$watch('open', function(val) {
-                                if (val && self.selectedType) {
+                                if (val && self.selectedProductTypeId != null) {
                                     self.$nextTick(function() {
                                         var form = document.getElementById('create-product-form');
                                         if (!form) return;
-                                        var sel = form.querySelector('#product-type-select');
-                                        var hid = form.querySelector('#product-type-value');
-                                        if (sel) sel.value = self.selectedType;
-                                        if (hid) hid.value = self.selectedType;
-                                        if (sel) sel.dispatchEvent(new Event('change'));
+                                        var sel = form.querySelector('#product-type-id-select');
+                                        if (sel) {
+                                            sel.value = self.selectedProductTypeId;
+                                            sel.dispatchEvent(new Event('change'));
+                                        }
                                     });
                                 }
                             });
@@ -503,7 +504,7 @@
         </script>
         <x-ui.modal
             x-data="productCreateModal()"
-            @open-product-form-with-type.window="selectedType = $event.detail?.type || 'PRODUCT'; open = true"
+            @open-product-form-with-type.window="selectedProductTypeId = $event.detail?.product_type_id ?? null; open = true"
             @close-product-modal.window="open = false"
             :showCloseButton="false"
             class="w-full max-w-5xl sm:max-w-6xl lg:max-w-7xl"
@@ -545,6 +546,8 @@
                         'taxRates' => $taxRates ?? collect(),
                         'productBranch' => null,
                         'branches' => $branches ?? collect(),
+                        'productTypes' => $productTypes ?? collect(),
+                        'productBranchesByBranchId' => [],
                         'igvByBranchId' => $igvByBranchId ?? [],
                     ])
 

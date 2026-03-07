@@ -8,6 +8,7 @@ use App\Models\Location;
 use App\Models\Module;
 use App\Models\Operation;
 use App\Models\Person;
+use App\Models\ProductType;
 use App\Models\Profile;
 use App\Models\Role;
 use App\Models\User;
@@ -19,6 +20,19 @@ use Illuminate\Support\Str;
 
 class BranchController extends Controller
 {
+    /**
+     * Fija la sucursal en sesión (cambiar de sucursal).
+     */
+    public function setSessionBranch(Request $request)
+    {
+        $request->validate([
+            'branch_id' => ['required', 'integer', 'exists:branches,id'],
+        ]);
+        $request->session()->put('branch_id', (int) $request->branch_id);
+        $url = $request->input('redirect', url()->previous());
+        return redirect($url)->with('status', 'Sucursal actualizada.');
+    }
+
     public function index(Request $request, Company $company)
     {
         $search = $request->input('search');
@@ -101,7 +115,7 @@ class BranchController extends Controller
         DB::transaction(function () use ($company, $data) {
             $branch = $company->branches()->create($data);
             $this->replicateBranchConfiguration($branch->id);
-            $this->createDefaultBranchPersonAndUser($branch);
+            $this->setupNewBranch($branch);
         });
 
         $params = [];
@@ -1197,7 +1211,7 @@ class BranchController extends Controller
         }
     }
 
-    private function replicateBranchConfiguration(int $newBranchId): void
+    public function replicateBranchConfiguration(int $newBranchId): void
     {
         $templateBranchId = (int) env('BRANCH_TEMPLATE_ID', 4);
         if ($newBranchId === $templateBranchId) {
@@ -1321,6 +1335,74 @@ class BranchController extends Controller
             }
         }
 
+        $templateCategoryBranches = DB::table('category_branch')
+            ->where('branch_id', $templateBranchId)
+            ->whereNull('deleted_at')
+            ->get(['category_id', 'menu_type', 'status']);
+
+        foreach ($templateCategoryBranches as $row) {
+            $existing = DB::table('category_branch')
+                ->where('branch_id', $newBranchId)
+                ->where('category_id', $row->category_id)
+                ->where('menu_type', $row->menu_type)
+                ->first();
+
+            if ($existing) {
+                DB::table('category_branch')
+                    ->where('id', $existing->id)
+                    ->update([
+                        'status' => (string) $row->status,
+                        'deleted_at' => null,
+                        'updated_at' => $now,
+                    ]);
+            } else {
+                DB::table('category_branch')->insert([
+                    'menu_type' => (string) $row->menu_type,
+                    'status' => (string) $row->status,
+                    'category_id' => $row->category_id,
+                    'branch_id' => $newBranchId,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]);
+            }
+        }
+
+        $templateProductBranches = DB::table('product_branch')
+            ->where('branch_id', $templateBranchId)
+            ->whereNull('deleted_at')
+            ->get();
+
+        foreach ($templateProductBranches as $row) {
+            $exists = DB::table('product_branch')
+                ->where('branch_id', $newBranchId)
+                ->where('product_id', $row->product_id)
+                ->whereNull('deleted_at')
+                ->exists();
+
+            if (!$exists) {
+                DB::table('product_branch')->insert([
+                    'product_id' => $row->product_id,
+                    'branch_id' => $newBranchId,
+                    'status' => $row->status ?? 'E',
+                    'stock' => 0,
+                    'price' => $row->price ?? 0,
+                    'purchase_price' => $row->purchase_price ?? 0,
+                    'expiration_date' => $row->expiration_date,
+                    'stock_minimum' => $row->stock_minimum ?? 0,
+                    'stock_maximum' => $row->stock_maximum ?? 0,
+                    'minimum_sell' => $row->minimum_sell ?? 0,
+                    'minimum_purchase' => $row->minimum_purchase ?? 0,
+                    'favorite' => $row->favorite ?? 'N',
+                    'tax_rate_id' => $row->tax_rate_id,
+                    'unit_sale' => $row->unit_sale ?? 'N',
+                    'duration_minutes' => $row->duration_minutes ?? 0,
+                    'supplier_id' => $row->supplier_id,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]);
+            }
+        }
+
         $templatePermissions = DB::table('user_permission as up')
             ->join('menu_option as mo', 'mo.id', '=', 'up.menu_option_id')
             ->where('up.branch_id', $templateBranchId)
@@ -1349,6 +1431,37 @@ class BranchController extends Controller
                 ]);
             }
         }
+    }
+
+    /**
+     * Crea tipos de producto por defecto y usuario/persona por defecto para una sucursal nueva.
+     * Usado al crear sucursal desde BranchController o al crear empresa+sucursal desde CompanyController.
+     */
+    public function setupNewBranch(Branch $branch): void
+    {
+        $this->createDefaultProductTypes($branch);
+        $this->createDefaultBranchPersonAndUser($branch);
+    }
+
+    private function createDefaultProductTypes(Branch $branch): void
+    {
+        if ($branch->productTypes()->exists()) {
+            return;
+        }
+        $branch->productTypes()->createMany([
+            [
+                'name' => 'Producto final',
+                'description' => 'Productos listos para la venta.',
+                'behavior' => ProductType::BEHAVIOR_SELLABLE,
+                'icon' => null,
+            ],
+            [
+                'name' => 'Ingrediente',
+                'description' => 'Repuestos, insumos o materiales de apoyo.',
+                'behavior' => ProductType::BEHAVIOR_SUPPLY,
+                'icon' => null,
+            ],
+        ]);
     }
 
     private function createDefaultBranchPersonAndUser(Branch $branch): void

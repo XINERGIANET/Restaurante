@@ -19,16 +19,18 @@ class ProductBranch extends Model
         'tax_rate_id',
         'unit_sale',
         'product_id',
-        'branch_id',        
+        'branch_id',
         'duration_minutes',
         'supplier_id',
         'stock',
         'price',
+        'purchase_price',
     ];
 
     protected $casts = [
         'stock' => 'decimal:4',
         'price' => 'decimal:2',
+        'purchase_price' => 'decimal:2',
         'stock_minimum' => 'decimal:4',
         'stock_maximum' => 'decimal:4',
         'minimum_sell' => 'decimal:4',

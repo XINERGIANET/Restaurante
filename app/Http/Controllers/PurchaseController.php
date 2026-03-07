@@ -26,6 +26,7 @@ use App\Models\DigitalWallet;
 use App\Models\PaymentGateways;
 use App\Models\PaymentMethod;
 use App\Models\Operation;
+use App\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -781,6 +782,53 @@ class PurchaseController extends Controller
             'cards', 'paymentGateways', 'digitalWallets', 'banks',
             'categories', 'viewId', 'paymentMethods'
         ));
+    }
+
+    /**
+     * Crear proveedor desde el formulario de compra (modal). Devuelve JSON para actualizar el combobox.
+     */
+    public function storeProveedor(Request $request)
+    {
+        $branchId = $request->session()->get('branch_id');
+        if (!$branchId) {
+            return response()->json(['message' => 'No hay sucursal seleccionada.'], 422);
+        }
+
+        $branch = Branch::find($branchId);
+        if (!$branch) {
+            return response()->json(['message' => 'Sucursal no válida.'], 422);
+        }
+
+        $data = $request->validate([
+            'first_name' => ['required', 'string', 'max:255'],
+            'last_name' => ['required', 'string', 'max:255'],
+            'person_type' => ['required', 'string', 'in:DNI,RUC,CARNET DE EXTRANGERIA,PASAPORTE'],
+            'document_number' => ['required', 'string', 'max:50'],
+            'phone' => ['required', 'string', 'max:50'],
+            'email' => ['required', 'email', 'max:255'],
+            'address' => ['required', 'string', 'max:255'],
+            'location_id' => ['nullable', 'integer', 'exists:locations,id'],
+        ]);
+
+        $data['branch_id'] = $branch->id;
+        $data['location_id'] = $data['location_id'] ?? $branch->location_id ?? 1477;
+
+        $person = Person::create($data);
+
+        $proveedorRoleId = (int) env('PROVEEDOR_ROLE_ID', 4);
+        if (!Role::where('id', $proveedorRoleId)->exists()) {
+            $proveedorRoleId = (int) Role::query()->orderBy('id')->value('id');
+        }
+        if ($proveedorRoleId > 0) {
+            $person->roles()->attach($proveedorRoleId, ['branch_id' => $branch->id]);
+        }
+
+        $description = trim($person->first_name . ' ' . $person->last_name) . ' - ' . $person->document_number;
+
+        return response()->json([
+            'id' => $person->id,
+            'description' => $description,
+        ]);
     }
 
     public function destroy(PurchaseMovement $purchaseMovement)

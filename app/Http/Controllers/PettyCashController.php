@@ -25,7 +25,12 @@ class PettyCashController extends Controller
 
     public function redirectBase(Request $request)
     {
-        $firstBox = CashRegister::where('status', '1')->first();
+        $branchId = $request->session()->get('branch_id');
+        $query = CashRegister::where('status', '1');
+        if ($branchId) {
+            $query->where('branch_id', $branchId);
+        }
+        $firstBox = $query->orderBy('number', 'asc')->first();
         if ($firstBox) {
             $params = ['cash_register_id' => $firstBox->id];
             if ($request->filled('view_id')) {
@@ -73,10 +78,16 @@ class PettyCashController extends Controller
                 ->get();
         }
 
-        $cashRegisters = CashRegister::where('status', '1')->orderBy('number', 'asc')->get();
+        $cashRegisters = $branchId
+            ? CashRegister::where('status', '1')->where('branch_id', $branchId)->orderBy('number', 'asc')->get()
+            : CashRegister::where('status', '1')->orderBy('number', 'asc')->get();
         $selectedBoxId = $request->input('cash_register_id') ?? $cash_register_id;
 
         if (empty($selectedBoxId) && $cashRegisters->isNotEmpty()) {
+            $selectedBoxId = $cashRegisters->first()->id;
+        }
+        // Si hay sucursal y la caja elegida no es de esta sucursal, usar la primera caja de la sucursal
+        if ($branchId && $selectedBoxId && $cashRegisters->isNotEmpty() && !$cashRegisters->contains('id', $selectedBoxId)) {
             $selectedBoxId = $cashRegisters->first()->id;
         }
 
