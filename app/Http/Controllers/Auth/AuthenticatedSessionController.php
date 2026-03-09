@@ -73,6 +73,7 @@ class AuthenticatedSessionController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect()->route('login')->with('status', 'Sesion cerrada.');
+        return redirect()->route('login', ['logout' => '1'])
+            ->with('status', 'Sesion cerrada.');
     }
 }

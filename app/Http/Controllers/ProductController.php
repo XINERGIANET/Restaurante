@@ -260,6 +260,8 @@ class ProductController extends Controller
 
     public function update(Request $request, Product $product)
     {
+        // Al editar, rellenar campos vacíos o no enviados con los valores actuales del producto/productBranch.
+        $request->merge($this->mergeRequestWithExistingProduct($request, $product));
         $validated = $this->validateProduct($request, $product->id);
         $productType = ProductType::find($validated['product_type_id']);
         $productData = $this->prepareProductData($validated, $productType);
@@ -330,6 +332,81 @@ class ProductController extends Controller
             ->with('status', 'Producto eliminado correctamente.');
     }
 
+    /**
+     * Rellena el request con valores existentes del producto/productBranch cuando faltan o están vacíos.
+     * Evita errores al editar solo un campo.
+     */
+    private function mergeRequestWithExistingProduct(Request $request, Product $product): array
+    {
+        $product->load(['productBranches']);
+        $branchId = (int) ($request->input('branch_id') ?: $request->session()->get('branch_id') ?: 0);
+        $productBranch = $branchId ? $product->productBranches->firstWhere('branch_id', $branchId) : null;
+
+        $merge = [];
+        $productFields = ['code', 'description', 'abbreviation', 'product_type_id', 'category_id', 'base_unit_id', 'kardex', 'status', 'complement', 'complement_mode', 'classification', 'features', 'recipe', 'favorite', 'duration_minutes', 'supplier_id'];
+        foreach ($productFields as $key) {
+            if (!$request->filled($key)) {
+                $val = $product->{$key} ?? null;
+                if ($key === 'recipe') $val = (bool) ($val ?? false);
+                if ($key === 'complement_mode' && $val === null) $val = '';
+                $merge[$key] = $val;
+            }
+        }
+
+        if ($productBranch) {
+            $branchFields = ['price', 'purchase_price', 'stock', 'stock_minimum', 'stock_maximum', 'minimum_sell', 'minimum_purchase', 'tax_rate_id', 'unit_sale', 'expiration_date'];
+            foreach ($branchFields as $key) {
+                if (!$request->filled($key)) {
+                    $val = $productBranch->{$key};
+                    if ($key === 'tax_rate_id' && ($val === null || $val === '')) {
+                        $val = DB::table('branch_parameters as bp')
+                            ->join('parameters as p', 'p.id', '=', 'bp.parameter_id')
+                            ->where('bp.branch_id', $branchId)
+                            ->where('p.description', 'igv_defecto')
+                            ->whereNull('bp.deleted_at')
+                            ->whereNull('p.deleted_at')
+                            ->value('bp.value');
+                        $val = is_numeric($val) ? (int) $val : null;
+                    }
+                    if ($key === 'unit_sale') {
+                        $val = is_numeric($val) ? (int) $val : ($product->base_unit_id ?? null);
+                    }
+                    $merge[$key] = $val;
+                }
+            }
+            // unit_sale: si el valor enviado no es entero válido (ej. "", "N"), usar existente o base_unit_id
+            $unitSale = $request->input('unit_sale');
+            if ($request->has('unit_sale') && $unitSale !== null && $unitSale !== '' && !is_numeric($unitSale)) {
+                $merge['unit_sale'] = is_numeric($productBranch->unit_sale) ? (int) $productBranch->unit_sale : ($product->base_unit_id ?? null);
+            } elseif ($request->has('unit_sale') && ($unitSale === '' || $unitSale === null)) {
+                $merge['unit_sale'] = is_numeric($productBranch->unit_sale) ? (int) $productBranch->unit_sale : ($product->base_unit_id ?? null);
+            }
+            // tax_rate_id: si está vacío, usar existente o IGV por defecto de la sucursal
+            $taxRate = $request->input('tax_rate_id');
+            if ($request->has('tax_rate_id') && ($taxRate === '' || $taxRate === null)) {
+                $merge['tax_rate_id'] = $productBranch->tax_rate_id
+                    ?? DB::table('branch_parameters as bp')
+                        ->join('parameters as p', 'p.id', '=', 'bp.parameter_id')
+                        ->where('bp.branch_id', $branchId)
+                        ->where('p.description', 'igv_defecto')
+                        ->whereNull('bp.deleted_at')
+                        ->whereNull('p.deleted_at')
+                        ->value('bp.value');
+                if (isset($merge['tax_rate_id']) && $merge['tax_rate_id'] !== null) {
+                    $merge['tax_rate_id'] = (int) $merge['tax_rate_id'];
+                }
+            }
+        }
+
+        if (!$request->filled('branch_id') && $branchId) {
+            $merge['branch_id'] = $branchId;
+        } elseif (!$request->filled('branch_id') && !$branchId && $product->productBranches->isNotEmpty()) {
+            $merge['branch_id'] = (int) $product->productBranches->first()->branch_id;
+        }
+
+        return $merge;
+    }
+
     private function validateProduct(Request $request, ?int $excludeId = null): array
     {
         $productType = $request->filled('product_type_id')
@@ -351,9 +428,9 @@ class ProductController extends Controller
             'stock_maximum' => $isSupply ? ['nullable', 'numeric', 'min:0', 'gte:stock_minimum'] : ['required', 'numeric', 'min:0', 'gte:stock_minimum'],
             'minimum_sell' => $isSupply ? ['nullable', 'numeric', 'min:0'] : ['required', 'numeric', 'min:0'],
             'minimum_purchase' => $isSupply ? ['nullable', 'numeric', 'min:0'] : ['required', 'numeric', 'min:0'],
-            'tax_rate_id' => $isSupply ? ['nullable', 'integer', 'exists:tax_rates,id'] : ['required', 'integer', 'exists:tax_rates,id'],
-            'unit_sale' => $isSupply ? ['nullable', 'integer', 'exists:units,id'] : ['required', 'integer', 'exists:units,id'],
-            'expiration_date' => $isSupply ? ['nullable', 'date'] : ['required', 'date'],
+            'tax_rate_id' => ['nullable', 'integer', 'exists:tax_rates,id'],
+            'unit_sale' => ['nullable', 'integer', 'exists:units,id'],
+            'expiration_date' => ['nullable', 'date'],
         ];
 
         $validated = $request->validate(array_merge([

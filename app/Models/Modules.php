@@ -11,5 +11,5 @@ class Modules extends Model
     use HasFactory, SoftDeletes;
 
     protected $table = 'modules';
-    protected $fillable = ['name', 'icon', 'order_num', 'menu_id'];
+    protected $fillable = ['name', 'icon', 'order_num'];
 }

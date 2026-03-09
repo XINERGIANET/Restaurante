@@ -316,6 +316,10 @@
                                                 </p>
                                             </div>
                                             <div>
+                                                <p class="text-xs uppercase tracking-wide text-gray-400">Categoría</p>
+                                                <p class="font-medium text-gray-700 dark:text-gray-200">{{ $productBranch->product?->category?->description ?? '-' }}</p>
+                                            </div>
+                                            <div>
                                                 <p class="text-xs uppercase tracking-wide text-gray-400">Sucursal</p>
                                                 <p class="font-medium text-gray-700 dark:text-gray-200">{{ $productBranch->branch?->legal_name ?? '-' }}</p>
                                             </div>
@@ -549,6 +553,8 @@
                         'productTypes' => $productTypes ?? collect(),
                         'productBranchesByBranchId' => [],
                         'igvByBranchId' => $igvByBranchId ?? [],
+                        'categories' => $categories ?? collect(),
+                        'units' => $units ?? collect(),
                     ])
 
                     <div class="flex flex-wrap gap-3">

@@ -40,6 +40,8 @@
                     'productTypes' => $productTypes ?? collect(),
                     'productBranchesByBranchId' => $productBranchesByBranchId ?? collect(),
                     'igvByBranchId' => $igvByBranchId ?? [],
+                    'categories' => $categories ?? collect(),
+                    'units' => $units ?? collect(),
                 ])
 
                 <div class="flex flex-wrap gap-3">

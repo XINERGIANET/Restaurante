@@ -523,7 +523,6 @@ class OrderController extends Controller
     public function create(Request $request)
     {
         $tableId = $request->query('table_id');
-        $branchId = session('branch_id');
         $profileId = session('profile_id');
         $personId = session('person_id');
         $userId = session('user_id');
@@ -531,7 +530,6 @@ class OrderController extends Controller
         $user = User::find($userId);
         $person = Person::find($personId);
         $profile = Profile::find($profileId);
-        $branch = Branch::find($branchId);
         $table = Table::with('area')->find($tableId);
 
         if (!$table) {
@@ -542,8 +540,26 @@ class OrderController extends Controller
         if (!$area && $request->has('area_id')) {
             $area = Area::find($request->query('area_id'));
         }
+        // Sucursal: mesa > área > sesión (garantiza productos de la sucursal correcta).
+        $branchId = (int) ($table->branch_id ?? $area?->branch_id ?? session('branch_id')) ?: null;
+        $branch = $branchId ? Branch::find($branchId) : null;
 
+        // Solo productos que tienen product_branch en esta sucursal y cuya categoría está en category_branch.
         $products = Product::where('type', 'PRODUCT')
+            ->when($branchId, function ($query) use ($branchId) {
+                $query->whereHas('productBranches', function ($q) use ($branchId) {
+                    $q->where('branch_id', $branchId);
+                })
+                ->whereExists(function ($sub) use ($branchId) {
+                    $sub->select(DB::raw(1))
+                        ->from('category_branch')
+                        ->whereColumn('category_branch.category_id', 'products.category_id')
+                        ->where('category_branch.branch_id', $branchId)
+                        ->whereNull('category_branch.deleted_at');
+                });
+            }, function ($query) {
+                $query->whereRaw('1 = 0'); // sin sucursal = no productos
+            })
             ->with('category')
             ->get()
             ->map(function ($product) use ($table, $tableId, $branchId) {
@@ -561,21 +577,40 @@ class OrderController extends Controller
                 ];
             });
 
-        $productBranches = ProductBranch::where('branch_id', $branchId)
-            ->with(['product', 'taxRate'])
-            ->get()
-            ->map(function ($productBranch) {
-                $taxRatePct = $productBranch->taxRate ? (float) $productBranch->taxRate->tax_rate : null;
-                return [
-                    'id' => $productBranch->id,
-                    'product_id' => $productBranch->product_id,
-                    'price' => (float) $productBranch->price,
-                    'stock' => (float) ($productBranch->stock ?? 0),
-                    'tax_rate' => $taxRatePct,
-                ];
-            });
-        $categories = Category::orderBy('description')->get();
-        $units = Unit::orderBy('description')->get();
+        // Solo product_branches de esta sucursal (precio/stock por sucursal).
+        $productBranches = $branchId
+            ? ProductBranch::where('branch_id', $branchId)
+                ->with(['product', 'taxRate'])
+                ->get()
+                ->map(function ($productBranch) {
+                    $taxRatePct = $productBranch->taxRate ? (float) $productBranch->taxRate->tax_rate : null;
+                    return [
+                        'id' => $productBranch->id,
+                        'product_id' => $productBranch->product_id,
+                        'price' => (float) $productBranch->price,
+                        'stock' => (float) ($productBranch->stock ?? 0),
+                        'tax_rate' => $taxRatePct,
+                    ];
+                })
+            : collect();
+
+        // Categorías asignadas a esta sucursal (category_branch).
+        $categories = Category::query()
+            ->when($branchId, function ($query) use ($branchId) {
+                $query->whereExists(function ($sub) use ($branchId) {
+                    $sub->select(DB::raw(1))
+                        ->from('category_branch')
+                        ->whereColumn('category_branch.category_id', 'categories.id')
+                        ->where('category_branch.branch_id', $branchId)
+                        ->whereNull('category_branch.deleted_at');
+                });
+            }, function ($query) {
+                $query->whereRaw('1 = 0'); // sin sucursal = no categorías
+            })
+            ->orderBy('description')
+            ->get();
+        
+        $units = Unit::query()->orderBy('description')->get();
 
         // Pedido pendiente activo para esta mesa (si existe, lo cargamos para no duplicar)
         $pendingOrder = OrderMovement::with(['movement', 'details'])

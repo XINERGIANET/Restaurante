@@ -1,21 +1,45 @@
 @php
     $productTypes = $productTypes ?? collect();
+    $productBranch = $productBranch ?? null;
     $productTypeIdInit = old('product_type_id', $product->product_type_id ?? null);
     $productTypeIdInit = is_numeric($productTypeIdInit) ? (int) $productTypeIdInit : null;
 
-    $unitSaleInit = old('unit_sale', $productBranch->unit_sale ?? null);
+    $unitSaleInit = old('unit_sale', $productBranch?->unit_sale ?? null);
     $unitSaleInit = is_numeric($unitSaleInit) ? (int) $unitSaleInit : null;
 
-    $selectedBranchInit = old('branch_id', $productBranch->branch_id ?? session('branch_id') ?? null);
+    $selectedBranchInit = old('branch_id', $productBranch?->branch_id ?? session('branch_id') ?? null);
     $selectedBranchInit = is_numeric($selectedBranchInit) ? (int) $selectedBranchInit : null;
 
-    $platosCategoriaIds = $categories
+    $categoriesSafe = $categories ?? collect();
+    $unitsSafe = $units ?? collect();
+    $platosCategoriaIds = $categoriesSafe
         ->filter(fn($c) => str_contains(strtolower((string) ($c->description ?? '')), 'platos a la carta'))
         ->pluck('id')
         ->values();
 
     $igvByBranchId = $igvByBranchId ?? [];
     $productTypesById = $productTypes->keyBy('id')->map(fn($pt) => ['id' => $pt->id, 'name' => $pt->name, 'behavior' => $pt->behavior]);
+
+    // Con errores de validación: fusionar old() en productBranchesByBranchId para conservar lo que el usuario envió
+    $productBranchesByBranchId = collect($productBranchesByBranchId ?? []);
+    if ($errors->any() && $selectedBranchInit !== null) {
+        $current = $productBranchesByBranchId->get($selectedBranchInit, []);
+        $productBranchesByBranchId = $productBranchesByBranchId->put($selectedBranchInit, array_merge($current, [
+            'price' => old('price', $current['price'] ?? ''),
+            'purchase_price' => (float) old('purchase_price', $current['purchase_price'] ?? 0),
+            'stock' => old('stock', $current['stock'] ?? ''),
+            'stock_minimum' => (float) old('stock_minimum', $current['stock_minimum'] ?? 0),
+            'stock_maximum' => (float) old('stock_maximum', $current['stock_maximum'] ?? 0),
+            'minimum_sell' => (float) old('minimum_sell', $current['minimum_sell'] ?? 0),
+            'minimum_purchase' => (float) old('minimum_purchase', $current['minimum_purchase'] ?? 0),
+            'tax_rate_id' => old('tax_rate_id', $current['tax_rate_id'] ?? null),
+            'unit_sale' => old('unit_sale') !== null && old('unit_sale') !== '' ? (int) old('unit_sale') : ($current['unit_sale'] ?? null),
+            'expiration_date' => old('expiration_date', $current['expiration_date'] ?? ''),
+            'supplier_id' => old('supplier_id', $current['supplier_id'] ?? null),
+            'favorite' => old('favorite', $current['favorite'] ?? 'N'),
+            'duration_minutes' => (float) old('duration_minutes', $current['duration_minutes'] ?? 0),
+        ]));
+    }
 @endphp
 
 <div x-data="{
@@ -35,29 +59,29 @@
     complements: {{ \Illuminate\Support\Js::from(old('complements', [])) }},
     categoryId: {{ old('category_id', $product->category_id ?? 'null') }},
     baseUnitId: {{ old('base_unit_id', $product->base_unit_id ?? 'null') }},
-    supplierId: {{ old('supplier_id', $productBranch->supplier_id ?? 'null') }},
+    supplierId: {{ old('supplier_id', $productBranch?->supplier_id ?? 'null') }},
     unitSaleId: {{ $unitSaleInit === null ? 'null' : $unitSaleInit }},
-    stockMin: {{ (float) old('stock_minimum', $productBranch->stock_minimum ?? 0) }},
-    stockMax: {{ (float) old('stock_maximum', $productBranch->stock_maximum ?? 0) }},
+    stockMin: {{ (float) old('stock_minimum', $productBranch?->stock_minimum ?? 0) }},
+    stockMax: {{ (float) old('stock_maximum', $productBranch?->stock_maximum ?? 0) }},
     selectedBranchId: {{ $selectedBranchInit === null ? 'null' : $selectedBranchInit }},
     isEdit: {{ !empty($product?->id) ? 'true' : 'false' }},
     branchStore: {{ \Illuminate\Support\Js::from($productBranchesByBranchId ?? []) }},
     igvByBranchId: {{ \Illuminate\Support\Js::from($igvByBranchId) }},
     branchDrafts: {},
     branchFields: {
-        price: @js(old('price', $productBranch->price ?? '')),
-        purchase_price: @js(old('purchase_price', $productBranch->purchase_price ?? 0)),
-        stock: @js(old('stock', $productBranch->stock ?? '')),
-        stock_minimum: @js(old('stock_minimum', $productBranch->stock_minimum ?? 0)),
-        stock_maximum: @js(old('stock_maximum', $productBranch->stock_maximum ?? 0)),
-        minimum_sell: @js(old('minimum_sell', $productBranch->minimum_sell ?? 0)),
-        minimum_purchase: @js(old('minimum_purchase', $productBranch->minimum_purchase ?? 0)),
-        tax_rate_id: @js(old('tax_rate_id', $productBranch->tax_rate_id ?? '')),
+        price: @js(old('price', $productBranch?->price ?? '')),
+        purchase_price: @js(old('purchase_price', $productBranch?->purchase_price ?? 0)),
+        stock: @js(old('stock', $productBranch?->stock ?? '')),
+        stock_minimum: @js(old('stock_minimum', $productBranch?->stock_minimum ?? 0)),
+        stock_maximum: @js(old('stock_maximum', $productBranch?->stock_maximum ?? 0)),
+        minimum_sell: @js(old('minimum_sell', $productBranch?->minimum_sell ?? 0)),
+        minimum_purchase: @js(old('minimum_purchase', $productBranch?->minimum_purchase ?? 0)),
+        tax_rate_id: @js(old('tax_rate_id', $productBranch?->tax_rate_id ?? '')),
         unit_sale: {{ $unitSaleInit === null ? 'null' : $unitSaleInit }},
-        expiration_date: @js(old('expiration_date', $productBranch->expiration_date ?? '')),
-        supplier_id: @js(old('supplier_id', $productBranch->supplier_id ?? null)),
-        favorite: @js(old('favorite', $productBranch->favorite ?? 'N')),
-        duration_minutes: @js(old('duration_minutes', $productBranch->duration_minutes ?? 0)),
+        expiration_date: @js(old('expiration_date', $productBranch?->expiration_date ?? '')),
+        supplier_id: @js(old('supplier_id', $productBranch?->supplier_id ?? null)),
+        favorite: @js(old('favorite', $productBranch?->favorite ?? 'N')),
+        duration_minutes: @js(old('duration_minutes', $productBranch?->duration_minutes ?? 0)),
     },
     // IDs resueltos por nombre en servidor (evita comparar strings en el frontend)
     platosCategoriaIds: {{ \Illuminate\Support\Js::from($platosCategoriaIds) }},
@@ -212,12 +236,12 @@
             </div>
 
             <div>
-                <x-form.select.combobox label="Categoría" :required="true" :options="$categories" name="category_id"
+                <x-form.select.combobox label="Categoría" :required="true" :options="$categoriesSafe" name="category_id"
                     x-model="categoryId" placeholder="Seleccione categoría" icon="ri-layout-grid-line" />
             </div>
 
             <div>
-                <x-form.select.combobox label="Unidad base" :required="true" :options="$units" name="base_unit_id"
+                <x-form.select.combobox label="Unidad base" :required="true" :options="$unitsSafe" name="base_unit_id"
                     x-model="baseUnitId" placeholder="Seleccione la unidad" icon="ri-ruler-2-line" />
             </div>
 
@@ -452,7 +476,7 @@
                 <x-form.select.combobox
                     label="Unidad de venta"
                     :required="true"
-                    :options="$units"
+                    :options="$unitsSafe"
                     name="unit_sale"
                     x-model="unitSaleId"
                     placeholder="Seleccione la unidad"
@@ -460,13 +484,22 @@
                 />
             </div>
 
-            <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Fecha de
-                    expiración</label>
-                <input type="date" name="expiration_date" :required="showBranchDetail"
-                    x-model="branchFields.expiration_date"
-                    value="{{ old('expiration_date', $productBranch->expiration_date ?? '') }}"
-                    class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90" />
+            <div x-show="showBranchDetail" x-cloak>
+                @php
+                    $expirationDefault = old('expiration_date');
+                    if ($expirationDefault === null || $expirationDefault === '') {
+                        $expirationDefault = $productBranch?->expiration_date
+                            ? \Carbon\Carbon::parse($productBranch->expiration_date)->format('Y-m-d')
+                            : '';
+                    }
+                @endphp
+                <x-form.date-picker
+                    name="expiration_date"
+                    label="Fecha de expiración"
+                    placeholder="Seleccione fecha de expiración"
+                    dateFormat="Y-m-d"
+                    :defaultDate="$expirationDefault"
+                />
                 @error('expiration_date')
                     <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
                 @enderror

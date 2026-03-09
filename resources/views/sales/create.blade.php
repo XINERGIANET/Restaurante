@@ -256,8 +256,15 @@
             // AQUÍ ESTABA EL PROBLEMA: Necesitamos pasar las categorías con imagen desde PHP
             const categoriesDB = @json($categories ?? []); 
 
-            const products = Array.isArray(productsRaw) ? productsRaw : Object.values(productsRaw || {});
             const productBranches = Array.isArray(productBranchesRaw) ? productBranchesRaw : Object.values(productBranchesRaw || {});
+            const serverCategories = @json($categories ?? []);
+            const categoryIdsInBranch = (serverCategories || []).map(c => Number(c.id));
+            // Solo productos con productBranch en sucursal Y categoría en category_branch
+            const productsRawArr = Array.isArray(productsRaw) ? productsRaw : Object.values(productsRaw || {});
+            const products = (productsRawArr || []).filter(p =>
+                productBranches.some(pb => Number(pb.product_id) === Number(p.id)) &&
+                categoryIdsInBranch.includes(Number(p.category_id))
+            );
 
             const priceByProductId = new Map();
             const taxRateByProductId = new Map();
@@ -274,9 +281,9 @@
                 }
             });
             
-            let selectedCategoryId = null;
+            const CATEGORY_ALL_ID = '__all__';
+            let selectedCategoryId = CATEGORY_ALL_ID;
             let searchQuery = '';
-            const serverCategories = @json($categories ?? []);
             const cobroPaymentMethods = @json($paymentMethods ?? []);
             const cobroPaymentGateways = @json($paymentGateways ?? []);
             const cobroCards = @json($cards ?? []);
@@ -359,7 +366,7 @@
 
                 let rendered = 0;
 
-                let productsToShow = selectedCategoryId == null
+                let productsToShow = selectedCategoryId === CATEGORY_ALL_ID
                     ? products
                     : products.filter(p => p.category_id == selectedCategoryId);
 
@@ -427,8 +434,27 @@
                 if (!container) return;
                 container.innerHTML = '';
 
+                // Botón "Todos" por defecto
+                const allBtn = document.createElement('button');
+                allBtn.type = 'button';
+                const isAllActive = selectedCategoryId === CATEGORY_ALL_ID;
+                allBtn.className = [
+                    'inline-flex items-center gap-2 px-2.5 py-1.5 rounded-full text-xs sm:text-sm font-semibold',
+                    'border transition-all duration-150 whitespace-nowrap cursor-pointer shrink-0',
+                    isAllActive
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                        : 'bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-slate-600 hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400'
+                ].join(' ');
+                allBtn.onclick = function() {
+                    selectedCategoryId = CATEGORY_ALL_ID;
+                    renderCategoryFilters();
+                    renderProducts();
+                };
+                allBtn.innerHTML = `<i class="ri-apps-line text-lg"></i><span>Todos</span>`;
+                container.appendChild(allBtn);
+
                 if (!serverCategories || serverCategories.length === 0) {
-                    container.innerHTML = '<div class="text-center text-gray-500 py-2 text-sm w-full">No hay categorías</div>';
+                    renderProducts();
                     return;
                 }
 

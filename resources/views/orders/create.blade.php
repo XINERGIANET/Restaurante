@@ -256,6 +256,18 @@
 
     <div id="notification" class="fixed top-24 right-8 z-50 max-w-sm opacity-0 pointer-events-none transition-opacity duration-300" aria-live="polite"></div>
 
+    {{-- Toast: producto agregado (igual que en ventas) --}}
+    <div id="toast-container" class="fixed top-20 left-1/2 -translate-x-1/2 z-50 pointer-events-none flex flex-col gap-2 w-auto max-w-sm">
+        <div id="add-to-cart-notification" class="transform transition-all duration-300 -translate-y-10 opacity-0 pointer-events-none bg-slate-800 text-white shadow-2xl rounded-full px-6 py-3 flex items-center gap-3 min-w-[200px]">
+            <i class="ri-check-line text-green-400 text-xl"></i>
+            <div>
+                <p class="text-[10px] uppercase font-bold text-gray-400">Agregado</p>
+                <p id="notification-product-name" class="text-sm font-bold text-white truncate max-w-[180px]">Producto</p>
+            </div>
+        </div>
+    </div>
+    <style>.notification-show { transform: translateY(0) !important; opacity: 1 !important; }</style>
+
     <script>
         (function() {
             @php
@@ -542,10 +554,16 @@
             }
             window.getImageUrl = getImageUrl;
 
-            // Datos de productos, categorías y productBranches desde el servidor
-            const serverProducts = @json($products ?? []);
+            // Datos de productos, categorías y productBranches desde el servidor.
             const serverProductBranches = @json($productBranches ?? []);
             const serverCategories = @json(collect($categories ?? [])->map(fn($c) => ['id' => $c->id, 'name' => $c->description ?? '', 'img' => $c->image ? asset('storage/' . $c->image) : null])->values()->all());
+            const serverProductsRaw = @json($products ?? []);
+            const categoryIdsInBranch = (serverCategories || []).map(c => Number(c.id));
+            // Solo productos que tienen productBranch en esta sucursal Y cuya categoría está en category_branch (está en serverCategories).
+            const serverProducts = (serverProductsRaw || []).filter(p =>
+                serverProductBranches.some(pb => Number(pb.product_id) === Number(p.id)) &&
+                categoryIdsInBranch.includes(Number(p.category_id))
+            );
 
             function getItemTaxRatePercent(item) {
                 const rate = parseFloat(item?.tax_rate);
@@ -601,7 +619,8 @@
                 if (updated) saveDB();
             }
 
-            let selectedCategoryId = null;
+            const CATEGORY_ALL_ID = '__all__';
+            let selectedCategoryId = CATEGORY_ALL_ID;
             let productSearchQuery = '';
 
             function renderCategories() {
@@ -610,8 +629,28 @@
                 
                 grid.innerHTML = '';
 
+                // Botón "Todos" por defecto (lista todos los productos de la sucursal con categoría)
+                const allBtn = document.createElement('button');
+                allBtn.type = 'button';
+                const isAllActive = selectedCategoryId === CATEGORY_ALL_ID;
+                allBtn.className = [
+                    'inline-flex items-center gap-2 px-2.5 py-1.5 rounded-full text-xs sm:text-sm font-semibold',
+                    'border transition-all duration-150 whitespace-nowrap cursor-pointer shrink-0',
+                    isAllActive
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                        : 'bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-slate-600 hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400'
+                ].join(' ');
+                allBtn.onclick = function(e) {
+                    e.preventDefault();
+                    selectedCategoryId = CATEGORY_ALL_ID;
+                    renderCategories();
+                    renderProducts();
+                };
+                allBtn.innerHTML = `<i class="ri-apps-line text-lg"></i><span>Todos</span>`;
+                grid.appendChild(allBtn);
+
                 if (!serverCategories || serverCategories.length === 0) {
-                    grid.innerHTML = '<div class="text-center text-gray-500 py-2 text-sm w-full">No hay categorías</div>';
+                    renderProducts();
                     return;
                 }
 
@@ -657,8 +696,8 @@
                     return;
                 }
 
-                // Filtrar por categoría seleccionada (si hay una)
-                let productsToShow = selectedCategoryId == null
+                // Filtrar por categoría seleccionada ("Todos" = todos los productos de la sucursal con categoría)
+                let productsToShow = selectedCategoryId === CATEGORY_ALL_ID
                     ? serverProducts
                     : serverProducts.filter(p => p.category_id == selectedCategoryId);
 
@@ -726,9 +765,9 @@
                     if (q.length > 0) {
                         grid.innerHTML = '<div class="col-span-full text-center text-gray-500 py-8">No se encontraron productos para "' + escapeHtml(productSearchQuery) + '"</div>';
                     } else {
-                        grid.innerHTML = selectedCategoryId != null
-                            ? '<div class="col-span-full text-center text-gray-500 py-8">No hay productos en esta categoría</div>'
-                            : '<div class="col-span-full text-center text-gray-500 py-8">No hay productos disponibles para esta sucursal</div>';
+                        grid.innerHTML = selectedCategoryId === CATEGORY_ALL_ID
+                            ? '<div class="col-span-full text-center text-gray-500 py-8">No hay productos disponibles para esta sucursal</div>'
+                            : '<div class="col-span-full text-center text-gray-500 py-8">No hay productos en esta categoría</div>';
                     }
                 }
 
@@ -794,6 +833,7 @@
                 }
                 saveDB();
                 renderTicket();
+                showAddToCartNotification(prod.name || 'Producto');
             }
 
             async function updateQty(index, change) {
@@ -1399,6 +1439,15 @@
                 document.addEventListener('DOMContentLoaded', init);
             } else {
                 init();
+            }
+
+            function showAddToCartNotification(productName) {
+                const notification = document.getElementById('add-to-cart-notification');
+                const productNameEl = document.getElementById('notification-product-name');
+                if (!notification || !productNameEl) return;
+                productNameEl.textContent = productName;
+                notification.classList.add('notification-show');
+                setTimeout(() => notification.classList.remove('notification-show'), 1200);
             }
 
             function showNotification(title, message, type = 'info') {

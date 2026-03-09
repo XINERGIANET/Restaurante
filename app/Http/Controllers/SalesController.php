@@ -198,7 +198,7 @@ class SalesController extends Controller
 
     public function create()
     {
-        $branchId = session('branch_id');
+        $branchId = (int) (session('branch_id') ?? 0) ?: null;
 
         $defaultImage = asset('images/logo/Xinergia-icon.png');
 
@@ -208,38 +208,63 @@ class SalesController extends Controller
         $personId = session('person_id');
         $person = Person::find($personId);
 
-        $categories = Category::orderBy('description')->get()->map(function ($cat) use ($defaultImage) {
-            $img = $defaultImage;
-            if ($cat->image && Storage::disk('public')->exists($cat->image)) {
-                $img = asset('storage/' . $cat->image);
-            }
-            return [
-                'id' => $cat->id,
-                'name' => $cat->description,
-                'img' => $img
-            ];
-        })->values();
+        // Categorías asignadas a esta sucursal (category_branch)
+        $categories = Category::query()
+            ->when($branchId, function ($query) use ($branchId) {
+                $query->whereExists(function ($sub) use ($branchId) {
+                    $sub->select(DB::raw(1))
+                        ->from('category_branch')
+                        ->whereColumn('category_branch.category_id', 'categories.id')
+                        ->where('category_branch.branch_id', $branchId)
+                        ->whereNull('category_branch.deleted_at');
+                });
+            }, function ($query) {
+                $query->whereRaw('1 = 0');
+            })
+            ->orderBy('description')
+            ->get()
+            ->map(function ($cat) use ($defaultImage) {
+                $img = $defaultImage;
+                if ($cat->image && Storage::disk('public')->exists($cat->image)) {
+                    $img = asset('storage/' . $cat->image);
+                }
+                return [
+                    'id' => $cat->id,
+                    'name' => $cat->description,
+                    'img' => $img
+                ];
+            })->values();
 
-        // Solo productos vendibles (SELLABLE); sin tipo o tipo distinto se excluyen de ventas
+        // Solo productos vendibles con product_branch y categoría en category_branch para esta sucursal
         $products = Product::query()
             ->where('type', 'PRODUCT')
             ->where(function ($q) {
                 $q->whereNull('product_type_id')
                     ->orWhereHas('productType', fn ($q2) => $q2->where('behavior', ProductType::BEHAVIOR_SELLABLE));
             })
+            ->when($branchId, function ($query) use ($branchId) {
+                $query->whereHas('productBranches', fn ($q) => $q->where('branch_id', $branchId))
+                    ->whereExists(function ($sub) use ($branchId) {
+                        $sub->select(DB::raw(1))
+                            ->from('category_branch')
+                            ->whereColumn('category_branch.category_id', 'products.category_id')
+                            ->where('category_branch.branch_id', $branchId)
+                            ->whereNull('category_branch.deleted_at');
+                    });
+            }, function ($query) {
+                $query->whereRaw('1 = 0');
+            })
             ->with('category')
             ->orderBy('description')
             ->get()
-            ->map(function (Product $product) use ($defaultImage) {                
+            ->map(function (Product $product) use ($defaultImage) {
                 $imageUrl = $defaultImage;
-
                 if (!empty($product->image)) {
                     $path = ltrim($product->image, '/');
                     if (Storage::disk('public')->exists($path)) {
                         $imageUrl = asset('storage/' . $path);
                     }
                 }
-
                 return [
                     'id' => (int) $product->id,
                     'name' => $product->description,
@@ -251,27 +276,29 @@ class SalesController extends Controller
             })
             ->values();
 
-        $productBranches = ProductBranch::query()
-            ->where('branch_id', $branchId)
-            ->with(['product.productType', 'taxRate'])
-            ->get()
-            ->filter(function ($productBranch) {
-                if ($productBranch->product === null) return false;
-                $pt = $productBranch->product->productType;
-                return $pt === null || $pt->isSellable();
-            })
-            ->map(function ($productBranch) {
-                $taxRate = $productBranch->taxRate;
-                $taxRatePct = $taxRate ? (float) $taxRate->tax_rate : null;
-                return [
-                    'id' => (int) $productBranch->id,
-                    'product_id' => (int) $productBranch->product_id,
-                    'price' => (float) $productBranch->price,
-                    'tax_rate' => $taxRatePct,
-                    'stock' => (float) ($productBranch->stock ?? 0),
-                ];
-            })
-            ->values();
+        $productBranches = $branchId
+            ? ProductBranch::query()
+                ->where('branch_id', $branchId)
+                ->with(['product.productType', 'taxRate'])
+                ->get()
+                ->filter(function ($productBranch) {
+                    if ($productBranch->product === null) return false;
+                    $pt = $productBranch->product->productType;
+                    return $pt === null || $pt->isSellable();
+                })
+                ->map(function ($productBranch) {
+                    $taxRate = $productBranch->taxRate;
+                    $taxRatePct = $taxRate ? (float) $taxRate->tax_rate : null;
+                    return [
+                        'id' => (int) $productBranch->id,
+                        'product_id' => (int) $productBranch->product_id,
+                        'price' => (float) $productBranch->price,
+                        'tax_rate' => $taxRatePct,
+                        'stock' => (float) ($productBranch->stock ?? 0),
+                    ];
+                })
+                ->values()
+            : collect();
 
         $people = Person::query()
             ->when($branchId, fn ($query) => $query->where('branch_id', $branchId))

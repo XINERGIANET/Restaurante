@@ -24,8 +24,8 @@ class="fixed flex flex-col mt-0 top-0 px-5 left-0 dark:bg-gray-900 dark:border-g
                 @foreach ($menuGroup['items'] as $itemIndex => $item)
                     @if (!empty($item['subItems']))
                         @foreach ($item['subItems'] as $subItem)
-                            if (this.isActive('{{ $subItem['path'] }}')) {
-                                this.openSubmenus['{{ $groupIndex }}-{{ $itemIndex }}'] = true;
+                            if (this.isActive({{ Illuminate\Support\Js::from($subItem['path'] ?? '') }})) {
+                                this.openSubmenus[{{ Illuminate\Support\Js::from($groupIndex . '-' . $itemIndex) }}] = true;
                             }
                         @endforeach
                     @endif

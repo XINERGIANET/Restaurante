@@ -2,6 +2,15 @@
 @extends('layouts.fullscreen-layout')
 
 @section('content')
+    @if (request('logout') === '1')
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                if (window.Turbo && typeof Turbo.cache !== 'undefined' && typeof Turbo.cache.clear === 'function') {
+                    Turbo.cache.clear();
+                }
+            });
+        </script>
+    @endif
     <div class="relative z-1 bg-white p-6 sm:p-0 dark:bg-gray-900">
         <div class="relative flex h-screen w-full flex-col justify-center sm:p-0 lg:flex-row dark:bg-gray-900">
             <!-- Form -->

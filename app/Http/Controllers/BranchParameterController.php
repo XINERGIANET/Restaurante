@@ -45,26 +45,38 @@ class BranchParameterController extends Controller
         }
 
         // ==========================================
-        // NUEVA CONSULTA DE CATEGORÍAS Y PARÁMETROS
+        // TODAS las categorías con TODOS los parámetros activos.
+        // LEFT JOIN branch_parameters: si no existe para esta sucursal, se muestra con valor por defecto.
         // ==========================================
         $categories = collect();
         
         if ($branchId) {
-            $categories = ParameterCategories::whereHas('parameters', function ($query) use ($branchId) {
-                $query->join('branch_parameters', 'parameters.id', '=', 'branch_parameters.parameter_id')
-                      ->where('branch_parameters.branch_id', $branchId)
-                      ->whereNull('branch_parameters.deleted_at');
+            $categories = ParameterCategories::whereHas('parameters', function ($query) {
+                $query->where('parameters.status', 1)->whereNull('parameters.deleted_at');
             })
             ->with(['parameters' => function ($query) use ($branchId) {
-                $query->join('branch_parameters', 'parameters.id', '=', 'branch_parameters.parameter_id')
-                      ->where('branch_parameters.branch_id', $branchId)
-                      ->whereNull('branch_parameters.deleted_at')
+                $query->where('parameters.status', 1)
+                      ->whereNull('parameters.deleted_at')
+                      ->leftJoin('branch_parameters', function ($join) use ($branchId) {
+                          $join->on('parameters.id', '=', 'branch_parameters.parameter_id')
+                               ->where('branch_parameters.branch_id', $branchId)
+                               ->whereNull('branch_parameters.deleted_at');
+                      })
                       ->select(
-                          'parameters.*', 
-                          'branch_parameters.value as branch_value',
-                          'branch_parameters.id as branch_parameter_id' 
-                      );
+                          'parameters.id',
+                          'parameters.description',
+                          'parameters.value',
+                          'parameters.parameter_category_id',
+                          'parameters.status',
+                          'parameters.created_at',
+                          'parameters.updated_at',
+                          'parameters.deleted_at',
+                          DB::raw('COALESCE(branch_parameters.value, parameters.value) as branch_value'),
+                          'branch_parameters.id as branch_parameter_id'
+                      )
+                      ->orderBy('parameters.id');
             }])
+            ->orderBy('id')
             ->get();
         }
 
@@ -97,12 +109,33 @@ class BranchParameterController extends Controller
         if (is_array($parameters)) {
             DB::beginTransaction();
             try {
-                foreach ($parameters as $branchParameterId => $value) {
+                foreach ($parameters as $paramKey => $value) {
                     $valorSeguro = $value ?? '';
 
-                    BranchParameter::where('id', $branchParameterId)
-                        ->where('branch_id', $branchId)
-                        ->update(['value' => $valorSeguro]);
+                    // Clave puede ser branch_parameter_id (numérico) o "p{parameter_id}" para nuevos
+                    if (is_numeric($paramKey)) {
+                        $branchParam = BranchParameter::where('id', $paramKey)
+                            ->where('branch_id', $branchId)
+                            ->first();
+                        if ($branchParam) {
+                            $branchParam->update(['value' => $valorSeguro]);
+                        }
+                    } elseif (str_starts_with((string) $paramKey, 'p') && is_numeric(substr($paramKey, 1))) {
+                        $parameterId = (int) substr($paramKey, 1);
+                        $branchParam = BranchParameter::where('parameter_id', $parameterId)
+                            ->where('branch_id', $branchId)
+                            ->whereNull('deleted_at')
+                            ->first();
+                        if ($branchParam) {
+                            $branchParam->update(['value' => $valorSeguro]);
+                        } else {
+                            BranchParameter::create([
+                                'parameter_id' => $parameterId,
+                                'branch_id' => $branchId,
+                                'value' => $valorSeguro,
+                            ]);
+                        }
+                    }
                 }
                 DB::commit();
                 

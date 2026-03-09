@@ -450,12 +450,14 @@
                         }
                     },
 
-                    async ensureWaiterPin() {
+                    async ensureWaiterPin(forceAsk = false) {
                         if (!this.waiterPinEnabled) return true;
-                        const existing = this.getStoredWaiter();
-                        if (existing) {
-                            this.waiter = existing;
-                            return true;
+                        if (!forceAsk) {
+                            const existing = this.getStoredWaiter();
+                            if (existing) {
+                                this.waiter = existing;
+                                return true;
+                            }
                         }
                         if (!window.Swal) return false;
 
@@ -659,12 +661,13 @@
                     },
 
                     async openTable(table) {
-                        const ok = await this.ensureWaiterPin();
+                        const ok = await this.ensureWaiterPin(true);
                         if (!ok) {
                             return;
                         }
                         const target = new URL(this.createUrl, window.location.origin);
                         target.searchParams.set('table_id', table.id);
+                        target.searchParams.set('_t', Date.now()); // Evitar caché de Turbo
                         if (window.Turbo && typeof window.Turbo.visit === 'function') {
                             window.Turbo.visit(target.toString(), {
                                 action: 'advance'
@@ -674,7 +677,9 @@
                         }
                     },
 
-                    chargeTable(table) {
+                    async chargeTable(table) {
+                        const ok = await this.ensureWaiterPin();
+                        if (!ok) return;
                         if (table && table.movement_id) {
                             const url = new URL(this.chargeUrl, window.location.origin);
                             url.searchParams.set('movement_id', table.movement_id);

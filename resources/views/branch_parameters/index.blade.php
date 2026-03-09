@@ -131,11 +131,36 @@
                                             {{ $parameter->description }}
                                         </label>
                                         
+                                        @php
+                                            $paramKey = $parameter->branch_parameter_id ?? 'p' . $parameter->id;
+                                            $desc = trim($parameter->description ?? '');
+                                            $isRequerirPinMozo = strcasecmp($desc, 'Requerir PIN a mozo') === 0;
+                                            $isIgvDefecto = strcasecmp($desc, 'igv_defecto') === 0;
+                                        @endphp
+                                        @if($isRequerirPinMozo)
+                                            {{-- REQUERIR PIN A MOZO: 0 o 1 --}}
+                                            <select name="parameters[{{ $paramKey }}]" 
+                                                    class="w-full border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 px-3 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors shadow-sm">
+                                                <option value="0" {{ ($parameter->branch_value ?? '') == '0' ? 'selected' : '' }}>No (0)</option>
+                                                <option value="1" {{ ($parameter->branch_value ?? '') == '1' ? 'selected' : '' }}>Sí (1)</option>
+                                            </select>
+                                        @elseif($isIgvDefecto)
+                                            {{-- IGV POR DEFECTO: selector de tasas de impuesto --}}
+                                            <select name="parameters[{{ $paramKey }}]" 
+                                                    class="w-full border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 px-3 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors shadow-sm">
+                                                <option value="">Seleccionar...</option>
+                                                @foreach($igv ?? [] as $igvItem)
+                                                    <option value="{{ $igvItem->id }}" {{ $parameter->branch_value == $igvItem->id ? 'selected' : '' }}>
+                                                        {{ trim(str_ireplace('de venta', '', $igvItem->description)) }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                        @else
                                         @switch($parameter->id)
                                             
-                                            {{-- CASO 2: TIPO DE IGV --}}
+                                            {{-- CASO 2: TIPO DE IGV (solo si no es Requerir PIN) --}}
                                             @case(2)
-                                                <select name="parameters[{{ $parameter->branch_parameter_id }}]" 
+                                                <select name="parameters[{{ $paramKey }}]" 
                                                         class="w-full border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 px-3 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors shadow-sm">
                                                     <option value="">Seleccionar...</option>
                                                     @foreach($igv ?? [] as $igvItem)
@@ -148,7 +173,7 @@
 
                                             {{-- CASO 6: MÉTODOS DE PAGO --}}
                                             @case(6)
-                                                <select name="parameters[{{ $parameter->branch_parameter_id }}]" 
+                                                <select name="parameters[{{ $paramKey }}]" 
                                                         class="w-full border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 px-3 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors shadow-sm">
                                                     <option value="">Seleccionar...</option>
                                                     @foreach($paymentMethods ?? [] as $method)
@@ -159,9 +184,10 @@
                                                 </select>
                                                 @break
 
-                                            {{-- CASO 13: TIPO DE VENTA POR DEFECTO --}}
+                                            {{-- CASO 1 y 13: TIPO DE VENTA POR DEFECTO --}}
+                                            @case(1)
                                             @case(13)
-                                                <select name="parameters[{{ $parameter->branch_parameter_id }}]" 
+                                                <select name="parameters[{{ $paramKey }}]" 
                                                         class="w-full border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 px-3 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors shadow-sm">
                                                     <option value="">Seleccionar...</option>
                                                     @foreach($tiposVenta ?? [] as $tipo)
@@ -189,7 +215,7 @@
                                                     </select>
 
                                                     <input type="hidden" 
-                                                           name="parameters[{{ $parameter->branch_parameter_id }}]" 
+                                                           name="parameters[{{ $paramKey }}]" 
                                                            value="No" 
                                                            x-bind:disabled="pedirPass === 'Si'">
 
@@ -198,8 +224,8 @@
                                                          x-transition:enter-start="opacity-0 -translate-y-2"
                                                          x-transition:enter-end="opacity-100 translate-y-0"
                                                          class="mt-3 relative"> <input :type="showPass ? 'text' : 'password'" 
-                                                               name="parameters[{{ $parameter->branch_parameter_id }}]" 
-                                                               value="{{ $tienePass ? $parameter->branch_value : '' }}"
+                                                               name="parameters[{{ $paramKey }}]" 
+                                                               value="{{ $tienePass ? e($parameter->branch_value) : '' }}"
                                                                x-bind:disabled="pedirPass === 'No'"
                                                                class="w-full border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900 px-3 py-2.5 pr-10 text-sm font-medium text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors shadow-inner"
                                                                placeholder="Escribe la contraseña...">
@@ -215,7 +241,7 @@
 
                                             {{-- POR DEFECTO: SELECT DE SÍ/NO --}}
                                             @default
-                                                <select name="parameters[{{ $parameter->branch_parameter_id }}]" 
+                                                <select name="parameters[{{ $paramKey }}]" 
                                                         class="w-full border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 px-3 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors shadow-sm">
                                                     <option value="">Seleccionar...</option>
                                                     <option value="Si" {{ $parameter->branch_value == 'Si' ? 'selected' : '' }}>Sí</option>
@@ -223,6 +249,7 @@
                                                 </select>
 
                                         @endswitch
+                                        @endif
                                     </div>
                                 @endforeach
                             </div>
