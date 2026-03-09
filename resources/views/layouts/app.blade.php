@@ -294,11 +294,17 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
 </script>
 @endif
 
-@if (session('error'))
+@php
+    $errorMessage = session('error');
+    if (empty($errorMessage) && isset($errors) && $errors->any()) {
+        $errorMessage = $errors->first();
+    }
+@endphp
+@if (!empty($errorMessage))
 <script>
 (function() {
     const showErrorToast = () => {
-        const message = @json(session('error'));
+        const message = @json($errorMessage);
         const key = 'toast:error';
         if (window.sessionStorage && sessionStorage.getItem(key) === message) {
             return;

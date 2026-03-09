@@ -349,7 +349,7 @@
                                 <th  class="px-5 py-3 text-left sm:px-6">
                                     <p class="font-semibold text-white text-theme-xs uppercase">Metodos de pago</p>
                                 </th>
-                                <th  class="px-5 py-3 text-right sm:px-6 last:rounded-tr-xl">
+                                <th  class="px-5 py-3 text-center sm:px-6 last:rounded-tr-xl">
                                     <p class="font-semibold text-white text-theme-xs uppercase">Operaciones</p>
                                 </th>
                             </tr>

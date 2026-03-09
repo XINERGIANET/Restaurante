@@ -1,7 +1,7 @@
 <div class="grid gap-5">
     {{-- CAMPO: NÚMERO DE CAJA --}}
     <div>
-        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Número de la Caja</label>
+        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Nombre de la Caja</label>
         <div class="relative">
             <span class="absolute top-1/2 left-0 -translate-y-1/2 border-r border-gray-200 px-3.5 py-3 text-gray-500 dark:border-gray-800 dark:text-gray-400">
                 {{-- Icono: Hashtag / Numeral --}}

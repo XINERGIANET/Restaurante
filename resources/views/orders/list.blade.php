@@ -214,7 +214,6 @@
                                     <i class="ri-add-line text-sm" x-show="openRow !== {{ $order->id }}"></i>
                                     <i class="ri-subtract-line text-sm" x-show="openRow === {{ $order->id }}"></i>
                                 </button>
-                                <span class="text-gray-700 text-xs font-medium dark:text-gray-300">{{ $order->id }}</span>
                             </div>
                         </td>
                         <td class="px-2 py-2">
@@ -247,35 +246,42 @@
                             </x-ui.badge>
                         </td>
                     </tr>
-                    <tr x-cloak x-show="openRow === {{ $order->id }}"
-                        class="bg-gray-50/80 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
-                        <td colspan="1" class="px-2 py-2">
-                            <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Subtotal</div>
-                            <div class="text-sm font-medium text-gray-800 dark:text-white/90 tabular-nums">{{ number_format((float) ($order->subtotal ?? 0), 2) }}</div>
-                        </td>
-                        <td colspan="1" class="px-2 py-2">
-                            <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">IGV</div>
-                            <div class="text-sm font-medium text-gray-800 dark:text-white/90 tabular-nums">{{ number_format((float) ($order->tax ?? 0), 2) }}</div>
-                        </td>
-                        <td colspan="1" class="px-2 py-2">
-                            <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Total</div>
-                            <div class="text-sm font-semibold text-gray-800 dark:text-white/90 tabular-nums">{{ number_format((float) ($order->total ?? 0), 2) }}</div>
-                        </td>
-                        <td colspan="1" class="px-2 py-2">
-                            <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Moneda</div>
-                            <div class="text-sm text-gray-800 dark:text-white/90">{{ $order->currency ?? '-' }}</div>
-                        </td>
-                        <td colspan="1" class="px-2 py-2">
-                            <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Área</div>
-                            <div class="text-sm text-gray-800 dark:text-white/90">{{ $order->area?->name ?? '-' }}</div>
-                        </td>
-                        <td colspan="1" class="px-2 py-2">
-                            <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Mesa</div>
-                            <div class="text-sm text-gray-800 dark:text-white/90">{{ $order->table?->name ?? '-' }}</div>
-                        </td>
-                        <td colspan="1" class="px-2 py-2">
-                            <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Tipo doc.</div>
-                            <div class="text-sm text-gray-800 dark:text-white/90">{{ $order->movement?->documentType?->name ?? '-' }}</div>
+                    {{-- Acordeón: Detalle del pedido (estilo compras) --}}
+                    <tr x-show="openRow === {{ $order->id }}" x-cloak x-transition
+                        class="bg-slate-50 dark:bg-slate-800/40 border-b border-gray-200 dark:border-gray-800">
+                        <td colspan="7" class="px-6 py-5">
+                            <div class="rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900 overflow-hidden shadow-sm">
+                                <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/80 flex items-center gap-2">
+                                    <i class="ri-file-list-3-line text-brand-500"></i>
+                                    <h4 class="text-sm font-bold text-gray-700 dark:text-gray-200">Detalle del pedido #{{ $order->movement?->number ?? $order->id }}</h4>
+                                </div>
+                                <div class="overflow-x-auto">
+                                    <table class="w-full text-sm text-left">
+                                        <thead class="text-xs text-gray-500 uppercase bg-white dark:bg-gray-900 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800">
+                                            <tr>
+                                                <th class="px-4 py-3 font-semibold">Subtotal</th>
+                                                <th class="px-4 py-3 font-semibold">IGV</th>
+                                                <th class="px-4 py-3 font-semibold text-right">Total</th>
+                                                <th class="px-4 py-3 font-semibold">Moneda</th>
+                                                <th class="px-4 py-3 font-semibold">Área</th>
+                                                <th class="px-4 py-3 font-semibold">Mesa</th>
+                                                <th class="px-4 py-3 font-semibold">Tipo doc.</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr class="hover:bg-gray-50/50 dark:hover:bg-white/5 transition-colors">
+                                                <td class="px-4 py-3 font-medium text-gray-700 dark:text-gray-300 tabular-nums">{{ number_format((float) ($order->subtotal ?? 0), 2) }}</td>
+                                                <td class="px-4 py-3 text-gray-600 dark:text-gray-400 tabular-nums">{{ number_format((float) ($order->tax ?? 0), 2) }}</td>
+                                                <td class="px-4 py-3 text-right font-bold text-gray-700 dark:text-gray-300 tabular-nums">{{ number_format((float) ($order->total ?? 0), 2) }}</td>
+                                                <td class="px-4 py-3 text-gray-600 dark:text-gray-400">{{ $order->currency ?? '-' }}</td>
+                                                <td class="px-4 py-3 text-gray-600 dark:text-gray-400">{{ $order->area?->name ?? '-' }}</td>
+                                                <td class="px-4 py-3 text-gray-600 dark:text-gray-400">{{ $order->table?->name ?? '-' }}</td>
+                                                <td class="px-4 py-3 text-gray-600 dark:text-gray-400">{{ $order->movement?->documentType?->name ?? '-' }}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
                         </td>
                     </tr>
                 @empty

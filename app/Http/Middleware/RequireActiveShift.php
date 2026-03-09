@@ -27,8 +27,8 @@ class RequireActiveShift
                 ], 403);
             }
 
-            return back()
-                ->withErrors(['error' => $message])
+            return redirect()->back()
+                ->with('error', $message)
                 ->withInput();
         }
 

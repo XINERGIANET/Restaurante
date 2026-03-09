@@ -64,21 +64,21 @@
             <div class="table-responsive mt-4 rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
                 <table class="w-full min-w-[700px]">
                     <thead>
-                        <tr class="text-white">
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6 first:rounded-tl-xl">
-                                <p class="font-semibold text-white text-theme-xs">Nombre</p>
+                        <tr style="background-color: #63B7EC; color: #FFFFFF;">
+                            <th class="px-5 py-3 text-left sm:px-6 first:rounded-tl-xl">
+                                <p class="font-semibold text-theme-xs">Nombre</p>
                             </th>
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
-                                <p class="font-semibold text-white text-theme-xs">Descripción</p>
+                            <th class="px-5 py-3 text-left sm:px-6">
+                                <p class="font-semibold text-theme-xs">Descripción</p>
                             </th>
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-center sm:px-6">
-                                <p class="font-semibold text-white text-theme-xs">Comportamiento</p>
+                            <th class="px-5 py-3 text-center sm:px-6">
+                                <p class="font-semibold text-theme-xs">Comportamiento</p>
                             </th>
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-left sm:px-6">
-                                <p class="font-semibold text-white text-theme-xs">Sucursal</p>
+                            <th class="px-5 py-3 text-center sm:px-6">
+                                <p class="font-semibold text-theme-xs">Sucursal</p>
                             </th>
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 text-center sm:px-6 last:rounded-tr-xl">
-                                <p class="font-semibold text-white text-theme-xs">Acciones</p>
+                            <th class="px-5 py-3 text-center sm:px-6 last:rounded-tr-xl">
+                                <p class="font-semibold text-theme-xs">Acciones</p>
                             </th>
                         </tr>
                     </thead>
@@ -101,7 +101,7 @@
                                     @endif
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
-                                    <p class="text-theme-sm text-gray-600 dark:text-gray-400">{{ $productType->branch->legal_name ?? '—' }}</p>
+                                    <p class="text-center text-theme-sm text-gray-600 dark:text-gray-400">{{ $productType->branch->legal_name ?? '—' }}</p>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
                                     <div class="flex items-center justify-center gap-2">

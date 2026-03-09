@@ -142,29 +142,29 @@
             <div class="table-responsive mt-4 rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
                 <table class="w-full min-w-[1100px]">
                     <thead>
-                        <tr class="border-b border-gray-100 dark:border-gray-800 text-left">
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 font-medium text-theme-xs first:rounded-tl-xl sticky-left-header">Nombre / Abr.</th>
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 font-medium text-theme-xs">Sucursal</th>
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 font-medium text-theme-xs">Horario</th>
-                            <th style="background-color: #63B7EC; color: #FFFFFF;" class="px-5 py-3 font-medium text-theme-xs text-right last:rounded-tr-xl">Acciones</th>
+                        <tr style="background-color: #63B7EC; color: #FFFFFF;" class="border-b border-gray-100 dark:border-gray-800 text-left">
+                            <th class="px-5 py-3 text-center sm:px-6 font-medium text-theme-xs first:rounded-tl-xl sticky-left-header">Nombre / Abr.</th>
+                            <th class="px-5 py-3 text-center sm:px-6 font-medium text-theme-xs">Sucursal</th>
+                            <th class="px-5 py-3 text-center sm:px-6 font-medium text-theme-xs">Horario</th>
+                            <th class="px-5 py-3 text-center sm:px-6 font-medium text-theme-xs last:rounded-tr-xl">Acciones</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
                         @forelse ($shifts as $shift)
                             <tr class="transition hover:bg-gray-50 dark:hover:bg-white/5">
                                 <td class="px-5 py-4 sticky-left">
-                                    <div class="flex flex-col">
+                                    <div class="flex flex-col text-center">
                                         <p class="font-medium text-gray-800 text-theme-sm dark:text-white/90">{{ $shift->name }}</p>
                                         <span class="text-xs text-gray-400">{{ $shift->abbreviation }}</span>
                                     </div>
                                 </td>
-                                <td class="px-5 py-4">
+                                <td class="px-5 py-4 text-center">
                                     <x-ui.badge variant="light" color="primary">
                                         {{ $shift->branch->legal_name ?? 'Sin asignar' }}
                                     </x-ui.badge>
                                 </td>
-                                <td class="px-5 py-4">
-                                    <div class="flex items-center gap-2 text-gray-600 dark:text-gray-300">
+                                <td class="px-5 py-4 text-center">
+                                    <div class="flex items-center justify-center gap-2 text-gray-600 dark:text-gray-300">
                                         <i class="ri-time-line"></i>
                                         <span class="text-sm font-medium">
                                             {{ \Carbon\Carbon::parse($shift->start_time)->format('H:i') }} -
@@ -172,8 +172,8 @@
                                         </span>
                                     </div>
                                 </td>
-                                <td class="px-5 py-4">
-                                    <div class="flex items-center justify-end gap-2">
+                                <td class="px-5 py-4 text-center">
+                                    <div class="flex items-center justify-center gap-2">
                                         @if ($rowOperations->isNotEmpty())
                                             @foreach ($rowOperations as $operation)
                                                 @php

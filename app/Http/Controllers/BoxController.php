@@ -68,15 +68,14 @@ class BoxController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'number' => 'required|string|max:20|unique:cash_registers,number',
+            'number' => 'required|string|max:50',
             'series' => 'required|string|max:10',
             'status' => 'required|boolean',
         ], [
-            'number.required' => 'El número de caja es obligatorio.',
-            'number.unique'   => 'Este número de caja ya existe.',
+            'number.required' => 'El nombre de caja es obligatorio.',
             'series.required' => 'La serie es obligatoria.',
         ]);
-        
+
         try {
             CashRegister::create([
                 'number'    => $validated['number'],
@@ -115,7 +114,7 @@ class BoxController extends Controller
     public function update(Request $request, CashRegister $box)
     {
         $validated = $request->validate([
-            'number' => 'required|string|max:20|unique:cash_registers,number,' . $box->id,
+            'number' => 'required|string|max:50',
             'series' => 'required|string|max:10',
             'status' => 'required|boolean',
         ]);
