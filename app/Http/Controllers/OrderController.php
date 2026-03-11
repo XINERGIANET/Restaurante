@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Area;
+use App\Models\Bank;
 use App\Models\Branch;
 use App\Models\Card;
 use App\Models\CashMovements;
@@ -375,6 +376,10 @@ class OrderController extends Controller
         $cashRegisterId = $request->input('cash_register_id');
         $branchId = $request->session()->get('branch_id');
 
+        $branch = $branchId ? Branch::with('company')->find($branchId) : null;
+        $companyName = $branch?->company?->legal_name;
+        $branchName = $branch?->legal_name;
+
         $orders = OrderMovement::query()
             ->with(['movement.documentType', 'movement.movementType', 'table', 'area'])
             ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
@@ -440,10 +445,12 @@ class OrderController extends Controller
         }
 
         $pdf = SnappyPdf::loadView('orders.pdfs.pdf_report', [
-            'orders' => $orders,
-            'dateFrom' => $dateFrom,
-            'dateTo' => $dateTo,
-            'filters' => $filters,
+            'orders'      => $orders,
+            'dateFrom'    => $dateFrom,
+            'dateTo'      => $dateTo,
+            'filters'     => $filters,
+            'companyName' => $companyName,
+            'branchName'  => $branchName,
         ]);
         return $pdf->download('reporte_pedidos.pdf');
     }
@@ -660,6 +667,10 @@ class OrderController extends Controller
             ->where('status', true)
             ->orderBy('order_num')
             ->get(['id', 'description', 'order_num']);
+        $banks = Bank::query()
+            ->where('status', true)
+            ->orderBy('order_num')
+            ->get(['id', 'description', 'order_num']);
         $cashRegisters = CashRegister::query()
             ->where('status', '1')
             ->orderBy('number')
@@ -686,6 +697,7 @@ class OrderController extends Controller
             'paymentGateways' => $paymentGateways,
             'cards' => $cards,
             'digitalWallets' => $digitalWallets,
+            'banks' => $banks,
             'cashRegisters' => $cashRegisters,
             'waiterPinEnabled' => $this->shouldRequireWaiterPin((int) $branchId, session('profile_id') ?? $request->user()?->profile_id),
             'canCharge' => $this->canCharge(session('profile_id') ?? $request->user()?->profile_id),
@@ -737,6 +749,11 @@ class OrderController extends Controller
             ->get(['id', 'description', 'type', 'icon', 'order_num']);
 
         $digitalWallets = DigitalWallet::query()
+            ->where('status', true)
+            ->orderBy('order_num')
+            ->get(['id', 'description', 'order_num']);
+
+        $banks = Bank::query()
             ->where('status', true)
             ->orderBy('order_num')
             ->get(['id', 'description', 'order_num']);
@@ -831,6 +848,7 @@ class OrderController extends Controller
             'paymentGateways' => $paymentGateways,
             'cards' => $cards,
             'digitalWallets' => $digitalWallets,
+            'banks' => $banks,
             'draftOrder' => $draftOrder,
             'pendingAmount' => $pendingAmount,
             'products' => $products,
@@ -1352,6 +1370,9 @@ class OrderController extends Controller
                         $digitalWallet = !empty($paymentMethodData['digital_wallet_id'])
                             ? DigitalWallet::find((int) $paymentMethodData['digital_wallet_id'])
                             : null;
+                        $bank = !empty($paymentMethodData['bank_id'])
+                            ? Bank::find((int) $paymentMethodData['bank_id'])
+                            : null;
 
                         DB::table('cash_movement_details')->insert([
                             'cash_movement_id' => $cashMovement->id,
@@ -1362,8 +1383,8 @@ class OrderController extends Controller
                             'number' => $cashEntryMovement->number,
                             'card_id' => $card?->id,
                             'card' => $card?->description,
-                            'bank_id' => null,
-                            'bank' => null,
+                            'bank_id' => $bank?->id,
+                            'bank' => $bank?->description ?? '',
                             'digital_wallet_id' => $digitalWallet?->id,
                             'digital_wallet' => $digitalWallet?->description,
                             'payment_gateway_id' => $paymentGateway?->id,
@@ -1416,31 +1437,31 @@ class OrderController extends Controller
         ], 404);
     }
 
+    /**
+     * Genera número de pedido por sucursal (branch + movement_type + document_type).
+     * Secuencia independiente por sucursal, sin conflictos entre sucursales.
+     */
     private function generateOrderMovementNumber(int $branchId, int $movementTypeId, int $documentTypeId): string
     {
-        if (DB::connection()->getDriverName() === 'pgsql') {
-            // Serializar con advisory lock
-            DB::statement('SELECT pg_advisory_xact_lock(?)', [7000001]);
-            // Secuencia de 8 dígitos: 00000001, 00000002, ...
-            DB::statement('CREATE SEQUENCE IF NOT EXISTS order_movement_number_seq START WITH 1');
-            $next = DB::selectOne("SELECT nextval('order_movement_number_seq') AS v");
-            $val = (int) $next->v;
-            // Si la secuencia se pasó de 8 dígitos, reiniciar para mostrar 00000001, 00000002, ...
-            if ($val > 99999999) {
-                DB::statement("SELECT setval('order_movement_number_seq', 1)");
-                $val = 1;
-            }
-            return str_pad((string) $val, 8, '0', STR_PAD_LEFT);
+        $driver = DB::connection()->getDriverName();
+
+        if ($driver === 'pgsql') {
+            // Lock por sucursal: evita conflictos entre sucursales (cada una usa su propio lock)
+            DB::statement('SELECT pg_advisory_xact_lock(?)', [7000000 + $branchId]);
         }
 
-        // Fallback para MySQL u otro: lock de fila + máximo
-        $last = Movement::query()
+        $query = Movement::query()
             ->where('branch_id', $branchId)
             ->where('movement_type_id', $movementTypeId)
-            ->where('document_type_id', $documentTypeId)
-            ->orderByRaw("COALESCE(NULLIF(REGEXP_REPLACE(number, '[^0-9]', '', 'g'), '')::BIGINT, 0) DESC")
-            ->lockForUpdate()
-            ->first();
+            ->where('document_type_id', $documentTypeId);
+
+        if ($driver === 'pgsql') {
+            $query->orderByRaw("COALESCE(NULLIF(REGEXP_REPLACE(number, '[^0-9]', '', 'g'), '')::BIGINT, 0) DESC");
+        } else {
+            $query->orderByRaw("COALESCE(CAST(NULLIF(REGEXP_REPLACE(number, '[^0-9]', '', 'g'), '') AS UNSIGNED), 0) DESC");
+        }
+
+        $last = $query->lockForUpdate()->first();
 
         $lastCorrelative = 0;
         if ($last) {

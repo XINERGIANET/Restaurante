@@ -102,14 +102,18 @@
                 <p class="text-sm text-gray-500 mt-1">Agrega uno o más métodos para cubrir el monto.</p>
             </div>
 
-            <div class="mt-4 sm:mt-0 text-right px-4 py-2 rounded-lg transition-colors duration-300"
-                :class="formConcept === 'Cierre de caja' ? 'bg-red-50/50 dark:bg-red-900/10' : 'bg-brand-50/50 dark:bg-brand-900/10'">
-                <span class="block text-xs font-medium uppercase tracking-wider transition-colors duration-300"
+            <div class="mt-4 sm:mt-0 text-right px-4 py-3 rounded-xl shadow-sm border border-gray-200/70 bg-white/80 backdrop-blur-sm dark:border-gray-700 dark:bg-gray-900/60 transition-colors duration-300"
+                :class="formConcept === 'Cierre de caja' ? 'ring-1 ring-red-200/70 dark:ring-red-900/40' : 'ring-1 ring-brand-200/70 dark:ring-brand-900/40'">
+                <span class="block text-[11px] font-semibold uppercase tracking-[0.18em] mb-1"
                     :class="formConcept === 'Cierre de caja' ? 'text-red-600 dark:text-red-400' : 'text-brand-600 dark:text-brand-400'"
                     x-text="formConcept === 'Cierre de caja' ? 'Balance del Turno' : 'Total a Pagar'">
                 </span>
-                <span class="block text-2xl font-bold text-gray-900 dark:text-white">
+                <span class="block text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white leading-tight">
                     S/. <span x-text="formConcept === 'Cierre de caja' ? Number(currentBalance).toFixed(2) : totalAmount"></span>
+                </span>
+                <span class="mt-2 inline-flex items-center justify-end gap-1 text-[11px] font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    <i class="ri-safe-line text-xs opacity-70"></i>
+                    <span>Monto en caja: S/. {{ number_format($currentBalance, 2) }}</span>
                 </span>
             </div>
         </div>

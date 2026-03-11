@@ -8,16 +8,7 @@
     <x-common.page-breadcrumb pageTitle="Módulos" />
 
     <x-ui.modal
-        x-data="{
-            open: true,
-            close() {
-                if (window.Turbo && typeof window.Turbo.visit === 'function') {
-                    window.Turbo.visit('{{ $indexUrl }}', { action: 'replace' });
-                } else {
-                    window.location.href = '{{ $indexUrl }}';
-                }
-            }
-        }"
+        x-data="{ open: true }"
         :isOpen="true"
         :showCloseButton="false"
         class="max-w-3xl"
@@ -36,14 +27,13 @@
                 </div>
                 
                 {{-- BOTÓN CERRAR SUPERIOR (X) --}}
-                <button
-                    type="button"
-                    @click="close()"
+                <a
+                    href="{{ $indexUrl }}"
                     class="flex h-11 w-11 items-center justify-center rounded-full bg-gray-100 text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
                     aria-label="Cerrar"
                 >
                     <i class="ri-close-line text-xl"></i>
-                </button>
+                </a>
             </div>
 
             {{-- ALERTAS DE ERROR --}}
@@ -128,15 +118,12 @@
                         <span>Actualizar</span>
                     </x-ui.button>
                     
-                    <x-ui.button
-                        type="button"
-                        size="md"
-                        variant="outline"
-                        @click="close()"
+                    <a href="{{ $indexUrl }}"
+                        class="inline-flex items-center justify-center font-medium gap-2 rounded-xl transition px-5 py-3.5 text-sm bg-white text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-400 dark:ring-gray-700 dark:hover:bg-white/[0.03] dark:hover:text-gray-300"
                     >
                         <i class="ri-close-line"></i>
                         <span>Cancelar</span>
-                    </x-ui.button>
+                    </a>
                 </div>
             </form>
         </div>

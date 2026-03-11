@@ -23,6 +23,7 @@ use App\Models\Operation;
 class PettyCashController extends Controller
 {
 
+
     public function redirectBase(Request $request)
     {
         $branchId = $request->session()->get('branch_id');
@@ -38,7 +39,7 @@ class PettyCashController extends Controller
             }
             return redirect()->route('petty-cash.index', $params);
         }
-        abort(404, 'No hay cajas registradas');
+        return redirect()->route('boxes.index')->with('error', 'No hay cajas registradas');
     }
 
     public function index(Request $request, $cash_register_id = null)

@@ -1,7 +1,15 @@
 <!--Modal de edicion de tarjeta-->
-    <x-ui.modal x-data="{ open: false, cardId: null, description: '', type: '', orderNum: null, icon: '', status: '1' }"
+    <x-ui.modal x-data="{
+        open: false,
+        cardId: null,
+        description: '',
+        type: '',
+        orderNum: null,
+        icon: '',
+        status: '1'
+    }"
         @open-edit-card-modal.window="open = true; cardId = $event.detail.id; description = $event.detail.description; type = $event.detail.type; orderNum = $event.detail.order_num; icon = $event.detail.icon || ''; status = $event.detail.status.toString()"
-        @close-edit-card-modal.window="open = false" :isOpen="false" class="max-w-md">
+        @close-edit-card-modal.window="open = false" :isOpen="false" :showCloseButton="false" class="max-w-md">
     <div class="p-6 space-y-4">
         <h3 class="mb-6 text-lg font-semibold text-gray-800 dark:text-white/90">Editar Tarjeta</h3>
         @if ($errors->any())

@@ -2,9 +2,15 @@
     $viewId = request('view_id');
 @endphp
 <!--Modal de edicion de método de pago-->
-<x-ui.modal x-data="{ open: false, paymentMethodId: null, description: '', orderNum: null, status: '1' }"
+<x-ui.modal x-data="{
+        open: false,
+        paymentMethodId: null,
+        description: '',
+        orderNum: null,
+        status: '1'
+    }"
     @open-edit-payment-method-modal.window="open = true; paymentMethodId = $event.detail.id; description = $event.detail.description; orderNum = $event.detail.order_num || ''; status = $event.detail.status.toString()"
-    @close-edit-payment-method-modal.window="open = false" :isOpen="false" class="max-w-md">
+    @close-edit-payment-method-modal.window="open = false" :isOpen="false" :showCloseButton="false" class="max-w-md">
     <div class="p-6 space-y-4">
         <h3 class="mb-6 text-lg font-semibold text-gray-800 dark:text-white/90">Editar Método de Pago</h3>
         @if ($errors->any())

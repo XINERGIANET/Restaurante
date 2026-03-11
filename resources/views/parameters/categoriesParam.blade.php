@@ -283,7 +283,7 @@
 
     <!--Modal de creacion de categoria-->
     <x-ui.modal x-data="{ open: false }" @open-create-category-modal.window="open = true"
-        @close-create-category-modal.window="open = false" :isOpen="false" :showCloseButton="false" class="max-w-md">
+        @close-create-category-modal.window="open = false" :isOpen="false" class="max-w-md">
         <div class="p-6 sm:p-8">
             <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div class="flex items-center gap-4">
@@ -329,7 +329,11 @@
     </x-ui.modal>
 
     <!--Modal de edicion de categoria-->
-    <x-ui.modal x-data="{ open: false, categoryId: null, description: '' }"
+    <x-ui.modal x-data="{
+        open: false,
+        categoryId: null,
+        description: ''
+    }"
         @open-edit-category-modal.window="open = true; categoryId = $event.detail.id; description = $event.detail.description"
         @close-edit-category-modal.window="open = false" :isOpen="false" :showCloseButton="false" class="max-w-md">
         <div class="p-6 sm:p-8">

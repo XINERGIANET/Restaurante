@@ -110,14 +110,14 @@ class TableController extends Controller
             'name' => $data['name'],
             'capacity' => $data['capacity'],
             'status' => $data['status'],
-            'situation' => $data['situation'] ?? 'libre',
+            'situation' => $data['situation'],
             'opened_at' => $data['opened_at'],
             'area_id' => $area->id,
             'branch_id' => $area->branch_id,
         ]);
 
         return redirect()->route('areas.tables.index', $area)
-            ->with('success', 'Mesa creada correctamente');
+            ->with('status', 'Mesa creada correctamente');
     }
 
     public function storeGeneral(Request $request)
@@ -146,7 +146,7 @@ class TableController extends Controller
         $viewId = $request->input('view_id');
 
         return redirect()->route('tables.index', $viewId ? ['view_id' => $viewId] : [])
-            ->with('success', 'Mesa creada correctamente');
+            ->with('status', 'Mesa creada correctamente');
     }
 
     public function edit(Area $area, Table $table)
@@ -185,7 +185,7 @@ class TableController extends Controller
         $table->update($data);
 
         return redirect()->route('areas.tables.index', $area)
-            ->with('success', 'Mesa actualizada correctamente');
+            ->with('status', 'Mesa actualizada correctamente');
     }
 
     public function updateGeneral(Table $table, Request $request)
@@ -214,7 +214,7 @@ class TableController extends Controller
         $viewId = $request->input('view_id');
 
         return redirect()->route('tables.index', $viewId ? ['view_id' => $viewId] : [])
-            ->with('success', 'Mesa actualizada correctamente');
+            ->with('status', 'Mesa actualizada correctamente');
     }
 
     public function destroy(Area $area, Table $table)
@@ -222,7 +222,7 @@ class TableController extends Controller
         $table->delete();
 
         return redirect()->route('areas.tables.index', $area)
-            ->with('success', 'Mesa eliminada correctamente');
+            ->with('status', 'Mesa eliminada correctamente');
     }
 
     public function destroyGeneral(Table $table)
@@ -232,6 +232,6 @@ class TableController extends Controller
         $viewId = request()->input('view_id');
 
         return redirect()->route('tables.index', $viewId ? ['view_id' => $viewId] : [])
-            ->with('success', 'Mesa eliminada correctamente');
+            ->with('status', 'Mesa eliminada correctamente');
     }
 }

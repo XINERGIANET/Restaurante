@@ -199,17 +199,19 @@
                                 $desc = strtolower($paymentMethod->description);
                                 $isCard = (str_contains($desc, 'tarjeta') || str_contains($desc, 'card')) && !str_contains($desc, 'billetera');
                                 $isWallet = str_contains($desc, 'billetera');
+                                $isTransfer = str_contains($desc, 'transferencia') || str_contains($desc, 'transfer') || str_contains($desc, 'deposito') || str_contains($desc, 'depósito');
                                 $icon = $isCard ? 'fa-credit-card'
                                     : (str_contains($desc, 'efectivo') || str_contains($desc, 'cash') ? 'fa-money-bill-wave'
                                     : (str_contains($desc, 'yape') || str_contains($desc, 'plin') ? 'fa-mobile-alt'
-                                    : (str_contains($desc, 'transfer') ? 'fa-exchange-alt' : 'fa-wallet')));
+                                    : ((str_contains($desc, 'transfer') || str_contains($desc, 'deposito') || str_contains($desc, 'depósito')) ? 'fa-exchange-alt' : 'fa-wallet')));
                             @endphp
                             <button type="button"
                                 class="pm-selection-btn group flex items-center gap-3 rounded-xl border-2 border-gray-200 bg-gray-50 p-3.5 text-left transition hover:border-blue-500 hover:bg-blue-50 dark:border-gray-600 dark:bg-gray-700/60 dark:hover:border-blue-500 dark:hover:bg-blue-900/20"
                                 data-method-id="{{ $paymentMethod->id }}"
                                 data-method-name="{{ $paymentMethod->description }}"
                                 data-is-card="{{ $isCard ? '1' : '0' }}"
-                                data-is-wallet="{{ $isWallet ? '1' : '0' }}">
+                                data-is-wallet="{{ $isWallet ? '1' : '0' }}"
+                                data-is-transfer="{{ $isTransfer ? '1' : '0' }}">
                                 <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm dark:bg-gray-700 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/40 transition">
                                     <i class="fas {{ $icon }} text-gray-500 dark:text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition"></i>
                                 </div>
@@ -455,6 +457,7 @@
             // Documentos disponibles (se cargarán desde el servidor)
             const documentTypes = @json($documentTypes ?? []);
             const paymentMethods = @json($paymentMethods ?? []);
+            const banks = @json($banks ?? []);
             const paymentGateways = @json($paymentGateways ?? []);
             const cards = @json($cards ?? []);
             const digitalWallets = @json($digitalWallets ?? []);
@@ -549,6 +552,8 @@
                 const isCard = paymentMethod.isCard || false;
                 const isWallet = paymentMethod.isWallet || false;
                 const methodName = paymentMethod.methodName || '';
+                const desc = (methodName || '').toLowerCase();
+                const isTransfer = desc.includes('transferencia') || desc.includes('transfer') || desc.includes('deposito') || desc.includes('depósito');
                 const amount = paymentMethod.amount || 0;
                 const methodId = paymentMethod.methodId || null;
                 const gatewayId = paymentMethod.gatewayId || null;
@@ -557,6 +562,8 @@
                 const cardName = paymentMethod.cardName || '';
                 const walletId = paymentMethod.walletId || null;
                 const walletName = paymentMethod.walletName || '';
+                const bankId = paymentMethod.bankId || null;
+                const bankName = paymentMethod.bankName || '';
 
                 // Determinar el icono según el método
                 const getMethodIcon = (methodDesc) => {
@@ -564,13 +571,24 @@
                     if (desc.includes('tarjeta') || desc.includes('card')) return 'fa-credit-card';
                     if (desc.includes('efectivo') || desc.includes('cash')) return 'fa-money-bill-wave';
                     if (desc.includes('yape') || desc.includes('plin') || desc.includes('billetera')) return 'fa-mobile-alt';
-                    if (desc.includes('transferencia') || desc.includes('transfer')) return 'fa-exchange-alt';
+                    if (desc.includes('transferencia') || desc.includes('transfer') || desc.includes('deposito') || desc.includes('depósito')) return 'fa-exchange-alt';
                     return 'fa-wallet';
                 };
 
                 const methodIcon = getMethodIcon(methodName);
                 const hasCardInfo = isCard && gatewayName && cardName;
                 const hasWalletInfo = isWallet && walletName;
+                const hasBankInfo = isTransfer && bankId && bankName;
+
+                const bankInfo = isTransfer ? `
+                    <div class="mb-2 rounded-lg border-2 ${hasBankInfo ? 'border-indigo-200 bg-indigo-50' : 'border-orange-200 bg-orange-50'} p-2 dark:${hasBankInfo ? 'border-indigo-800 bg-indigo-900/20' : 'border-orange-800 bg-orange-900/20'}">
+                        <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Banco destino</label>
+                        <select class="bank-select w-full rounded-lg border border-gray-200 py-2 px-3 text-sm font-medium focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white" data-index="${index}">
+                            <option value="">Seleccionar banco</option>
+                            ${(banks || []).map(b => `<option value="${b.id}" ${bankId == b.id ? 'selected' : ''}>${b.description || ''}</option>`).join('')}
+                        </select>
+                    </div>
+                ` : '';
 
                 const walletInfo = isWallet ? `
                     <div class="mb-2 rounded-lg border-2 ${hasWalletInfo ? 'border-emerald-200 bg-emerald-50' : 'border-orange-200 bg-orange-50'} p-2 dark:${hasWalletInfo ? 'border-emerald-800 bg-emerald-900/20' : 'border-orange-800 bg-orange-900/20'}">
@@ -611,6 +629,7 @@
                                         <p class="text-sm font-semibold text-gray-900 dark:text-white">${methodName || 'Seleccionar método'}</p>
                                         ${isCard && !hasCardInfo ? '<p class="text-xs text-orange-600 dark:text-orange-400 mt-0.5">Configurar pasarela y tarjeta</p>' : ''}
                                         ${isWallet && !hasWalletInfo ? '<p class="text-xs text-orange-600 dark:text-orange-400 mt-0.5">Elegir billetera (Yape, Plin...)</p>' : ''}
+                                        ${isTransfer && !hasBankInfo ? '<p class="text-xs text-orange-600 dark:text-orange-400 mt-0.5">Seleccionar banco</p>' : ''}
                                     </div>
                                     <i class="fas fa-chevron-down text-xs text-gray-400"></i>
                                 </div>
@@ -621,6 +640,7 @@
                         </div>
                         ${walletInfo}
                         ${cardInfo}
+                        ${bankInfo}
                         <div class="flex items-center gap-2">
                             <div class="relative flex-1">
                                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-gray-600 dark:text-gray-400">S/</span>
@@ -634,6 +654,7 @@
                         <input type="hidden" class="payment-method-id" value="${methodId || ''}" data-index="${index}">
                         <input type="hidden" class="payment-gateway-id" value="${gatewayId || ''}" data-index="${index}">
                         <input type="hidden" class="payment-card-id" value="${cardId || ''}" data-index="${index}">
+                        <input type="hidden" class="payment-bank-id" value="${bankId || ''}" data-index="${index}">
                     </div>
                 `;
             }
@@ -679,6 +700,7 @@
                 const isCard = defaultMethod && (defaultMethod.description.toLowerCase().includes('tarjeta') || defaultMethod.description.toLowerCase().includes('card'));
                 const descDef = (defaultMethod?.description || '').toLowerCase();
                 const isWallet = descDef.includes('billetera');
+                const isTransferDef = descDef.includes('transferencia') || descDef.includes('transfer') || descDef.includes('deposito') || descDef.includes('depósito');
                 // Si es el primer método, usar el total completo; si no, usar lo que falta
                 const initialAmount = paymentMethodsData.length === 0 ? total : (remaining > 0 ? remaining : 0);
                 
@@ -687,13 +709,16 @@
                     methodName: defaultMethod?.description || 'Seleccionar método',
                     isCard: isCard,
                     isWallet: isWallet,
+                    isTransfer: isTransferDef,
                     amount: initialAmount,
                     gatewayId: null,
                     cardId: null,
                     gatewayName: '',
                     cardName: '',
                     walletId: null,
-                    walletName: ''
+                    walletName: '',
+                    bankId: null,
+                    bankName: ''
                 };
                 
                 paymentMethodsData.push(newPaymentMethod);
@@ -750,16 +775,20 @@
                     const methodName = this.dataset.methodName;
                     const isCard = this.dataset.isCard === '1';
                     const isWallet = this.dataset.isWallet === '1';
+                    const isTransfer = this.dataset.isTransfer === '1';
                     
                     if (currentEditingIndex >= 0 && paymentMethodsData[currentEditingIndex]) {
                         paymentMethodsData[currentEditingIndex].methodId = methodId;
                         paymentMethodsData[currentEditingIndex].methodName = methodName;
                         paymentMethodsData[currentEditingIndex].isCard = isCard;
                         paymentMethodsData[currentEditingIndex].isWallet = isWallet;
+                        paymentMethodsData[currentEditingIndex].isTransfer = isTransfer;
                         
                         if (isCard) {
                             paymentMethodsData[currentEditingIndex].walletId = null;
                             paymentMethodsData[currentEditingIndex].walletName = '';
+                            paymentMethodsData[currentEditingIndex].bankId = null;
+                            paymentMethodsData[currentEditingIndex].bankName = '';
                             const savedIndex = currentEditingIndex;
                             closePaymentMethodModal(false);
                             currentEditingIndex = savedIndex;
@@ -771,10 +800,23 @@
                             paymentMethodsData[currentEditingIndex].cardName = '';
                             paymentMethodsData[currentEditingIndex].walletId = null;
                             paymentMethodsData[currentEditingIndex].walletName = '';
+                            paymentMethodsData[currentEditingIndex].bankId = null;
+                            paymentMethodsData[currentEditingIndex].bankName = '';
                             const savedIndex = currentEditingIndex;
                             closePaymentMethodModal(false);
                             currentEditingIndex = savedIndex;
                             setTimeout(() => openWalletModal(), 200);
+                        } else if (isTransfer) {
+                            paymentMethodsData[currentEditingIndex].gatewayId = null;
+                            paymentMethodsData[currentEditingIndex].cardId = null;
+                            paymentMethodsData[currentEditingIndex].gatewayName = '';
+                            paymentMethodsData[currentEditingIndex].cardName = '';
+                            paymentMethodsData[currentEditingIndex].walletId = null;
+                            paymentMethodsData[currentEditingIndex].walletName = '';
+                            paymentMethodsData[currentEditingIndex].bankId = null;
+                            paymentMethodsData[currentEditingIndex].bankName = '';
+                            updatePaymentMethodsList();
+                            closePaymentMethodModal();
                         } else {
                             paymentMethodsData[currentEditingIndex].gatewayId = null;
                             paymentMethodsData[currentEditingIndex].cardId = null;
@@ -782,6 +824,8 @@
                             paymentMethodsData[currentEditingIndex].cardName = '';
                             paymentMethodsData[currentEditingIndex].walletId = null;
                             paymentMethodsData[currentEditingIndex].walletName = '';
+                            paymentMethodsData[currentEditingIndex].bankId = null;
+                            paymentMethodsData[currentEditingIndex].bankName = '';
                             updatePaymentMethodsList();
                             closePaymentMethodModal();
                         }
@@ -838,6 +882,19 @@
                         const index = parseInt(this.dataset.index);
                         currentEditingIndex = index;
                         openWalletModal();
+                    });
+                });
+                
+                paymentMethodsList.querySelectorAll('.bank-select').forEach(sel => {
+                    sel.addEventListener('change', function() {
+                        const index = parseInt(this.dataset.index);
+                        const bankId = this.value ? parseInt(this.value) : null;
+                        const opt = this.options[this.selectedIndex];
+                        const bankName = opt ? opt.text.trim() : '';
+                        if (paymentMethodsData[index]) {
+                            paymentMethodsData[index].bankId = bankId;
+                            paymentMethodsData[index].bankName = bankName;
+                        }
                     });
                 });
                 
@@ -1622,6 +1679,7 @@
                         payment_gateway_id: pm.gatewayId ? parseInt(pm.gatewayId) : null,
                         card_id: pm.cardId ? parseInt(pm.cardId) : null,
                         digital_wallet_id: pm.walletId ? parseInt(pm.walletId) : null,
+                        bank_id: pm.bankId ? parseInt(pm.bankId) : null,
                     })),
                     notes: document.getElementById('sale-notes')?.value || '',
                 };

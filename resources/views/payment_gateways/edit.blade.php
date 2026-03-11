@@ -1,7 +1,13 @@
 <!--Modal de edicion de medio de pago-->
-<x-ui.modal x-data="{ open: false, paymentGatewayId: null, description: '', orderNum: null, status: '1' }"
+<x-ui.modal x-data="{
+        open: false,
+        paymentGatewayId: null,
+        description: '',
+        orderNum: null,
+        status: '1'
+    }"
     @open-edit-payment-gateway-modal.window="open = true; paymentGatewayId = $event.detail.id; description = $event.detail.description; orderNum = $event.detail.order_num; status = $event.detail.status.toString()"
-    @close-edit-payment-gateway-modal.window="open = false" :isOpen="false" class="max-w-md">
+    @close-edit-payment-gateway-modal.window="open = false" :isOpen="false" :showCloseButton="false" class="max-w-md">
     <div class="p-6 space-y-4">
         <h3 class="mb-6 text-lg font-semibold text-gray-800 dark:text-white/90">Editar Medio de Pago</h3>
         @if ($errors->any())

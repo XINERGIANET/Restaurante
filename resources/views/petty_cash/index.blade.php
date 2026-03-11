@@ -310,47 +310,36 @@
             </div>
 
             {{-- TABLA --}}
-            <div
-                class="table-responsive mt-4 overflow-x-auto max-w-full rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
-                <div class="max-w-full">
-                    <table class="w-full min-w-full">
-                        <thead style="background-color: #63B7EC; color: #FFFFFF;">
-                            <tr class="text-white" >
-                                <th class="px-5 py-3 text-center sm:px-6 sticky-left-header">
-                                    <p class="font-medium text-theme-xs dark:text-white">Orden</p>
+            <div class="mt-4 w-full overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
+                <table class="w-full min-w-0">
+                        <thead class="bg-[#63B7EC] text-white shadow-sm">
+                            <tr>
+                                <th class="w-14 px-3 py-3.5 text-center first:rounded-tl-xl">
+                                    <span class="text-xs font-semibold uppercase tracking-wider">Orden</span>
                                 </th>
-                                <th  class="px-5 py-3 text-left sm:px-6">
-                                    <p class="font-semibold text-white text-theme-xs uppercase">Numero</p>
+                                <th class="min-w-0 px-3 py-3.5 text-left">
+                                    <span class="text-xs font-semibold uppercase tracking-wider truncate block">Número</span>
                                 </th>
-                                <th  class="px-5 py-3 text-left sm:px-6">
-                                    <p class="font-semibold text-white text-theme-xs uppercase">Tipo</p>
+                                <th class="min-w-0 px-3 py-3.5 text-left">
+                                    <span class="text-xs font-semibold uppercase tracking-wider truncate block">Tipo</span>
                                 </th>
-                                <th  class="px-5 py-3 text-left sm:px-6">
-                                    <p class="font-semibold text-white text-theme-xs uppercase">Concepto</p>
+                                <th class="min-w-0 px-3 py-3.5 text-left">
+                                    <span class="text-xs font-semibold uppercase tracking-wider truncate block">Concepto</span>
                                 </th>
-                                <th  class="px-5 py-3 text-left sm:px-6">
-                                    <p class="font-semibold text-white text-theme-xs uppercase">Total (S/.)</p>
+                                <th class="min-w-0 px-3 py-3.5 text-left">
+                                    <span class="text-xs font-semibold uppercase tracking-wider truncate block">Total (S/.)</span>
                                 </th>
-                                <th  class="px-5 py-3 text-left sm:px-6">
-                                    <p class="font-semibold text-white text-theme-xs uppercase">Fecha</p>
+                                <th class="hidden lg:table-cell min-w-0 px-3 py-3.5 text-left">
+                                    <span class="text-xs font-semibold uppercase tracking-wider truncate block">Caja</span>
                                 </th>
-                                <th  class="px-5 py-3 text-left sm:px-6">
-                                    <p class="font-semibold text-white text-theme-xs uppercase">Usuario</p>
+                                <th class="hidden xl:table-cell min-w-0 px-3 py-3.5 text-left">
+                                    <span class="text-xs font-semibold uppercase tracking-wider truncate block">Turno</span>
                                 </th>
-                                <th  class="hidden lg:table-cell px-5 py-3 text-left sm:px-6">
-                                    <p class="font-semibold text-white text-theme-xs uppercase">Caja</p>
+                                <th class="px-6 py-3.5 text-center">
+                                    <span class="text-xs font-semibold uppercase tracking-wider truncate block">Métodos de pago</span>
                                 </th>
-                                <th  class="hidden xl:table-cell px-5 py-3 text-left sm:px-6">
-                                    <p class="font-semibold text-white text-theme-xs uppercase">Turno</p>
-                                </th>
-                                <th  class="px-5 py-3 text-left sm:px-6">
-                                    <p class="font-semibold text-white text-theme-xs uppercase">Situacion</p>
-                                </th>
-                                <th  class="px-5 py-3 text-left sm:px-6">
-                                    <p class="font-semibold text-white text-theme-xs uppercase">Metodos de pago</p>
-                                </th>
-                                <th  class="px-5 py-3 text-center sm:px-6 last:rounded-tr-xl">
-                                    <p class="font-semibold text-white text-theme-xs uppercase">Operaciones</p>
+                                <th class="px-6 py-3.5 text-center">
+                                    <span class="text-xs font-semibold uppercase tracking-wider truncate block">Operaciones</span>
                                 </th>
                             </tr>
                         </thead>
@@ -367,59 +356,48 @@
                                         ->values()
                                         ->implode(' | ');
                                 @endphp
-                                <tbody x-data="{ expanded: false }">
-                                <tr class="border-b border-gray-100 bg-white dark:border-gray-800 dark:bg-white/[0.03] transition hover:bg-gray-50 dark:hover:bg-white/5 align-top">
-                                    <td class="px-3 py-4 text-center sticky-left">
+                                <tbody x-data="{ expanded: false }" class="group/row">
+                                <tr class="border-b border-gray-100 bg-white dark:border-gray-800 dark:bg-white/[0.03] transition-colors hover:bg-sky-50/50 dark:hover:bg-white/5 align-middle even:bg-gray-50/50 dark:even:bg-white/[0.02]">
+                                    <td class="px-3 py-3 text-center">
                                         <button type="button" @click="expanded = !expanded"
-                                            class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-500 text-white transition hover:bg-brand-600 dark:bg-brand-500 dark:text-white">
-                                            <i class="ri-add-line" x-show="!expanded"></i>
-                                            <i class="ri-subtract-line" x-show="expanded"></i>
+                                            class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-brand-500 text-white transition hover:bg-brand-600 hover:scale-110 active:scale-95 dark:bg-brand-500 dark:text-white">
+                                            <i class="ri-add-line text-sm" x-show="!expanded"></i>
+                                            <i class="ri-subtract-line text-sm" x-show="expanded"></i>
                                         </button>
                                     </td>
-                                    <td class="px-3 py-4 sm:px-4 align-middle">
-                                        <p class="font-bold text-gray-800 text-theme-sm dark:text-white/90">{{ $movement->number }}</p>
+                                    <td class="px-3 py-3 align-middle min-w-0 overflow-hidden">
+                                        <p class="font-semibold text-gray-800 text-sm dark:text-white/90 truncate" title="{{ $movement->number }}">{{ $movement->number }}</p>
                                     </td>
-                                    <td class="px-3 py-4 sm:px-4 align-middle">
-                                        <x-ui.badge variant="light" color="{{ $isIngreso ? 'success' : 'error' }}">{{ $isIngreso ? 'Ingreso' : 'Egreso' }}</x-ui.badge>
+                                    <td class="px-3 py-3 align-middle min-w-0 overflow-hidden">
+                                        <x-ui.badge variant="light" color="{{ $isIngreso ? 'success' : 'error' }}" class="text-[11px]">{{ $isIngreso ? 'Ingreso' : 'Egreso' }}</x-ui.badge>
                                     </td>
-                                    <td class="px-3 py-4 sm:px-4 align-middle">
+                                    <td class="px-3 py-3 align-middle min-w-0 overflow-hidden">
                                         <x-ui.badge 
                                             variant="light" 
                                             :color="
                                                 str_contains(strtolower($conceptName), 'apertura') ? 'blue' : 
                                                 (str_contains(strtolower($conceptName), 'cierre') ? 'danger' : 'warning')
                                             " 
-                                            class="text-[10px]">
+                                            class="text-[11px] truncate max-w-full inline-block"
+                                            title="{{ $conceptName }}">
                                             {{ $conceptName }}
                                         </x-ui.badge>
                                     </td>
-                                    <td class="px-3 py-4 sm:px-4 align-middle">
-                                        <p class="font-bold text-gray-800 text-theme-sm dark:text-white/90">{{ number_format($movement->cashMovement?->total ?? 0, 2) }}</p>
+                                    <td class="px-3 py-3 align-middle min-w-0 overflow-hidden">
+                                        <p class="font-bold text-gray-900 text-sm tabular-nums dark:text-white">{{ number_format($movement->cashMovement?->total ?? 0, 2) }}</p>
                                     </td>
-                                    <td class="px-3 py-4 sm:px-4 align-middle">
-                                        <div>
-                                            <p class="text-gray-800 text-[11px] font-medium dark:text-white/90">{{ $movement->moved_at ? $movement->moved_at->format('Y-m-d') : '-' }}</p>
-                                            <p class="text-gray-500 text-[10px] dark:text-gray-400">{{ $movement->moved_at ? $movement->moved_at->format('h:i:s A') : '' }}</p>
-                                        </div>
+                                    <td class="hidden lg:table-cell px-3 py-3 align-middle min-w-0 overflow-hidden">
+                                        <p class="text-gray-600 text-xs dark:text-gray-400 capitalize">{{ $movement->cashMovement?->cash_register ?: '-' }}</p>
                                     </td>
-                                    <td class="px-3 py-4 sm:px-4 align-middle">
-                                        <p class="text-gray-800 text-[11px] font-bold dark:text-white/90">{{ $movement->user_name ?: '-' }}</p>
+                                    <td class="hidden xl:table-cell px-3 py-3 align-middle min-w-0 overflow-hidden">
+                                        <p class="text-gray-600 text-xs dark:text-gray-400 capitalize">{{ $movement->cashMovement?->shift?->name ?: '-' }}</p>
                                     </td>
-                                    <td class="hidden lg:table-cell px-3 py-4 sm:px-4 align-middle">
-                                        <p class="text-gray-500 text-[10px] dark:text-gray-400 capitalize">{{ $movement->cashMovement?->cash_register ?: '-' }}</p>
-                                    </td>
-                                    <td class="hidden xl:table-cell px-3 py-4 sm:px-4 align-middle">
-                                        <p class="text-gray-500 text-[10px] dark:text-gray-400 capitalize">{{ $movement->cashMovement?->shift?->name ?: '-' }}</p>
-                                    </td>
-                                    <td class="px-3 py-4 sm:px-4 align-middle">
-                                        <x-ui.badge variant="light" color="{{ $isActive ? 'success' : 'error' }}">{{ $isActive ? 'Activado' : 'Desactivado' }}</x-ui.badge>
-                                    </td>
-                                    <td class="px-3 py-4 sm:px-4 align-middle">
-                                        <p class="text-gray-800 text-[11px] font-medium dark:text-white/90 truncate max-w-[120px]" title="{{ $paymentSummary }}">
+                                    <td class="px-6 py-3 align-middle min-w-0 overflow-hidden">
+                                        <p class="text-gray-700 text-xs text-center font-medium dark:text-gray-300 truncate" title="{{ $paymentSummary }}">
                                             {{ $paymentSummary ?: '-' }}
                                         </p>
                                     </td>
-                                    <td class="px-5 py-4 sm:px-6 align-middle">
+                                    <td class="px-6 py-3 align-middle">
                                         <div class="flex items-center justify-end gap-2">
                                             @if ($rowOperations->isNotEmpty())
                                                 @foreach ($rowOperations as $operation)
@@ -457,13 +435,76 @@
                                         </div>
                                     </td>
                                 </tr>
-                                <tr x-show="expanded" x-cloak class="border-b border-gray-100 bg-gray-50 dark:border-gray-800 dark:bg-gray-900/20">
-                                    <td colspan="12" class="px-5 py-4 sm:px-6">
-                                        <div class="grid grid-cols-4 gap-x-4 gap-y-1 text-gray-800 dark:text-gray-200">
-                                            <div class="min-w-0"><p class="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Persona</p><p class="truncate text-sm">{{ $movement->person_name ?: '-' }}</p></div>
-                                            <div class="min-w-0"><p class="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Responsable</p><p class="truncate text-sm">{{ $movement->responsible_name ?: '-' }}</p></div>
-                                            <div class="min-w-0"><p class="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Origen</p><p class="truncate text-sm">{{ $movement->movement?->movementType?->description ?? '-' }} - {{ strtoupper(substr($movement->movement?->documentType?->name , 0, 1))?? '-' }}{{ $movement->movement?->salesMovement?->series }}-{{ $movement->number }}</p></div>
-                                            <div class="min-w-0"><p class="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Comentario</p><p class="truncate text-sm">{{ $movement->comment ?: '-' }}</p></div>
+                                <tr x-show="expanded" x-cloak
+                                    class="bg-gray-50/70 dark:bg-gray-800/40 border-b border-gray-100 dark:border-gray-800">
+                                    <td colspan="10" class="px-5 py-3 sm:px-6">
+                                        <div class="grid w-full grid-cols-5 gap-x-6 gap-y-3">
+                                            {{-- Fila 1 --}}
+                                            <div>
+                                                <div class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Fecha</div>
+                                                <div class="mt-0.5 text-sm text-gray-800 dark:text-white/90 whitespace-nowrap">
+                                                    {{ $movement->moved_at ? $movement->moved_at->format('d/m/Y H:i') : '-' }}</div>
+                                            </div>
+                                            <div>
+                                                <div class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Usuario</div>
+                                                <div class="mt-0.5 text-sm text-gray-800 dark:text-white/90 whitespace-nowrap">
+                                                    {{ $movement->user_name ?: '-' }}</div>
+                                            </div>
+                                            <div>
+                                                <div class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Persona</div>
+                                                <div class="mt-0.5 text-sm text-gray-800 dark:text-white/90 whitespace-nowrap">
+                                                    {{ $movement->person_name ?: '-' }}</div>
+                                            </div>
+                                            <div>
+                                                <div class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Moneda</div>
+                                                <div class="mt-0.5 text-sm text-gray-800 dark:text-white/90 whitespace-nowrap">
+                                                    {{ $movement->cashMovement?->currency ?? 'PEN' }}</div>
+                                            </div>
+                                            <div>
+                                                <div class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">T. cambio</div>
+                                                <div class="mt-0.5 text-sm text-gray-800 dark:text-white/90 whitespace-nowrap">
+                                                    {{ number_format((float) ($movement->cashMovement?->exchange_rate ?? 1), 3) }}</div>
+                                            </div>
+                                            {{-- Fila 2 --}}
+                                            <div>
+                                                <div class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Responsable</div>
+                                                <div class="mt-0.5 text-sm text-gray-800 dark:text-white/90 whitespace-nowrap">
+                                                    {{ $movement->responsible_name ?: '-' }}</div>
+                                            </div>
+                                            <div>
+                                                <div class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Caja</div>
+                                                <div class="mt-0.5 text-sm text-gray-800 dark:text-white/90 whitespace-nowrap">
+                                                    {{ $movement->cashMovement?->cash_register ?: '-' }}</div>
+                                            </div>
+                                            <div>
+                                                <div class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Turno</div>
+                                                <div class="mt-0.5 text-sm text-gray-800 dark:text-white/90 whitespace-nowrap">
+                                                    {{ $movement->cashMovement?->shift?->name ?: '-' }}</div>
+                                            </div>
+                                            <div>
+                                                <div class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Comentario</div>
+                                                <div class="mt-0.5 text-sm text-gray-800 dark:text-white/90">
+                                                    {{ Str::limit($movement->comment ?? '-', 40) }}</div>
+                                            </div>
+                                            <div>
+                                                <div class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Desglose pagos</div>
+                                                <div class="mt-0.5 text-sm text-gray-800 dark:text-white/90">
+                                                    @php $details = $movement->cashMovement?->details ?? collect(); @endphp
+                                                    @forelse ($details as $d)
+                                                        <span class="inline-block mr-2">{{ ($d->payment_method ?: 'Otro') }}: S/ {{ number_format($d->amount, 2) }}</span>
+                                                    @empty
+                                                        -
+                                                    @endforelse
+                                                </div>
+                                            </div>
+                                            {{-- Fila 3: Origen --}}
+                                            <div class="col-span-5">
+                                                <div class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Origen</div>
+                                                <div class="mt-0.5 text-sm text-gray-800 dark:text-white/90">
+                                                    {{ $movement->movement?->movementType?->description ?? $movement->documentType?->name ?? '-' }} –
+                                                    {{ strtoupper(substr($movement->documentType?->name ?? '', 0, 1)) }}{{ $movement->movement?->salesMovement?->series ?? '' }}-{{ $movement->number }}
+                                                </div>
+                                            </div>
                                         </div>
                                     </td>
                                 </tr>
@@ -471,12 +512,19 @@
                         @empty
                             <tbody>
                                 <tr>
-                                    <td colspan="12" class="px-6 py-12 text-center text-gray-500">
-                                        @if(!$hasOpening)
-                                            La caja se encuentra cerrada. Realice una apertura para ver movimientos.
-                                        @else
-                                            No hay movimientos en el turno actual.
-                                        @endif
+                                    <td colspan="10" class="px-6 py-16 text-center">
+                                        <div class="mx-auto flex max-w-sm flex-col items-center gap-3 text-gray-500 dark:text-gray-400">
+                                            <div class="flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
+                                                <i class="ri-inbox-line text-xl"></i>
+                                            </div>
+                                            <p class="text-sm font-medium">
+                                                @if(!$hasOpening)
+                                                    La caja se encuentra cerrada. Realice una apertura para ver movimientos.
+                                                @else
+                                                    No hay movimientos en el turno actual.
+                                                @endif
+                                            </p>
+                                        </div>
                                     </td>
                                 </tr>
                             </tbody>

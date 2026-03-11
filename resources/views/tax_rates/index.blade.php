@@ -295,7 +295,6 @@
             @open-tax-rate-modal.document="open = true"
             @close-tax-rate-modal.document="open = false"
             :isOpen="false"
-            :showCloseButton="false"
             class="max-w-3xl"
         >
             <div class="p-6 sm:p-8">

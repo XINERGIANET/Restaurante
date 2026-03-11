@@ -296,6 +296,7 @@
             const cobroPaymentGateways = @json($paymentGateways ?? []);
             const cobroCards = @json($cards ?? []);
             const cobroDigitalWallets = @json($digitalWallets ?? []);
+            const cobroBanks = @json($banks ?? []);
 
             let db = JSON.parse(localStorage.getItem('restaurantDB'));
             if (!db) db = {};
@@ -500,6 +501,10 @@
                 }
                 if (typeof addCobroPaymentMethod === 'function' && document.getElementById('cobro-payment-methods-list')?.children.length === 0) {
                     addCobroPaymentMethod();
+                }
+                // Si viene con cobro=1 (desde botón Cobrar en mesas), abrir pestaña Cobro
+                if (new URLSearchParams(window.location.search).get('cobro') === '1' && typeof switchAsideTab === 'function') {
+                    setTimeout(() => switchAsideTab('cobro'), 100);
                 }
             }
 
@@ -1266,6 +1271,7 @@
                     const desc = (methodSelect.options[methodSelect.selectedIndex]?.text || '').toLowerCase();
                     const isCard = (desc.includes('tarjeta') || desc.includes('card')) && !desc.includes('billetera');
                     const isWallet = desc.includes('billetera');
+                    const isTransfer = desc.includes('transferencia') || desc.includes('transfer') || desc.includes('deposito') || desc.includes('depósito');
                     if (isCard) {
                         const gw = row.querySelector('.cobro-pm-gateway');
                         const card = row.querySelector('.cobro-pm-card');
@@ -1275,6 +1281,10 @@
                     if (isWallet) {
                         const wallet = row.querySelector('.cobro-pm-wallet');
                         if (wallet?.value) obj.digital_wallet_id = parseInt(wallet.value, 10);
+                    }
+                    if (isTransfer) {
+                        const bank = row.querySelector('.cobro-pm-bank');
+                        if (bank?.value) obj.bank_id = parseInt(bank.value, 10);
                     }
                     result.push(obj);
                 });
@@ -1304,10 +1314,30 @@
                     }
                     return;
                 }
+                const totals = calculateTotalsFromItems(items);
+                const total = totals.total;
+                const paymentMethodsData = getCobroPaymentMethodsFromForm();
+                const totalPaid = paymentMethodsData.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
+
+                if (paymentMethodsData.length === 0) {
+                    if (typeof showNotification === 'function') {
+                        showNotification('Error', 'Agrega al menos un método de pago.', 'error');
+                    } else {
+                        alert('Agrega al menos un método de pago.');
+                    }
+                    return;
+                }
+                if (Math.abs(totalPaid - total) > 0.01) {
+                    if (typeof showNotification === 'function') {
+                        showNotification('Error', 'La suma de los métodos de pago debe ser igual al total (S/ ' + total.toFixed(2) + ').', 'error');
+                    } else {
+                        alert('La suma de los métodos de pago debe ser igual al total (S/ ' + total.toFixed(2) + ').');
+                    }
+                    return;
+                }
                 if (autoSaveTimer) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
 
-                const totals = calculateTotalsFromItems(items);
-                const payload = {
+                const processPayload = {
                     items: items,
                     table_id: currentTable.table_id ?? currentTable.id,
                     area_id: currentTable.area_id ?? null,
@@ -1323,54 +1353,91 @@
                     cancellations: currentTable.cancellations || [],
                 };
 
+                let btn = document.querySelector('button[onclick*="processOrderPayment"]');
+                if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ri-loader-4-line animate-spin text-base"></i><span>Procesando...</span>'; }
+
                 try {
-                    const processRes = await fetch('{{ route('orders.process') }}', {
+                    let movementId = currentTable.movement_id;
+
+                    if (!movementId) {
+                        const processRes = await fetch('{{ route('orders.process') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                                'Accept': 'application/json'
+                            },
+                            body: JSON.stringify(processPayload)
+                        });
+                        const ct = processRes.headers.get('content-type');
+                        let processData = null;
+                        if (ct && ct.includes('application/json')) {
+                            processData = await processRes.json();
+                        } else {
+                            throw new Error(processRes.status === 419 ? 'Sesión expirada. Recarga la página.' : (processRes.status === 401 ? 'Debes iniciar sesión.' : (processRes.status === 500 ? 'Error al procesar. Intenta de nuevo.' : 'Error del servidor.')));
+                        }
+                        if (!processData || !processData.success || !processData.movement_id) {
+                            throw new Error(processData?.message || 'No se pudo guardar el pedido. Intenta de nuevo.');
+                        }
+                        movementId = processData.movement_id;
+                        currentTable.cancellations = [];
+                        currentTable.order_movement_id = processData.order_movement_id;
+                        currentTable.movement_id = movementId;
+                        saveDB();
+                    }
+
+                    const docTypeEl = document.getElementById('cobro-document-type');
+                    const cashRegEl = document.getElementById('cobro-cash-register');
+                    const paymentPayload = {
+                        movement_id: movementId,
+                        table_id: currentTable.table_id ?? currentTable.id,
+                        document_type_id: docTypeEl?.value ? parseInt(docTypeEl.value, 10) : null,
+                        cash_register_id: cashRegEl?.value ? parseInt(cashRegEl.value, 10) : null,
+                        payment_methods: paymentMethodsData,
+                        notes: '',
+                    };
+
+                    const payRes = await fetch('{{ route('orders.processOrderPayment') }}', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
                             'Accept': 'application/json'
                         },
-                        body: JSON.stringify(payload)
+                        body: JSON.stringify(paymentPayload)
                     });
 
-                    const ct = processRes.headers.get('content-type');
-                    let processData = null;
-                    if (ct && ct.includes('application/json')) {
-                        processData = await processRes.json();
-                    } else {
-                        throw new Error(processRes.status === 419 ? 'Sesión expirada. Recarga la página.' : (processRes.status === 401 ? 'Debes iniciar sesión.' : (processRes.status === 500 ? 'Error al procesar. Intenta de nuevo.' : 'Error del servidor.')));
+                    const payData = payRes.headers.get('content-type')?.includes('application/json') ? await payRes.json() : null;
+                    if (!payRes.ok) {
+                        throw new Error(payData?.message || payData?.error || 'Error al procesar el cobro.');
+                    }
+                    if (!payData?.success) {
+                        throw new Error(payData?.message || payData?.error || 'Error al procesar el cobro.');
                     }
 
-                    if (processData && processData.success && processData.movement_id) {
-                        currentTable.cancellations = [];
-                        saveDB();
-                        const url = new URL("{{ route('orders.charge') }}", window.location.origin);
-                        url.searchParams.set('movement_id', processData.movement_id);
-                        url.searchParams.set('_t', Date.now());
-                        if (window.Turbo && typeof window.Turbo.visit === 'function') {
-                            window.Turbo.visit(url.toString(), { action: 'advance' });
-                        } else {
-                            window.location.href = url.toString();
-                        }
+                    if (db && activeKey && db[activeKey]) {
+                        delete db[activeKey];
+                        localStorage.setItem('restaurantDB', JSON.stringify(db));
+                    }
+                    sessionStorage.setItem('flash_success_message', payData.message || 'Cobro de pedido procesado correctamente');
+                    const indexUrl = "{{ route('orders.index') }}";
+                    if (window.Turbo && typeof window.Turbo.visit === 'function') {
+                        window.Turbo.visit(indexUrl, { action: 'replace' });
                     } else {
-                        const msg = processData?.message || 'No se pudo guardar el pedido. Intenta de nuevo.';
-                        if (String(msg || '').indexOf('PIN') !== -1) {
-                            sessionStorage.removeItem(`waiterPin:${waiterPinBranchId}`);
-                        }
-                        if (typeof showNotification === 'function') {
-                            showNotification('Error', msg, 'error');
-                        } else {
-                            alert(msg);
-                        }
+                        window.location.href = indexUrl;
                     }
                 } catch (error) {
                     console.error('Error:', error);
+                    if (String(error?.message || '').indexOf('PIN') !== -1) {
+                        sessionStorage.removeItem(`waiterPin:${waiterPinBranchId}`);
+                    }
                     if (typeof showNotification === 'function') {
                         showNotification('Error', error?.message || 'Error al procesar.', 'error');
                     } else {
                         alert(error?.message || 'Error al procesar.');
                     }
+                } finally {
+                    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ri-bank-card-line text-base"></i><span>Cobrar</span>'; }
                 }
             }
 
@@ -1570,6 +1637,10 @@
             function isCobroMethodWallet(desc) {
                 return ('' + (desc || '')).toLowerCase().includes('billetera');
             }
+            function isCobroMethodTransfer(desc) {
+                const d = ('' + (desc || '')).toLowerCase();
+                return d.includes('transferencia') || d.includes('transfer') || d.includes('deposito') || d.includes('depósito');
+            }
 
             function buildCobroGatewayOptions() {
                 const gws = cobroPaymentGateways || [];
@@ -1594,16 +1665,23 @@
                 const opts = wls.map(w => `<option value="${w.id}">${escapeHtml(w.description || '')}</option>`).join('');
                 return opts ? '<option value="">Seleccionar billetera</option>' + opts : '<option value="">Sin billeteras</option>';
             }
+            function buildCobroBankOptions() {
+                const banks = cobroBanks || [];
+                const opts = banks.map(b => `<option value="${b.id}">${escapeHtml(b.description || '')}</option>`).join('');
+                return opts ? '<option value="">Seleccionar banco</option>' + opts : '<option value="">Sin bancos</option>';
+            }
 
             function toggleCobroExtraFields(row) {
                 const methodSelect = row.querySelector('.cobro-pm-method');
                 const cardGroup = row.querySelector('.cobro-pm-card-group');
                 const walletGroup = row.querySelector('.cobro-pm-wallet-group');
+                const bankGroup = row.querySelector('.cobro-pm-bank-group');
                 if (!methodSelect || !cardGroup || !walletGroup) return;
                 const sel = methodSelect.options[methodSelect.selectedIndex];
                 const desc = sel ? sel.text : '';
                 const isCard = isCobroMethodCard(desc);
                 const isWallet = isCobroMethodWallet(desc);
+                const isTransfer = isCobroMethodTransfer(desc);
                 cardGroup.classList.toggle('hidden', !isCard);
                 walletGroup.classList.toggle('hidden', !isWallet);
                 const gw = row.querySelector('.cobro-pm-gateway');
@@ -1612,6 +1690,17 @@
                 if (!isCard && gw) gw.value = '';
                 if (!isCard && card) card.value = '';
                 if (!isWallet && wallet) wallet.value = '';
+                if (bankGroup) {
+                    if (isTransfer) {
+                        bankGroup.classList.remove('hidden');
+                        bankGroup.classList.add('flex');
+                    } else {
+                        bankGroup.classList.add('hidden');
+                        bankGroup.classList.remove('flex');
+                        const bank = row.querySelector('.cobro-pm-bank');
+                        if (bank) bank.value = '';
+                    }
+                }
             }
 
             function addCobroPaymentMethod() {
@@ -1661,6 +1750,14 @@
                             <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Billetera (Yape, Plin...)</label>
                             <select class="cobro-pm-wallet w-full py-2 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm">
                                 ${buildCobroWalletOptions()}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="cobro-pm-bank-group hidden flex gap-2 items-end flex-wrap">
+                        <div class="flex-1 min-w-[120px]">
+                            <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Banco destino</label>
+                            <select class="cobro-pm-bank w-full py-2 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm">
+                                ${buildCobroBankOptions()}
                             </select>
                         </div>
                     </div>

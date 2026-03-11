@@ -363,10 +363,17 @@
     </x-ui.modal>
 
     <!--Modal de edicion de parametro-->
-    <x-ui.modal x-data="{ open: false, parameterId: null, description: '', value: '', parameterCategoryId: null, status: '1' }" 
-        @open-edit-parameter-modal.window="open = true; parameterId = $event.detail.id; description = $event.detail.description; value = $event.detail.value; parameterCategoryId = $event.detail.parameter_category_id; status = $event.detail.status.toString()" 
+    <x-ui.modal x-data="{
+        open: false,
+        parameterId: null,
+        description: '',
+        value: '',
+        parameterCategoryId: null,
+        status: '1'
+    }"
+        @open-edit-parameter-modal.window="open = true; parameterId = $event.detail.id; description = $event.detail.description; value = $event.detail.value; parameterCategoryId = $event.detail.parameter_category_id; status = $event.detail.status.toString()"
         @close-edit-parameter-modal.window="open = false"
-        :isOpen="false" class="max-w-md">
+        :isOpen="false" :showCloseButton="false" class="max-w-md">
         <div class="p-6 space-y-4">
             <h3 class="mb-6 text-lg font-semibold text-gray-800 dark:text-white/90">Editar Parametro</h3>
             <form id="edit-parameter-form" class="space-y-4"

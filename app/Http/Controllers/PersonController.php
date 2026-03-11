@@ -94,7 +94,7 @@ class PersonController extends Controller
         $roleIds = $this->validateRoles($request);
         $hasUserRole = in_array(1, $roleIds, true);
         $userData = $this->validateUserData($request, $hasUserRole, null);
-
+        
         DB::transaction(function () use ($branch, $data, $roleIds, $hasUserRole, $userData) {
             $person = $branch->people()->create($data);
             $this->syncRoles($person, $roleIds, $branch->id);

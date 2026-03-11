@@ -190,7 +190,6 @@
             @open-product-type-modal.window="open = true"
             @close-product-type-modal.window="open = false"
             :isOpen="false"
-            :showCloseButton="false"
             class="max-w-2xl"
         >
             <div class="p-6 sm:p-8">

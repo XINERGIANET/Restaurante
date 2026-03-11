@@ -53,6 +53,14 @@
         const pt = this.productTypeId != null ? this.productTypesById[this.productTypeId] : null;
         return pt ? (pt.behavior === 'SELLABLE' || pt.behavior === 'BOTH') : true;
     },
+    get showPurchaseFields() {
+        const pt = this.productTypeId != null ? this.productTypesById[this.productTypeId] : null;
+        return pt ? pt.behavior === 'BOTH' : false;
+    },
+    get showSupplyFields() {
+        const pt = this.productTypeId != null ? this.productTypesById[this.productTypeId] : null;
+        return pt ? pt.behavior === 'SUPPLY' : false;
+    },
     complementValue: '{{ old('complement', $product->complement ?? 'NO') }}',
     complementMode: '{{ old('complement_mode', $product->complement_mode ?? '') }}',
     classificationValue: '{{ old('classification', $product->classification ?? 'GOOD') }}',
@@ -319,15 +327,16 @@
         </div>
     </div>
 
-    <!-- INFORMACIÓN DE PRECIOS Y STOCK (DETALLE POR SEDE) - solo para tipo vendible (SELLABLE) -->
-    <template x-if="!showBranchDetail">
+    <!-- INFORMACIÓN DE PRECIOS Y STOCK (DETALLE POR SEDE) - solo para tipo vendible (SELLABLE) y compras/ventas (BOTH) -->
+    <template x-if="!showBranchDetail && !showSupplyFields">
         <div class="mb-8 p-6 bg-gray-50 dark:bg-gray-800/30 rounded-lg border border-gray-200 dark:border-gray-700" x-cloak>
-            <p class="text-sm text-gray-600 dark:text-gray-400">Los suministros no requieren precio ni stock por sede. Los valores se gestionan en taller/producción.</p>
+            <p class="text-sm text-gray-600 dark:text-gray-400">Seleccione un tipo de producto para ver los campos.</p>
+        </div>
+    </template>
+    <template x-if="!showBranchDetail && showSupplyFields">
+        <div class="hidden" aria-hidden="true">
             <input type="hidden" name="price" value="0">
             <input type="hidden" name="purchase_price" value="0">
-            <input type="hidden" name="stock" value="0">
-            <input type="hidden" name="stock_minimum" value="0">
-            <input type="hidden" name="stock_maximum" value="0">
             <input type="hidden" name="minimum_sell" value="0">
             <input type="hidden" name="minimum_purchase" value="0">
             <input type="hidden" name="tax_rate_id" value="">
@@ -335,9 +344,66 @@
             <input type="hidden" name="expiration_date" value="">
         </div>
     </template>
+    <!-- Configuración de suministro: stock y proveedor (sin precio de venta) -->
+    <div x-show="showSupplyFields" x-cloak x-transition class="mb-8 p-6 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+        <h3 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">📦 Configuración de Suministro</h3>
+        <p class="mb-4 text-sm text-gray-600 dark:text-gray-400">Los suministros tienen stock por sede para inventario, pero no precio de venta. Configura stock y proveedor.</p>
+        @if (isset($branches) && $branches->isNotEmpty())
+            <div class="mb-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                <div>
+                    <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Sede <span class="text-red-500">*</span></label>
+                    <select name="branch_id" x-model="selectedBranchId" required
+                        class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90">
+                        @foreach ($branches as $b)
+                            <option value="{{ $b->id }}">{{ $b->legal_name }}</option>
+                        @endforeach
+                    </select>
+                    @error('branch_id')
+                        <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
+                    @enderror
+                </div>
+            </div>
+        @endif
+        <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            <div>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Stock actual <span class="text-red-500">*</span></label>
+                <input type="number" name="stock" step="0.01" x-model.number="branchFields.stock"
+                    value="{{ old('stock', $productBranch->stock ?? '') }}" required min="0"
+                    class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
+                    placeholder="0.00" />
+                @error('stock')
+                    <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
+                @enderror
+            </div>
+            <div>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Stock mínimo <span class="text-red-500">*</span></label>
+                <input type="number" name="stock_minimum" step="0.01" x-model.number="branchFields.stock_minimum"
+                    value="{{ old('stock_minimum', $productBranch->stock_minimum ?? '') }}" required min="0"
+                    class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
+                    placeholder="0.00" />
+                @error('stock_minimum')
+                    <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
+                @enderror
+            </div>
+            <div>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Stock máximo <span class="text-red-500">*</span></label>
+                <input type="number" name="stock_maximum" step="0.01" x-model.number="branchFields.stock_maximum"
+                    value="{{ old('stock_maximum', $productBranch->stock_maximum ?? '') }}" required min="0"
+                    class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
+                    placeholder="0.00" />
+                @error('stock_maximum')
+                    <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
+                @enderror
+            </div>
+            <div>
+                <x-form.select.combobox label="Proveedor" :required="false" :options="$suppliers ?? []" name="supplier_id"
+                    x-model="supplierId" placeholder="Seleccione proveedor" icon="ri-truck-line" />
+            </div>
+        </div>
+    </div>
     <div class="mb-8 p-6 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800" x-show="showBranchDetail" x-cloak x-transition>
         <h3 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">💰 Información Detalle por Sede</h3>
-        <p class="mb-4 text-xs text-gray-600 dark:text-gray-400">Estos campos se configuran por cada sucursal (solo productos vendibles)</p>
+        <p class="mb-4 text-xs text-gray-600 dark:text-gray-400">Precio, stock y datos por sucursal (Vendible y Compras/ventas)</p>
         @if (isset($branches) && $branches->isNotEmpty())
             <div class="mb-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
                 <div>
@@ -368,12 +434,15 @@
                 @enderror
             </div>
 
-            <div>
+            <template x-if="!showPurchaseFields">
+                <input type="hidden" name="purchase_price" value="0" />
+            </template>
+            <div x-show="showPurchaseFields" x-cloak>
                 <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Precio de compra <span
                         class="text-red-500">*</span></label>
-                <input type="number" :name="showBranchDetail ? 'purchase_price' : 'purchase_price_skip'" step="0.01"
+                <input type="number" :name="showPurchaseFields ? 'purchase_price' : 'purchase_price_skip'" step="0.01"
                     x-model.number="branchFields.purchase_price"
-                    value="{{ old('purchase_price', $productBranch->purchase_price ?? 0) }}" :required="showBranchDetail" min="0"
+                    value="{{ old('purchase_price', $productBranch->purchase_price ?? 0) }}" :required="showPurchaseFields" min="0"
                     class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
                     placeholder="0.00" />
                 @error('purchase_price')
@@ -453,11 +522,14 @@
                 @enderror
             </div>
 
-            <div>
+            <template x-if="!showPurchaseFields">
+                <input type="hidden" name="minimum_purchase" value="0" />
+            </template>
+            <div x-show="showPurchaseFields" x-cloak>
                 <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Compra mínima</label>
                 <input type="hidden" name="minimum_purchase" x-bind:value="platosCategoriaIds.includes(Number(categoryId)) ? 0 : null" x-show="platosCategoriaIds.includes(Number(categoryId))">
                 <input type="number" step="0.01"
-                    x-bind:name="platosCategoriaIds.includes(Number(categoryId)) ? null : 'minimum_purchase'"
+                    x-bind:name="showPurchaseFields && !platosCategoriaIds.includes(Number(categoryId)) ? 'minimum_purchase' : null"
                     x-model.number="branchFields.minimum_purchase"
                     value="{{ old('minimum_purchase', $productBranch->minimum_purchase ?? '') }}"
                     x-bind:disabled="platosCategoriaIds.includes(Number(categoryId))"
@@ -530,7 +602,7 @@
                 @enderror
             </div>
 
-            <div>
+            <div x-show="showPurchaseFields" x-cloak>
                 <x-form.select.combobox label="Proveedor" :required="false" :options="$suppliers ?? []" name="supplier_id"
                     x-model="supplierId" placeholder="Seleccione proveedor" icon="ri-truck-line" />
             </div>

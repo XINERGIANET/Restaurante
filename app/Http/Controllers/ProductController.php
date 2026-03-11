@@ -418,14 +418,18 @@ class ProductController extends Controller
             'price' => $isSupply ? ['nullable', 'numeric', 'min:0'] : ['required', 'numeric', 'min:0'],
             'purchase_price' => $isSupply ? ['nullable', 'numeric', 'min:0'] : ['required', 'numeric', 'min:0'],
             'stock' => $isSupply
-                ? ['nullable', 'numeric', 'min:0']
+                ? array_values(array_filter([
+                    'required', 'numeric', 'min:0',
+                    'gte:stock_minimum',
+                    $request->input('stock_maximum', 0) > 0 ? 'lte:stock_maximum' : null,
+                ]))
                 : array_values(array_filter([
                     'required', 'numeric', 'min:0',
                     'gte:stock_minimum',
                     $request->input('stock_maximum', 0) > 0 ? 'lte:stock_maximum' : null,
                 ])),
-            'stock_minimum' => $isSupply ? ['nullable', 'numeric', 'min:0'] : ['required', 'numeric', 'min:0'],
-            'stock_maximum' => $isSupply ? ['nullable', 'numeric', 'min:0', 'gte:stock_minimum'] : ['required', 'numeric', 'min:0', 'gte:stock_minimum'],
+            'stock_minimum' => $isSupply ? ['required', 'numeric', 'min:0'] : ['required', 'numeric', 'min:0'],
+            'stock_maximum' => $isSupply ? ['required', 'numeric', 'min:0', 'gte:stock_minimum'] : ['required', 'numeric', 'min:0', 'gte:stock_minimum'],
             'minimum_sell' => $isSupply ? ['nullable', 'numeric', 'min:0'] : ['required', 'numeric', 'min:0'],
             'minimum_purchase' => $isSupply ? ['nullable', 'numeric', 'min:0'] : ['required', 'numeric', 'min:0'],
             'tax_rate_id' => ['nullable', 'integer', 'exists:tax_rates,id'],
@@ -449,7 +453,7 @@ class ProductController extends Controller
             'classification' => ['required', 'string', 'in:GOOD,SERVICE'],
             'features' => ['nullable', 'string'],
             'recipe' => ['required', 'boolean'],
-            'branch_id' => $isSupply ? ['nullable', 'integer', 'exists:branches,id'] : ['required', 'integer', 'exists:branches,id'],
+            'branch_id' => ['required', 'integer', 'exists:branches,id'],
             'favorite' => ['required', 'string', 'in:S,N'],
             'duration_minutes' => ['nullable', 'integer', 'min:0'],
             'supplier_id' => ['nullable', 'integer'],
@@ -491,8 +495,8 @@ class ProductController extends Controller
             return [
                 'status' => $validated['status'],
                 'expiration_date' => null,
-                'stock_minimum' => 0,
-                'stock_maximum' => 0,
+                'stock_minimum' => $validated['stock_minimum'] ?? 0,
+                'stock_maximum' => $validated['stock_maximum'] ?? 0,
                 'minimum_sell' => 0,
                 'minimum_purchase' => 0,
                 'favorite' => $validated['favorite'],
@@ -500,7 +504,7 @@ class ProductController extends Controller
                 'unit_sale' => 'N',
                 'duration_minutes' => $validated['duration_minutes'] ?? 0,
                 'supplier_id' => $validated['supplier_id'] ?? null,
-                'stock' => 0,
+                'stock' => $validated['stock'] ?? 0,
                 'price' => 0,
                 'purchase_price' => 0,
             ];

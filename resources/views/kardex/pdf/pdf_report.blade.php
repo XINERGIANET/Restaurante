@@ -36,17 +36,18 @@
 </head>
 <body>
     <div class="header">
+        @if(!empty($companyName))
+            <p style="font-weight: bold; font-size: 12px; margin-bottom: 2px;">{{ $companyName }}</p>
+        @endif
+        @if($branch)
+            <p style="font-size: 10px; margin-top: 0; margin-bottom: 4px;">Sucursal: {{ $branch->legal_name }}</p>
+        @endif
         <h1>Reporte de Kardex</h1>
         <p>Generado el: {{ now()->format('d/m/Y H:i') }}</p>
         <p>
             Desde: {{ $dateFrom ? \Carbon\Carbon::parse($dateFrom)->format('d/m/Y') : 'Inicio' }}
             — Hasta: {{ $dateTo ? \Carbon\Carbon::parse($dateTo)->format('d/m/Y') : 'Hoy' }}
         </p>
-        @if($branch)
-            <p>
-                <strong>Sucursal:</strong> {{ $branch->legal_name }}
-            </p>
-        @endif
     </div>
 
     @php

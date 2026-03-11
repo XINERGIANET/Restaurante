@@ -1,7 +1,12 @@
 <!--Modal de edicion de concepto de pago-->
-<x-ui.modal x-data="{ open: false, paymentConceptId: null, description: '', type: '' }"
+<x-ui.modal x-data="{
+        open: false,
+        paymentConceptId: null,
+        description: '',
+        type: ''
+    }"
     @open-edit-payment-concept-modal.window="open = true; paymentConceptId = $event.detail.id; description = $event.detail.description; type = $event.detail.type"
-    @close-edit-payment-concept-modal.window="open = false" :isOpen="false" class="max-w-md">
+    @close-edit-payment-concept-modal.window="open = false" :isOpen="false" :showCloseButton="false" class="max-w-md">
     <div class="p-6 space-y-4">
         <h3 class="mb-6 text-lg font-semibold text-gray-800 dark:text-white/90">Editar Concepto de Pago</h3>
         @if ($errors->any())

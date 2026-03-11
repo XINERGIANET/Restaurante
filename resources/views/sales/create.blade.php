@@ -288,6 +288,7 @@
             const cobroPaymentGateways = @json($paymentGateways ?? []);
             const cobroCards = @json($cards ?? []);
             const cobroDigitalWallets = @json($digitalWallets ?? []);
+            const cobroBanks = @json($banks ?? []);
             const salesProcessUrl = @json(route('sales.process'));
             const salesIndexUrl = @json($salesIndexUrl ?? route('sales.index'));
 
@@ -757,17 +758,32 @@
                 const opts = wls.map(w => `<option value="${w.id}">${escapeHtml(w.description || '')}</option>`).join('');
                 return opts ? '<option value="">Seleccionar billetera</option>' + opts : '<option value="">Sin billeteras</option>';
             }
+            function buildCobroBankOptions() {
+                const banks = cobroBanks || [];
+                const opts = banks.map(b => `<option value="${b.id}">${escapeHtml(b.description || '')}</option>`).join('');
+                return opts ? '<option value="">Seleccionar banco</option>' + opts : '<option value="">Sin bancos</option>';
+            }
 
             function toggleCobroExtraFields(row) {
                 const methodSelect = row.querySelector('.cobro-pm-method');
                 const cardGroup = row.querySelector('.cobro-pm-card-group');
                 const walletGroup = row.querySelector('.cobro-pm-wallet-group');
+                const bankGroup = row.querySelector('.cobro-pm-bank-group');
                 if (!methodSelect || !cardGroup || !walletGroup) return;
-                const desc = methodSelect.options[methodSelect.selectedIndex]?.text || '';
+                const desc = (methodSelect.options[methodSelect.selectedIndex]?.text || '').toLowerCase();
                 const isCard = isCobroMethodCard(desc);
                 const isWallet = isCobroMethodWallet(desc);
+                const isTransfer = desc.includes('transferencia') || desc.includes('transfer') || desc.includes('deposito') || desc.includes('depósito');
                 cardGroup.classList.toggle('hidden', !isCard);
                 walletGroup.classList.toggle('hidden', !isWallet);
+                if (bankGroup) {
+                    bankGroup.classList.toggle('hidden', !isTransfer);
+                    bankGroup.classList.toggle('flex', isTransfer);
+                    if (!isTransfer) {
+                        const bank = row.querySelector('.cobro-pm-bank');
+                        if (bank) bank.value = '';
+                    }
+                }
                 const gw = row.querySelector('.cobro-pm-gateway');
                 const card = row.querySelector('.cobro-pm-card');
                 const wallet = row.querySelector('.cobro-pm-wallet');
@@ -816,6 +832,12 @@
                             <select class="cobro-pm-wallet w-full py-2 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm">${buildCobroWalletOptions()}</select>
                         </div>
                     </div>
+                    <div class="cobro-pm-bank-group hidden flex gap-2 items-end flex-wrap">
+                        <div class="flex-1 min-w-[120px]">
+                            <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Banco destino</label>
+                            <select class="cobro-pm-bank w-full py-2 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm">${buildCobroBankOptions()}</select>
+                        </div>
+                    </div>
                 `;
                 list.appendChild(row);
                 toggleCobroExtraFields(row);
@@ -845,6 +867,7 @@
                     const desc = (methodSelect.options[methodSelect.selectedIndex]?.text || '').toLowerCase();
                     const isCard = (desc.includes('tarjeta') || desc.includes('card')) && !desc.includes('billetera');
                     const isWallet = desc.includes('billetera');
+                    const isTransfer = desc.includes('transferencia') || desc.includes('transfer') || desc.includes('deposito') || desc.includes('depósito');
                     if (isCard) {
                         const gw = row.querySelector('.cobro-pm-gateway');
                         const card = row.querySelector('.cobro-pm-card');
@@ -854,6 +877,10 @@
                     if (isWallet) {
                         const wallet = row.querySelector('.cobro-pm-wallet');
                         if (wallet?.value) obj.digital_wallet_id = parseInt(wallet.value, 10);
+                    }
+                    if (isTransfer) {
+                        const bank = row.querySelector('.cobro-pm-bank');
+                        if (bank?.value) obj.bank_id = parseInt(bank.value, 10);
                     }
                     result.push(obj);
                 });
@@ -920,6 +947,7 @@
                         payment_gateway_id: pm.payment_gateway_id || null,
                         card_id: pm.card_id || null,
                         digital_wallet_id: pm.digital_wallet_id || null,
+                        bank_id: pm.bank_id || null,
                     })),
                     notes: '',
                 };

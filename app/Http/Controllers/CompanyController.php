@@ -28,14 +28,27 @@ class CompanyController extends Controller
                         ->where('view_branch.branch_id', $branchId)
                         ->whereNull('view_branch.deleted_at');
                 })
-                ->where(function ($q) {
-                    $q->where('operations.action', 'like', 'admin.companies.%')
-                        ->orWhere('operations.action', 'like', 'companies.%');
-                })
+                ->whereIn('operations.action', ['admin.companies.index', 'companies.index'])
                 ->where('operations.status', 1)
                 ->whereNull('operations.deleted_at')
                 ->orderBy('operations.view_id')
                 ->value('operations.view_id');
+            if ($defaultViewId <= 0) {
+                $defaultViewId = (int) DB::table('operations')
+                    ->join('view_branch', function ($join) use ($branchId) {
+                        $join->on('view_branch.view_id', '=', 'operations.view_id')
+                            ->where('view_branch.branch_id', $branchId)
+                            ->whereNull('view_branch.deleted_at');
+                    })
+                    ->where(function ($q) {
+                        $q->where('operations.action', 'like', 'admin.companies.%')
+                            ->orWhere('operations.action', 'like', 'companies.%');
+                    })
+                    ->where('operations.status', 1)
+                    ->whereNull('operations.deleted_at')
+                    ->orderBy('operations.view_id')
+                    ->value('operations.view_id');
+            }
             if ($defaultViewId <= 0) {
                 $defaultViewId = (int) DB::table('view_branch')
                     ->where('branch_id', $branchId)
@@ -101,6 +114,44 @@ class CompanyController extends Controller
     public function create(Request $request)
     {
         $viewId = $request->input('view_id');
+        if (!$viewId && $request->session()->get('branch_id')) {
+            $branchId = (int) $request->session()->get('branch_id');
+            $viewId = (int) DB::table('operations')
+                ->join('view_branch', function ($join) use ($branchId) {
+                    $join->on('view_branch.view_id', '=', 'operations.view_id')
+                        ->where('view_branch.branch_id', $branchId)
+                        ->whereNull('view_branch.deleted_at');
+                })
+                ->whereIn('operations.action', ['admin.companies.index', 'companies.index'])
+                ->where('operations.status', 1)
+                ->whereNull('operations.deleted_at')
+                ->orderBy('operations.view_id')
+                ->value('operations.view_id');
+            if ($viewId <= 0) {
+                $viewId = (int) DB::table('operations')
+                    ->join('view_branch', function ($join) use ($branchId) {
+                        $join->on('view_branch.view_id', '=', 'operations.view_id')
+                            ->where('view_branch.branch_id', $branchId)
+                            ->whereNull('view_branch.deleted_at');
+                    })
+                    ->where(function ($q) {
+                        $q->where('operations.action', 'like', 'admin.companies.%')
+                            ->orWhere('operations.action', 'like', 'companies.%');
+                    })
+                    ->where('operations.status', 1)
+                    ->whereNull('operations.deleted_at')
+                    ->orderBy('operations.view_id')
+                    ->value('operations.view_id');
+            }
+            if ($viewId <= 0) {
+                $viewId = (int) DB::table('view_branch')
+                    ->where('branch_id', $branchId)
+                    ->whereNull('deleted_at')
+                    ->orderBy('view_id')
+                    ->value('view_id');
+            }
+            $viewId = $viewId > 0 ? $viewId : null;
+        }
         return view('companies.create', compact('viewId'));
     }
 
@@ -145,16 +196,25 @@ class CompanyController extends Controller
         $branchController->replicateBranchConfiguration($branch->id);
         $branchController->setupNewBranch($branch);
 
-        $request->session()->put('branch_id', $branch->id);
+        // El admin permanece en la sucursal anterior; usar su branch_id para el view_id del redirect
+        $branchIdForRedirect = (int) $request->session()->get('branch_id') ?: $branch->id;
 
-        $redirectParams = [];
-        if ($request->filled('view_id')) {
-            $redirectParams['view_id'] = $request->input('view_id');
-        } else {
+        $defaultViewId = (int) DB::table('operations')
+            ->join('view_branch', function ($join) use ($branchIdForRedirect) {
+                $join->on('view_branch.view_id', '=', 'operations.view_id')
+                    ->where('view_branch.branch_id', $branchIdForRedirect)
+                    ->whereNull('view_branch.deleted_at');
+            })
+            ->whereIn('operations.action', ['admin.companies.index', 'companies.index'])
+            ->where('operations.status', 1)
+            ->whereNull('operations.deleted_at')
+            ->orderBy('operations.view_id')
+            ->value('operations.view_id');
+        if ($defaultViewId <= 0) {
             $defaultViewId = (int) DB::table('operations')
-                ->join('view_branch', function ($join) use ($branch) {
+                ->join('view_branch', function ($join) use ($branchIdForRedirect) {
                     $join->on('view_branch.view_id', '=', 'operations.view_id')
-                        ->where('view_branch.branch_id', $branch->id)
+                        ->where('view_branch.branch_id', $branchIdForRedirect)
                         ->whereNull('view_branch.deleted_at');
                 })
                 ->where(function ($q) {
@@ -165,17 +225,15 @@ class CompanyController extends Controller
                 ->whereNull('operations.deleted_at')
                 ->orderBy('operations.view_id')
                 ->value('operations.view_id');
-            if ($defaultViewId <= 0) {
-                $defaultViewId = (int) DB::table('view_branch')
-                    ->where('branch_id', $branch->id)
-                    ->whereNull('deleted_at')
-                    ->orderBy('view_id')
-                    ->value('view_id');
-            }
-            if ($defaultViewId > 0) {
-                $redirectParams['view_id'] = $defaultViewId;
-            }
         }
+        if ($defaultViewId <= 0) {
+            $defaultViewId = (int) DB::table('view_branch')
+                ->where('branch_id', $branchIdForRedirect)
+                ->whereNull('deleted_at')
+                ->orderBy('view_id')
+                ->value('view_id');
+        }
+        $redirectParams = $defaultViewId > 0 ? ['view_id' => $defaultViewId] : [];
 
         return redirect()->route('admin.companies.index', $redirectParams)
             ->with('status', 'Empresa y sucursal creadas correctamente.');

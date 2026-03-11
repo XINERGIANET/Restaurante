@@ -263,7 +263,7 @@
         </x-common.component-card>
 
         <x-ui.modal x-data="{ open: {{ $errors->any() ? 'true' : 'false' }} }" @open-box-modal.window="open = true" @close-box-modal.window="open = false"
-            :isOpen="false" class="max-w-3xl">
+            :isOpen="false" :showCloseButton="false" class="max-w-3xl">
             <div class="p-6 sm:p-8">
                 <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>

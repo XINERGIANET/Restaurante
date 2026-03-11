@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Bank;
 use App\Models\Branch;
 use App\Models\Card;
 use App\Models\CashMovements;
@@ -331,6 +332,11 @@ class SalesController extends Controller
             ->orderBy('order_num')
             ->get(['id', 'description', 'order_num']);
 
+        $banks = Bank::query()
+            ->where('status', true)
+            ->orderBy('order_num')
+            ->get(['id', 'description', 'order_num']);
+
         $cashRegisters = CashRegister::query()
             ->orderByRaw("CASE WHEN status = 'A' THEN 0 ELSE 1 END")
             ->orderBy('number')
@@ -349,6 +355,7 @@ class SalesController extends Controller
             'paymentGateways' => $paymentGateways,
             'cards' => $cards,
             'digitalWallets' => $digitalWallets,
+            'banks' => $banks,
             'cashRegisters' => $cashRegisters,
         ]);
     }
@@ -380,6 +387,11 @@ class SalesController extends Controller
             ->get(['id', 'description', 'type', 'icon', 'order_num']);
 
         $digitalWallets = DigitalWallet::query()
+            ->where('status', true)
+            ->orderBy('order_num')
+            ->get(['id', 'description', 'order_num']);
+
+        $banks = Bank::query()
             ->where('status', true)
             ->orderBy('order_num')
             ->get(['id', 'description', 'order_num']);
@@ -484,6 +496,7 @@ class SalesController extends Controller
             'paymentGateways' => $paymentGateways,
             'cards' => $cards,
             'digitalWallets' => $digitalWallets,
+            'banks' => $banks,
             'cashRegisters' => $cashRegisters,
             'people' => $people,
             'defaultClientId' => $defaultClientId,
@@ -935,6 +948,9 @@ class SalesController extends Controller
                 if (!empty($paymentMethodData['digital_wallet_id'])) {
                     $digitalWallet = DigitalWallet::find($paymentMethodData['digital_wallet_id']);
                 }
+                $bank = !empty($paymentMethodData['bank_id'])
+                    ? Bank::find($paymentMethodData['bank_id'])
+                    : null;
 
                 DB::table('cash_movement_details')->insert([
                     'cash_movement_id' => $cashMovement->id,
@@ -945,8 +961,8 @@ class SalesController extends Controller
                     'number' => $cashEntryMovement->number,
                     'card_id' => $card?->id,
                     'card' => $card?->description ?? '',
-                    'bank_id' => null,
-                    'bank' => '',
+                    'bank_id' => $bank?->id,
+                    'bank' => $bank?->description ?? '',
                     'digital_wallet_id' => $digitalWallet?->id,
                     'digital_wallet' => $digitalWallet?->description ?? '',
                     'payment_gateway_id' => $paymentGateway?->id,
@@ -1584,6 +1600,10 @@ class SalesController extends Controller
         $cashRegisterId = $request->input('cash_register_id');
         $personId = $request->input('person_id');
 
+        $branch = $branchId ? Branch::with('company')->find($branchId) : null;
+        $companyName = $branch?->company?->legal_name;
+        $branchName = $branch?->legal_name;
+
         $query = Movement::query()
             ->with(['branch', 'person', 'movementType', 'documentType', 'salesMovement'])
             ->where('movement_type_id', 2) 
@@ -1648,7 +1668,14 @@ class SalesController extends Controller
         }
 
         try {
-            $pdf = PDF::loadView('sales.pdfs.pdf_report', compact('sales', 'dateFrom', 'dateTo', 'filters'));
+            $pdf = PDF::loadView('sales.pdfs.pdf_report', compact(
+                'sales',
+                'dateFrom',
+                'dateTo',
+                'filters',
+                'companyName',
+                'branchName'
+            ));
             
             $pdf->setPaper('a4')
                 ->setOption('margin-bottom', 10)

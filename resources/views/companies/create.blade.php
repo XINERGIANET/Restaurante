@@ -3,6 +3,7 @@
 @section('content')
     @php
         $viewId = $viewId ?? request('view_id');
+        
         $indexUrl = route('admin.companies.index', $viewId ? ['view_id' => $viewId] : []);
     @endphp
     <x-common.page-breadcrumb pageTitle="Empresas" />

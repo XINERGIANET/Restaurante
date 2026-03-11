@@ -36,7 +36,8 @@ class KardexController extends Controller
         }
 
         $products = Product::where('kardex', 'S')->with('baseUnit')->orderBy('description')->get();
-        $branch = $branchId ? Branch::find($branchId) : null;
+        $branch = $branchId ? Branch::with('company')->find($branchId) : null;
+        $companyName = $branch?->company?->legal_name;
         $movementsCollection = collect(); 
         $showAllProducts = ($productId === 'all');
 
@@ -514,16 +515,17 @@ class KardexController extends Controller
         $movements = $movementsCollection;
 
         $pdf = PDF::loadView('kardex.pdf.pdf_report', [
-            'movements' => $movements,
-            'branch' => $branch,
-            'products' => $products,
-            'productId' => $productId,
-            'dateFrom' => $dateFrom,
-            'dateTo' => $dateTo,
+            'movements'       => $movements,
+            'branch'          => $branch,
+            'products'        => $products,
+            'productId'       => $productId,
+            'dateFrom'        => $dateFrom,
+            'dateTo'          => $dateTo,
             'showAllProducts' => $showAllProducts,
-            'sourceFilter' => $sourceFilter,
-            'typeFilter' => $typeFilter,
-            'viewId' => $viewId,
+            'sourceFilter'    => $sourceFilter,
+            'typeFilter'      => $typeFilter,
+            'viewId'          => $viewId,
+            'companyName'     => $companyName,
         ]);
 
         $pdf->setPaper('a4')

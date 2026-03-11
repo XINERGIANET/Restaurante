@@ -50,7 +50,7 @@
         </select>
     </div>
 
-    <div>
+    <div class="hidden">
         <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Situacion</label>
         <select
             name="situation"
@@ -61,7 +61,7 @@
         </select>
     </div>
 
-    <div>
+    <div class="hidden">
         <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Hora apertura</label>
         <input
             type="time"

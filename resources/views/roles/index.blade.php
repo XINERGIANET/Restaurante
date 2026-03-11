@@ -274,7 +274,6 @@
             @open-role-modal.window="open = true"
             @close-role-modal.window="open = false"
             :isOpen="false"
-            :showCloseButton="false"
             class="max-w-3xl"
         >
             <div class="p-6 sm:p-8">

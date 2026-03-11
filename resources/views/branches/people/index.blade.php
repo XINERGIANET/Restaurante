@@ -183,16 +183,16 @@
 
             <div class="table-responsive mt-4 rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
                 <table class="w-full min-w-max border-separate border-spacing-0">
-                    <thead>
-                        <tr class="border-b border-gray-100 dark:border-gray-800 text-white">
-                            <th style="background-color: #63B7EC;" class="w-12 px-4 py-3 text-center first:rounded-tl-2xl sticky-left-header"></th>
-                            <th style="background-color: #63B7EC;" class="px-3 py-3 text-left sm:px-6 whitespace-nowrap">Nombres</th>
-                            <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6 whitespace-nowrap">Tipo</th>
-                            <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6 whitespace-nowrap">Nro. Documento</th>
-                            <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6 whitespace-nowrap">Fecha nac.</th>
-                            <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6 whitespace-nowrap">Genero</th>
-                            <th style="background-color: #63B7EC;" class="px-5 py-3 text-left sm:px-6 whitespace-nowrap">Ubicacion</th>
-                            <th style="background-color: #63B7EC;" class="px-5 py-3 text-right sm:px-6 whitespace-nowrap last:rounded-tr-2xl">Acciones</th>
+                    <thead class="text-white">
+                        <tr style="background-color: #63B7EC;" class="text-white text-theme-xs uppercase tracking-wider">
+                            <th class="w-12 px-4 py-3 text-center first:rounded-tl-2xl sticky-left-header"></th>
+                            <th class="px-3 py-3 text-left sm:px-6 whitespace-nowrap">Nombres</th>
+                            <th class="px-5 py-3 text-left sm:px-6 whitespace-nowrap">Tipo</th>
+                            <th class="px-5 py-3 text-left sm:px-6 whitespace-nowrap">Nro. Documento</th>
+                            <th class="px-5 py-3 text-left sm:px-6 whitespace-nowrap">Fecha nac.</th>
+                            <th class="px-5 py-3 text-left sm:px-6 whitespace-nowrap">Genero</th>
+                            <th class="px-5 py-3 text-left sm:px-6 whitespace-nowrap">Ubicacion</th>
+                            <th class="px-5 py-3 text-right sm:px-6 whitespace-nowrap last:rounded-tr-2xl">Acciones</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
@@ -389,7 +389,6 @@
             x-data="{ open: false, data: null }"
             @open-user-modal.window="open = true; data = $event.detail"
             :isOpen="false"
-            :showCloseButton="false"
             class="max-w-md"
         >
             <div class="p-6 sm:p-8">
@@ -544,6 +543,9 @@
 
                 <form method="POST" action="{{ route('admin.companies.branches.people.store', [$company, $branch]) }}" class="space-y-6">
                     @csrf
+                    @if ($viewId)
+                        <input type="hidden" name="view_id" value="{{ $viewId }}">
+                    @endif
 
                     @include('branches.people._form', ['person' => null])
 

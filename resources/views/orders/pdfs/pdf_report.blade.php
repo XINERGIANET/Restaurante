@@ -25,6 +25,12 @@
 </head>
 <body>
     <div class="header">
+        @if(!empty($companyName))
+            <p style="font-weight: bold; font-size: 12px; margin-bottom: 2px;">{{ $companyName }}</p>
+        @endif
+        @if(!empty($branchName))
+            <p style="font-size: 10px; margin-top: 0; margin-bottom: 4px;">Sucursal: {{ $branchName }}</p>
+        @endif
         <h1>Reporte detallado de pedidos</h1>
         <p>Generado el: {{ now()->format('d/m/Y H:i') }}</p>
         <p>

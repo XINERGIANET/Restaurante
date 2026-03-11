@@ -19,7 +19,7 @@ class BranchParameterController extends Controller
         $branchId = $request->session()->get('branch_id');
         $profileId = $request->session()->get('profile_id') ?? $request->user()?->profile_id;
         $operaciones = collect();
-        
+
         if ($viewId && $branchId && $profileId) {
             $operaciones = Operation::query()
                 ->select('operations.*')
@@ -49,35 +49,35 @@ class BranchParameterController extends Controller
         // LEFT JOIN branch_parameters: si no existe para esta sucursal, se muestra con valor por defecto.
         // ==========================================
         $categories = collect();
-        
+
         if ($branchId) {
             $categories = ParameterCategories::whereHas('parameters', function ($query) {
                 $query->where('parameters.status', 1)->whereNull('parameters.deleted_at');
             })
-            ->with(['parameters' => function ($query) use ($branchId) {
-                $query->where('parameters.status', 1)
-                      ->whereNull('parameters.deleted_at')
-                      ->leftJoin('branch_parameters', function ($join) use ($branchId) {
-                          $join->on('parameters.id', '=', 'branch_parameters.parameter_id')
-                               ->where('branch_parameters.branch_id', $branchId)
-                               ->whereNull('branch_parameters.deleted_at');
-                      })
-                      ->select(
-                          'parameters.id',
-                          'parameters.description',
-                          'parameters.value',
-                          'parameters.parameter_category_id',
-                          'parameters.status',
-                          'parameters.created_at',
-                          'parameters.updated_at',
-                          'parameters.deleted_at',
-                          DB::raw('COALESCE(branch_parameters.value, parameters.value) as branch_value'),
-                          'branch_parameters.id as branch_parameter_id'
-                      )
-                      ->orderBy('parameters.id');
-            }])
-            ->orderBy('id')
-            ->get();
+                ->with(['parameters' => function ($query) use ($branchId) {
+                    $query->where('parameters.status', 1)
+                        ->whereNull('parameters.deleted_at')
+                        ->leftJoin('branch_parameters', function ($join) use ($branchId) {
+                            $join->on('parameters.id', '=', 'branch_parameters.parameter_id')
+                                ->where('branch_parameters.branch_id', $branchId)
+                                ->whereNull('branch_parameters.deleted_at');
+                        })
+                        ->select(
+                            'parameters.id',
+                            'parameters.description',
+                            'parameters.value',
+                            'parameters.parameter_category_id',
+                            'parameters.status',
+                            'parameters.created_at',
+                            'parameters.updated_at',
+                            'parameters.deleted_at',
+                            DB::raw('COALESCE(branch_parameters.value, parameters.value) as branch_value'),
+                            'branch_parameters.id as branch_parameter_id'
+                        )
+                        ->orderBy('parameters.id');
+                }])
+                ->orderBy('id')
+                ->get();
         }
 
         $tiposVenta = DocumentType::where('movement_type_id', 2)->get();
@@ -138,9 +138,8 @@ class BranchParameterController extends Controller
                     }
                 }
                 DB::commit();
-                
+
                 return redirect()->back()->with('success', 'Parámetros actualizados correctamente.');
-                
             } catch (\Exception $e) {
                 DB::rollBack();
                 return redirect()->back()->with('error', 'Ocurrió un error al actualizar los parámetros: ' . $e->getMessage());

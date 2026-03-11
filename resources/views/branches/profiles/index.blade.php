@@ -342,8 +342,7 @@
 
         {{-- Modal: Asignar perfiles a la sucursal --}}
         <x-ui.modal x-data="{ open: false }" @open-assign-profiles.window="open = true"
-            @close-assign-profiles.window="open = false" :isOpen="false"
-            :showCloseButton="false" class="max-w-2xl">
+            @close-assign-profiles.window="open = false" :isOpen="false" class="max-w-2xl">
             <div class="flex h-[70vh] flex-col overflow-hidden p-6 sm:p-8">
                     <div class="mb-6 flex shrink-0 items-center justify-between gap-4">
                         <div class="flex items-center gap-4">

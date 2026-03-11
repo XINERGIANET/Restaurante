@@ -280,7 +280,11 @@
     </style>
 
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
+        function initBranchParameterTabs() {
+            const container = document.querySelector('.tabs-content-container');
+            if (!container || container.dataset.tabsInitialized === '1') return;
+            container.dataset.tabsInitialized = '1';
+
             const tabBtns = document.querySelectorAll('.tab-btn');
             const tabPanes = document.querySelectorAll('.tab-pane');
 
@@ -321,6 +325,9 @@
                     }
                 });
             });
-        });
+        }
+
+        document.addEventListener('DOMContentLoaded', initBranchParameterTabs);
+        document.addEventListener('turbo:load', initBranchParameterTabs);
     </script>
 @endsection

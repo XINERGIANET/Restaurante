@@ -370,7 +370,7 @@
         </x-common.component-card>
 
         <x-ui.modal x-data="{ open: false }" @open-assign-views.window="open = true"
-            @close-assign-views.window="open = false" :isOpen="false" :showCloseButton="false" class="max-w-4xl">
+            @close-assign-views.window="open = false" :isOpen="false" class="max-w-4xl">
             <div class="flex h-[75vh] flex-col overflow-hidden p-6 sm:p-8">
                 <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div class="flex items-center gap-4">

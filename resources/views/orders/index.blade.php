@@ -681,9 +681,10 @@
                         const ok = await this.ensureWaiterPin();
                         if (!ok) return;
                         if (table && table.movement_id) {
-                            const url = new URL(this.chargeUrl, window.location.origin);
-                            url.searchParams.set('movement_id', table.movement_id);
+                            // Ir a orders.create (pestaña Cobro) en vez de orders.charge
+                            const url = new URL(this.createUrl, window.location.origin);
                             url.searchParams.set('table_id', table.id);
+                            url.searchParams.set('cobro', '1');
                             url.searchParams.set('_t', Date.now());
                             if (window.Turbo && typeof window.Turbo.visit === 'function') {
                                 window.Turbo.visit(url.toString(), {
