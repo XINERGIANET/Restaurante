@@ -707,8 +707,8 @@ class SalesController extends Controller
                     'person_name' => $selectedPerson
                         ? trim(($selectedPerson->first_name ?? '') . ' ' . ($selectedPerson->last_name ?? ''))
                         : 'Publico General',
-                    'responsible_id' => $user?->person->id,
-                    'responsible_name' => $user?->person->first_name . ' ' . $user?->person->last_name ?? '-',
+                    'responsible_id' => $user?->id,
+                    'responsible_name' => $user?->person ? trim(($user->person->first_name ?? '') . ' ' . ($user->person->last_name ?? '')) : ($user?->name ?? 'Sistema'),
                     'comment' => $request->notes ?? '',
                     'status' => 'A', // Siempre Activo (pago completo)
                     'movement_type_id' => $movementType->id,
@@ -855,8 +855,8 @@ class SalesController extends Controller
                     'person_name' => $selectedPerson
                         ? trim(($selectedPerson->first_name ?? '') . ' ' . ($selectedPerson->last_name ?? ''))
                         : 'Publico General',
-                    'responsible_id' => $user?->person->id,
-                    'responsible_name' => $user?->person->first_name . ' ' . $user?->person->last_name ?? '-',
+                    'responsible_id' => $user?->id,
+                    'responsible_name' => $user?->person ? trim(($user->person->first_name ?? '') . ' ' . ($user->person->last_name ?? '')) : ($user?->name ?? 'Sistema'),
                     'comment' => 'Cobro de venta ' . $movement->number,
                     'status' => '1',
                     'movement_type_id' => 4,
