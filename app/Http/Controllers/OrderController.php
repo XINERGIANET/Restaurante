@@ -28,6 +28,7 @@ use App\Models\Shift;
 use App\Models\Table;
 use App\Models\Unit;
 use App\Models\User;
+use App\Models\Role;
 use App\Models\Operation;
 use Barryvdh\Snappy\Facades\SnappyPdf;
 use Illuminate\Http\Request;
@@ -566,6 +567,29 @@ class OrderController extends Controller
         $branchId = (int) ($table->branch_id ?? $area?->branch_id ?? session('branch_id')) ?: null;
         $branch = $branchId ? Branch::find($branchId) : null;
 
+        // Lista de clientes de la sucursal para el selector de cliente:
+        // personas con rol "Cliente" (si existe); si no existe, se listan todas sin usuario.
+        $peopleQuery = Person::query()
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+            ->orderBy('first_name')
+            ->orderBy('last_name');
+
+        $clienteRoleId = Role::query()
+            ->whereNull('deleted_at')
+            ->whereRaw('LOWER(TRIM(name)) = ?', ['cliente'])
+            ->value('id');
+
+        if ($clienteRoleId) {
+            $peopleQuery->whereHas('roles', function ($q) use ($clienteRoleId, $branchId) {
+                $q->where('roles.id', $clienteRoleId)
+                  ->when($branchId, fn($qq) => $qq->where('role_person.branch_id', $branchId));
+            });
+        } else {
+            $peopleQuery->whereDoesntHave('user');
+        }
+
+        $people = $peopleQuery->get(['id', 'first_name', 'last_name', 'document_number']);
+
         // Solo productos que tienen product_branch en esta sucursal y cuya categoría está en category_branch.
         $products = Product::where('type', 'PRODUCT')
             ->when($branchId, function ($query) use ($branchId) {
@@ -647,13 +671,27 @@ class OrderController extends Controller
                 $qty = (float) ($d->quantity ?? 0);
                 $amount = (float) ($d->amount ?? 0);
                 $price = $qty > 0 ? ($amount / $qty) : 0;
+
+                $rawComment = trim((string) ($d->comment ?? ''));
+                $note = '';
+                if ($rawComment !== '') {
+                    // Si el comentario no tiene ya prefijo HH:MM - , usar hora de creación del detalle.
+                    $hasTimePrefix = preg_match('/^\\d{2}:\\d{2}\\s*-\\s*/', $rawComment) === 1;
+                    if ($hasTimePrefix) {
+                        $note = $rawComment;
+                    } else {
+                        $time = $d->created_at ? $d->created_at->format('H:i') : now()->format('H:i');
+                        $note = $time . ' - ' . $rawComment;
+                    }
+                }
+
                 return [
                     'pId' => (int) ($d->product_id ?? 0),
                     'name' => $d->description ?? '',
                     'qty' => $qty,
                     'price' => round($price, 6),
                     'tax_rate' => 10,
-                    'note' => $d->comment ?? '',
+                    'note' => $note,
                 ];
             })->values()->all()
             : [];
@@ -717,6 +755,7 @@ class OrderController extends Controller
             'products' => $products,
             'productBranches' => $productBranches,
             'categories' => $categories,
+            'people' => $people,
             'units' => $units,
             'startFresh' => $startFresh,
             'pendingOrderMovementId' => $pendingOrder?->id,
@@ -731,8 +770,9 @@ class OrderController extends Controller
             'digitalWallets' => $digitalWallets,
             'banks' => $banks,
             'cashRegisters' => $cashRegisters,
-            'waiterPinEnabled' => $this->shouldRequireWaiterPin((int) $branchId, session('profile_id') ?? $request->user()?->profile_id),
-            'canCharge' => $this->canCharge(session('profile_id') ?? $request->user()?->profile_id),
+            'waiterPinEnabled' => $this->shouldRequireWaiterPin((int) $branchId, $profileId),
+            'canCharge' => $this->canCharge($profileId),
+            'isMozo' => !$this->canCharge($profileId),
             'turboCacheControl' => 'no-cache',
         ]);
         $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
@@ -1018,6 +1058,11 @@ class OrderController extends Controller
         $areaId = $request->filled('area_id') ? $request->area_id : null;
         $peopleCount = max(0, (int) $request->input('people_count', 0));
         $deliveryAmount = round((float) ($request->input('delivery_amount', 0) ?: 0), 6);
+        $clientPersonId = $request->filled('client_id') ? (int) $request->client_id : null;
+        $clientPerson = $clientPersonId ? Person::find($clientPersonId) : null;
+        $clientName = $clientPerson
+            ? trim(($clientPerson->first_name ?? '') . ' ' . ($clientPerson->last_name ?? ''))
+            : 'Público General';
 
         DB::beginTransaction();
 
@@ -1123,8 +1168,8 @@ class OrderController extends Controller
                     'moved_at' => now(),
                     'user_id' => $user?->id,
                     'user_name' => $user?->name ?? 'Sistema',
-                    'person_id' => null,
-                    'person_name' => 'Público General',
+                    'person_id' => $clientPerson?->id,
+                    'person_name' => $clientName,
                     'responsible_id' => $user?->id,
                     'responsible_name' => $waiterName ?: (($user?->person?->first_name ?? '') . ' ' . ($user?->person?->last_name ?? '-')),
                     'comment' => 'Pedido desde punto de venta',
@@ -1180,6 +1225,14 @@ class OrderController extends Controller
                 $code = $rawItem['code'] ?? ($product?->code ?? (string) $productId);
                 $description = $rawItem['description'] ?? ($product?->description ?? ($rawItem['name'] ?? 'Producto'));
 
+                // Nota con hora de comanda: si hay texto, prefijar HH:MM una sola vez
+                $rawNote = trim((string) ($rawItem['note'] ?? ''));
+                $comment = null;
+                if ($rawNote !== '') {
+                    $hasTimePrefix = preg_match('/^\\d{2}:\\d{2}\\s*-\\s*/', $rawNote) === 1;
+                    $comment = $hasTimePrefix ? $rawNote : now()->format('H:i') . ' - ' . $rawNote;
+                }
+
                 OrderMovementDetail::create([
                     'order_movement_id' => $orderMovement->id,
                     'product_id' => $productId,
@@ -1192,7 +1245,7 @@ class OrderController extends Controller
                     'quantity' => $qty,
                     'amount' => $amount,
                     'branch_id' => $branchId,
-                    'comment' => $rawItem['note'] ?? null,
+                    'comment' => $comment,
                 ]);
             }
 

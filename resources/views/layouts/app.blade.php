@@ -113,6 +113,7 @@
                 },
 
                 toggleMobileOpen() {
+                    if (this.isMozoUser) return; // Mozo no puede abrir/cerrar menú móvil
                     this.isMobileOpen = !this.isMobileOpen;
                     // Don't modify isExpanded when toggling mobile menu
                 },

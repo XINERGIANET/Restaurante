@@ -58,19 +58,20 @@ class AuthenticatedSessionController extends Controller
                 }
             }
 
-            // Redirección según perfil: Mozo -> Salones de pedidos, otros -> dashboard
-            $redirectTo = route('dashboard');
+            // Redirección según perfil:
+            // - Mozo: SIEMPRE a Salones de Pedidos (ignorar URL "intended")
+            // - Otros perfiles: dashboard (respetando intended si existe)
             if ($profileId) {
                 $mozoProfileId = \App\Models\Profile::query()
                     ->whereNull('deleted_at')
                     ->whereRaw('LOWER(TRIM(name)) = ?', ['mozo'])
                     ->value('id');
                 if ($mozoProfileId && (int) $profileId === (int) $mozoProfileId) {
-                    $redirectTo = route('orders.index');
+                    return redirect()->route('orders.index');
                 }
             }
 
-            return redirect()->intended($redirectTo);
+            return redirect()->intended(route('dashboard'));
         }
 
         return back()->withErrors([

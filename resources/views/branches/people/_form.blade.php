@@ -5,6 +5,8 @@
     $selectedRoleIds = old('roles', $selectedRoleIds ?? []);
     $selectedProfileId = old('profile_id', $selectedProfileId ?? null);
     $userName = old('user_name', $userName ?? null);
+    // Permite ocultar campos de PIN/Roles y relajar requeridos cuando se usa solo para clientes (por ejemplo, en POS).
+    $hidePinAndRoles = $hidePinAndRoles ?? false;
 @endphp
 
 <div
@@ -173,21 +175,23 @@
         @enderror
     </div>
 
-    <div>
-        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">PIN (mozo)</label>
-        <input
-            type="password"
-            name="pin"
-            value="{{ old('pin', $person->pin ?? '') }}"
-            placeholder="{{ isset($person->id) ? 'Dejar en blanco para no cambiar' : 'Opcional: para identificar al mozo en pedidos' }}"
-            maxlength="20"
-            autocomplete="off"
-            class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
-        />
-        @error('pin')
-            <p class="mt-1 text-xs text-error-500">{{ $message }}</p>
-        @enderror
-    </div>
+    @unless($hidePinAndRoles)
+        <div>
+            <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">PIN (mozo)</label>
+            <input
+                type="password"
+                name="pin"
+                value="{{ old('pin', $person->pin ?? '') }}"
+                placeholder="{{ isset($person->id) ? 'Dejar en blanco para no cambiar' : 'Opcional: para identificar al mozo en pedidos' }}"
+                maxlength="20"
+                autocomplete="off"
+                class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
+            />
+            @error('pin')
+                <p class="mt-1 text-xs text-error-500">{{ $message }}</p>
+            @enderror
+        </div>
+    @endunless
 
     <div>
         <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Telefono</label>
@@ -195,7 +199,6 @@
             type="text"
             name="phone"
             value="{{ old('phone', $person->phone ?? '') }}"
-            required
             placeholder="Ingrese el telefono"
             class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
         />
@@ -210,7 +213,6 @@
             type="email"
             name="email"
             value="{{ old('email', $person->email ?? '') }}"
-            required
             placeholder="Ingrese el email"
             class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
         />
@@ -225,7 +227,6 @@
             type="text"
             name="address"
             value="{{ old('address', $person->address ?? '') }}"
-            required
             placeholder="Ingrese la direccion"
             class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
         />
@@ -234,134 +235,137 @@
         @enderror
     </div>
 
-    <div class="sm:col-span-1">
-        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Departamento</label>
-        <select
-            name="department_id"
-            x-model="departmentId"
-            @change="onDepartmentChange()"
-            class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
-        >
-            <option value="">Seleccione departamento</option>
-            <template x-for="department in departments" :key="department.id">
-                <option :value="department.id" :selected="department.id == departmentId" x-text="department.name"></option>
-            </template>
-        </select>
-    </div>
-
-    <div class="sm:col-span-1">
-        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Provincia</label>
-        <select
-            name="province_id"
-            x-model="provinceId"
-            @change="onProvinceChange()"
-            class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
-        >
-            <option value="">Seleccione provincia</option>
-            <template x-for="province in filteredProvinces" :key="province.id">
-                <option :value="province.id" :selected="province.id == provinceId" x-text="province.name"></option>
-            </template>
-        </select>
-    </div>
-
-    <div class="sm:col-span-1">
-        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Distrito</label>
-        <select
-            name="location_id"
-            x-model="districtId"
-            required
-            class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
-        >
-            <option value="">Seleccione distrito</option>
-            <template x-for="district in filteredDistricts" :key="district.id">
-                <option :value="district.id" :selected="district.id == districtId" x-text="district.name"></option>
-            </template>
-        </select>
-        @error('location_id')
-            <p class="mt-1 text-xs text-error-500">{{ $message }}</p>
-        @enderror
-    </div>
-
-    <div class="sm:col-span-2 lg:col-span-3 xl:col-span-4">
-        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Roles</label>
-        <div class="flex items-center gap-4 flex-nowrap">
-            <template x-for="role in roles" :key="role.id">
-                <label class="inline-flex items-center gap-2 whitespace-nowrap  bg-white px-4 py-2 text-sm text-gray-700 dark:border-gray-800 dark:bg-white/[0.03] dark:text-gray-200">
-                    <input
-                        type="checkbox"
-                        name="roles[]"
-                        :value="role.id"
-                        :checked="selectedRoleIds.includes(role.id)"
-                        @change="toggleRole(role.id)"
-                        class="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/10"
-                    />
-                    <span x-text="role.name"></span>
-                </label>
-            </template>
+    @unless($hidePinAndRoles)
+        <div class="sm:col-span-1">
+            <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Departamento</label>
+            <select
+                name="department_id"
+                x-model="departmentId"
+                @change="onDepartmentChange()"
+                class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+            >
+                <option value="">Seleccione departamento</option>
+                <template x-for="department in departments" :key="department.id">
+                    <option :value="department.id" :selected="department.id == departmentId" x-text="department.name"></option>
+                </template>
+            </select>
         </div>
-    </div>
 
-    <template x-if="hasUserRole()">
+        <div class="sm:col-span-1">
+            <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Provincia</label>
+            <select
+                name="province_id"
+                x-model="provinceId"
+                @change="onProvinceChange()"
+                class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+            >
+                <option value="">Seleccione provincia</option>
+                <template x-for="province in filteredProvinces" :key="province.id">
+                    <option :value="province.id" :selected="province.id == provinceId" x-text="province.name"></option>
+                </template>
+            </select>
+        </div>
+
+        <div class="sm:col-span-1">
+            <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Distrito</label>
+            <select
+                name="location_id"
+                x-model="districtId"
+                required
+                class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+            >
+                <option value="">Seleccione distrito</option>
+                <template x-for="district in filteredDistricts" :key="district.id">
+                    <option :value="district.id" :selected="district.id == districtId" x-text="district.name"></option>
+                </template>
+            </select>
+            @error('location_id')
+                <p class="mt-1 text-xs text-error-500">{{ $message }}</p>
+            @enderror
+        </div>
+    @endunless
+
+    @unless($hidePinAndRoles)
         <div class="sm:col-span-2 lg:col-span-3 xl:col-span-4">
-            <div class="rounded-2xl border border-brand-100 bg-brand-50/40 p-4 dark:border-brand-500/20 dark:bg-brand-500/5">
-               
-                <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    <div>
-                        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Usuario</label>
+            <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Roles</label>
+            <div class="flex items-center gap-4 flex-nowrap">
+                <template x-for="role in roles" :key="role.id">
+                    <label class="inline-flex items-center gap-2 whitespace-nowrap  bg-white px-4 py-2 text-sm text-gray-700 dark:border-gray-800 dark:bg-white/[0.03] dark:text-gray-200">
                         <input
-                            type="text"
-                            name="user_name"
-                            value="{{ $userName }}"
-                            placeholder="Ingrese el usuario"
-                            class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 @error('user_name') border-red-500 dark:border-red-500 @enderror"
+                            type="checkbox"
+                            name="roles[]"
+                            :value="role.id"
+                            :checked="selectedRoleIds.includes(role.id)"
+                            @change="toggleRole(role.id)"
+                            class="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500/10"
                         />
-                        @error('user_name')
-                            <p class="mt-1 text-xs text-error-500">{{ $message }}</p>
-                        @enderror
-                    </div>
-                    <div>
-                        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Contraseña</label>
-                        <input
-                            type="password"
-                            name="password"
-                            placeholder="Ingrese la contraseña (mín. 8 caracteres)"
-                            class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 @error('password') border-red-500 dark:border-red-500 @enderror"
-                        />
-                        @error('password')
-                            <p class="mt-1 text-xs text-error-500">{{ $message }}</p>
-                        @enderror
-                    </div>
-                    <div>
-                        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Confirmar contraseña</label>
-                        <input
-                            type="password"
-                            name="password_confirmation"
-                            placeholder="Confirme la contraseña"
-                            class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 @error('password_confirmation') border-red-500 dark:border-red-500 @enderror"
-                        />
-                        @error('password_confirmation')
-                            <p class="mt-1 text-xs text-error-500">{{ $message }}</p>
-                        @enderror
-                    </div>
-                    <div class="sm:col-span-2 lg:col-span-1">
-                        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Perfil</label>
-                        <select
-                            name="profile_id"
-                            x-model="selectedProfileId"
-                            class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 @error('profile_id') border-red-500 dark:border-red-500 @enderror"
-                        >
-                            <option value="">Seleccione perfil</option>
-                            <template x-for="profile in profiles" :key="profile.id">
-                                <option :value="profile.id" :selected="profile.id == selectedProfileId" x-text="profile.name"></option>
-                            </template>
-                        </select>
-                        @error('profile_id')
-                            <p class="mt-1 text-xs text-error-500">{{ $message }}</p>
-                        @enderror
+                        <span x-text="role.name"></span>
+                    </label>
+                </template>
+            </div>
+        </div>
+
+        <template x-if="hasUserRole()">
+            <div class="sm:col-span-2 lg:col-span-3 xl:col-span-4">
+                <div class="rounded-2xl border border-brand-100 bg-brand-50/40 p-4 dark:border-brand-500/20 dark:bg-brand-500/5">
+                    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                        <div>
+                            <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Usuario</label>
+                            <input
+                                type="text"
+                                name="user_name"
+                                value="{{ $userName }}"
+                                placeholder="Ingrese el usuario"
+                                class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 @error('user_name') border-red-500 dark:border-red-500 @enderror"
+                            />
+                            @error('user_name')
+                                <p class="mt-1 text-xs text-error-500">{{ $message }}</p>
+                            @enderror
+                        </div>
+                        <div>
+                            <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Contraseña</label>
+                            <input
+                                type="password"
+                                name="password"
+                                placeholder="Ingrese la contraseña (mín. 8 caracteres)"
+                                class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 @error('password') border-red-500 dark:border-red-500 @enderror"
+                            />
+                            @error('password')
+                                <p class="mt-1 text-xs text-error-500">{{ $message }}</p>
+                            @enderror
+                        </div>
+                        <div>
+                            <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Confirmar contraseña</label>
+                            <input
+                                type="password"
+                                name="password_confirmation"
+                                placeholder="Confirme la contraseña"
+                                class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 @error('password_confirmation') border-red-500 dark:border-red-500 @enderror"
+                            />
+                            @error('password_confirmation')
+                                <p class="mt-1 text-xs text-error-500">{{ $message }}</p>
+                            @enderror
+                        </div>
+                        <div class="sm:col-span-2 lg:col-span-1">
+                            <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Perfil</label>
+                            <select
+                                name="profile_id"
+                                x-model="selectedProfileId"
+                                class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 @error('profile_id') border-red-500 dark:border-red-500 @enderror"
+                            >
+                                <option value="">Seleccione perfil</option>
+                                <template x-for="profile in profiles" :key="profile.id">
+                                    <option :value="profile.id" :selected="profile.id == selectedProfileId" x-text="profile.name"></option>
+                                </template>
+                            </select>
+                            @error('profile_id')
+                                <p class="mt-1 text-xs text-error-500">{{ $message }}</p>
+                            @enderror
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-    </template>
+        </template>
+    @endunless
 </div>
 

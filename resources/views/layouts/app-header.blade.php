@@ -12,7 +12,7 @@
             class="flex items-center justify-between w-full gap-2 px-3 py-3 dark:border-gray-800 sm:gap-4 xl:justify-normal xl:border-b-0 xl:px-0 lg:py-4">
 
             <!-- Desktop Sidebar Toggle Button (oculto para Mozo) -->
-            @if($showSidebar ?? true)
+            @if(($showSidebar ?? true) && !($isMozo ?? false))
             <button
                 class="hidden xl:flex items-center justify-center w-10 h-10 text-white border border-white/10 rounded-xl hover:bg-white/10 hover:text-white transition-all duration-200 lg:h-11 lg:w-11"
                 :class="{ 'bg-white/10 text-white': !$store.sidebar.isExpanded }"
@@ -40,7 +40,7 @@
             @endphp
 
             <!-- Mobile Menu Toggle Button (oculto para Mozo) -->
-            @if($showSidebar ?? true)
+            @if(($showSidebar ?? true) && !($isMozo ?? false))
             <button
                 class="flex xl:hidden items-center justify-center w-10 h-10 text-white rounded-lg hover:bg-white/10 hover:text-white transition-all duration-200 lg:h-11 lg:w-11"
                 :class="{ 'bg-white/10 text-white': $store.sidebar.isMobileOpen }"

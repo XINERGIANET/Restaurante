@@ -290,11 +290,20 @@
                                                  </x-ui.link-button>
                                             @endforeach
                                         @else
-                                            <x-ui.link-button size="icon" variant="edit" href="{{ route('shift-cash.edit', ['cash_register_id' => $selectedBoxId, 'shiftCash' => $shift->id]) }}" style="background-color: #fbbf24; color: #1f2937;" className="rounded-lg"><i class="ri-pencil-line"></i></x-ui.link-button>
+                                            <x-ui.link-button size="icon" variant="edit" href="{{ route('shift-cash.edit', ['cash_register_id' => $selectedBoxId, 'shiftCash' => $shift->id]) }}" style="background-color: #fbbf24; color: #1f2937;" className="rounded-lg">
+                                                <i class="ri-pencil-line"></i>
+                                            </x-ui.link-button>
+                                            @if($shift->cashMovementEnd)
+                                                <x-ui.link-button size="icon" href="{{ route('shift-cash.print', $shift->id) }}" style="background-color: #22c55e; color: #ffffff;" className="rounded-lg" title="Imprimir cierre">
+                                                    <i class="ri-printer-line"></i>
+                                                </x-ui.link-button>
+                                            @endif
                                             <form action="{{ route('shift-cash.destroy', ['cash_register_id' => $selectedBoxId, 'shiftCash' => $shift->id]) }}" method="POST" class="inline js-swal-delete">
                                                 @csrf @method('DELETE')
                                                 @if ($viewId) <input type="hidden" name="view_id" value="{{ $viewId }}"> @endif
-                                                <x-ui.button size="icon" type="submit" style="background-color: #ef4444; color: white;" className="rounded-lg"><i class="ri-delete-bin-line"></i></x-ui.button>
+                                                <x-ui.button size="icon" type="submit" style="background-color: #ef4444; color: white;" className="rounded-lg">
+                                                    <i class="ri-delete-bin-line"></i>
+                                                </x-ui.button>
                                             </form>
                                         @endif
                                     </div>

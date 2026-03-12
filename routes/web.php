@@ -406,6 +406,9 @@ Route::middleware('auth')->group(function () {
         ->parameters(['turno-caja' => 'shiftCash'])
         ->except(['index']);
 
+    Route::get('/caja/turno-caja/{shiftCash}/print', [ShiftCashController::class, 'print'])
+        ->name('shift-cash.print');
+
     //tasa de impuesto
     Route::resource('/admin/herramientas/tasas-impuesto', TaxRateController::class)
         ->names('admin.tax_rates')

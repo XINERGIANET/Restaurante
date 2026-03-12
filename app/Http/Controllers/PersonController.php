@@ -92,6 +92,18 @@ class PersonController extends Controller
         $data = $this->validatePerson($request);
         $data['branch_id'] = $branch->id;
         $roleIds = $this->validateRoles($request);
+
+        // Si viene desde POS (from_pos) y no se seleccionó ningún rol,
+        // asignar automáticamente el rol "Cliente" para que aparezca en los combobox.
+        if ($request->boolean('from_pos') && empty($roleIds)) {
+            $clienteRoleId = Role::query()
+                ->whereNull('deleted_at')
+                ->whereRaw('LOWER(TRIM(name)) = ?', ['cliente'])
+                ->value('id');
+            if ($clienteRoleId) {
+                $roleIds = [$clienteRoleId];
+            }
+        }
         $hasUserRole = in_array(1, $roleIds, true);
         $userData = $this->validateUserData($request, $hasUserRole, null);
         
@@ -109,6 +121,12 @@ class PersonController extends Controller
                 ]);
             }
         });
+
+        // Si viene redirect_to (por ejemplo, desde POS), volver a esa URL
+        if ($request->filled('redirect_to')) {
+            return redirect($request->input('redirect_to'))
+                ->with('status', 'Cliente creado correctamente.');
+        }
 
         $viewId = $request->input('view_id');
 
@@ -230,16 +248,18 @@ class PersonController extends Controller
 
     private function validatePerson(Request $request): array
     {
+        // Reglas alineadas con la migración: solo se marcan required
+        // los campos que realmente deben ser obligatorios a nivel de negocio.
         $data = $request->validate([
             'first_name' => ['required', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
             'fecha_nacimiento' => ['nullable', 'date'],
             'genero' => ['nullable', 'string', 'max:30'],
             'person_type' => ['required', 'string', 'max:100'],
-            'phone' => ['required', 'string', 'max:50'],
-            'email' => ['required', 'email', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:50'],
+            'email' => ['nullable', 'email', 'max:255'],
             'document_number' => ['required', 'string', 'max:50'],
-            'address' => ['required', 'string', 'max:255'],
+            'address' => ['nullable', 'string', 'max:255'],
             'location_id' => ['required', 'integer', 'exists:locations,id'],
             'pin' => ['nullable', 'string', 'max:20'],
         ]);

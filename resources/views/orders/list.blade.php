@@ -259,25 +259,40 @@
                                     <table class="w-full text-sm text-left">
                                         <thead class="text-xs text-gray-500 uppercase bg-white dark:bg-gray-900 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800">
                                             <tr>
-                                                <th class="px-4 py-3 font-semibold">Subtotal</th>
-                                                <th class="px-4 py-3 font-semibold">IGV</th>
-                                                <th class="px-4 py-3 font-semibold text-right">Total</th>
-                                                <th class="px-4 py-3 font-semibold">Moneda</th>
-                                                <th class="px-4 py-3 font-semibold">Área</th>
+                                                <th class="px-4 py-3 font-semibold">Producto(s)</th>
+                                                <th class="px-4 py-3 font-semibold">Cantidad</th>
+                                                <th class="px-4 py-3 font-semibold text-right">Hora comanda</th>
+                                                <th class="px-4 py-3 font-semibold">Estado</th>
                                                 <th class="px-4 py-3 font-semibold">Mesa</th>
-                                                <th class="px-4 py-3 font-semibold">Tipo doc.</th>
+                                                <th class="px-4 py-3 font-semibold">Mozo</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            <tr class="hover:bg-gray-50/50 dark:hover:bg-white/5 transition-colors">
-                                                <td class="px-4 py-3 font-medium text-gray-700 dark:text-gray-300 tabular-nums">{{ number_format((float) ($order->subtotal ?? 0), 2) }}</td>
-                                                <td class="px-4 py-3 text-gray-600 dark:text-gray-400 tabular-nums">{{ number_format((float) ($order->tax ?? 0), 2) }}</td>
-                                                <td class="px-4 py-3 text-right font-bold text-gray-700 dark:text-gray-300 tabular-nums">{{ number_format((float) ($order->total ?? 0), 2) }}</td>
-                                                <td class="px-4 py-3 text-gray-600 dark:text-gray-400">{{ $order->currency ?? '-' }}</td>
-                                                <td class="px-4 py-3 text-gray-600 dark:text-gray-400">{{ $order->area?->name ?? '-' }}</td>
-                                                <td class="px-4 py-3 text-gray-600 dark:text-gray-400">{{ $order->table?->name ?? '-' }}</td>
-                                                <td class="px-4 py-3 text-gray-600 dark:text-gray-400">{{ $order->movement?->documentType?->name ?? '-' }}</td>
-                                            </tr>
+                                                <tr class="hover:bg-gray-50/50 dark:hover:bg-white/5 transition-colors">
+                                                    <td class="px-4 py-3 font-medium text-gray-700 dark:text-gray-300 tabular-nums">
+                                                        @foreach ($order->details as $detail)
+                                                            <span class="text-gray-600 text-xs dark:text-gray-400 truncate block max-w-full" title="{{ $detail->description }}">{{ $detail->description }}</span>
+                                                        @endforeach
+                                                    </td>
+                                                    <td class="px-4 py-3 text-gray-600 dark:text-gray-400 tabular-nums">
+                                                        @foreach ($order->details as $detail)
+                                                            <span class="text-gray-600 text-xs dark:text-gray-400 truncate block max-w-full" title="{{ $detail->quantity }}">{{ number_format((float) ($detail->quantity ?? 0), 2) }}</span>
+                                                        @endforeach
+                                                    </td>
+                                                    <td class="px-4 py-3 text-right font-bold text-gray-700 dark:text-gray-300 tabular-nums">{{ $order->movement?->moved_at?->format('H:i') ?? '-' }}</td>
+                                                    <td class="px-4 py-3 text-gray-600 dark:text-gray-400">
+                                                        <x-ui.badge variant="light" color="{{ $rowStatusColor }}"
+                                                            class="inline-flex text-[11px] font-medium px-2 py-0.5">
+                                                            {{ $rowStatusText }}
+                                                        </x-ui.badge>
+                                                    </td>
+                                                    <td class="px-4 py-3 text-gray-600 dark:text-gray-400">
+                                                        <span class="text-gray-600 text-xs dark:text-gray-400 truncate block max-w-full" title="{{ $order->table?->name ?? '-' }}">{{ $order->table?->name ?? '-' }}</span>
+                                                    </td>
+                                                    <td class="px-4 py-3 text-gray-600 dark:text-gray-400">
+                                                        <span class="text-gray-600 text-xs dark:text-gray-400 truncate block max-w-full" title="{{ $order->movement?->responsible_name ?? '-' }}">{{ $order->movement?->responsible_name ?? '-' }}</span>
+                                                    </td>
+                                                </tr>
                                         </tbody>
                                     </table>
                                 </div>

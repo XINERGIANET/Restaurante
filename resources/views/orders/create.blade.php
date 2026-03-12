@@ -39,8 +39,8 @@
 
     <div class="rounded-2xl border border-gray-200 dark:border-gray-300 overflow-hidden bg-blue-50 dark:bg-gray-900 fade-in max-w-full">
         <main class="w-full lg:flex-2 flex flex-col min-w-0 min-h-0 bg-white dark:bg-gray-900/50 lg:min-h-0">
-            <header class="min-h-14 sm:h-20 py-3 px-3 sm:py-0 sm:px-6 flex items-center gap-2 sm:gap-4 dark:bg-gray-800/50 border-b border-gray-200 shadow-sm z-10 bg-gray-200 flex-nowrap overflow-x-auto min-w-0">
-                <div class="flex items-center gap-2 sm:gap-4 md:gap-6 w-full min-w-max flex-nowrap">
+            <header class="min-h-14 sm:h-20 py-3 px-3 sm:py-0 sm:px-6 flex flex-wrap lg:flex-nowrap items-center gap-2 sm:gap-4 dark:bg-gray-800/50 border-b border-gray-200 shadow-sm z-10 bg-gray-200 min-w-0">
+                <div class="flex items-center gap-2 sm:gap-4 md:gap-6 w-full lg:w-auto flex-shrink-0">
                     <button onclick="goBack()" 
                         title="Volver atrás"
                         class="h-9 sm:h-10 px-2 rounded-lg bg-gray-50 border border-gray-200 text-gray-500 hover:text-blue-600 hover:border-blue-600 transition-colors flex items-center justify-center shadow-sm shrink-0">
@@ -55,7 +55,7 @@
                             </h2>
                         </div>
                     </div>
-                    <div class="flex items-center gap-2 sm:gap-4 md:gap-6 text-xs sm:text-sm text-gray-500 font-medium min-w-0 flex-nowrap flex-1">
+                    <div class="flex items-center gap-2 sm:gap-4 md:gap-6 text-xs sm:text-sm text-gray-500 font-medium min-w-0 flex-wrap lg:flex-nowrap flex-1">
                         <div class="flex items-center justify-end shrink-0 gap-1">
                             <div class="w-50 sm:w-50 md:w-60 relative">
                                 <input type="text" id="search-products" placeholder="Buscar producto..." autocomplete="off"
@@ -66,7 +66,8 @@
                                 Limpiar
                             </x-ui.button>
                         </div>
-                        <div class="flex items-center gap-2 sm:gap-4 md:gap-6 flex-nowrap shrink-0 ml-auto">
+                        <div class="flex items-center gap-2 sm:gap-4 md:gap-6 flex-wrap lg:flex-nowrap shrink-0 ml-auto">
+                            @if(!($isMozo ?? false))
                             <div class="flex items-center gap-1 sm:gap-2 group min-w-0">
                                 <span class="text-gray-500 dark:text-gray-400 shrink-0">Mozo:</span>
                                 <div class="relative flex items-center min-w-0">
@@ -76,16 +77,49 @@
                                     </select>
                                 </div>
                             </div>
-    
+
                             <div class="h-3 sm:h-4 w-px bg-gray-300 dark:bg-slate-600 shrink-0"></div>
-    
+                            @endif
+
                             <div class="flex items-center gap-1 sm:gap-2 group min-w-0">
                                 <span class="text-gray-500 dark:text-gray-400 shrink-0">Cliente:</span>
-                                <div class="relative flex items-center min-w-0">
-                                    <select id="header-client-select" onchange="changeClient(this)"
-                                        class="min-w-0 w-20 sm:w-28 md:min-w-[110px] md:max-w-[180px] py-1 px-2 sm:px-3 bg-white dark:bg-slate-700/80 border border-gray-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 font-semibold text-xs sm:text-sm cursor-pointer focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-500/40 focus:border-blue-400 outline-none shadow-sm appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%226b7280%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22M6%208l4%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1rem] sm:bg-[length:1.25rem] bg-[right_0.2rem_center] sm:bg-[right_0.25rem_center] bg-no-repeat truncate">
-                                        <option value="{{ $person?->id }}" selected>{{ $person?->name ?? 'Público General' }}</option>
-                                    </select>
+                                <div class="relative flex items-center min-w-0 gap-1">
+                                    @php
+                                        $peopleCollection = $people ?? collect();
+                                        $clientOptions = $peopleCollection->map(function($p) {
+                                            $name = trim(($p->first_name ?? '') . ' ' . ($p->last_name ?? ''));
+                                            if ($name === '' && !empty($p->document_number)) {
+                                                $name = $p->document_number;
+                                            }
+                                            return [
+                                                'id' => $p->id,
+                                                'description' => $name,
+                                            ];
+                                        })->values()->all();
+                                    @endphp
+                                    <x-form.select.combobox
+                                        :options="$clientOptions"
+                                        x-model="currentTable.person_id"
+                                        name="header_client_id"
+                                        placeholder="Seleccionar cliente..."
+                                        icon=""
+                                        class="min-w-0 w-20 sm:w-28 md:min-w-[120px] md:max-w-[180px] !py-0.5 !px-2 !text-[11px] sm:!text-xs !font-semibold !text-slate-700 dark:!text-slate-200 !bg-white dark:!bg-slate-700/80 !border !border-gray-200 dark:!border-slate-600 !rounded-lg"
+                                        x-on:change="
+                                            const selected = (@js($clientOptions)).find(o => o.id == currentTable.person_id);
+                                            const name = selected ? selected.description : 'Público General';
+                                            currentTable.person_id = currentTable.person_id ? parseInt(currentTable.person_id, 10) : null;
+                                            currentTable.clientName = name;
+                                            saveDB();
+                                            const cobroInput = document.getElementById('cobro-client-input');
+                                            if (cobroInput) cobroInput.value = name;
+                                        "
+                                    />
+                                    <button type="button"
+                                        class="inline-flex items-center justify-center h-7 w-7 rounded-full bg-white border border-gray-200 text-gray-500 hover:bg-blue-50 hover:text-blue-600 shadow-sm"
+                                        @click="$dispatch('open-person-modal')"
+                                        title="Nuevo cliente">
+                                        <i class="ri-user-add-line text-base"></i>
+                                    </button>
                                 </div>
                             </div>
     
@@ -132,16 +166,18 @@
                     </div>
                 </div>
                 <aside class="flex flex-col rounded-2xl shadow-2xl overflow-hidden w-[400px] sm:w-[400px] md:w-[400px] shrink-0 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 min-h-0 rounded-l-2xl" style="min-height: 550px;">
-                    {{-- Tabs Resumen | Cobro --}}
+                    {{-- Tabs Resumen | Cobro (Cobro oculto para Mozo) --}}
                     <div class="flex shrink-0 border-b border-gray-200 dark:border-gray-700">
                         <button type="button" id="tab-resumen" onclick="switchAsideTab('resumen')"
                             class="flex-1 py-3 px-4 text-sm font-bold transition-colors rounded-tl-2xl bg-brand-500 text-white">
                             Resumen
                         </button>
+                        @if($canCharge ?? true)
                         <button type="button" id="tab-cobro" onclick="switchAsideTab('cobro')"
                             class="flex-1 py-3 px-4 text-sm font-bold transition-colors bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-orange-100 dark:hover:bg-orange-900/30 hover:text-orange-600 dark:hover:text-orange-400">
                             Cobro
                         </button>
+                        @endif
                     </div>
 
                     {{-- Contenido Resumen --}}
@@ -170,7 +206,8 @@
                         </div>
                     </div>
 
-                    {{-- Contenido Cobro --}}
+                    {{-- Contenido Cobro (oculto para Mozo) --}}
+                    @if($canCharge ?? true)
                     <div id="aside-cobro" class="hidden flex-col flex-1 min-h-0 overflow-y-auto p-4 sm:p-5">
                         <div class="space-y-4">
                             <div>
@@ -224,6 +261,7 @@
                             </div>
                         </div>
                     </div>
+                    @endif
 
                     {{-- Botones Guardar / Cobrar: visibles según pestaña activa --}}
                     <div class="shrink-0 p-4 sm:p-5 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
@@ -235,26 +273,69 @@
                                 <span>Guardar</span>
                             </button>
                         </div>
-                        {{-- Footer Cobro: solo Cobrar --}}
+                        {{-- Footer Cobro: solo Cobrar (oculto para Mozo) --}}
+                        @if($canCharge ?? true)
                         <div id="footer-cobro" class="hidden justify-end">
-                            @if($canCharge ?? true)
                             <button type="button" onclick="processOrderPayment()"
                                 class="py-2.5 px-4 rounded-xl bg-brand-500 text-white font-bold text-xs sm:text-sm shadow-lg hover:bg-brand-600 active:scale-95 transition-all flex justify-center items-center gap-2">
                                 <i class="ri-bank-card-line text-base"></i>
                                 <span>Cobrar</span>
                             </button>
-                            @else
-                            <button type="button" disabled
-                                class="py-2.5 px-4 rounded-xl bg-gray-300 text-gray-500 font-bold text-xs sm:text-sm cursor-not-allowed flex justify-center items-center gap-2"
-                                title="Tu perfil (Mozo) no puede cobrar. Solo puedes guardar pedidos.">
-                                <i class="ri-bank-card-line text-base"></i>
-                                <span>Cobrar</span>
-                            </button>
-                            @endif
                         </div>
+                        @endif
                     </div>
                 </aside>
             </div>
+
+            {{-- Modal para crear/editar cliente rápido --}}
+            <x-ui.modal 
+                x-data="{ open: false }" 
+                @open-person-modal.window="open = true" 
+                @close-person-modal.window="open = false" 
+                :isOpen="false" 
+                :showCloseButton="false"
+                class="max-w-4xl z-[100]">
+                <div class="p-6 sm:p-8 bg-white dark:bg-gray-800">
+                    <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div class="flex items-center gap-4">
+                            <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400">
+                                <i class="ri-user-add-line text-2xl"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold text-gray-900 dark:text-white">Registrar / Editar Cliente</h3>
+                                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Ingresa DNI y nombre de la persona.</p>
+                            </div>
+                        </div>
+                        <button type="button"
+                            @click="open = false"
+                            class="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600 transition-colors">
+                            <i class="ri-close-line text-xl"></i>
+                        </button>
+                    </div>
+
+                    <form method="POST"
+                        action="{{ route('admin.companies.branches.people.store', [$branch->company_id ?? '0', $branch->id ?? '0']) }}"
+                        class="space-y-6">
+                        @csrf
+                        <input type="hidden" name="redirect_to" value="{{ request()->fullUrl() }}">
+                        <input type="hidden" name="location_id" value="{{ $branch->location_id ?? '' }}">
+                        <input type="hidden" name="from_pos" value="1">
+
+                        @include('branches.people._form', ['person' => null, 'hidePinAndRoles' => true])
+
+                        <div class="flex flex-wrap gap-3 justify-end pt-4 border-t border-gray-100 dark:border-gray-700">
+                            <button type="button" @click="open = false"
+                                class="px-5 py-2.5 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700 transition-colors">
+                                Cancelar
+                            </button>
+                            <button type="submit"
+                                class="px-5 py-2.5 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 shadow-lg shadow-blue-500/30 transition-all">
+                                <i class="ri-save-line mr-1"></i> Guardar Cliente
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </x-ui.modal>
         </main>
     </div>
 
@@ -321,26 +402,15 @@
             if (!currentTable.people_count) currentTable.people_count = {{ $pendingPeopleCount ?? 1 }};
             // Siempre sincronizar order_movement_id y movement_id con el servidor para evitar duplicados
             if (serverOrderMovementId) {
-                const localOrderId = currentTable?.order_movement_id ?? null;
+                // El servidor es la fuente de verdad cuando hay pedido pendiente:
+                // siempre rehidratamos los ítems desde serverPendingItems para evitar duplicados.
+                currentTable = { ...currentTable, ...serverTable };
                 currentTable.order_movement_id = serverOrderMovementId;
                 currentTable.movement_id = serverMovementId;
-                // Si el localStorage tiene un pedido de otra ocasión para esta mesa, NO reutilizarlo.
-                // Rehidratar siempre desde servidor cuando cambia el order_movement_id.
-                const orderChanged = localOrderId && String(localOrderId) !== String(serverOrderMovementId);
-                if (orderChanged) {
-                    currentTable = { ...serverTable, ...currentTable };
-                    currentTable.items = Array.isArray(serverPendingItems) ? serverPendingItems : [];
-                    currentTable.cancellations = [];
-                    db[activeKey] = currentTable;
-                    localStorage.setItem('restaurantDB', JSON.stringify(db));
-                }
-                // Si no hay datos guardados localmente para esta mesa (p. ej. se movió desde otra mesa),
-                // hidratar los ítems desde el servidor para que el pedido cargue correctamente.
-                if ((!db[activeKey] || !Array.isArray(db[activeKey]?.items) || db[activeKey].items.length === 0) && Array.isArray(serverPendingItems) && serverPendingItems.length > 0) {
-                    currentTable.items = serverPendingItems;
-                    db[activeKey] = currentTable;
-                    localStorage.setItem('restaurantDB', JSON.stringify(db));
-                }
+                currentTable.items = Array.isArray(serverPendingItems) ? serverPendingItems : [];
+                currentTable.cancellations = [];
+                db[activeKey] = currentTable;
+                localStorage.setItem('restaurantDB', JSON.stringify(db));
             } else {
                 // No hay pedido pendiente en servidor: asegurar que no usamos un ID viejo del localStorage
                 currentTable.order_movement_id = null;
@@ -977,6 +1047,13 @@
                 saveDB();
             }
 
+            function toggleDelivered(index) {
+                if (!currentTable.items || !currentTable.items[index]) return;
+                currentTable.items[index].delivered = !currentTable.items[index].delivered;
+                saveDB();
+                renderTicket();
+            }
+
             function renderTicket() {
                 const container = document.getElementById('cart-container');
                 if (!container) {
@@ -1001,7 +1078,19 @@
                         const itemPrice = parseFloat(item.price) || 0;
                         const itemQty = parseInt(item.qty) || 0;
                         subtotal += itemPrice * itemQty;
-                        const hasNote = item.note && item.note.trim() !== "";
+
+                        // Separar hora y texto de la nota si viene con formato "HH:MM - Nota"
+                        let rawNote = item.note || "";
+                        let noteTime = "";
+                        let noteText = rawNote;
+                        const noteMatch = typeof rawNote === "string"
+                            ? rawNote.match(/^(\d{2}:\d{2})(?:\s*[ap]\.?m\.?)?\s*-\s*(.*)$/i)
+                            : null;
+                        if (noteMatch) {
+                            noteTime = noteMatch[1] || "";
+                            noteText = noteMatch[2] || "";
+                        }
+                        const hasNote = noteText && noteText.trim() !== "";
 
                         const row = document.createElement('div');
                         row.className =
@@ -1009,7 +1098,8 @@
 
                         const productName = escapeHtml(prod.name || 'Sin nombre');
                         const productImage = getImageUrl(prod.img || null);
-                        const itemNote = escapeHtml(item.note || '');
+                        const itemNote = escapeHtml(noteText || '');
+                        const isDelivered = !!item.delivered;
 
                         row.innerHTML = `
                         <div class="flex flex-col gap-2">
@@ -1033,10 +1123,18 @@
                                 <button type="button" onclick="removeFromCart(${index})" class="p-1.5 text-gray-400 hover:text-red-500 transition-colors shrink-0" title="Eliminar">
                                     <i class="ri-delete-bin-line text-base"></i>
                                 </button>
+                                <span class="text-[11px] text-gray-500 dark:text-gray-400">
+                                    ${noteTime ? 'Hora: ' + noteTime : ''}
+                                </span>
                             </div>
-                            <div class="flex items-center">
+                            <div class="flex items-center justify-between gap-2">
                                 <button type="button" onclick="toggleNoteInput(${index})" class="text-xs flex items-center gap-1 transition-colors ${hasNote ? 'text-blue-600 font-medium' : 'text-blue-500 hover:text-blue-600'}">
                                     <i class="fas fa-comment-alt text-[10px]"></i> Nota
+                                </button>
+                                <button type="button" onclick="toggleDelivered(${index})"
+                                    class="flex items-center gap-1 text-[11px] px-2 py-1 rounded-full border ${isDelivered ? 'border-green-500 bg-green-50 text-green-700 dark:border-green-400 dark:bg-green-900/20 dark:text-green-300' : 'border-gray-300 text-gray-500 hover:border-green-400 hover:text-green-600 dark:border-gray-600 dark:text-gray-300'}">
+                                    <span class="inline-flex w-3 h-3 rounded-full border ${isDelivered ? 'border-green-500 bg-green-500' : 'border-gray-400'}"></span>
+                                    <span>Entregado</span>
                                 </button>
                             </div>
                             <div id="note-box-${index}" class="${hasNote ? '' : 'hidden'} animate-fadeIn">
@@ -1172,6 +1270,7 @@
                     tax: totals.tax,
                     total: totals.total,
                     people_count: currentTable.people_count ?? 0,
+                    client_id: currentTable.person_id ?? null,
                     contact_phone: currentTable.contact_phone ?? null,
                     delivery_address: currentTable.delivery_address ?? null,
                     delivery_time: currentTable.delivery_time ?? null,
@@ -1213,6 +1312,20 @@
                 const btnGuardar = document.getElementById('btn-guardar');
                 if (btnGuardar) { btnGuardar.disabled = true; }
                 const items = currentTable.items || [];
+
+                // Al guardar, fijar hora en la nota (formato "HH:MM - texto") siempre que no tenga prefijo,
+                // incluso si la nota está vacía, para poder mostrar la hora en la tarjeta.
+                const now = new Date();
+                const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+                items.forEach((it) => {
+                    if (!it) return;
+                    const raw = String(it.note || '');
+                    const hasTimePrefix = /^\\d{2}:\\d{2}(?:\\s*[ap]\\.?m\\.?)?\\s*-\\s*/i.test(raw);
+                    if (!hasTimePrefix) {
+                        it.note = `${timeString} - ${raw}`;
+                    }
+                });
+
                 const totals = calculateTotalsFromItems(items);
                 const subtotal = totals.subtotal;
                 const tax = totals.tax;
@@ -1226,6 +1339,7 @@
                     tax: tax,
                     total: total,
                     people_count: currentTable.people_count ?? 0,
+                    client_id: currentTable.person_id ?? null,
                     contact_phone: currentTable.contact_phone ?? null,
                     delivery_address: currentTable.delivery_address ?? null,
                     delivery_time: currentTable.delivery_time ?? null,
@@ -1600,6 +1714,9 @@
                 const btnCobro = document.getElementById('tab-cobro');
                 const footerResumen = document.getElementById('footer-resumen');
                 const footerCobro = document.getElementById('footer-cobro');
+                const productsGrid = document.getElementById('products-grid');
+                const categoriesGrid = document.getElementById('categories-grid');
+                const searchInput = document.getElementById('search-products');
                 if (tab === 'cobro') {
                     resumen?.classList.add('hidden');
                     cobro?.classList.remove('hidden');
@@ -1610,6 +1727,17 @@
                     btnResumen?.classList.add('bg-gray-200', 'dark:bg-gray-700', 'text-gray-700', 'dark:text-gray-300');
                     btnCobro?.classList.remove('bg-gray-100', 'dark:bg-gray-800', 'text-gray-500', 'dark:text-gray-400');
                     btnCobro?.classList.add('bg-brand-500', 'text-white');
+                    // Deshabilitar agregar/modificar productos mientras se está en Cobro
+                    if (productsGrid) {
+                        productsGrid.classList.add('pointer-events-none', 'opacity-60');
+                    }
+                    if (categoriesGrid) {
+                        categoriesGrid.classList.add('pointer-events-none', 'opacity-60');
+                    }
+                    if (searchInput) {
+                        searchInput.setAttribute('disabled', 'disabled');
+                        searchInput.classList.add('bg-gray-100', 'cursor-not-allowed');
+                    }
                 } else {
                     cobro?.classList.add('hidden');
                     cobro?.classList.remove('flex');
@@ -1620,6 +1748,17 @@
                     btnCobro?.classList.add('bg-gray-100', 'dark:bg-gray-800', 'text-gray-500', 'dark:text-gray-400');
                     btnResumen?.classList.remove('bg-gray-200', 'dark:bg-gray-700', 'text-gray-700', 'dark:text-gray-300');
                     btnResumen?.classList.add('bg-brand-500', 'text-white');
+                    // Volver a habilitar productos al regresar a Resumen
+                    if (productsGrid) {
+                        productsGrid.classList.remove('pointer-events-none', 'opacity-60');
+                    }
+                    if (categoriesGrid) {
+                        categoriesGrid.classList.remove('pointer-events-none', 'opacity-60');
+                    }
+                    if (searchInput) {
+                        searchInput.removeAttribute('disabled');
+                        searchInput.classList.remove('bg-gray-100', 'cursor-not-allowed');
+                    }
                 }
             }
 
@@ -1845,6 +1984,7 @@
             window.setQtyFromInput = setQtyFromInput;
             window.removeFromCart = removeFromCart;
             window.saveNote = saveNote;
+            window.toggleDelivered = toggleDelivered;
             window.getImageUrl = getImageUrl;
             window.goBack = goBack;
             window.processOrder = processOrder;

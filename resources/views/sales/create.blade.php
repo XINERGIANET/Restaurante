@@ -502,6 +502,7 @@
                             <p class="font-medium text-sm">Sin productos</p>
                         </div>`;
                 } else {
+                    const ticketSavedTime = sessionStorage.getItem('last_saved_time') || '';
                     currentSale.items.forEach((item, index) => {
                         const prod = products.find((p) => Number(p.id) === Number(item.pId));
                         if (!prod) return;
@@ -538,6 +539,16 @@
                                     <button type="button" onclick="removeFromCart(${index})" class="p-1.5 text-gray-400 hover:text-red-500 transition-colors shrink-0" title="Eliminar">
                                         <i class="ri-delete-bin-line text-base"></i>
                                     </button>
+                                </div>
+                                <div class="flex items-center">
+                                    <span class="font-bold text-slate-800 dark:text-slate-200 text-xs text-gray-500 truncate">
+                                        ${ticketSavedTime ? 'Hora: ' + ticketSavedTime : ''}
+                                    </span>
+                                </div>
+                                <div class="flex items-center">
+                                    <span class="font-bold text-slate-800 dark:text-slate-200 text-sm truncate">
+                                        ${hasNote ? 'Nota: ' + itemNote : ''}
+                                    </span>
                                 </div>
                                 <div class="flex items-center">
                                     <button type="button" onclick="toggleNoteInput(${index})" class="text-xs flex items-center gap-1 transition-colors ${hasNote ? 'text-blue-600 font-medium' : 'text-blue-500 hover:text-blue-600'}">
@@ -912,6 +923,10 @@
                     showCobroNotification('Error', 'Agrega productos antes de cobrar.', 'error');
                     return;
                 }
+                // Guardar hora de guardado (solo visual, no afecta montos)
+                const now = new Date();
+                const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                sessionStorage.setItem('last_saved_time', timeString);
                 const totals = calculateTotalsFromItems(items);
                 const total = totals.total;
                 const paymentMethodsData = getCobroPaymentMethodsFromForm();

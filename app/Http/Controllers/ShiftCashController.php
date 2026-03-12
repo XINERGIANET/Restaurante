@@ -16,6 +16,8 @@ use App\Models\Card;
 use App\Models\PaymentGateways;
 use App\Models\DigitalWallet;
 use Illuminate\Http\Request;
+use Symfony\Component\Process\Process;
+use Illuminate\Support\Facades\Log;
 
 class ShiftCashController extends Controller
 {
@@ -185,5 +187,140 @@ class ShiftCashController extends Controller
             'digitalWallets'  => $digitalWallets,
             'cards'           => $cards,
         ]);
+    }
+
+    public function print(Request $request, CashShiftRelation $shiftCash)
+    {
+        $branchId = \effective_branch_id();
+
+        $shift = CashShiftRelation::query()
+            ->with([
+                'cashMovementStart.movement.documentType',
+                'cashMovementStart.movement.movementType',
+                'cashMovementEnd.movement.documentType',
+                'cashMovementEnd.movement.movementType',
+                'branch',
+                'movements.paymentConcept',
+                'movements.details.paymentMethod',
+                'movements.movement.salesMovement',
+                'movements.movement.warehouseMovement',
+                'movements.movement.orderMovement' => function ($query) {
+                    $query->where('status', 'FINALIZADO');
+                }
+            ])
+            ->where('id', $shiftCash->id)
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->firstOrFail();
+
+        $printedAt = now();
+        $viewData = [
+            'shift' => $shift,
+            'printedAt' => $printedAt,
+            'autoPrint' => false,
+        ];
+
+        $html = view('shift_cash.print', $viewData)->render();
+        $pdfBinary = $this->renderPdfWithWkhtmltopdf($html, 'A4');
+
+        if ($pdfBinary === null) {
+            // Fallback: mostrar HTML con autoPrint para al menos poder imprimir
+            $viewData['autoPrint'] = true;
+            return view('shift_cash.print', $viewData);
+        }
+
+        $docName = 'cierre-caja-' . ($shift->cashMovementEnd?->movement?->number ?? $shift->id);
+        return response($pdfBinary, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="' . $docName . '.pdf"',
+        ]);
+    }
+
+    private function resolveWkhtmltopdfBinary(): ?string
+    {
+        $candidates = array_filter([
+            env('SNAPPY_PDF_BINARY'),
+        ]);
+
+        foreach ($candidates as $candidate) {
+            if (is_string($candidate) && file_exists($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
+
+    private function renderPdfWithWkhtmltopdf(string $html, ?string $pageSize = 'A4', array $extraArgs = []): ?string
+    {
+        $binary = $this->resolveWkhtmltopdfBinary();
+        if (!$binary) {
+            return null;
+        }
+
+        $tmpDir = storage_path('app/tmp');
+        if (!is_dir($tmpDir)) {
+            @mkdir($tmpDir, 0775, true);
+        }
+
+        $htmlFile = tempnam($tmpDir, 'shift_html_');
+        $pdfFile = tempnam($tmpDir, 'shift_pdf_');
+
+        if ($htmlFile === false || $pdfFile === false) {
+            return null;
+        }
+
+        $htmlPath = $htmlFile . '.html';
+        $pdfPath = $pdfFile . '.pdf';
+        @rename($htmlFile, $htmlPath);
+        @rename($pdfFile, $pdfPath);
+
+        file_put_contents($htmlPath, $html);
+
+        $args = array_merge([
+            $binary,
+            '--enable-local-file-access',
+            '--disable-javascript',
+            '--load-error-handling', 'ignore',
+            '--load-media-error-handling', 'ignore',
+            '--encoding', 'utf-8',
+            '--margin-top', '10',
+            '--margin-right', '10',
+            '--margin-bottom', '10',
+            '--margin-left', '10',
+        ], $extraArgs);
+
+        if (!empty($pageSize)) {
+            $args[] = '--page-size';
+            $args[] = $pageSize;
+        }
+
+        $args = array_merge($args, [
+            $htmlPath,
+            $pdfPath,
+        ]);
+
+        $process = new Process($args);
+
+        try {
+            $process->setTimeout(120);
+            $process->run();
+            $pdfExists = file_exists($pdfPath) && filesize($pdfPath) > 0;
+            if (!$pdfExists) {
+                Log::warning('wkhtmltopdf fallo al generar PDF de cierre de caja', [
+                    'error' => $process->getErrorOutput(),
+                    'output' => $process->getOutput(),
+                ]);
+                return null;
+            }
+
+            $content = file_get_contents($pdfPath);
+            return $content === false ? null : $content;
+        } catch (\Throwable $e) {
+            Log::warning('Error ejecutando wkhtmltopdf para cierre de caja: ' . $e->getMessage());
+            return null;
+        } finally {
+            @unlink($htmlPath);
+            @unlink($pdfPath);
+        }
     }
 }
