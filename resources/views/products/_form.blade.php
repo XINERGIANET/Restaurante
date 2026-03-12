@@ -244,13 +244,38 @@
             </div>
 
             <div>
-                <x-form.select.combobox label="Categoría" :required="true" :options="$categoriesSafe" name="category_id"
-                    x-model="categoryId" placeholder="Seleccione categoría" icon="ri-layout-grid-line" />
+                {{-- Combobox visual para categoría, ligado a categoryId --}}
+                <x-form.select.combobox
+                    label="Categoría"
+                    :required="true"
+                    :options="$categoriesSafe"
+                    name=""
+                    x-model="categoryId"
+                    placeholder="Seleccione categoría"
+                    icon="ri-layout-grid-line"
+                />
+                {{-- Valor real que se envía al backend --}}
+                <input type="hidden" name="category_id" x-model="categoryId">
+                @error('category_id')
+                    <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
+                @enderror
             </div>
 
             <div>
-                <x-form.select.combobox label="Unidad base" :required="true" :options="$unitsSafe" name="base_unit_id"
-                    x-model="baseUnitId" placeholder="Seleccione la unidad" icon="ri-ruler-2-line" />
+                {{-- Combobox visual para unidad base, ligado a baseUnitId --}}
+                <x-form.select.combobox
+                    label="Unidad base"
+                    :required="true"
+                    :options="$unitsSafe"
+                    name=""
+                    x-model="baseUnitId"
+                    placeholder="Seleccione la unidad"
+                    icon="ri-ruler-2-line"
+                />
+                <input type="hidden" name="base_unit_id" x-model="baseUnitId">
+                @error('base_unit_id')
+                    <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
+                @enderror
             </div>
 
             <div>

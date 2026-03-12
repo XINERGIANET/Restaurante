@@ -437,9 +437,29 @@ class ProductController extends Controller
 
         $validated = $request->validate(array_merge([
             // Datos del Producto
-            'code' => ['required', 'string', 'max:50', 'unique:products,code,' . ($excludeId ?? 'NULL')],
+            'code' => [
+                'required',
+                'string',
+                'max:50',
+                // Único por sucursal: el mismo código no puede existir en otra sede con product_branch
+                function ($attribute, $value, $fail) use ($request, $excludeId) {
+                    $branchId = (int) ($request->input('branch_id') ?: $request->session()->get('branch_id'));
+                    if (!$branchId || !$value) {
+                        return;
+                    }
+                    $exists = \DB::table('products')
+                        ->join('product_branch', 'product_branch.product_id', '=', 'products.id')
+                        ->where('products.code', $value)
+                        ->where('product_branch.branch_id', $branchId)
+                        ->when($excludeId, fn($q) => $q->where('products.id', '!=', $excludeId))
+                        ->exists();
+                    if ($exists) {
+                        $fail('El código ya está registrado en esta sucursal.');
+                    }
+                },
+            ],
             'description' => ['required', 'string', 'max:255'],
-            'abbreviation' => ['required', 'string', 'max:255'],
+            'abbreviation' => ['nullable', 'string', 'max:255'],
             'product_type_id' => ['required', 'integer', 'exists:product_types,id'],
             'category_id' => ['required', 'integer', 'exists:categories,id'],
             'base_unit_id' => ['required', 'integer', 'exists:units,id'],
