@@ -288,6 +288,7 @@
             // IDs del pedido pendiente que viene directo del servidor (fuente de verdad)
             const serverOrderMovementId = @json($pendingOrderMovementId ?? null);
             const serverMovementId = @json($pendingMovementId ?? null);
+            const serverPendingItems = @json($pendingItems ?? []);
             const serverPendingCancelledDetails = @json($pendingCancelledDetails ?? []);
             const waiterPinEnabled = @json($waiterPinEnabled ?? false);
             const validateWaiterPinUrl = @json(route('orders.validateWaiterPin'));
@@ -316,12 +317,31 @@
             if (!currentTable.people_count) currentTable.people_count = {{ $pendingPeopleCount ?? 1 }};
             // Siempre sincronizar order_movement_id y movement_id con el servidor para evitar duplicados
             if (serverOrderMovementId) {
+                const localOrderId = currentTable?.order_movement_id ?? null;
                 currentTable.order_movement_id = serverOrderMovementId;
                 currentTable.movement_id = serverMovementId;
+                // Si el localStorage tiene un pedido de otra ocasión para esta mesa, NO reutilizarlo.
+                // Rehidratar siempre desde servidor cuando cambia el order_movement_id.
+                const orderChanged = localOrderId && String(localOrderId) !== String(serverOrderMovementId);
+                if (orderChanged) {
+                    currentTable = { ...serverTable, ...currentTable };
+                    currentTable.items = Array.isArray(serverPendingItems) ? serverPendingItems : [];
+                    currentTable.cancellations = [];
+                    db[activeKey] = currentTable;
+                    localStorage.setItem('restaurantDB', JSON.stringify(db));
+                }
+                // Si no hay datos guardados localmente para esta mesa (p. ej. se movió desde otra mesa),
+                // hidratar los ítems desde el servidor para que el pedido cargue correctamente.
+                if ((!db[activeKey] || !Array.isArray(db[activeKey]?.items) || db[activeKey].items.length === 0) && Array.isArray(serverPendingItems) && serverPendingItems.length > 0) {
+                    currentTable.items = serverPendingItems;
+                    db[activeKey] = currentTable;
+                    localStorage.setItem('restaurantDB', JSON.stringify(db));
+                }
             } else {
                 // No hay pedido pendiente en servidor: asegurar que no usamos un ID viejo del localStorage
                 currentTable.order_movement_id = null;
                 currentTable.movement_id = null;
+                currentTable.items = currentTable.items || [];
             }
             // Inicializar estructura de cancelaciones por plato
             if (!currentTable.cancellations) currentTable.cancellations = [];

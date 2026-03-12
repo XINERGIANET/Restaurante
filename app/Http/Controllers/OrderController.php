@@ -627,6 +627,22 @@ class OrderController extends Controller
             ->first();
         $startFresh = !$pendingOrder;
 
+        $pendingItems = $pendingOrder
+            ? ($pendingOrder->details ?? collect())->map(function ($d) {
+                $qty = (float) ($d->quantity ?? 0);
+                $amount = (float) ($d->amount ?? 0);
+                $price = $qty > 0 ? ($amount / $qty) : 0;
+                return [
+                    'pId' => (int) ($d->product_id ?? 0),
+                    'name' => $d->description ?? '',
+                    'qty' => $qty,
+                    'price' => round($price, 6),
+                    'tax_rate' => 10,
+                    'note' => $d->comment ?? '',
+                ];
+            })->values()->all()
+            : [];
+
         // Detalles cancelados del pedido pendiente (para mostrar razón cuando se abre la orden para cambiar)
         $pendingCancelledDetails = $pendingOrder
             ? $pendingOrder->details->where('status', 'C')->map(fn ($d) => [
@@ -692,6 +708,7 @@ class OrderController extends Controller
             'pendingMovementId' => $pendingOrder?->movement_id,
             'pendingPeopleCount' => (int) ($pendingOrder?->people_count ?: ($table->capacity ?? 1)),
             'pendingCancelledDetails' => $pendingCancelledDetails,
+            'pendingItems' => $pendingItems,
             'documentTypes' => $documentTypes,
             'paymentMethods' => $paymentMethods,
             'paymentGateways' => $paymentGateways,
@@ -996,8 +1013,12 @@ class OrderController extends Controller
                 $byId = OrderMovement::where('id', (int) $request->order_movement_id)
                     ->whereIn('status', ['PENDIENTE', 'P'])
                     ->first();
-                if ($byId && ($tableId === null || (int) $byId->table_id === (int) $tableId)) {
+                if ($byId) {
+                    // Si el pedido se movió de mesa, el front puede seguir enviando el table_id antiguo.
+                    // Priorizamos el pedido por ID para evitar duplicados y "retornos" a la mesa anterior.
                     $existingOrderMovement = $byId;
+                    $tableId = $byId->table_id;
+                    $areaId = $byId->area_id;
                 }
             }
             // Prioridad 2: si no, buscar por mesa

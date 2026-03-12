@@ -353,6 +353,22 @@
                         const data = await res.json().catch(() => ({}));
                         if (data.success) {
                             this.open = false;
+                            // Migrar estado local del pedido (POS) a la mesa destino
+                            try {
+                                const db = JSON.parse(localStorage.getItem('restaurantDB') || '{}') || {};
+                                const srcKey = `table-${this.sourceTableId}`;
+                                const dstKey = `table-${this.tableId}`;
+                                if (db[srcKey]) {
+                                    const moved = { ...db[srcKey] };
+                                    moved.id = this.tableId;
+                                    moved.table_id = this.tableId;
+                                    moved.area_id = this.currentAreaId ?? moved.area_id;
+                                    moved.status = 'ocupada';
+                                    db[dstKey] = moved;
+                                    delete db[srcKey];
+                                    localStorage.setItem('restaurantDB', JSON.stringify(db));
+                                }
+                            } catch (e) {}
                             if (window.Swal) {
                                 Swal.fire({
                                     toast: true,
