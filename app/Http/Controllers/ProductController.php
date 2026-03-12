@@ -414,24 +414,22 @@ class ProductController extends Controller
             : null;
         $isSupply = $productType && $productType->isSupply();
 
+        // Reglas por sede: los campos pueden venir ocultos según el tipo de producto,
+        // así que se validan como "nullable" y solo se aplican cuando realmente se envían.
         $branchRules = [
-            'price' => $isSupply ? ['nullable', 'numeric', 'min:0'] : ['required', 'numeric', 'min:0'],
-            'purchase_price' => $isSupply ? ['nullable', 'numeric', 'min:0'] : ['required', 'numeric', 'min:0'],
-            'stock' => $isSupply
-                ? array_values(array_filter([
-                    'required', 'numeric', 'min:0',
-                    'gte:stock_minimum',
-                    $request->input('stock_maximum', 0) > 0 ? 'lte:stock_maximum' : null,
-                ]))
-                : array_values(array_filter([
-                    'required', 'numeric', 'min:0',
-                    'gte:stock_minimum',
-                    $request->input('stock_maximum', 0) > 0 ? 'lte:stock_maximum' : null,
-                ])),
-            'stock_minimum' => $isSupply ? ['required', 'numeric', 'min:0'] : ['required', 'numeric', 'min:0'],
-            'stock_maximum' => $isSupply ? ['required', 'numeric', 'min:0', 'gte:stock_minimum'] : ['required', 'numeric', 'min:0', 'gte:stock_minimum'],
-            'minimum_sell' => $isSupply ? ['nullable', 'numeric', 'min:0'] : ['required', 'numeric', 'min:0'],
-            'minimum_purchase' => $isSupply ? ['nullable', 'numeric', 'min:0'] : ['required', 'numeric', 'min:0'],
+            'price' => ['nullable', 'numeric', 'min:0'],
+            'purchase_price' => ['nullable', 'numeric', 'min:0'],
+            'stock' => array_values(array_filter([
+                'nullable',
+                'numeric',
+                'min:0',
+                'gte:stock_minimum',
+                $request->input('stock_maximum', 0) > 0 ? 'lte:stock_maximum' : null,
+            ])),
+            'stock_minimum' => ['nullable', 'numeric', 'min:0'],
+            'stock_maximum' => ['nullable', 'numeric', 'min:0', 'gte:stock_minimum'],
+            'minimum_sell' => ['nullable', 'numeric', 'min:0'],
+            'minimum_purchase' => ['nullable', 'numeric', 'min:0'],
             'tax_rate_id' => ['nullable', 'integer', 'exists:tax_rates,id'],
             'unit_sale' => ['nullable', 'integer', 'exists:units,id'],
             'expiration_date' => ['nullable', 'date'],

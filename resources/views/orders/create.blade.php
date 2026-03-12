@@ -225,23 +225,27 @@
                         </div>
                     </div>
 
-                    {{-- Botones Guardar y Cobrar (siempre visibles; Mozo no puede cobrar) --}}
+                    {{-- Botones Guardar / Cobrar: visibles según pestaña activa --}}
                     <div class="shrink-0 p-4 sm:p-5 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
-                        <div class="grid grid-cols-2 gap-2">
+                        {{-- Footer Resumen: solo Guardar --}}
+                        <div id="footer-resumen" class="flex justify-end">
                             <button type="button" id="btn-guardar" onclick="processOrder()"
-                                class="py-2.5 px-3 rounded-xl bg-gray-500 text-white font-bold text-xs sm:text-sm shadow-lg hover:bg-gray-600 active:scale-95 transition-all flex justify-center items-center gap-2">
+                                class="py-2.5 px-4 rounded-xl bg-gray-500 text-white font-bold text-xs sm:text-sm shadow-lg hover:bg-gray-600 active:scale-95 transition-all flex justify-center items-center gap-2">
                                 <i class="ri-save-line text-base"></i>
                                 <span>Guardar</span>
                             </button>
+                        </div>
+                        {{-- Footer Cobro: solo Cobrar --}}
+                        <div id="footer-cobro" class="hidden justify-end">
                             @if($canCharge ?? true)
-                            <button onclick="processOrderPayment()"
-                                class="py-2.5 px-3 rounded-xl bg-brand-500 text-white font-bold text-xs sm:text-sm shadow-lg hover:bg-brand-600 active:scale-95 transition-all flex justify-center items-center gap-2">
+                            <button type="button" onclick="processOrderPayment()"
+                                class="py-2.5 px-4 rounded-xl bg-brand-500 text-white font-bold text-xs sm:text-sm shadow-lg hover:bg-brand-600 active:scale-95 transition-all flex justify-center items-center gap-2">
                                 <i class="ri-bank-card-line text-base"></i>
                                 <span>Cobrar</span>
                             </button>
                             @else
                             <button type="button" disabled
-                                class="py-2.5 px-3 rounded-xl bg-gray-300 text-gray-500 font-bold text-xs sm:text-sm cursor-not-allowed flex justify-center items-center gap-2"
+                                class="py-2.5 px-4 rounded-xl bg-gray-300 text-gray-500 font-bold text-xs sm:text-sm cursor-not-allowed flex justify-center items-center gap-2"
                                 title="Tu perfil (Mozo) no puede cobrar. Solo puedes guardar pedidos.">
                                 <i class="ri-bank-card-line text-base"></i>
                                 <span>Cobrar</span>
@@ -1580,10 +1584,14 @@
                 const cobro = document.getElementById('aside-cobro');
                 const btnResumen = document.getElementById('tab-resumen');
                 const btnCobro = document.getElementById('tab-cobro');
+                const footerResumen = document.getElementById('footer-resumen');
+                const footerCobro = document.getElementById('footer-cobro');
                 if (tab === 'cobro') {
                     resumen?.classList.add('hidden');
                     cobro?.classList.remove('hidden');
                     cobro?.classList.add('flex');
+                    footerResumen?.classList.add('hidden');
+                    footerCobro?.classList.remove('hidden');
                     btnResumen?.classList.remove('bg-brand-500', 'text-white');
                     btnResumen?.classList.add('bg-gray-200', 'dark:bg-gray-700', 'text-gray-700', 'dark:text-gray-300');
                     btnCobro?.classList.remove('bg-gray-100', 'dark:bg-gray-800', 'text-gray-500', 'dark:text-gray-400');
@@ -1592,6 +1600,8 @@
                     cobro?.classList.add('hidden');
                     cobro?.classList.remove('flex');
                     resumen?.classList.remove('hidden');
+                    footerCobro?.classList.add('hidden');
+                    footerResumen?.classList.remove('hidden');
                     btnCobro?.classList.remove('bg-brand-500', 'text-white');
                     btnCobro?.classList.add('bg-gray-100', 'dark:bg-gray-800', 'text-gray-500', 'dark:text-gray-400');
                     btnResumen?.classList.remove('bg-gray-200', 'dark:bg-gray-700', 'text-gray-700', 'dark:text-gray-300');

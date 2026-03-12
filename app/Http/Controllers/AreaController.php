@@ -78,6 +78,12 @@ class AreaController extends Controller
                 'branch_id' => session('branch_id'),
             ]);
 
+            // Si viene un redirect_to, volver a esa URL (ej. vista de Mesas)
+            if ($request->filled('redirect_to')) {
+                return redirect($request->input('redirect_to'))
+                    ->with('success', 'Area creada correctamente');
+            }
+
             $params = [];
             if ($request->filled('view_id')) {
                 $params['view_id'] = $request->input('view_id');
@@ -86,6 +92,13 @@ class AreaController extends Controller
             return redirect()->route('areas.index', $params)
                 ->with('success', 'Area creada correctamente');
         } catch (\Exception $e) {
+            // En error, si hay redirect_to, volver ahí con errores
+            if ($request->filled('redirect_to')) {
+                return redirect($request->input('redirect_to'))
+                    ->withErrors(['error' => 'Error al crear el area: ' . $e->getMessage()])
+                    ->withInput();
+            }
+
             $params = [];
             if ($request->filled('view_id')) {
                 $params['view_id'] = $request->input('view_id');

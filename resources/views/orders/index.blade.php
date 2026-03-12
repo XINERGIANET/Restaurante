@@ -259,7 +259,8 @@
         @php
             $areasData = $areas ?? [];
             $tablesData = $tables ?? [];
-            $firstAreaId = !empty($areasData) && count($areasData) > 0 ? $areasData[0]['id'] : null;
+            // Usar el área seleccionada (desde el controlador) o caer en la primera
+            $firstAreaId = $selectedAreaId ?? (!empty($areasData) && count($areasData) > 0 ? $areasData[0]['id'] : null);
         @endphp
 
         window.registerPosSystem = function() {

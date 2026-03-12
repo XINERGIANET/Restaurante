@@ -269,6 +269,20 @@ class OrderController extends Controller
             ->orderBy('id')
             ->get(['id', 'name']);
 
+        // Área seleccionada explícitamente (por query) o por defecto la primera
+        $selectedAreaId = $request->has('area_id')
+            ? (int) $request->input('area_id')
+            : ($areas->first()?->id ?? null);
+
+        // Si hay al menos un área y no se especificó ninguna, redirigir a la primera área
+        if ($areas->isNotEmpty() && !$request->has('area_id') && $selectedAreaId) {
+            $params = array_merge(
+                $request->except('area_id'),
+                ['area_id' => $selectedAreaId]
+            );
+            return redirect()->route('orders.index', $params);
+        }
+
         $tables = Table::query()
             ->when($areas->isNotEmpty(), fn($q) => $q->whereIn('area_id', $areas->pluck('id')))
             ->when($branchId && $areas->isEmpty(), fn($q) => $q->whereRaw('1 = 0'))
@@ -357,6 +371,7 @@ class OrderController extends Controller
             'user' => $request->user(),
             'waiterPinEnabled' => $waiterPinEnabled,
             'canCharge' => $this->canCharge($profileId),
+             'selectedAreaId' => $selectedAreaId,
             'turboCacheControl' => 'no-cache',
         ]);
 
