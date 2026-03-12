@@ -1141,6 +1141,14 @@
                 return m.indexOf('ya fue cobrada') !== -1 || m.indexOf('ya fue cobrado') !== -1;
             }
 
+            function isNoActiveShiftMessage(msg) {
+                if (!msg || typeof msg !== 'string') return false;
+                const m = msg.toLowerCase();
+                return m.indexOf('no hay un turno activo') !== -1
+                    || m.indexOf('apertura de caja') !== -1
+                    || m.indexOf('apertura de caja primero') !== -1;
+            }
+
             // Limpiar auto-guardado al navegar con Turbo para no dispararlo en otra página
             document.addEventListener('turbo:before-visit', function() {
                 if (autoSaveTimer) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
@@ -1264,6 +1272,12 @@
                                 showNotification('PIN requerido', data.message || 'Ingrese el PIN del mozo e intente guardar de nuevo.', 'error');
                             } else {
                                 sessionStorage.setItem('flash_error_message', data.message || 'Ingrese el PIN del mozo e intente guardar de nuevo.');
+                            }
+                        } else if (data && isNoActiveShiftMessage(data.message)) {
+                            if (typeof showNotification === 'function') {
+                                showNotification('Caja cerrada', data.message || 'No hay un turno activo. Realice una Apertura de Caja primero.', 'error');
+                            } else {
+                                sessionStorage.setItem('flash_error_message', data.message || 'No hay un turno activo. Realice una Apertura de Caja primero.');
                             }
                         } else {
                             console.error('Error al guardar:', data);
