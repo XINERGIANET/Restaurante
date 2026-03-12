@@ -57,8 +57,20 @@ class AuthenticatedSessionController extends Controller
                     $request->session()->put('shift_snapshot', $shiftSnapshot);
                 }
             }
-            
-            return redirect()->intended(route('dashboard'));
+
+            // Redirección según perfil: Mozo -> Salones de pedidos, otros -> dashboard
+            $redirectTo = route('dashboard');
+            if ($profileId) {
+                $mozoProfileId = \App\Models\Profile::query()
+                    ->whereNull('deleted_at')
+                    ->whereRaw('LOWER(TRIM(name)) = ?', ['mozo'])
+                    ->value('id');
+                if ($mozoProfileId && (int) $profileId === (int) $mozoProfileId) {
+                    $redirectTo = route('orders.index');
+                }
+            }
+
+            return redirect()->intended($redirectTo);
         }
 
         return back()->withErrors([

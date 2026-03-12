@@ -89,7 +89,7 @@
             
             class="items-center justify-between w-full gap-4 px-5 py-4 xl:flex shadow-theme-md xl:justify-end xl:px-0 xl:shadow-none border-t border-white/5 xl:border-0">
             <div class="flex items-center gap-2 2xsm:gap-3">
-                @if (!empty($quickOptions) && $quickOptions->count())
+                @if (!($isMozo ?? false) && !empty($quickOptions) && $quickOptions->count())
                     <div class="hidden xl:flex items-center gap-3">
                         @foreach ($quickOptions as $option)
                             @php

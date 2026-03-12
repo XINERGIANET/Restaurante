@@ -69,33 +69,26 @@
     <!-- Alpine.js -->
     {{-- <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script> --}}
 
-    <!-- Theme Store -->
+    <!-- Theme Store (forzar modo claro) -->
     <script>
         document.addEventListener('alpine:init', () => {
             Alpine.store('theme', {
                 init() {
-                    const savedTheme = localStorage.getItem('theme');
-                    const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' :
-                        'light';
-                    this.theme = savedTheme || systemTheme;
+                    this.theme = 'light';
                     this.updateTheme();
                 },
                 theme: 'light',
                 toggle() {
-                    this.theme = this.theme === 'light' ? 'dark' : 'light';
+                    // Modo oscuro deshabilitado: siempre permanecer en light
+                    this.theme = 'light';
                     localStorage.setItem('theme', this.theme);
                     this.updateTheme();
                 },
                 updateTheme() {
                     const html = document.documentElement;
                     const body = document.body;
-                    if (this.theme === 'dark') {
-                        html.classList.add('dark');
-                        body.classList.add('dark', 'bg-gray-900');
-                    } else {
-                        html.classList.remove('dark');
-                        body.classList.remove('dark', 'bg-gray-900');
-                    }
+                    html.classList.remove('dark');
+                    body.classList.remove('dark', 'bg-gray-900');
                 }
             });
 
@@ -139,30 +132,17 @@
         });
     </script>
 
-    <!-- Apply dark mode immediately to prevent flash -->
+    <!-- Forzar modo claro en carga inicial -->
     <script>
         (function() {
-            const savedTheme = localStorage.getItem('theme');
-            const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-            const theme = savedTheme || systemTheme;
             const root = document.documentElement;
             const applyBody = () => {
                 const body = document.body;
-                if (!body) {
-                    return;
-                }
-                if (theme === 'dark') {
-                    body.classList.add('dark', 'bg-gray-900');
-                } else {
-                    body.classList.remove('dark', 'bg-gray-900');
-                }
+                if (!body) return;
+                body.classList.remove('dark', 'bg-gray-900');
             };
 
-            if (theme === 'dark') {
-                root.classList.add('dark');
-            } else {
-                root.classList.remove('dark');
-            }
+            root.classList.remove('dark');
 
             if (document.body) {
                 applyBody();
