@@ -431,76 +431,52 @@
                             </tr>
                             <tr x-show="openRow === {{ $sale->id }}" x-cloak
                                 class="bg-gray-50/70 dark:bg-gray-800/40 border-b border-gray-100 justify-center dark:border-gray-800">
-                                <td colspan="8" class="px-5 py-3 sm:px-6">
-                                    <div class="grid w-full grid-cols-5 gap-x-6 gap-y-3">
-                                        {{-- Fila 1 --}}
-                                        <div>
-                                            <div
-                                                class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
-                                                Fecha</div>
-                                            <div class="mt-0.5 text-sm text-gray-800 dark:text-white/90 whitespace-nowrap">
-                                                {{ $sale->moved_at ? $sale->moved_at->format('d/m/Y H:i') : '-' }}</div>
+                                <td colspan="8" class="px-6 py-5">
+                                    <div class="rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900 overflow-hidden shadow-sm">
+                                        <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/80 flex items-center gap-2">
+                                            <i class="ri-file-list-3-line text-brand-500"></i>
+                                            <h4 class="text-sm font-bold text-gray-700 dark:text-gray-200">Detalle de la venta #{{ $sale->salesMovement?->number ?? $sale->id }}</h4>
                                         </div>
-                                        <div>
-                                            <div
-                                                class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
-                                                Usuario</div>
-                                            <div class="mt-0.5 text-sm text-gray-800 dark:text-white/90">
-                                                {{ $sale->user_name ?: '-' }}</div>
-                                        </div>
-                                        <div>
-                                            <div
-                                                class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
-                                                Responsable</div>
-                                            <div class="mt-0.5 text-sm text-gray-800 dark:text-white/90">
-                                                {{ $sale->responsible_name ?: '-' }}</div>
-                                        </div>
-                                        <div>
-                                            <div
-                                                class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
-                                                Moneda</div>
-                                            <div class="mt-0.5 text-sm text-gray-800 dark:text-white/90">
-                                                {{ $sale->salesMovement?->currency ?? 'PEN' }}</div>
-                                        </div>
-                                        <div>
-                                            <div
-                                                class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
-                                                T. cambio</div>
-                                            <div class="mt-0.5 text-sm text-gray-800 dark:text-white/90">
-                                                {{ number_format((float) ($sale->salesMovement?->exchange_rate ?? 1), 3) }}
-                                            </div>
-                                        </div>
-                                        {{-- Fila 2 --}}
-                                        <div>
-                                            <div
-                                                class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
-                                                Tipo de pago</div>
-                                            <div class="mt-0.5 text-sm text-gray-800 dark:text-white/90">
-                                                {{ $sale->salesMovement?->payment_type ?? '-' }}</div>
-                                        </div>
-                                        <div>
-                                            <div
-                                                class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
-                                                Por consumo</div>
-                                            <div class="mt-0.5 text-sm text-gray-800 dark:text-white/90">
-                                                {{ ($sale->salesMovement?->consumption ?? 'N') === 'Y' ? 'Sí' : 'No' }}
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <div
-                                                class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
-                                                Comentario</div>
-                                            <div class="mt-0.5 text-sm text-gray-800 dark:text-white/90">
-                                                {{ Str::limit($sale->comment ?? '-', 50) }}</div>
-                                        </div>
-                                        <div class="col-span-2">
-                                            <div
-                                                class="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
-                                                Origen</div>
-                                            <div class="mt-0.5 text-sm text-gray-800 dark:text-white/90">
-                                                {{ $sale->movementType?->description ?? 'Venta' }} –
-                                                {{ strtoupper(substr($sale->documentType?->name ?? '', 0, 1)) }}{{ $sale->salesMovement?->series }}-{{ $sale->number }}
-                                            </div>
+                                        <div class="overflow-x-auto">
+                                            <table class="w-full text-sm text-left">
+                                                <thead class="text-xs text-gray-500 uppercase bg-white dark:bg-gray-900 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800">
+                                                    <tr>
+                                                        <th class="px-4 py-3 font-semibold">Producto(s)</th>
+                                                        <th class="px-4 py-3 font-semibold">Cantidad</th>
+                                                        <th class="px-4 py-3 font-semibold">Fecha venta</th>
+                                                        <th class="px-4 py-3 font-semibold text-right">Hora venta</th>
+                                                        <th class="px-4 py-3 font-semibold">Estado</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                        <tr class="hover:bg-gray-50/50 dark:hover:bg-white/5 transition-colors">
+                                                            <td class="px-4 py-3 font-medium text-gray-700 dark:text-gray-300 tabular-nums">
+                                                                @foreach ($sale->salesMovement?->details as $detail)
+                                                                    <span class="text-gray-600 text-xs dark:text-gray-400 truncate block max-w-full" title="{{ $detail->description }}">{{ $detail->description }}</span>
+                                                                @endforeach
+                                                            </td>
+                                                            <td class="px-4 py-3 text-gray-600 dark:text-gray-400 tabular-nums">
+                                                                @foreach ($sale->salesMovement?->details as $detail)
+                                                                    <!--Cantidad de productos vendido y de cortesia-->
+                                                                    <span class="text-gray-600 text-xs dark:text-gray-400 truncate block max-w-full" title="{{ $detail->quantity }}">
+                                                                        {{ number_format((float) ($detail->quantity ?? 0), 2) }}
+                                                                        @if ((float) ($detail->courtesy_quantity ?? 0) > 0)
+                                                                            <span class="text-amber-500">({{ number_format((float) $detail->courtesy_quantity, 2) }} cortesía)</span>
+                                                                        @endif
+                                                                    </span>
+                                                                @endforeach
+                                                            </td>
+                                                            <td class="px-4 py-3 text-gray-600 dark:text-gray-400 tabular-nums">{{ $sale->moved_at?->format('d/m/Y') ?? '-' }}</td>
+                                                            <td class="px-4 py-3 text-right font-bold text-gray-700 dark:text-gray-300 tabular-nums">{{ $sale->moved_at?->format('H:i') ?? '-' }}</td>
+                                                            <td class="px-4 py-3 text-gray-600 dark:text-gray-400">
+                                                                <x-ui.badge variant="light" color="{{ $sale->status === 'P' ? 'warning' : 'success' }}"
+                                                                    class="inline-flex text-[11px] font-medium px-2 py-0.5">
+                                                                    {{ $sale->status === 'P' ? 'Pendiente' : 'Activo' }}
+                                                                </x-ui.badge>
+                                                            </td>
+                                                        </tr>
+                                                </tbody>
+                                            </table>
                                         </div>
                                     </div>
                                 </td>

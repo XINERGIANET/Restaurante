@@ -131,6 +131,24 @@
                 }
             });
         });
+
+        // Sincronizar sidebar con el usuario actual en cada carga (incl. Turbo) para evitar estado viejo
+        function syncSidebarFromBody() {
+            const body = document.body;
+            if (!body || !window.Alpine?.store?.('sidebar')) return;
+            const isMozo = body.getAttribute('data-is-mozo') === 'true';
+            const hasMultiple = body.getAttribute('data-has-multiple-modules') === 'true';
+            const store = Alpine.store('sidebar');
+            store.isMozoUser = isMozo;
+            store.isMobileOpen = false;
+            if (window.innerWidth >= 1280) {
+                store.isExpanded = isMozo ? false : (hasMultiple ? true : (localStorage.getItem('sidebarExpanded') !== 'false'));
+            } else {
+                store.isExpanded = false;
+            }
+        }
+        document.addEventListener('turbo:load', syncSidebarFromBody);
+        document.addEventListener('DOMContentLoaded', () => { setTimeout(syncSidebarFromBody, 0); });
     </script>
 
     <!-- Forzar modo claro en carga inicial -->
@@ -183,17 +201,23 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
 </style></head>
 
 <body class="min-h-screen flex flex-col"
-    x-data="{ 'loaded': true}"
+    x-data="{ 'loaded': true }"
+    data-is-mozo="@json($isMozo ?? false)"
+    data-has-multiple-modules="@json($hasMultipleModules ?? false)"
     x-init="
     const isMozo = @json($isMozo ?? false);
     const hasMultipleModules = @json($hasMultipleModules ?? false);
+    if ($store.sidebar) {
+        $store.sidebar.isMozoUser = isMozo;
+    }
     const checkMobile = () => {
+        if (!$store.sidebar) return;
         if (window.innerWidth < 1280) {
             $store.sidebar.setMobileOpen(false);
             $store.sidebar.isExpanded = false;
         } else {
             $store.sidebar.isMobileOpen = false;
-            // Mozo: siempre contraído. Varios módulos: siempre expandido. Otros: preferencia guardada
+            $store.sidebar.isMozoUser = isMozo;
             $store.sidebar.isExpanded = isMozo ? false : (hasMultipleModules ? true : (localStorage.getItem('sidebarExpanded') !== 'false'));
         }
     };
@@ -215,8 +239,8 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
 
         <div class="flex-1 flex flex-col min-w-0 min-h-full transition-all duration-300 ease-in-out"
             :class="{
-                'xl:ml-[290px]': $store.sidebar.isExpanded || $store.sidebar.isHovered,
-                'xl:ml-[90px]': !$store.sidebar.isExpanded && !$store.sidebar.isHovered,
+                'xl:ml-[290px]': !$store.sidebar.isMozoUser && ($store.sidebar.isExpanded || $store.sidebar.isHovered),
+                'xl:ml-[90px]': $store.sidebar.isMozoUser || (!$store.sidebar.isExpanded && !$store.sidebar.isHovered),
                 'ml-0': $store.sidebar.isMobileOpen
             }">
             <!-- app header start -->

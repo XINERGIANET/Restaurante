@@ -13,7 +13,7 @@
 
 <aside id="sidebar"
     style="background: #ffffff"
-class="fixed flex flex-col mt-0 top-0 px-5 left-0 dark:bg-gray-900 dark:border-gray-800 text-gray-900 h-screen transition-all duration-300 ease-in-out z-99999 border-r border-gray-200"
+    class="fixed flex flex-col mt-0 top-0 px-5 left-0 dark:bg-gray-900 dark:border-gray-800 text-gray-900 h-screen transition-all duration-300 ease-in-out z-99999 border-r border-gray-200"
     x-data="{
         openSubmenus: {},
         init() {
@@ -77,12 +77,12 @@ class="fixed flex flex-col mt-0 top-0 px-5 left-0 dark:bg-gray-900 dark:border-g
         }
     }"
     :class="{
-        'w-[290px]': $store.sidebar.isExpanded || $store.sidebar.isMobileOpen || $store.sidebar.isHovered,
-        'w-[90px]': !$store.sidebar.isExpanded && !$store.sidebar.isHovered,
+        'w-[290px]': !$store.sidebar.isMozoUser && ($store.sidebar.isExpanded || $store.sidebar.isMobileOpen || $store.sidebar.isHovered),
+        'w-[90px]': $store.sidebar.isMozoUser || !$store.sidebar.isExpanded && !$store.sidebar.isHovered,
         'translate-x-0': $store.sidebar.isMobileOpen,
         '-translate-x-full xl:translate-x-0': !$store.sidebar.isMobileOpen
     }"
-    @mouseenter="if (!$store.sidebar.isExpanded) $store.sidebar.setHovered(true)"
+    @mouseenter="if (!$store.sidebar.isMozoUser && !$store.sidebar.isExpanded) $store.sidebar.setHovered(true)"
     @mouseleave="$store.sidebar.setHovered(false)">
 
     <div class="pt-8 pb-8 flex px-2"

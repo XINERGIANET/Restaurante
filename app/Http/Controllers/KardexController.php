@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Branch;
+use App\Models\Company;
 use App\Models\Product;
 use App\Models\ProductBranch;
 use App\Models\SalesMovementDetail;
@@ -25,8 +26,8 @@ class KardexController extends Controller
         $branchId = $request->session()->get('branch_id');
         $dateFrom = $request->input('date_from') ?? now()->startOfMonth()->format('Y-m-d');
         $dateTo = $request->input('date_to') ?? now()->format('Y-m-d');
-        
-        $sourceFilter = $request->input('source') ?? 'all'; 
+
+        $sourceFilter = $request->input('source') ?? 'all';
         $typeFilter = $request->input('movement_type') ?? 'all';
 
         $perPage = (int) $request->input('per_page', 10);
@@ -37,8 +38,9 @@ class KardexController extends Controller
 
         $products = Product::where('kardex', 'S')->with('baseUnit')->orderBy('description')->get();
         $branch = $branchId ? Branch::with('company')->find($branchId) : null;
-        $companyName = $branch?->company?->legal_name;
-        $movementsCollection = collect(); 
+        $companyId = $branch?->company_id;
+        $companyName = $companyId ? Company::find($companyId)?->legal_name : null;
+        $movementsCollection = collect();
         $showAllProducts = ($productId === 'all');
 
         // Correlativo 001, 002, 003... por tipo de documento para pedidos (como en ventas)
@@ -47,13 +49,13 @@ class KardexController extends Controller
         if ($showAllProducts) {
             $productIds = $this->getProductIdsWithMovements($branchId ? (int) $branchId : null, $dateFrom, $dateTo);
             $productIds = array_values(array_intersect($productIds, $products->pluck('id')->all()));
-            
+
             if (!empty($productIds)) {
                 $productMap = Product::whereIn('id', $productIds)->get()->keyBy('id');
 
                 foreach ($productIds as $pid) {
                     $rows = $this->buildKardexMovements($pid, $branchId ? (int) $branchId : null, $dateFrom, $dateTo, $orderSeriesMap);
-                    
+
                     $p = $productMap->get($pid);
                     foreach ($rows as $r) {
                         $r['product_code'] = $p?->code ?? '-';
@@ -62,11 +64,10 @@ class KardexController extends Controller
                     }
                 }
                 $movementsCollection = $movementsCollection->sortBy([
-                    ['date', 'desc'], 
+                    ['date', 'desc'],
                     ['product_code', 'asc']
                 ])->values();
             }
-
         } elseif ($productId && is_numeric($productId)) {
             $data = $this->buildKardexMovements((int) $productId, $branchId ? (int) $branchId : null, $dateFrom, $dateTo, $orderSeriesMap);
             $movementsCollection = collect($data);
@@ -99,12 +100,12 @@ class KardexController extends Controller
                 return ($m['type'] ?? '') === $typeFilter;
             });
         }
-        
+
         $movementsCollection = $movementsCollection->sortByDesc('date')->values();
 
         $currentPage = LengthAwarePaginator::resolveCurrentPage();
         $currentResults = $movementsCollection->slice(($currentPage - 1) * $perPage, $perPage)->all();
-        
+
         $movements = new LengthAwarePaginator(
             $currentResults,
             $movementsCollection->count(),
@@ -112,7 +113,7 @@ class KardexController extends Controller
             $currentPage,
             [
                 'path' => $request->url(),
-                'query' => $request->query(), 
+                'query' => $request->query(),
             ]
         );
 
@@ -129,9 +130,17 @@ class KardexController extends Controller
             return '#FFFFFF';
         };
         return view('kardex.index', compact(
-            'viewId', 'productId', 'branchId', 'dateFrom', 'dateTo',
-            'products', 'branch', 'movements', 'showAllProducts', 
-            'sourceFilter', 'typeFilter', 
+            'viewId',
+            'productId',
+            'branchId',
+            'dateFrom',
+            'dateTo',
+            'products',
+            'branch',
+            'movements',
+            'showAllProducts',
+            'sourceFilter',
+            'typeFilter',
             'availableTypes',
             'perPage',
             'topOperations',
@@ -151,13 +160,13 @@ class KardexController extends Controller
 
         $orders = OrderMovement::query()
             ->whereIn('status', ['FINALIZADO', 'F'])
-            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
-            ->whereHas('movement', fn ($m) => $m->whereBetween('moved_at', [$dateFromStart, $dateToEnd]))
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+            ->whereHas('movement', fn($m) => $m->whereBetween('moved_at', [$dateFromStart, $dateToEnd]))
             ->with('movement:id,document_type_id,branch_id,moved_at')
             ->get();
 
-        $movements = $orders->map(fn ($om) => $om->movement)->filter();
-        $movements = $movements->sortBy(fn ($m) => [$m->document_type_id, $m->moved_at?->format('Y-m-d H:i:s'), $m->id])->values();
+        $movements = $orders->map(fn($om) => $om->movement)->filter();
+        $movements = $movements->sortBy(fn($m) => [$m->document_type_id, $m->moved_at?->format('Y-m-d H:i:s'), $m->id])->values();
 
         $map = [];
         $countByDocType = [];
@@ -180,8 +189,8 @@ class KardexController extends Controller
         // 1. WarehouseMovementDetail (entradas y salidas según tipo de documento)
         $warehouseDetails = WarehouseMovementDetail::query()
             ->where('product_id', $productId)
-            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
-            ->whereHas('warehouseMovement.movement', fn ($q) => $q->whereBetween('moved_at', [$dateFromStart, $dateToEnd]))
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+            ->whereHas('warehouseMovement.movement', fn($q) => $q->whereBetween('moved_at', [$dateFromStart, $dateToEnd]))
             ->with(['warehouseMovement.movement.documentType', 'unit'])
             ->get();
 
@@ -216,8 +225,8 @@ class KardexController extends Controller
         // 2. SalesMovementDetail (siempre salida)
         $salesDetails = SalesMovementDetail::query()
             ->where('product_id', $productId)
-            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
-            ->whereHas('salesMovement.movement', fn ($q) => $q->whereBetween('moved_at', [$dateFromStart, $dateToEnd]))
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+            ->whereHas('salesMovement.movement', fn($q) => $q->whereBetween('moved_at', [$dateFromStart, $dateToEnd]))
             ->with(['salesMovement.movement.documentType', 'unit'])
             ->get();
 
@@ -267,10 +276,10 @@ class KardexController extends Controller
         // 3. OrderMovementDetail (pedidos cobrados = salida de stock)
         $orderDetails = OrderMovementDetail::query()
             ->where('product_id', $productId)
-            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
             ->whereHas('orderMovement', function ($q) use ($dateFromStart, $dateToEnd) {
                 $q->whereIn('status', ['FINALIZADO', 'F'])
-                    ->whereHas('movement', fn ($m) => $m->whereBetween('moved_at', [$dateFromStart, $dateToEnd]));
+                    ->whereHas('movement', fn($m) => $m->whereBetween('moved_at', [$dateFromStart, $dateToEnd]));
             })
             ->with(['orderMovement.movement.documentType', 'orderMovement.movement.movementType', 'unit'])
             ->get();
@@ -361,7 +370,7 @@ class KardexController extends Controller
         // y revertimos todos los movimientos desde beforeDate hasta hoy para obtener
         // el saldo en ese punto en el tiempo.
         $productBranch = ProductBranch::where('product_id', $productId)
-            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
             ->first();
 
         $balance = (float) ($productBranch?->stock ?? 0);
@@ -369,8 +378,8 @@ class KardexController extends Controller
         // Revertir entradas/salidas de almacén desde beforeDate hasta hoy
         $warehouseDetails = WarehouseMovementDetail::query()
             ->where('product_id', $productId)
-            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
-            ->whereHas('warehouseMovement.movement', fn ($q) => $q->where('moved_at', '>=', $beforeDate))
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+            ->whereHas('warehouseMovement.movement', fn($q) => $q->where('moved_at', '>=', $beforeDate))
             ->with('warehouseMovement.movement.documentType')
             ->get();
 
@@ -391,18 +400,18 @@ class KardexController extends Controller
         // Revertir ventas desde beforeDate (las ventas redujeron stock, las sumamos de vuelta)
         $salesQty = SalesMovementDetail::query()
             ->where('product_id', $productId)
-            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
-            ->whereHas('salesMovement.movement', fn ($q) => $q->where('moved_at', '>=', $beforeDate))
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+            ->whereHas('salesMovement.movement', fn($q) => $q->where('moved_at', '>=', $beforeDate))
             ->sum('quantity');
         $balance += (float) $salesQty;
 
         // Revertir pedidos finalizados desde beforeDate
         $orderQty = OrderMovementDetail::query()
             ->where('product_id', $productId)
-            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
             ->whereHas('orderMovement', function ($q) use ($beforeDate) {
                 $q->whereIn('status', ['FINALIZADO', 'F'])
-                    ->whereHas('movement', fn ($m) => $m->where('moved_at', '>=', $beforeDate));
+                    ->whereHas('movement', fn($m) => $m->where('moved_at', '>=', $beforeDate));
             })
             ->sum('quantity');
         $balance += (float) $orderQty;
@@ -418,24 +427,24 @@ class KardexController extends Controller
 
         $ids = $ids->merge(
             WarehouseMovementDetail::query()
-                ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
-                ->whereHas('warehouseMovement.movement', fn ($q) => $q->whereBetween('moved_at', [$dateFromStart, $dateToEnd]))
+                ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+                ->whereHas('warehouseMovement.movement', fn($q) => $q->whereBetween('moved_at', [$dateFromStart, $dateToEnd]))
                 ->pluck('product_id')
         );
 
         $ids = $ids->merge(
             SalesMovementDetail::query()
-                ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
-                ->whereHas('salesMovement.movement', fn ($q) => $q->whereBetween('moved_at', [$dateFromStart, $dateToEnd]))
+                ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+                ->whereHas('salesMovement.movement', fn($q) => $q->whereBetween('moved_at', [$dateFromStart, $dateToEnd]))
                 ->pluck('product_id')
         );
 
         $ids = $ids->merge(
             OrderMovementDetail::query()
-                ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+                ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
                 ->whereHas('orderMovement', function ($q) use ($dateFromStart, $dateToEnd) {
                     $q->whereIn('status', ['FINALIZADO', 'F'])
-                        ->whereHas('movement', fn ($m) => $m->whereBetween('moved_at', [$dateFromStart, $dateToEnd]));
+                        ->whereHas('movement', fn($m) => $m->whereBetween('moved_at', [$dateFromStart, $dateToEnd]));
                 })
                 ->pluck('product_id')
         );
@@ -443,8 +452,9 @@ class KardexController extends Controller
         return $ids->unique()->filter()->values()->all();
     }
 
-    public function exportPdf(Request $request)
+    public function pdf(Request $request)
     {
+        // Alias para mantener compatibilidad si ya tienes rutas antiguas apuntando a pdf()
         $viewId = $request->input('view_id');
         $productId = $request->input('product_id') ?? 'all';
         $branchId = $request->session()->get('branch_id');
@@ -456,6 +466,8 @@ class KardexController extends Controller
 
         $products = Product::where('kardex', 'S')->with('baseUnit')->orderBy('description')->get();
         $branch = $branchId ? Branch::find($branchId) : null;
+        $companyId = $branch?->company_id;
+        $companyName = $companyId ? Company::find($companyId)?->legal_name : null;
         $movementsCollection = collect();
         $showAllProducts = ($productId === 'all');
 
@@ -538,14 +550,8 @@ class KardexController extends Controller
 
         return response($output, 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'attachment; filename="Kardex.pdf"',
+            'Content-Disposition' => 'inline; filename="Kardex.pdf"',
             'Content-Length' => strlen($output),
         ]);
-    }
-
-    public function pdf(Request $request)
-    {
-        // Alias para mantener compatibilidad si ya tienes rutas antiguas apuntando a pdf()
-        return $this->exportPdf($request);
     }
 }

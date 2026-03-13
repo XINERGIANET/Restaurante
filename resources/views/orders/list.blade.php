@@ -276,8 +276,14 @@
                                                     </td>
                                                     <td class="px-4 py-3 text-gray-600 dark:text-gray-400 tabular-nums">
                                                         @foreach ($order->details as $detail)
-                                                            <span class="text-gray-600 text-xs dark:text-gray-400 truncate block max-w-full" title="{{ $detail->quantity }}">{{ number_format((float) ($detail->quantity ?? 0), 2) }}</span>
-                                                        @endforeach
+                                                            <!--Cantidad de productos vendido y de cortesia-->
+                                                            <span class="text-gray-600 text-xs dark:text-gray-400 truncate block max-w-full" title="{{ $detail->quantity }}">
+                                                                {{ number_format((float) ($detail->quantity ?? 0), 2) }}
+                                                                @if ((float) ($detail->courtesy_quantity ?? 0) > 0)
+                                                                    <span class="text-amber-500">({{ number_format((float) $detail->courtesy_quantity, 2) }} cortesía)</span>
+                                                                @endif
+                                                            </span>
+                                                            @endforeach
                                                     </td>
                                                     <td class="px-4 py-3 text-right font-bold text-gray-700 dark:text-gray-300 tabular-nums">{{ $order->movement?->moved_at?->format('H:i') ?? '-' }}</td>
                                                     <td class="px-4 py-3 text-gray-600 dark:text-gray-400">

@@ -516,6 +516,7 @@ class SalesController extends Controller
                 'items.*.pId' => 'required|integer|exists:products,id',
                 'items.*.qty' => 'required|numeric|min:0.000001',
                 'items.*.price' => 'required|numeric|min:0',
+                'items.*.courtesyQty' => 'nullable|numeric|min:0',
                 'items.*.note' => 'nullable|string|max:65535',
                 // Compatibilidad: algunos flujos pueden enviar `comment` en lugar de `note`
                 'items.*.comment' => 'nullable|string|max:65535',
@@ -805,8 +806,12 @@ class SalesController extends Controller
                 $taxRate = $productBranch->taxRate;
                 $taxRateValue = $taxRate ? ($taxRate->tax_rate / 100) : $this->getDefaultTaxRateValue();
 
-                // Precio de venta incluye impuesto.
-                $itemTotal = (float) $item['qty'] * (float) $item['price'];
+                $qty = (float) ($item['qty'] ?? 0);
+                $courtesyQty = (float) ($item['courtesyQty'] ?? $item['courtesy_quantity'] ?? 0);
+                $courtesyQty = max(0, min($courtesyQty, $qty));
+                $paidQty = $qty - $courtesyQty;
+                // Precio de venta incluye impuesto; el monto es solo por unidades pagadas (sin cortesía).
+                $itemTotal = $paidQty * (float) ($item['price'] ?? 0);
                 $itemSubtotal = $taxRateValue > 0 ? ($itemTotal / (1 + $taxRateValue)) : $itemTotal;
                 $itemTax = $itemTotal - $itemSubtotal;
 
@@ -833,6 +838,7 @@ class SalesController extends Controller
                         'tax_rate' => $taxRate->tax_rate,
                     ] : null,
                     'quantity' => $item['qty'],
+                    'courtesy_quantity' => $courtesyQty,
                     'amount' => $itemTotal,
                     'discount_percentage' => 0.000000,
                     'original_amount' => $itemSubtotal,
@@ -1022,6 +1028,7 @@ class SalesController extends Controller
                 'items.*.pId' => 'required|integer|exists:products,id',
                 'items.*.qty' => 'required|numeric|min:0.000001',
                 'items.*.price' => 'required|numeric|min:0',
+                'items.*.courtesyQty' => 'nullable|numeric|min:0',
                 'items.*.note' => 'nullable|string|max:65535',
                 // Compatibilidad: algunos flujos pueden enviar `comment` en lugar de `note`
                 'items.*.comment' => 'nullable|string|max:65535',
@@ -1164,8 +1171,12 @@ class SalesController extends Controller
                 $taxRate = $productBranch->taxRate;
                 $taxRateValue = $taxRate ? ($taxRate->tax_rate / 100) : $this->getDefaultTaxRateValue();
 
-                // Precio de venta incluye impuesto.
-                $itemTotal = (float) $item['qty'] * (float) $item['price'];
+                $qty = (float) ($item['qty'] ?? 0);
+                $courtesyQty = (float) ($item['courtesyQty'] ?? $item['courtesy_quantity'] ?? 0);
+                $courtesyQty = max(0, min($courtesyQty, $qty));
+                $paidQty = $qty - $courtesyQty;
+                // Precio de venta incluye impuesto; el monto es solo por unidades pagadas (sin cortesía).
+                $itemTotal = $paidQty * (float) ($item['price'] ?? 0);
                 $itemSubtotal = $taxRateValue > 0 ? ($itemTotal / (1 + $taxRateValue)) : $itemTotal;
                 $itemTax = $itemTotal - $itemSubtotal;
 
@@ -1193,6 +1204,7 @@ class SalesController extends Controller
                         'tax_rate' => $taxRate->tax_rate,
                     ] : null,
                     'quantity' => $item['qty'],
+                    'courtesy_quantity' => $courtesyQty,
                     'amount' => $itemTotal,
                     'discount_percentage' => 0.000000,
                     'original_amount' => $itemSubtotal,
@@ -1573,7 +1585,11 @@ class SalesController extends Controller
             $taxRate = $productBranch?->taxRate;
             $taxRateValue = $taxRate ? ($taxRate->tax_rate / 100) : $defaultTaxPct;
 
-            $itemTotal = (float) ($item['qty'] ?? 0) * (float) ($item['price'] ?? 0);
+            $qty = (float) ($item['qty'] ?? 0);
+            $courtesyQty = (float) ($item['courtesyQty'] ?? $item['courtesy_quantity'] ?? 0);
+            $courtesyQty = max(0, min($courtesyQty, $qty));
+            $paidQty = $qty - $courtesyQty;
+            $itemTotal = $paidQty * (float) ($item['price'] ?? 0);
             $itemSubtotal = $taxRateValue > 0 ? ($itemTotal / (1 + $taxRateValue)) : $itemTotal;
             $itemTax = $itemTotal - $itemSubtotal;
 

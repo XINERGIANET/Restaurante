@@ -20,6 +20,7 @@ class OrderMovementDetail extends Model
         'tax_rate_id',
         'tax_rate_snapshot',
         'quantity',
+        'courtesy_quantity',
         'amount',
         'comment',
         'commanded_at',
@@ -34,6 +35,7 @@ class OrderMovementDetail extends Model
         'product_snapshot' => 'array',
         'tax_rate_snapshot' => 'array',
         'quantity' => 'decimal:6',
+        'courtesy_quantity' => 'decimal:6',
         'amount' => 'decimal:6',
     ];
 

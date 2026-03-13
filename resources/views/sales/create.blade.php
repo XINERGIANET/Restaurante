@@ -303,8 +303,10 @@
                 let subtotal = 0, tax = 0, total = 0;
                 (items || []).forEach(item => {
                     const qty = parseFloat(item.qty) || 0;
+                    const courtesyQty = Math.min(parseFloat(item.courtesyQty) || 0, qty);
+                    const paidQty = Math.max(0, qty - courtesyQty);
                     const price = parseFloat(item.price) || 0;
-                    const lineTotal = qty * price;
+                    const lineTotal = paidQty * price;
                     const rate = (taxRateByProductId.get(Number(item.pId)) ?? defaultTaxPct) / 100;
                     const lineSubtotal = rate > 0 ? (lineTotal / (1 + rate)) : lineTotal;
                     subtotal += lineSubtotal;
@@ -509,7 +511,9 @@
 
                         const itemPrice = Number(item.price) || 0;
                         const itemQty = Number(item.qty) || 0;
-                        const itemTotal = itemPrice * itemQty;
+                        const courtesyQty = Math.min(Number(item.courtesyQty) || 0, itemQty);
+                        const paidQty = Math.max(0, itemQty - courtesyQty);
+                        const itemTotal = itemPrice * paidQty;
                         const hasNote = !!(item.note && String(item.note).trim() !== '');
                         const productName = (prod.name || 'Sin nombre').replace(/</g, '&lt;');
                         const productImage = getImageUrl(prod.img || null);
@@ -545,6 +549,15 @@
                                         ${ticketSavedTime ? 'Hora: ' + ticketSavedTime : ''}
                                     </span>
                                 </div>
+                                <div class="text-xs flex items-center gap-1">
+                                Cortesía:
+                                <input type="number"
+                                min="0"
+                                max="${itemQty}"
+                                value="${Number(item.courtesyQty) || 0}"
+                                onchange="setCourtesyQty(${index}, this)"
+                                class="w-10 h-6 text-center text-[11px] border rounded" />
+                                </div>
                                 <div class="flex items-center">
                                     <span class="font-bold text-slate-800 dark:text-slate-200 text-sm truncate">
                                         ${hasNote ? 'Nota: ' + itemNote : ''}
@@ -567,7 +580,10 @@
                 let subtotalBase = 0;
                 let tax = 0;
                 (currentSale.items || []).forEach((item) => {
-                    const itemTotal = (Number(item.price) || 0) * (Number(item.qty) || 0);
+                    const qty = Number(item.qty) || 0;
+                    const courtesyQty = Math.min(Number(item.courtesyQty) || 0, qty);
+                    const paidQty = Math.max(0, qty - courtesyQty);
+                    const itemTotal = (Number(item.price) || 0) * paidQty;
                     const taxPct = taxRateByProductId.get(Number(item.pId)) ?? defaultTaxPct;
                     const taxVal = taxPct / 100;
                     const itemSubtotal = taxVal > 0 ? itemTotal / (1 + taxVal) : itemTotal;
@@ -627,6 +643,7 @@
                         qty: 1,
                         price: Number(price) || 0,
                         note: '',
+                        courtesyQty: 0,
                     });
                 }
                 saveDB();
@@ -657,6 +674,18 @@
                 const item = currentSale.items[index];
                 const qty = parseInt(item.qty, 10) || 1;
                 updateQty(index, -qty);
+            }
+
+            function setCourtesyQty(index, inputEl) {
+                if (!currentSale.items || !currentSale.items[index]) return;
+                let val = parseFloat(inputEl.value);
+                if (isNaN(val) || val < 0) val = 0;
+                const item = currentSale.items[index];
+                const maxQty = Number(item.qty) || 0;
+                if (val > maxQty) val = maxQty;
+                item.courtesyQty = val;
+                saveDB();
+                renderTicket();
             }
 
             function changeClient(selectEl) {
@@ -951,6 +980,7 @@
                         name: it.name,
                         qty: Number(it.qty) || 0,
                         price: Number(it.price) || 0,
+                        courtesyQty: Number(it.courtesyQty) || 0,
                         note: String(it.note ?? '').trim(),
                     })),
                     document_type_id: parseInt(docTypeEl?.value || 0),
@@ -1076,6 +1106,7 @@
             // Exponer funciones globales para los onclick="" del HTML
             window.getImageUrl = getImageUrl;
             window.updateQty = updateQty;
+            window.setCourtesyQty = setCourtesyQty;
             window.clearCart = clearCart;
             window.toggleNoteInput = toggleNoteInput;
             window.saveNote = saveNote;

@@ -672,56 +672,40 @@ class OrderController extends Controller
 
         // Solo detalles activos (no cancelados). Mismo producto se agrupa (x5, etc.). Entregado = estado 'E'.
         $pendingItemsRaw = $pendingOrder
-            ? ($pendingOrder->details ?? collect())
-                ->filter(fn ($d) => ($d->status ?? 'A') !== 'C')
-                ->map(function ($d) use ($productBranches) {
-                    $qty = (float) ($d->quantity ?? 0);
-                    $amount = (float) ($d->amount ?? 0);
-                    $price = $qty > 0 ? ($amount / $qty) : 0;
-                    
-                    // Recuperar el precio original de esta sucursal si existe para hacer un cálculo preciso
-                    $originalPrice = 0;
-                    $pb = collect($productBranches)->where('product_id', $d->product_id)->first();
-                    if ($pb) {
-                        $originalPrice = (float) $pb['price'];
-                    }
-                    
-                    // Si el original es mayor al detectado (hubo cortesía parcial), o detectado es 0 (100% cortesía)
-                    if ($originalPrice > 0 && ($originalPrice > $price || $price == 0)) {
-                        $price = $originalPrice;
-                    } elseif ($price <= 0 && $d->product_snapshot && is_array($d->product_snapshot)) {
-                        $price = (float) ($d->product_snapshot['price'] ?? 0);
-                    }
-
-                    // RECONSTRUIR cortesía: unidades no cobradas
-                    $paidQty = ($price > 0) ? ($amount / $price) : $qty;
-                    $paidQty = max(0, min($paidQty, $qty));
-                    $courtesyQty = max(0, $qty - $paidQty);
-
-                    $rawComment = trim((string) ($d->comment ?? ''));
-                    $note = $rawComment;
-                    if ($note !== '' && preg_match('/^\d{2}:\d{2}\s*-\s*/', $note) === 1) {
-                        $note = preg_replace('/^\d{2}:\d{2}(?:\s*[ap]\.?m\.?)?\s*-\s*/i', '', $note);
-                        $note = trim($note);
-                    }
-                    $commandTime = $d->commanded_at
-                        ? $d->commanded_at->format('H:i')
-                        : ($d->created_at ? $d->created_at->format('H:i') : null);
-
-                    $status = $d->status ?? 'A';
-                    return [
-                        'pId'         => (int) ($d->product_id ?? 0),
-                        'name'        => $d->description ?? '',
-                        'qty'         => $qty,
-                        'price'       => round($price, 6),
-                        'tax_rate'    => 10,
-                        'note'        => $note,
-                        'commandTime' => $commandTime,
-                        'delivered'   => $status === 'E',
-                        'courtesyQty' => $courtesyQty,
-                    ];
-                })->values()->all()
-            : [];
+    ? ($pendingOrder->details ?? collect())
+        ->filter(fn ($d) => ($d->status ?? 'A') !== 'C')
+        ->map(function ($d) {
+            $qty   = (float) ($d->quantity ?? 0);
+            $courtesyQty = (float) ($d->courtesy_quantity ?? 0);
+            $amount = (float) ($d->amount ?? 0);
+            // Precio efectivo por unidad pagada (opcional, solo para mostrar)
+            $paidQty = max(0, $qty - $courtesyQty);
+            $price = ($paidQty > 0)
+                ? ($amount / $paidQty)
+                : 0;
+            $rawComment = trim((string) ($d->comment ?? ''));
+            $note = $rawComment;
+            if ($note !== '' && preg_match('/^\d{2}:\d{2}\s*-\s*/', $note) === 1) {
+                $note = preg_replace('/^\d{2}:\d{2}(?:\s*[ap]\.?m\.?)?\s*-\s*/i', '', $note);
+                $note = trim($note);
+            }
+            $commandTime = $d->commanded_at
+                ? $d->commanded_at->format('H:i')
+                : ($d->created_at ? $d->created_at->format('H:i') : null);
+            $status = $d->status ?? 'A';
+            return [
+                'pId'         => (int) ($d->product_id ?? 0),
+                'name'        => $d->description ?? '',
+                'qty'         => $qty,
+                'price'       => round($price, 6),
+                'tax_rate'    => 10,
+                'note'        => $note,
+                'commandTime' => $commandTime,
+                'delivered'   => $status === 'E',
+                'courtesyQty' => $courtesyQty,
+            ];
+        })->values()->all()
+    : [];
 
         // Agrupar mismo producto en un solo ítem (ej. PB x5 + PB x1 → PB x6)
         $pendingItems = collect($pendingItemsRaw)->groupBy('pId')->map(function ($group) {
@@ -1203,7 +1187,7 @@ class OrderController extends Controller
                     'total' => $total,
                     'people_count' => $peopleCount,
                     'delivery_amount' => $deliveryAmount,
-
+                    
                     'contact_phone' => $request->filled('contact_phone') ? $request->contact_phone : null,
                     'delivery_address' => $request->filled('delivery_address') ? $request->delivery_address : null,
                     'delivery_time' => $request->filled('delivery_time') ? $request->delivery_time : null,
@@ -1299,11 +1283,9 @@ class OrderController extends Controller
 
                 $qty = (float) ($rawItem['quantity'] ?? $rawItem['qty'] ?? 1);
                 $price = (float) ($rawItem['price'] ?? 0);
-                // NUEVO: unidades en cortesía que vienen del front
-                $courtesyQty = (float) ($rawItem['courtesyQty'] ?? $rawItem['courtesy_qty'] ?? 0);
+                $courtesyQty = (float) ($rawItem['courtesyQty'] ?? $rawItem['courtesy_quantity'] ?? 0);
                 $courtesyQty = max(0, min($courtesyQty, $qty));
                 $paidQty = $qty - $courtesyQty;
-                // SOLO se cobra lo que no es cortesía
                 $amount = $paidQty * $price;
 
                 $unitId = $rawItem['unit_id'] ?? ($product?->unit_id ?? null);
@@ -1336,6 +1318,7 @@ class OrderController extends Controller
                     'tax_rate_id' => $rawItem['tax_rate_id'] ?? null,
                     'tax_rate_snapshot' => $rawItem['tax_rate_snapshot'] ?? null,
                     'quantity' => $qty,
+                    'courtesy_quantity' => $courtesyQty,
                     'amount' => $amount,
                     'branch_id' => $branchId,
                     'comment' => $comment,
@@ -1380,6 +1363,7 @@ class OrderController extends Controller
                     'tax_rate_id' => $rawCancel['tax_rate_id'] ?? null,
                     'tax_rate_snapshot' => $rawCancel['tax_rate_snapshot'] ?? null,
                     'quantity' => $qty,
+                    'courtesy_quantity' => 0,
                     'amount' => $amount,
                     'branch_id' => $branchId,
                     'comment' => $rawCancel['cancel_reason'] ?? null,
@@ -1634,29 +1618,24 @@ class OrderController extends Controller
 
     /**
      * Genera número de pedido por sucursal (branch + movement_type + document_type).
-     * Secuencia independiente por sucursal, sin conflictos entre sucursales.
+     * Secuencia independiente por sucursal; cada nuevo movimiento recibe el siguiente correlativo.
+     * Usa el último movimiento por id (más reciente) para no depender de ORDER BY por número en BD.
      */
     private function generateOrderMovementNumber(int $branchId, int $movementTypeId, int $documentTypeId): string
     {
         $driver = DB::connection()->getDriverName();
 
         if ($driver === 'pgsql') {
-            // Lock por sucursal: evita conflictos entre sucursales (cada una usa su propio lock)
             DB::statement('SELECT pg_advisory_xact_lock(?)', [7000000 + $branchId]);
         }
 
-        $query = Movement::query()
+        $last = Movement::query()
             ->where('branch_id', $branchId)
             ->where('movement_type_id', $movementTypeId)
-            ->where('document_type_id', $documentTypeId);
-
-        if ($driver === 'pgsql') {
-            $query->orderByRaw("COALESCE(NULLIF(REGEXP_REPLACE(number, '[^0-9]', '', 'g'), '')::BIGINT, 0) DESC");
-        } else {
-            $query->orderByRaw("COALESCE(CAST(NULLIF(REGEXP_REPLACE(number, '[^0-9]', '', 'g'), '') AS UNSIGNED), 0) DESC");
-        }
-
-        $last = $query->lockForUpdate()->first();
+            ->where('document_type_id', $documentTypeId)
+            ->orderByDesc('id')
+            ->lockForUpdate()
+            ->first();
 
         $lastCorrelative = 0;
         if ($last) {
