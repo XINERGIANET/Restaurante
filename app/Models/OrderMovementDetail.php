@@ -22,6 +22,7 @@ class OrderMovementDetail extends Model
         'quantity',
         'amount',
         'comment',
+        'commanded_at',
         'branch_id',
         'parent_detail_id',
         'complements',
@@ -29,6 +30,7 @@ class OrderMovementDetail extends Model
     ];
 
     protected $casts = [
+        'commanded_at' => 'datetime',
         'product_snapshot' => 'array',
         'tax_rate_snapshot' => 'array',
         'quantity' => 'decimal:6',

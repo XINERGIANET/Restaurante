@@ -87,18 +87,13 @@
                 <div class="flex items-center gap-2">
                     @foreach ($topOperations as $operation)
                         @php
-                             $topStyle = "background-color: " . ($operation->color ?: '#3B82F6') . "; color: " . $resolveTextColor($operation) . ";";
-                             $url = $resolveActionUrl($operation->action, null, $operation);
+                            $topStyle = "background-color: " . ($operation->color ?: '#3B82F6') . "; color: " . $resolveTextColor($operation) . ";";
+                            $url = $resolveActionUrl($operation->action, null, $operation);
                         @endphp
-                         <x-ui.link-button size="md" variant="primary" style="{{ $topStyle }}" href="{{ $url }}">
+                        <x-ui.link-button size="md" variant="primary" style="{{ $topStyle }}" href="{{ $url }}">
                             <i class="{{ $operation->icon }}"></i> <span>{{ $operation->name }}</span>
                         </x-ui.link-button>
                     @endforeach
-                     @if ($topOperations->isEmpty())
-                        <x-ui.button size="md" variant="primary" type="button" style="background-color: #12f00e; color: #111827;" @click="$dispatch('open-shift-modal')">
-                            <i class="ri-add-line"></i> <span>Nuevo turno</span>
-                        </x-ui.button>
-                    @endif
                 </div>
             </div>
 
@@ -284,27 +279,34 @@
                                     <div class="flex justify-end gap-2">
                                         @if($rowOperations->isNotEmpty())
                                             @foreach ($rowOperations as $op)
-                                                 @php $url = $resolveActionUrl($op->action, $shift, $op); @endphp
-                                                 <x-ui.link-button size="icon" href="{{ $url }}" style="background-color: {{ $op->color }}; color: white;" className="rounded-lg">
-                                                     <i class="{{ $op->icon }}"></i>
-                                                 </x-ui.link-button>
+                                                @php $url = $resolveActionUrl($op->action, $shift, $op); @endphp
+                                                @if ($op->action == 'shift-cash.print')
+                                                    {{-- Botón de imprimir solo si el turno ya tiene movimiento de cierre --}}
+                                                    @if ($shift->cashMovementEnd)
+                                                        <x-ui.button
+                                                            size="icon"
+                                                            type="button"
+                                                            @click="$dispatch('open-shift-cash-modal', { shiftId: {{ $shift->id }} })"
+                                                            style="background-color: {{ $op->color }}; color: white;"
+                                                            className="rounded-lg"
+                                                            title="Imprimir cierre de caja"
+                                                        >
+                                                            <i class="{{ $op->icon }}"></i>
+                                                        </x-ui.button>
+                                                    @endif
+                                                @else
+                                                    <x-ui.button
+                                                        size="icon"
+                                                        type="button"
+                                                        href="{{ $url }}"
+                                                        style="background-color: {{ $op->color }}; color: white;"
+                                                        className="rounded-lg"
+                                                    >
+                                                        <i class="{{ $op->icon }}"></i>
+                                                    </x-ui.button>
+                                                @endif
                                             @endforeach
-                                        @else
-                                            <x-ui.link-button size="icon" variant="edit" href="{{ route('shift-cash.edit', ['cash_register_id' => $selectedBoxId, 'shiftCash' => $shift->id]) }}" style="background-color: #fbbf24; color: #1f2937;" className="rounded-lg">
-                                                <i class="ri-pencil-line"></i>
-                                            </x-ui.link-button>
-                                            @if($shift->cashMovementEnd)
-                                                <x-ui.link-button size="icon" href="{{ route('shift-cash.print', $shift->id) }}" style="background-color: #22c55e; color: #ffffff;" className="rounded-lg" title="Imprimir cierre">
-                                                    <i class="ri-printer-line"></i>
-                                                </x-ui.link-button>
-                                            @endif
-                                            <form action="{{ route('shift-cash.destroy', ['cash_register_id' => $selectedBoxId, 'shiftCash' => $shift->id]) }}" method="POST" class="inline js-swal-delete">
-                                                @csrf @method('DELETE')
-                                                @if ($viewId) <input type="hidden" name="view_id" value="{{ $viewId }}"> @endif
-                                                <x-ui.button size="icon" type="submit" style="background-color: #ef4444; color: white;" className="rounded-lg">
-                                                    <i class="ri-delete-bin-line"></i>
-                                                </x-ui.button>
-                                            </form>
+                                        
                                         @endif
                                     </div>
                                 </td>
@@ -374,6 +376,40 @@
         </x-common.component-card>
 
         {{-- MODAL --}}
-      
+        <x-ui.modal
+            x-data="{ open: false, selectedShiftId: null }"
+            @open-shift-cash-modal.window="open = true; selectedShiftId = $event.detail?.shiftId || null"
+            @close-shift-cash-modal.window="open = false"
+            :isOpen="false"
+            :showCloseButton="false"
+            class="max-w-3xl"
+        >
+            <div class="p-6 sm:p-8">
+                <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="flex items-center gap-4">
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Imprimir PDF de cierre de caja</h3>
+                            <p class="mt-1 text-sm text-gray-500">Elige informacion para el PDF.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            @include('shift_cash.modal_cash')
+            <div class="p-6 sm:p-8 flex items-center justify-end gap-3">
+                <x-ui.button size="md" variant="primary" type="button" class="h-11 px-4" style="background-color: #244BB3;">
+                    <i class="ri-file-pdf-line text-gray-100"></i> <span class="text-gray-100">Descargar PDF</span>
+                </x-ui.button>
+                <x-ui.button
+                    size="md"
+                    variant="outline"
+                    type="button"
+                    class="h-11 px-4"
+                    style="background-color: #FFFFFF; color: #244BB3;"
+                    @click="$dispatch('close-shift-cash-modal')"
+                >
+                    <i class="ri-close-line"></i> <span>Cancelar</span>
+                </x-ui.button>
+            </div>
+        </x-ui.modal>
     </div>
 @endsection

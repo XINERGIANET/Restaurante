@@ -73,105 +73,103 @@
             {{-- 2. GRID DE MESAS - RESPONSIVO --}}
             <div class="flex justify-center w-full pb-10">
                 <template x-if="filteredTables?.length > 0">
-                    <div
-                        class="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-5 gap-5 w-full auto-rows-[220px]">
+                    <div class="grid grid-cols-1 rounded-2xl xs:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-5 gap-5 w-full auto-rows-[220px]">
                         <template x-for="table in (filteredTables || [])" :key="table.id">
                             <div @click="openTable(table)"
-                                class="relative rounded-2xl p-2 shadow-lg border overflow-hidden bg-white dark:bg-gray-800 transition-all hover:shadow-lg cursor-pointer flex h-[220px] min-h-[220px] max-h-[220px]"
-                                :class="table.situation === 'ocupada' ?
-                                    'border-gray-100 dark:border-gray-700 border-l-4' :
-                                    'border-blue-200 dark:border-blue-700 border-l-4'"
-                                :style="table.situation === 'ocupada' ? 'border-left-color: #F37022' :
-                                    'border-left-color: rgb(59, 130, 246)'">
-                                <div class="p-3 py-4 pl-3 flex flex-col w-full flex-1 min-h-0 overflow-hidden">
-                                    {{-- Header --}}
-                                    <div class="flex justify-between items-start mb-4">
-                                        <div class="flex items-center gap-4">
-                                            <template x-if="table.situation === 'ocupada'">
-                                                <div class="bg-gray-100 font-bold text-lg w-11 h-11 flex items-center justify-center rounded-xl shadow-sm dark:bg-gray-700 border-2"
-                                                    style="color: #F37022; border-color: #F37022;">
-                                                    <span x-text="String(table.name || table.id).padStart(2, '0')"></span>
-                                                </div>
-                                            </template>
-                                            <template x-if="table.situation === 'libre'">
-                                                <div
-                                                    class="bg-gray-100 border border-blue-500 text-blue-500 font-bold text-lg w-11 h-11 flex items-center justify-center rounded-xl shadow-sm dark:bg-gray-700 dark:text-red-400">
-
-                                                    <span x-text="String(table.name || table.id).padStart(2, '0')"></span>
-                                                </div>
-                                            </template>
-                                            <div class="min-w-0 flex-1 overflow-hidden">
-                                                <div class="flex min-w-0">
-                                                    <p class="font-semibold text-theme-xs text-gray-500 dark:text-gray-400 shrink-0">
-                                                        Mozo:
-                                                    </p>
-                                                    <p class="font-medium text-gray-800 text-theme-xs dark:text-white/90 ml-1 truncate min-w-0"
-                                                        x-text="table.waiter || '-'" :title="(table.waiter || '-')"></p>
-                                                </div>
-                                                <div class="flex min-w-0">
-                                                    <p class="font-semibold text-theme-xs text-gray-500 dark:text-gray-400 shrink-0">
-                                                        Cliente:</p>
-                                                    <p class="font-medium text-gray-800 text-theme-xs dark:text-white/90 ml-1 truncate min-w-0"
-                                                        x-text="(table.client && table.client !== 'Público General') ? table.client : 'Público'">
-                                                    </p>
-                                                </div>
+                            class="relative rounded-2xl shadow-md rounded-2xl border border-l-4 overflow-hidden bg-white dark:bg-gray-800 transition-all hover:shadow-lg cursor-pointer flex h-[220px] min-h-[220px] max-h-[220px]"
+                            :class="table.situation === 'ocupada' ? 'border-gray-200 dark:border-gray-700' : 'border-blue-200 dark:border-blue-700'"
+                            :style="table.situation === 'ocupada' ? 'border-left-color: #F37022' : 'border-left-color: rgb(59, 130, 246)'">
+                
+                                <div class="flex flex-col w-full flex-1 min-h-0 overflow-hidden p-4">
+                
+                                    {{-- Top: número + badge tiempo --}}
+                                    <div class="flex justify-between items-start">
+                                        <template x-if="table.situation === 'ocupada'">
+                                            <div class="w-10 h-10 rounded-full border-2 flex items-center justify-center font-semibold text-base"
+                                                style="border-color: #F37022; color: #F37022;"
+                                                x-text="String(table.name || table.id).padStart(2, '0')">
+                                            </div>
+                                        </template>
+                                        <template x-if="table.situation === 'libre'">
+                                            <div class="w-10 h-10 rounded-full border-2 border-blue-500 text-blue-500 flex items-center justify-center font-semibold text-base"
+                                                x-text="String(table.name || table.id).padStart(2, '0')">
+                                            </div>
+                                        </template>
+                
+                                        <template x-if="table.situation === 'ocupada'">
+                                            <span class="text-xs px-2.5 py-1 rounded-full font-medium"
+                                                style="background: #FFF0E6; color: #F37022;"
+                                                x-text="table.elapsed"></span>
+                                        </template>
+                                        <template x-if="table.situation === 'libre'">
+                                            <span class="text-xs bg-gray-100 dark:bg-gray-700 px-2.5 py-1 rounded-full text-gray-400 font-medium">Libre</span>
+                                        </template>
+                                    </div>
+                
+                                    {{-- Divider --}}
+                                    <div class="border-t border-gray-100 dark:border-gray-700 my-3"></div>
+                
+                                    {{-- Grid de metadata --}}
+                                    <div class="grid grid-cols-2 gap-x-3 gap-y-2 flex-1">
+                                        <div class="min-w-0">
+                                            <p class="text-[10px] text-gray-400 dark:text-gray-500">Mozo</p>
+                                            <p class="text-xs font-medium text-gray-800 dark:text-white truncate"
+                                                x-text="table.waiter || '-'" :title="table.waiter || '-'"></p>
+                                        </div>
+                                        <div class="min-w-0">
+                                            <p class="text-[10px] text-gray-400 dark:text-gray-500">Cliente</p>
+                                            <p class="text-xs font-medium text-gray-800 dark:text-white truncate"
+                                                x-text="(table.client && table.client !== '-') ? table.client : 'Público General'"
+                                                :title="(table.client && table.client !== '-') ? table.client : 'Público General'"></p>
+                                        </div>
+                                        <div>
+                                            <p class="text-[10px] text-gray-400 dark:text-gray-500">Personas</p>
+                                            <div class="flex items-center gap-1">
+                                                <i class="ri-user-line text-sm"></i>
+                                                <p class="text-xs font-medium text-gray-800 dark:text-white"
+                                                    x-text="table.situation === 'ocupada' ? (table.people_count || 0) : (table.diners || 0)"></p>
                                             </div>
                                         </div>
-                                        <div class="flex items-center gap-1 text-gray-600 dark:text-gray-400">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2"
-                                                viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round"
-                                                    d="M17 20h5v-1a4 4 0 00-3-3.87M9 20H4v-1a4 4 0 013-3.87m6-4.13a4 4 0 110-8 4 4 0 010 8z" />
-                                            </svg>
-                                            <span class="text-sm font-medium"
-                                                x-text="table.situation === 'ocupada' ? (table.people_count || 0) : (table.diners || 0)"></span>
+                                        <div>
+                                            <p class="text-[10px] text-gray-400 dark:text-gray-500">Estado</p>
+                                            <p class="text-xs font-medium"
+                                                :class="table.situation === 'ocupada' ? 'text-orange-500' : 'text-blue-500'"
+                                                x-text="table.situation === 'ocupada' ? 'Ocupada' : 'Libre'"></p>
                                         </div>
                                     </div>
-
-                                    {{-- Total + Estado --}}
-                                    <div class="flex justify-between items-center mb-5">
+                
+                                    {{-- Footer: total + botones --}}
+                                    <div class="flex justify-between items-center mt-3">
                                         <template x-if="table.situation === 'ocupada'">
-                                            <p class="text-xl font-bold text-gray-900 dark:text-white"
+                                            <p class="text-lg font-semibold text-gray-900 dark:text-white"
                                                 x-text="'S/. ' + parseFloat(table.total).toFixed(2)"></p>
                                         </template>
                                         <template x-if="table.situation === 'libre'">
-                                            <p class="text-xl font-bold text-gray-400">-</p>
+                                            <p class="text-lg font-semibold text-gray-400">—</p>
                                         </template>
-                                        <div class="text-right">
-                                            <template x-if="table.situation === 'ocupada'">
-                                                <span
-                                                    class="text-xs bg-gray-100 dark:bg-gray-700 px-3 py-1 rounded-full text-orange-600 dark:text-orange-400 font-medium"
-                                                    x-text="table.elapsed"></span>
-                                            </template>
-                                            <template x-if="table.situation === 'libre'">
-                                                <span
-                                                    class="text-xs bg-gray-100 dark:bg-gray-700 px-3 py-1 rounded-full text-gray-500 dark:text-gray-400 font-medium">-</span>
-                                            </template>
-                                        </div>
-                                    </div>
-
-                                    {{-- Botones --}}
-                                    <template x-if="table && table.situation === 'ocupada'">
-                                        <div
-                                            class="border-blue-500 dark:border-blue-700 pt-3 flex justify-end gap-2 items-center">
-                                            <template x-if="canCharge">
-                                                <button type="button" @click.stop="chargeTable(table)" title="Cobrar"
-                                                    class="inline-flex items-center justify-center bg-green-500 hover:bg-green-600 active:bg-green-700 text-white py-1.5 px-3 rounded-lg transition shadow-sm hover:shadow w-9">
-                                                    <i class="ri-bank-card-line text-white"></i>
+                
+                                        <template x-if="table.situation === 'ocupada'">
+                                            <div class="flex gap-1.5">
+                                                <template x-if="canCharge">
+                                                    <button type="button" @click.stop="chargeTable(table)" title="Cobrar"
+                                                        class="w-8 h-8 flex items-center justify-center bg-green-500 hover:bg-green-600 text-white rounded-lg transition">
+                                                        <i class="ri-bank-card-line text-sm"></i>
+                                                    </button>
+                                                </template>
+                                                <button type="button"
+                                                    @click.stop="$dispatch('open-move-table-modal', { table: table })"
+                                                    title="Mover mesa"
+                                                    class="w-8 h-8 flex items-center justify-center bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition">
+                                                    <i class="ri-drag-move-2-line text-sm"></i>
                                                 </button>
-                                            </template>
-                                            <button type="button"
-                                                @click.stop="$dispatch('open-move-table-modal', { table: table })"
-                                                title="Mover mesa"
-                                                class="inline-flex items-center justify-center bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white py-1.5 px-3 rounded-lg transition shadow-sm hover:shadow w-9">
-                                                <i class="ri-drag-move-2-line text-white"></i>
-                                            </button>
-                                            <button type="button" @click.stop="closeTable(table)" title="Cerrar mesa"
-                                                class="inline-flex items-center justify-center bg-red-400 hover:bg-red-600 active:bg-red-700 text-white py-1.5 px-3 rounded-lg transition shadow-sm hover:shadow w-9">
-                                                <i class="ri-close-circle-line text-white"></i>
-                                            </button>
-                                        </div>
-                                    </template>
+                                                <button type="button" @click.stop="closeTable(table)" title="Cerrar mesa"
+                                                    class="w-8 h-8 flex items-center justify-center bg-red-400 hover:bg-red-600 text-white rounded-lg transition">
+                                                    <i class="ri-close-circle-line text-sm"></i>
+                                                </button>
+                                            </div>
+                                        </template>
+                                    </div>
+                
                                 </div>
                             </div>
                         </template>
@@ -654,11 +652,12 @@
                                         .toLowerCase();
                                     const client = String(t.client ?? t.clientName ?? t
                                         .person_name ?? '').toLowerCase();
+                                    const clientName = String(t.clientName ?? '').toLowerCase();
                                     const productsText = String(t.products_text ?? '')
                                         .toLowerCase();
 
                                     // Unimos todo el texto de la mesa para buscar ahí
-                                    const searchable = [name, waiter, client, productsText].join(
+                                    const searchable = [name, waiter, client, clientName, productsText].join(
                                         ' ');
 
                                     // La mesa DEBE coincidir con TODOS los términos/chips activos (AND logic)

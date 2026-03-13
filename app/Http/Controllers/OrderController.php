@@ -666,43 +666,95 @@ class OrderController extends Controller
             ->first();
         $startFresh = !$pendingOrder;
 
-        $pendingItems = $pendingOrder
-            ? ($pendingOrder->details ?? collect())->map(function ($d) {
-                $qty = (float) ($d->quantity ?? 0);
-                $amount = (float) ($d->amount ?? 0);
-                $price = $qty > 0 ? ($amount / $qty) : 0;
+        // Cliente actual del pedido pendiente (si existe)
+        $pendingClientId = $pendingOrder?->movement?->person_id;
+        $pendingClientName = $pendingOrder?->movement?->person_name;
 
-                $rawComment = trim((string) ($d->comment ?? ''));
-                $note = '';
-                if ($rawComment !== '') {
-                    // Si el comentario no tiene ya prefijo HH:MM - , usar hora de creación del detalle.
-                    $hasTimePrefix = preg_match('/^\\d{2}:\\d{2}\\s*-\\s*/', $rawComment) === 1;
-                    if ($hasTimePrefix) {
-                        $note = $rawComment;
-                    } else {
-                        $time = $d->created_at ? $d->created_at->format('H:i') : now()->format('H:i');
-                        $note = $time . ' - ' . $rawComment;
+        // Solo detalles activos (no cancelados). Mismo producto se agrupa (x5, etc.). Entregado = estado 'E'.
+        $pendingItemsRaw = $pendingOrder
+            ? ($pendingOrder->details ?? collect())
+                ->filter(fn ($d) => ($d->status ?? 'A') !== 'C')
+                ->map(function ($d) use ($productBranches) {
+                    $qty = (float) ($d->quantity ?? 0);
+                    $amount = (float) ($d->amount ?? 0);
+                    $price = $qty > 0 ? ($amount / $qty) : 0;
+                    
+                    // Recuperar el precio original de esta sucursal si existe para hacer un cálculo preciso
+                    $originalPrice = 0;
+                    $pb = collect($productBranches)->where('product_id', $d->product_id)->first();
+                    if ($pb) {
+                        $originalPrice = (float) $pb['price'];
                     }
-                }
+                    
+                    // Si el original es mayor al detectado (hubo cortesía parcial), o detectado es 0 (100% cortesía)
+                    if ($originalPrice > 0 && ($originalPrice > $price || $price == 0)) {
+                        $price = $originalPrice;
+                    } elseif ($price <= 0 && $d->product_snapshot && is_array($d->product_snapshot)) {
+                        $price = (float) ($d->product_snapshot['price'] ?? 0);
+                    }
 
-                return [
-                    'pId' => (int) ($d->product_id ?? 0),
-                    'name' => $d->description ?? '',
-                    'qty' => $qty,
-                    'price' => round($price, 6),
-                    'tax_rate' => 10,
-                    'note' => $note,
-                ];
-            })->values()->all()
+                    // RECONSTRUIR cortesía: unidades no cobradas
+                    $paidQty = ($price > 0) ? ($amount / $price) : $qty;
+                    $paidQty = max(0, min($paidQty, $qty));
+                    $courtesyQty = max(0, $qty - $paidQty);
+
+                    $rawComment = trim((string) ($d->comment ?? ''));
+                    $note = $rawComment;
+                    if ($note !== '' && preg_match('/^\d{2}:\d{2}\s*-\s*/', $note) === 1) {
+                        $note = preg_replace('/^\d{2}:\d{2}(?:\s*[ap]\.?m\.?)?\s*-\s*/i', '', $note);
+                        $note = trim($note);
+                    }
+                    $commandTime = $d->commanded_at
+                        ? $d->commanded_at->format('H:i')
+                        : ($d->created_at ? $d->created_at->format('H:i') : null);
+
+                    $status = $d->status ?? 'A';
+                    return [
+                        'pId'         => (int) ($d->product_id ?? 0),
+                        'name'        => $d->description ?? '',
+                        'qty'         => $qty,
+                        'price'       => round($price, 6),
+                        'tax_rate'    => 10,
+                        'note'        => $note,
+                        'commandTime' => $commandTime,
+                        'delivered'   => $status === 'E',
+                        'courtesyQty' => $courtesyQty,
+                    ];
+                })->values()->all()
             : [];
 
-        // Detalles cancelados del pedido pendiente (para mostrar razón cuando se abre la orden para cambiar)
+        // Agrupar mismo producto en un solo ítem (ej. PB x5 + PB x1 → PB x6)
+        $pendingItems = collect($pendingItemsRaw)->groupBy('pId')->map(function ($group) {
+            $first = $group->first();
+            return [
+                'pId' => $first['pId'],
+                'name' => $first['name'],
+                'qty' => $group->sum('qty'),
+                'price' => $first['price'],
+                'tax_rate' => $first['tax_rate'] ?? 10,
+                'note' => $first['note'],
+                'commandTime' => $first['commandTime'],
+                'delivered' => $group->contains('delivered', true),
+                'courtesyQty' => $group->sum('courtesyQty'),
+            ];
+        })->values()->all();
+
+        // Detalles cancelados: agrupar mismo producto en uno solo (ej. PB x5 + PB x1 → PB x6)
         $pendingCancelledDetails = $pendingOrder
-            ? $pendingOrder->details->where('status', 'C')->map(fn ($d) => [
-                'description' => $d->description,
+            ? collect($pendingOrder->details->where('status', 'C')->map(fn ($d) => [
+                'product_id' => (int) ($d->product_id ?? 0),
+                'description' => $d->description ?? 'Producto',
                 'quantity' => (float) $d->quantity,
                 'comment' => $d->comment ?? '',
-            ])->values()->all()
+            ]))
+                ->groupBy('product_id')
+                ->map(fn ($group) => [
+                    'description' => $group->first()['description'],
+                    'quantity' => $group->sum('quantity'),
+                    'comment' => $group->first()['comment'],
+                ])
+                ->values()
+                ->all()
             : [];
 
         $saleOrOrderTypeIds = MovementType::query()
@@ -760,6 +812,8 @@ class OrderController extends Controller
             'startFresh' => $startFresh,
             'pendingOrderMovementId' => $pendingOrder?->id,
             'pendingMovementId' => $pendingOrder?->movement_id,
+            'pendingClientId' => $pendingClientId,
+            'pendingClientName' => $pendingClientName,
             'pendingPeopleCount' => (int) ($pendingOrder?->people_count ?: ($table->capacity ?? 1)),
             'pendingCancelledDetails' => $pendingCancelledDetails,
             'pendingItems' => $pendingItems,
@@ -1060,9 +1114,11 @@ class OrderController extends Controller
         $deliveryAmount = round((float) ($request->input('delivery_amount', 0) ?: 0), 6);
         $clientPersonId = $request->filled('client_id') ? (int) $request->client_id : null;
         $clientPerson = $clientPersonId ? Person::find($clientPersonId) : null;
+        // Si hay persona encontrada, usar siempre su nombre (ignora lo que mande el front en client_name)
+        $clientNameFromRequest = $request->filled('client_name') ? trim((string) $request->client_name) : null;
         $clientName = $clientPerson
             ? trim(($clientPerson->first_name ?? '') . ' ' . ($clientPerson->last_name ?? ''))
-            : 'Público General';
+            : ($clientNameFromRequest ?: 'Público General');
 
         DB::beginTransaction();
 
@@ -1081,6 +1137,30 @@ class OrderController extends Controller
                     $areaId = $byId->area_id;
                 }
             }
+            
+            $existingOrderMovementForPeople = null;
+            if ($request->filled('order_movement_id')) {
+                $existingOrderMovementForPeople = OrderMovement::where('id', (int) $request->order_movement_id)
+                    ->whereIn('status', ['PENDIENTE', 'P'])
+                    ->first();
+            } elseif ($tableId) {
+                $existingOrderMovementForPeople = OrderMovement::where('table_id', $tableId)
+                    ->whereIn('status', ['PENDIENTE', 'P'])
+                    ->orderByDesc('id')
+                    ->first();
+            }
+
+            // Si el front manda un valor (>0), úsalo tal cual; si no, conserva el que ya tenía el pedido;
+            // y solo si tampoco hay, usa la capacidad de la mesa (pero sin limitar hacia arriba).
+            $rawPeopleFromRequest = (int) $request->input('people_count', 0);
+            if ($rawPeopleFromRequest > 0) {
+                $peopleCount = $rawPeopleFromRequest;
+            } elseif ($existingOrderMovementForPeople && $existingOrderMovementForPeople->people_count > 0) {
+                $peopleCount = (int) $existingOrderMovementForPeople->people_count;
+            } else {
+                $peopleCount = (int) ($table->capacity ?? 1);
+            }
+    
             // Prioridad 2: si no, buscar por mesa
             if (!$existingOrderMovement && $tableId) {
                 $existingOrderMovement = OrderMovement::where('table_id', $tableId)
@@ -1123,6 +1203,7 @@ class OrderController extends Controller
                     'total' => $total,
                     'people_count' => $peopleCount,
                     'delivery_amount' => $deliveryAmount,
+
                     'contact_phone' => $request->filled('contact_phone') ? $request->contact_phone : null,
                     'delivery_address' => $request->filled('delivery_address') ? $request->delivery_address : null,
                     'delivery_time' => $request->filled('delivery_time') ? $request->delivery_time : null,
@@ -1132,7 +1213,10 @@ class OrderController extends Controller
                     'moved_at' => now(),
                     'user_id' => $user?->id,
                     'user_name' => $user?->name ?? 'Sistema',
+                    'person_id' => $clientPerson?->id,
+                    'person_name' => $clientName,
                     'responsible_id' => $user?->id,
+
                     'responsible_name' => $waiterName ?: (($user?->person?->first_name ?? '') . ' ' . ($user?->person?->last_name ?? '-')),
                 ]);
 
@@ -1215,7 +1299,12 @@ class OrderController extends Controller
 
                 $qty = (float) ($rawItem['quantity'] ?? $rawItem['qty'] ?? 1);
                 $price = (float) ($rawItem['price'] ?? 0);
-                $amount = $qty * $price;
+                // NUEVO: unidades en cortesía que vienen del front
+                $courtesyQty = (float) ($rawItem['courtesyQty'] ?? $rawItem['courtesy_qty'] ?? 0);
+                $courtesyQty = max(0, min($courtesyQty, $qty));
+                $paidQty = $qty - $courtesyQty;
+                // SOLO se cobra lo que no es cortesía
+                $amount = $paidQty * $price;
 
                 $unitId = $rawItem['unit_id'] ?? ($product?->unit_id ?? null);
                 if (!$unitId) {
@@ -1225,14 +1314,18 @@ class OrderController extends Controller
                 $code = $rawItem['code'] ?? ($product?->code ?? (string) $productId);
                 $description = $rawItem['description'] ?? ($product?->description ?? ($rawItem['name'] ?? 'Producto'));
 
-                // Nota con hora de comanda: si hay texto, prefijar HH:MM una sola vez
                 $rawNote = trim((string) ($rawItem['note'] ?? ''));
-                $comment = null;
-                if ($rawNote !== '') {
-                    $hasTimePrefix = preg_match('/^\\d{2}:\\d{2}\\s*-\\s*/', $rawNote) === 1;
-                    $comment = $hasTimePrefix ? $rawNote : now()->format('H:i') . ' - ' . $rawNote;
+                $comment = $rawNote !== '' ? $rawNote : null;
+                $commandTime = $rawItem['commandTime'] ?? null;
+                $commandedAt = null;
+                if ($commandTime && preg_match('/^\\d{1,2}:\\d{2}(?::\\d{2})?/', $commandTime)) {
+                    $commandedAt = \Carbon\Carbon::parse('today ' . $commandTime);
+                }
+                if (!$commandedAt) {
+                    $commandedAt = now();
                 }
 
+                $delivered = !empty($rawItem['delivered']);
                 OrderMovementDetail::create([
                     'order_movement_id' => $orderMovement->id,
                     'product_id' => $productId,
@@ -1246,6 +1339,8 @@ class OrderController extends Controller
                     'amount' => $amount,
                     'branch_id' => $branchId,
                     'comment' => $comment,
+                    'commanded_at' => $commandedAt,
+                    'status' => $delivered ? 'E' : 'A',
                 ]);
             }
 
@@ -1334,6 +1429,13 @@ class OrderController extends Controller
         $tableId = $request->input('table_id');
         $branchId = (int) session('branch_id');
         $user = $request->user();
+        $clientPersonId = $request->input('client_id');
+        $clientPerson = $clientPersonId ? Person::find((int) $clientPersonId) : null;
+        $clientNameFromRequest = $request->filled('client_name') ? trim((string) $request->client_name) : null;
+        $clientName = $clientNameFromRequest
+            ?: ($clientPerson
+                ? trim(($clientPerson->first_name ?? '') . ' ' . ($clientPerson->last_name ?? ''))
+                : null);
         $paymentMethods = collect($request->input('payment_methods', []));
 
         $orderMovement = null;
@@ -1360,6 +1462,10 @@ class OrderController extends Controller
                         'status' => 'A',
                         'moved_at' => now(),
                     ];
+                    if ($clientPerson) {
+                        $updateData['person_id'] = $clientPerson->id;
+                        $updateData['person_name'] = $clientName;
+                    }
                     $requestDocumentTypeId = $request->input('document_type_id');
                     if ($requestDocumentTypeId && DocumentType::where('id', $requestDocumentTypeId)->exists()) {
                         $updateData['document_type_id'] = (int) $requestDocumentTypeId;

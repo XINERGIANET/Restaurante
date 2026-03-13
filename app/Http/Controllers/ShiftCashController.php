@@ -192,8 +192,8 @@ class ShiftCashController extends Controller
     public function print(Request $request, CashShiftRelation $shiftCash)
     {
         $branchId = \effective_branch_id();
-
-        $shift = CashShiftRelation::query()
+        $options = $request->input('options');
+        $query = CashShiftRelation::query()
             ->with([
                 'cashMovementStart.movement.documentType',
                 'cashMovementStart.movement.movementType',
@@ -210,11 +210,31 @@ class ShiftCashController extends Controller
             ])
             ->where('id', $shiftCash->id)
             ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
-            ->firstOrFail();
+            ->when($options, function ($query, $options) {
+                $query->where(function ($q) use ($options) {
+                    $q->where('sales_payments_summary', true)
+                        ->orWhere('products_sold_summary', true)
+                        ->orWhere('cancellations_products', true)
+                        ->orWhere('expenses_by_payment_method_paid', true)
+                        ->orWhere('discounts_by_product', true)
+                        ->orWhere('debts_sales', true)
+                        ->orWhere('paid_sales_by_method', true)
+                        ->orWhere('sales_details_by_product', true)
+                        ->orWhere('sales_cancellations', true)
+                        ->orWhere('cancellations_history', true)
+                        ->orWhere('income_by_payment_method_paid', true)
+                        ->orWhere('discounts_by_person', true)
+                        ->orWhere('courtesies', true)
+                        ->orWhere('debts_sales_summary', true);
+                });
+            })
+            ->orderBy('started_at', 'desc')
+            ->withQueryString();
+        $shifts = $query->get();
 
         $printedAt = now();
         $viewData = [
-            'shift' => $shift,
+            'shifts' => $shifts,
             'printedAt' => $printedAt,
             'autoPrint' => false,
         ];
@@ -228,7 +248,7 @@ class ShiftCashController extends Controller
             return view('shift_cash.print', $viewData);
         }
 
-        $docName = 'cierre-caja-' . ($shift->cashMovementEnd?->movement?->number ?? $shift->id);
+        $docName = 'cierre-caja-' . ($shifts->first()->cashMovementEnd?->movement?->number ?? $shifts->first()->id);
         return response($pdfBinary, 200, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'attachment; filename="' . $docName . '.pdf"',

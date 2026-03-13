@@ -131,17 +131,17 @@
                                 <div class="flex items-center gap-0.5 sm:gap-1">
                                     <button type="button" onclick="updateDiners(-1)"
                                         class="w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded-md bg-gray-100 dark:bg-slate-600 hover:bg-blue-100 dark:hover:bg-blue-700/50 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-300 transition-colors border border-gray-200 dark:border-slate-500 text-xs font-bold leading-none select-none">
-                                        <i class="fas fa-minus text-[9px] sm:text-[10px]"></i>
+                                        <i class="ri-subtract-line text-[9px] sm:text-[10px]"></i>
                                     </button>
                                     <input type="number"
-                                        id="diners-input"
-                                        value="{{ $pendingPeopleCount ?? 1 }}"
-                                        min="1"
-                                        onchange="updateDiners(0)"
-                                        class="w-8 sm:w-9 py-1 px-0.5 text-center text-xs sm:text-sm bg-white dark:bg-slate-700/80 border border-gray-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 font-semibold focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-500/40 focus:border-blue-400 outline-none shadow-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
+                                    id="diners-input"
+                                    value="{{ $pendingOrderMovement?->people_count ?? 1 }}"
+                                    min="1"
+                                    onchange="updateDiners(0)"
+                                    class="w-8 sm:w-9 py-1 px-0.5 text-center text-xs sm:text-sm bg-white dark:bg-slate-700/80 border border-gray-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 font-semibold focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-500/40 focus:border-blue-400 outline-none shadow-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
                                     <button type="button" onclick="updateDiners(1)"
                                         class="w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded-md bg-gray-100 dark:bg-slate-600 hover:bg-blue-100 dark:hover:bg-blue-700/50 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-300 transition-colors border border-gray-200 dark:border-slate-500 text-xs font-bold leading-none select-none">
-                                        <i class="fas fa-plus text-[9px] sm:text-[10px]"></i>
+                                        <i class="ri-add-line text-[9px] sm:text-[10px]"></i>
                                     </button>
                                 </div>
                             </div>
@@ -362,10 +362,12 @@
                     'area_id' => $table->area_id ?? ($area->id ?? null),
                     'name' => $table->name ?? $table->id,
                     'waiter' => $user?->name ?? 'Sin asignar',
-                    'clientName' => $person?->name ?? 'Sin cliente',
+                    // Si hay pedido pendiente, usar su cliente; si no, usar el de la sesión (si existe)
+                    'person_id' => $pendingClientId ?? null,
+                    'clientName' => $pendingClientName ?? ($person?->name ?? 'Sin cliente'),
                     'status' => $table->situation ?? 'libre',
                     'items' => [],
-                    'people_count' => (int) ($table->capacity ?? 1),
+                    'people_count' => (int) ($pendingPeopleCount ?? ($table->capacity ?? 1)),
                 ];
             @endphp
             const serverTable = @json($serverTableData);
@@ -398,6 +400,8 @@
             }
 
             let currentTable = (useFreshOrder || !db[activeKey]) ? serverTable : db[activeKey];
+            // Exponer currentTable en window para que Alpine (combobox cliente) pueda accederlo en expresiones
+            window.currentTable = currentTable;
             // Inicializar people_count si no existe en el estado guardado (default: capacity de mesa)
             if (!currentTable.people_count) currentTable.people_count = {{ $pendingPeopleCount ?? 1 }};
             // Siempre sincronizar order_movement_id y movement_id con el servidor para evitar duplicados
@@ -405,6 +409,7 @@
                 // El servidor es la fuente de verdad cuando hay pedido pendiente:
                 // siempre rehidratamos los ítems desde serverPendingItems para evitar duplicados.
                 currentTable = { ...currentTable, ...serverTable };
+                window.currentTable = currentTable;
                 currentTable.order_movement_id = serverOrderMovementId;
                 currentTable.movement_id = serverMovementId;
                 currentTable.items = Array.isArray(serverPendingItems) ? serverPendingItems : [];
@@ -678,11 +683,12 @@
                 (items || []).forEach(item => {
                     const qty = parseFloat(item.qty) || 0;
                     const price = parseFloat(item.price) || 0;
-                    const lineTotal = qty * price;
+                    const courtesyQty = parseInt(item.courtesyQty) || 0;
+                    const paidQty = Math.max(0, qty - courtesyQty);
+                    const lineTotal = paidQty * price;
                     const rate = getItemTaxRatePercent(item) / 100;
                     const lineSubtotal = rate > 0 ? (lineTotal / (1 + rate)) : lineTotal;
                     const lineTax = lineTotal - lineSubtotal;
-
                     subtotal += lineSubtotal;
                     tax += lineTax;
                     total += lineTotal;
@@ -920,14 +926,16 @@
                     }
                 } else {
                     // Si no existe, agregarlo como nuevo item
-
                     currentTable.items.push({
-                        pId: productId, // Guardar como número entero
+                        pId: productId,
                         name: prod.name || 'Sin nombre',
                         qty: 1,
                         price: price,
                         tax_rate: parseFloat(productBranch.tax_rate ?? 10),
-                        note: ""
+                        note: "",
+                        delivered: false,
+                        courtesyQty: 0
+                        
                     });
                 }
                 saveDB();
@@ -961,50 +969,25 @@
                     return;
                 }
 
-                // Pedido ya existía al abrir (se va a modificar): pedir razón por CADA unidad que se cancela
-                let reason = null;
-                if (window.Swal) {
-                    const result = await Swal.fire({
-                        title: 'Razón de anulación del plato',
-                        input: 'textarea',
-                        inputPlaceholder: 'Escribe la razón de la anulación...',
-                        showCancelButton: true,
-                        confirmButtonText: 'Anular',
-                        cancelButtonText: 'Volver',
-                        inputValidator: (value) => {
-                            if (!value || !value.trim()) {
-                                return 'Debes ingresar una razón';
-                            }
-                            return null;
-                        }
-                    });
-
-                    // Si se cierra o cancela el diálogo, no cambiar cantidad ni registrar nada
-                    if (!result.isConfirmed || !result.value) {
-                        return;
-                    }
-                    reason = result.value.trim();
-                } else {
-                    const p = window.prompt('Razón de anulación del plato:');
-                    if (!p || !p.trim()) return;
-                    reason = p.trim();
-                }
-
+                // Pedido ya existía al abrir: anulación en diferido (la razón se pide al Guardar). Mismo producto se junta (x5, etc.).
                 const qtyToCancel = Math.min(oldQty, Math.abs(change));
                 currentTable.cancellations = currentTable.cancellations || [];
                 const prod = serverProducts.find(p => p.id === item.pId);
+                const existing = currentTable.cancellations.find(c => c.pId === item.pId && c.cancel_reason == null);
+                if (existing) {
+                    existing.qtyCanceled = (existing.qtyCanceled || 0) + qtyToCancel;
+                } else {
+                    currentTable.cancellations.push({
+                        pId: item.pId,
+                        name: item.name,
+                        qtyCanceled: qtyToCancel,
+                        price: item.price,
+                        note: item.note || null,
+                        cancel_reason: null,
+                        product_snapshot: prod ? { ...prod } : null
+                    });
+                }
 
-                currentTable.cancellations.push({
-                    pId: item.pId,
-                    name: item.name,
-                    qtyCanceled: qtyToCancel,
-                    price: item.price,
-                    note: item.note || null,
-                    cancel_reason: reason,
-                    product_snapshot: prod ? { ...prod } : null
-                });
-
-                // Aplicar la disminución luego de registrar la cancelación
                 item.qty = newQty;
                 if (item.qty <= 0) currentTable.items.splice(index, 1);
                 saveDB();
@@ -1035,6 +1018,41 @@
                 if (box) box.classList.toggle('hidden');
             }
 
+            function toggleCourtesy(index) {
+                if (!currentTable.items || !currentTable.items[index]) return;
+                const item = currentTable.items[index];
+                item.courtesyQty = !item.courtesyQty;
+                item.qty = item.qty - item.courtesyQty;
+                saveDB();
+                renderTicket();
+            }
+
+            async function confirmRemoveLine(index) {
+                if (!currentTable.items || index < 0 || index >= currentTable.items.length) return;
+                const item = currentTable.items[index];
+                const qty = parseInt(item.qty, 10) || 1;
+                const prod = serverProducts.find(p => p.id === item.pId);
+                const name = (prod && prod.name) ? prod.name : 'este producto';
+                const msg = qty === 1
+                    ? `¿Desea eliminar 1 unidad de **${escapeHtml(name)}** del pedido?`
+                    : `¿Desea eliminar **${qty}** unidades de **${escapeHtml(name)}** del pedido?`;
+                if (window.Swal) {
+                    const result = await Swal.fire({
+                        title: 'Eliminar del pedido',
+                        html: msg.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'),
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonText: 'Sí, eliminar',
+                        cancelButtonText: 'Cancelar',
+                        confirmButtonColor: '#dc2626'
+                    });
+                    if (!result.isConfirmed) return;
+                } else if (!window.confirm(msg.replace(/\*\*/g, ''))) {
+                    return;
+                }
+                await removeFromCart(index);
+            }
+
             async function removeFromCart(index) {
                 if (!currentTable.items || index < 0 || index >= currentTable.items.length) return;
                 const item = currentTable.items[index];
@@ -1054,6 +1072,19 @@
                 renderTicket();
             }
 
+            function setCourtesyQty(index, inputEl) {
+                if (!currentTable.items || !currentTable.items[index]) return;
+                let val = parseFloat(inputEl.value);
+                if (isNaN(val) || val < 0) val = 0;
+                const maxQty = parseFloat(currentTable.items[index].qty) || 0;
+                if (val > maxQty) val = maxQty;
+                currentTable.items[index].courtesyQty = val;
+                inputEl.value = val;
+                saveDB();
+                renderTicket();
+            }
+            window.setCourtesyQty = setCourtesyQty;
+
             function renderTicket() {
                 const container = document.getElementById('cart-container');
                 if (!container) {
@@ -1071,28 +1102,19 @@
                 } else {
                     currentTable.items.forEach((item, index) => {
                         const prod = serverProducts.find(p => p.id === item.pId);
-                        if (!prod) {
-                            return;
-                        }
-
-                        const itemPrice = parseFloat(item.price) || 0;
-                        const itemQty = parseInt(item.qty) || 0;
-                        subtotal += itemPrice * itemQty;
-
-                        // Separar hora y texto de la nota si viene con formato "HH:MM - Nota"
-                        let rawNote = item.note || "";
-                        let noteTime = "";
-                        let noteText = rawNote;
-                        const noteMatch = typeof rawNote === "string"
-                            ? rawNote.match(/^(\d{2}:\d{2})(?:\s*[ap]\.?m\.?)?\s*-\s*(.*)$/i)
-                            : null;
-                        if (noteMatch) {
-                            noteTime = noteMatch[1] || "";
-                            noteText = noteMatch[2] || "";
-                        }
-                        const hasNote = noteText && noteText.trim() !== "";
-
-                        const row = document.createElement('div');
+    if (!prod) return;
+    const itemPrice = parseFloat(item.price) || 0;
+    const itemQty = parseInt(item.qty) || 0;
+    const courtesyQty = Math.min(parseFloat(item.courtesyQty) || 0, itemQty);
+    const paidQty = Math.max(itemQty - courtesyQty, 0);
+    const lineBase = itemPrice * paidQty;
+    const lineTotal = lineBase;
+    // si quieres que el subtotal ignore las cortesías:
+    subtotal += lineBase;
+    const noteTime = item.commandTime || "";
+    const noteText = typeof item.note === "string" ? item.note.trim() : "";
+    const hasNote = noteText !== "";
+    const row = document.createElement('div');
                         row.className =
                             "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl p-3 shadow-sm relative overflow-hidden group mb-2 border-l-4 border-l-blue-500";
 
@@ -1107,7 +1129,7 @@
                                 <div class="flex-1 min-w-0">
                                     <div class="flex justify-between items-baseline gap-2">
                                         <span class="font-bold text-slate-800 dark:text-slate-200 text-sm truncate">${productName}</span>
-                                        <span class="text-xs text-gray-500 dark:text-gray-400 shrink-0">S/ ${parseFloat(item.price).toFixed(2)}</span>
+                                        <span class="text-xs text-gray-500 dark:text-gray-400 shrink-0">S/ ${paidQty === 0 ? '0.00' : parseFloat(item.price).toFixed(2)}</span>
                                     </div>
                                 </div>
                                 <div class="flex items-center gap-0.5 bg-gray-100 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600 p-0.5 shrink-0">
@@ -1119,8 +1141,8 @@
                                         <i class="ri-add-line text-sm"></i>
                                     </button>
                                 </div>
-                                <span class="font-bold text-slate-800 dark:text-slate-200 text-sm shrink-0 w-14 text-right">S/ ${(item.price * item.qty).toFixed(2)}</span>
-                                <button type="button" onclick="removeFromCart(${index})" class="p-1.5 text-gray-400 hover:text-red-500 transition-colors shrink-0" title="Eliminar">
+                                <span class="font-bold text-slate-800 dark:text-slate-200 text-sm shrink-0 w-14 text-right">S/ ${lineTotal.toFixed(2)}</span>
+                                <button type="button" onclick="confirmRemoveLine(${index})" class="p-1.5 text-gray-400 hover:text-red-500 transition-colors shrink-0" title="Eliminar este ítem del pedido">
                                     <i class="ri-delete-bin-line text-base"></i>
                                 </button>
                                 <span class="text-[11px] text-gray-500 dark:text-gray-400">
@@ -1131,6 +1153,15 @@
                                 <button type="button" onclick="toggleNoteInput(${index})" class="text-xs flex items-center gap-1 transition-colors ${hasNote ? 'text-blue-600 font-medium' : 'text-blue-500 hover:text-blue-600'}">
                                     <i class="fas fa-comment-alt text-[10px]"></i> Nota
                                 </button>
+                                <div class="text-xs flex items-center gap-1">
+                                Cortesía:
+                                <input type="number"
+                                min="0"
+                                max="${itemQty}"
+                                value="${courtesyQty}"
+                                onchange="setCourtesyQty(${index}, this)"
+                                class="w-10 h-6 text-center text-[11px] border rounded" />
+                                </div>
                                 <button type="button" onclick="toggleDelivered(${index})"
                                     class="flex items-center gap-1 text-[11px] px-2 py-1 rounded-full border ${isDelivered ? 'border-green-500 bg-green-50 text-green-700 dark:border-green-400 dark:bg-green-900/20 dark:text-green-300' : 'border-gray-300 text-gray-500 hover:border-green-400 hover:text-green-600 dark:border-gray-600 dark:text-gray-300'}">
                                     <span class="inline-flex w-3 h-3 rounded-full border ${isDelivered ? 'border-green-500 bg-green-500' : 'border-gray-400'}"></span>
@@ -1158,7 +1189,27 @@
                 if (taxEl) taxEl.innerText = `$${tax.toFixed(2)}`;
                 if (totalEl) totalEl.innerText = `$${total.toFixed(2)}`;
 
+                syncCobroAmountsWithCart(total);
                 renderCancelledSection();
+            }
+
+            function syncCobroAmountsWithCart(orderTotal) {
+                const list = document.getElementById('cobro-payment-methods-list');
+                if (!list) return;
+                const rows = list.querySelectorAll('.cobro-pm-row');
+                if (rows.length === 0) return;
+                if (rows.length === 1) {
+                    const input = rows[0].querySelector('.cobro-pm-amount');
+                    if (input) input.value = orderTotal.toFixed(2);
+                } else {
+                    const totalPaid = Array.from(rows).slice(1).reduce((s, row) => {
+                        const inp = row.querySelector('.cobro-pm-amount');
+                        return s + (parseFloat(inp?.value || 0) || 0);
+                    }, 0);
+                    const firstInput = rows[0].querySelector('.cobro-pm-amount');
+                    if (firstInput) firstInput.value = Math.max(0, orderTotal - totalPaid).toFixed(2);
+                }
+                if (typeof updateCobroTotalPaid === 'function') updateCobroTotalPaid();
             }
 
             function renderCancelledSection() {
@@ -1193,6 +1244,33 @@
                     html += `<div class="rounded border border-amber-200 dark:border-amber-700/50 p-1.5 bg-white/60 dark:bg-gray-800/60"><span class="font-medium text-slate-700 dark:text-slate-200">${name}</span> <span class="text-amber-700 dark:text-amber-300">×${qty}</span><br><span class="text-amber-800 dark:text-amber-200 italic">${reason}</span></div>`;
                 });
                 listEl.innerHTML = html;
+            }
+
+            /** Devuelve los ítems del pedido agrupados por producto (mismo pId → un ítem con qty sumada) para enviar al servidor. */
+            function getItemsGroupedByProduct() {
+                const items = currentTable.items || [];
+                const byPid = {};
+                items.forEach((it) => {
+                    const id = parseInt(it.pId, 10) || 0;
+                    if (!id) return;
+                    if (!byPid[id]) {
+                        byPid[id] = {
+                            pId: it.pId,
+                            name: it.name,
+                            price: parseFloat(it.price) || 0,
+                            tax_rate: it.tax_rate,
+                            note: it.note || '',
+                            commandTime: it.commandTime || null,
+                            delivered: !!it.delivered,
+                            courtesyQty: 0,
+                            qty: 0
+                        };
+                    }
+                    byPid[id].qty = (byPid[id].qty || 0) + (parseInt(it.qty, 10) || 1);
+                    byPid[id].courtesyQty = (byPid[id].courtesyQty || 0) + (parseInt(it.courtesyQty) || 0);
+                    if (it.delivered) byPid[id].delivered = true;
+                });
+                return Object.values(byPid);
             }
 
             function saveDB() {
@@ -1261,9 +1339,13 @@
                 autoSaveTimer = null;
                 const items = currentTable.items || [];
                 if (items.length === 0 && (!currentTable.cancellations || currentTable.cancellations.length === 0)) return;
-                const totals = calculateTotalsFromItems(items);
+                // No auto-guardar si hay cancelaciones pendientes de razón (se pide al hacer Guardar / Cobrar)
+                const cancels = currentTable.cancellations || [];
+                if (cancels.some(c => !(c.cancel_reason && String(c.cancel_reason).trim()))) return;
+                const itemsToSend = getItemsGroupedByProduct();
+                const totals = calculateTotalsFromItems(itemsToSend);
                 const order = {
-                    items: items,
+                    items: itemsToSend,
                     table_id: currentTable.table_id ?? currentTable.id,
                     area_id: currentTable.area_id ?? null,
                     subtotal: totals.subtotal,
@@ -1271,6 +1353,7 @@
                     total: totals.total,
                     people_count: currentTable.people_count ?? 0,
                     client_id: currentTable.person_id ?? null,
+                    client_name: currentTable.clientName || null,
                     contact_phone: currentTable.contact_phone ?? null,
                     delivery_address: currentTable.delivery_address ?? null,
                     delivery_time: currentTable.delivery_time ?? null,
@@ -1304,26 +1387,58 @@
                 .catch(() => {});
             }
 
+            /** Pide una sola razón de anulación y la asigna a todas las cancelaciones que no la tengan. Devuelve false si el usuario cancela. */
+            async function ensureCancellationReasons() {
+                const cancels = currentTable.cancellations || [];
+                const pending = cancels.filter(c => !(c.cancel_reason && String(c.cancel_reason).trim()));
+                if (pending.length === 0) return true;
+
+                let reason = null;
+                if (window.Swal) {
+                    const result = await Swal.fire({
+                        title: 'Razón de anulación',
+                        html: `Hay <strong>${pending.length}</strong> ítem(s) anulados. Indica la razón (aplica a todos).`,
+                        input: 'textarea',
+                        inputPlaceholder: 'Escribe la razón de la anulación...',
+                        showCancelButton: true,
+                        confirmButtonText: 'Continuar',
+                        cancelButtonText: 'Cancelar',
+                        inputValidator: (value) => {
+                            if (!value || !value.trim()) return 'Debes ingresar una razón';
+                            return null;
+                        }
+                    });
+                    if (!result.isConfirmed || !result.value) return false;
+                    reason = result.value.trim();
+                } else {
+                    const p = window.prompt('Razón de anulación (aplica a todos los ítems anulados):');
+                    if (!p || !p.trim()) return false;
+                    reason = p.trim();
+                }
+
+                cancels.forEach(c => {
+                    if (!(c.cancel_reason && String(c.cancel_reason).trim())) c.cancel_reason = reason;
+                });
+                return true;
+            }
+
             async function processOrder() {
                 if (waiterPinEnabled) {
                     const ok = await ensureWaiterPin();
                     if (!ok) return;
                 }
+                const okReason = await ensureCancellationReasons();
+                if (!okReason) return;
                 const btnGuardar = document.getElementById('btn-guardar');
                 if (btnGuardar) { btnGuardar.disabled = true; }
-                const items = currentTable.items || [];
+                let items = getItemsGroupedByProduct();
 
-                // Al guardar, fijar hora en la nota (formato "HH:MM - texto") siempre que no tenga prefijo,
-                // incluso si la nota está vacía, para poder mostrar la hora en la tarjeta.
+                // Hora de comanda: solo se fija la primera vez; la nota va siempre solo como texto.
                 const now = new Date();
                 const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
                 items.forEach((it) => {
                     if (!it) return;
-                    const raw = String(it.note || '');
-                    const hasTimePrefix = /^\\d{2}:\\d{2}(?:\\s*[ap]\\.?m\\.?)?\\s*-\\s*/i.test(raw);
-                    if (!hasTimePrefix) {
-                        it.note = `${timeString} - ${raw}`;
-                    }
+                    if (!it.commandTime) it.commandTime = timeString;
                 });
 
                 const totals = calculateTotalsFromItems(items);
@@ -1340,6 +1455,7 @@
                     total: total,
                     people_count: currentTable.people_count ?? 0,
                     client_id: currentTable.person_id ?? null,
+                    client_name: currentTable.clientName || null,
                     contact_phone: currentTable.contact_phone ?? null,
                     delivery_address: currentTable.delivery_address ?? null,
                     delivery_time: currentTable.delivery_time ?? null,
@@ -1487,10 +1603,28 @@
                     }
                     return;
                 }
+
+                if (window.Swal) {
+                    const confirmPayment = await Swal.fire({
+                        title: 'Confirmar Cobro',
+                        text: `Total a cobrar: S/ ${total.toFixed(2)}. ¿Deseas proceder?`,
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonColor: '#3085d6',
+                        cancelButtonColor: '#d33',
+                        confirmButtonText: 'Sí, cobrar',
+                        cancelButtonText: 'Cancelar'
+                    });
+                    if (!confirmPayment.isConfirmed) return;
+                }
+
+                const okReason = await ensureCancellationReasons();
+                if (!okReason) return;
                 if (autoSaveTimer) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
 
+                const itemsToSend = getItemsGroupedByProduct();
                 const processPayload = {
-                    items: items,
+                    items: itemsToSend,
                     table_id: currentTable.table_id ?? currentTable.id,
                     area_id: currentTable.area_id ?? null,
                     subtotal: totals.subtotal,
@@ -1545,6 +1679,8 @@
                         table_id: currentTable.table_id ?? currentTable.id,
                         document_type_id: docTypeEl?.value ? parseInt(docTypeEl.value, 10) : null,
                         cash_register_id: cashRegEl?.value ? parseInt(cashRegEl.value, 10) : null,
+                        client_id: currentTable.person_id ?? null,
+                        client_name: currentTable.clientName || null,
                         payment_methods: paymentMethodsData,
                         notes: '',
                     };
@@ -1978,10 +2114,23 @@
                 saveDB();
             }
 
+            function setCourtesyQty(index, inputEl) {
+            if (!currentTable.items || !currentTable.items[index]) return;
+            let val = parseFloat(inputEl.value);
+            if (isNaN(val) || val < 0) val = 0;
+            const maxQty = parseFloat(currentTable.items[index].qty) || 0;
+            if (val > maxQty) val = maxQty;
+            currentTable.items[index].courtesyQty = val;
+            inputEl.value = val;
+            saveDB();
+            renderTicket();
+            }
+
             // Exponer funciones usadas desde onclick en el HTML (mismo ámbito tras re-render)
             window.toggleNoteInput = toggleNoteInput;
             window.updateQty = updateQty;
             window.setQtyFromInput = setQtyFromInput;
+            window.confirmRemoveLine = confirmRemoveLine;
             window.removeFromCart = removeFromCart;
             window.saveNote = saveNote;
             window.toggleDelivered = toggleDelivered;
