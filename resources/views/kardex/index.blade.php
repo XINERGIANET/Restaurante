@@ -67,7 +67,7 @@
                         </div>
 
                         {{-- 6. Buttons --}}
-                        <div class="flex gap-1 w-full">
+                        <div class="flex flex-wrap gap-1 w-full">
                             <x-ui.button type="submit" size="sm" variant="primary"
                                 style="background-color: #63B7EC; border-color: #63B7EC;">
                                 <i class="ri-search-line"></i>
@@ -77,6 +77,25 @@
                                 size="sm" variant="outline">
                                 <i class="ri-refresh-line"></i>
                                 Limpiar
+                            </x-ui.link-button>
+                            @php
+                                $pdfQuery = array_filter(array_merge(
+                                    $viewId ? ['view_id' => $viewId] : [],
+                                    [
+                                        'product_id' => $productId,
+                                        'source' => $sourceFilter,
+                                        'movement_type' => $typeFilter,
+                                        'date_from' => $dateFrom,
+                                        'date_to' => $dateTo,
+                                    ]
+                                ));
+                            @endphp
+                            <x-ui.link-button href="{{ route('kardex.exportPdf', $pdfQuery) }}" size="sm" variant="primary"
+                                target="_blank" rel="noopener"
+                                style="background-color: #ef4444; border-color: #ef4444; color: #fff;"
+                                title="Exportar PDF con los filtros actuales">
+                                <i class="ri-file-pdf-line"></i>
+                                Exportar PDF
                             </x-ui.link-button>
                         </div>
 

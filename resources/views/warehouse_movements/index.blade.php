@@ -286,22 +286,38 @@
                                                     @endif
                                                 @endforeach
                                             @else
-                                                <div class="relative group"> <a
-                                                        href="{{ route('warehouse_movements.show', array_merge(['warehouseMovement' => $warehouseMovement->id], $viewId ? ['view_id' => $viewId] : [])) }}"
+                                                <div class="relative group">
+                                                    <a href="{{ route('warehouse_movements.show', array_merge(['warehouseMovement' => $warehouseMovement->id], $viewId ? ['view_id' => $viewId] : [])) }}"
                                                         class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-info-500 text-white hover:bg-info-600 transition-colors shadow-sm"
                                                         style="background-color: #63B7EC; color: #FFFFFF;"
                                                         aria-label="Ver Registro">
                                                         <i class="ri-eye-line"></i>
                                                     </a>
                                                 </div>
-                                                <div class="relative group"> <a
-                                                        href="{{ route('warehouse_movements.edit', array_merge(['warehouseMovement' => $warehouseMovement->id], $viewId ? ['view_id' => $viewId] : [])) }}"
+                                                <div class="relative group">
+                                                    <a href="{{ route('warehouse_movements.edit', array_merge(['warehouseMovement' => $warehouseMovement->id], $viewId ? ['view_id' => $viewId] : [])) }}"
                                                         class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-warning-500 text-white hover:bg-warning-600 transition-colors shadow-sm"
                                                         style="background-color: #FBBF24; color: #111827;"
                                                         aria-label="Editar Registro">
                                                         <i class="ri-pencil-line"></i>
                                                     </a>
                                                 </div>
+                                                <form method="POST" action="{{ route('warehouse_movements.destroy', ['warehouseMovement' => $warehouseMovement->id]) }}"
+                                                    class="inline js-swal-delete"
+                                                    data-swal-title="¿Eliminar movimiento?"
+                                                    data-swal-text="Se eliminará el movimiento {{ $movement->number ?? '-' }}. Esta acción no se puede deshacer."
+                                                    data-swal-confirm="Sí, eliminar"
+                                                    data-swal-cancel="Cancelar"
+                                                    data-swal-confirm-color="#ef4444">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    @if ($viewId)
+                                                        <input type="hidden" name="view_id" value="{{ $viewId }}">
+                                                    @endif
+                                                    <button type="submit" class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-red-500 text-white hover:bg-red-600 transition-colors shadow-sm" aria-label="Eliminar">
+                                                        <i class="ri-delete-bin-line"></i>
+                                                    </button>
+                                                </form>
                                             @endif
                                         </div>
                                     </td>

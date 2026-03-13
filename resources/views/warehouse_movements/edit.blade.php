@@ -33,9 +33,9 @@
                 </div>
                 <div>
                     <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Editar Movimiento #{{ $movement->number ?? '—' }}</h3>
-                    <p class="text-sm text-gray-500">
-                        {{ $movement->movementType->description ?? '—' }} · {{ $movement->moved_at ? $movement->moved_at->format('d/m/Y H:i') : '—' }} · {{ $branch->name ?? '—' }}
-                    </p>
+<p class="text-sm text-gray-500">
+                                        {{ $movement->movementType->description ?? '—' }} · {{ $movement->moved_at ? $movement->moved_at->format('d/m/Y H:i') : '—' }} · {{ $branch->legal_name ?? $branch->name ?? '—' }}
+                                    </p>
                 </div>
             </div>
 
@@ -84,7 +84,7 @@
                             </div>
                             <div>
                                 <label class="mb-1.5 block text-sm font-medium text-gray-600 dark:text-gray-400">Sucursal</label>
-                                <p class="h-11 flex items-center rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-dark-900 px-4 py-2.5 text-sm text-gray-800 dark:text-white/90">{{ $branch->id ?? '—' }}</p>
+                                <p class="h-11 flex items-center rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-dark-900 px-4 py-2.5 text-sm text-gray-800 dark:text-white/90">{{ $branch->legal_name ?? $branch->name ?? $branch->id ?? '—' }}</p>
                             </div>
                             <div>
                                 <label class="mb-1.5 block text-sm font-medium text-gray-600 dark:text-gray-400">Responsable / Usuario</label>

@@ -236,12 +236,15 @@ class SalesController extends Controller
                 ];
             })->values();
 
-        // Solo productos vendibles con product_branch y categoría en category_branch para esta sucursal
+        // Productos vendibles y ambos (sin ingredientes/insumos SUPPLY): product_branch y categoría en la sucursal
         $products = Product::query()
             ->where('type', 'PRODUCT')
             ->where(function ($q) {
                 $q->whereNull('product_type_id')
-                    ->orWhereHas('productType', fn ($q2) => $q2->where('behavior', ProductType::BEHAVIOR_SELLABLE));
+                    ->orWhereHas('productType', fn ($q2) => $q2->whereIn('behavior', [
+                        ProductType::BEHAVIOR_SELLABLE,
+                        ProductType::BEHAVIOR_BOTH,
+                    ]));
             })
             ->when($branchId, function ($query) use ($branchId) {
                 $query->whereHas('productBranches', fn ($q) => $q->where('branch_id', $branchId))

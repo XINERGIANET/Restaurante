@@ -500,13 +500,31 @@ class WarehouseMovementController extends Controller
             'title' => 'Editar Movimiento de Almacén',
         ]);
     }
-    public function update($warehouseMovement, Request $request)
+    public function update(Request $request, $warehouseMovement)
     {
         $request->validate([
             'status' => 'required|string|in:A,C',
         ]);
-        $warehouseMovement = WarehouseMovement::with(['movement.movementType', 'movement.documentType', 'branch'])->findOrFail($warehouseMovement->id);
-        $warehouseMovement->update($request->all());
-        return redirect()->route('warehouse_movements.show', ['warehouseMovement' => $warehouseMovement->id])->with('success', 'Movimiento de Almacén actualizado correctamente');
+        $wm = WarehouseMovement::with(['movement', 'branch'])->findOrFail($warehouseMovement->id ?? $warehouseMovement);
+        $wm->update(['status' => $request->input('status')]);
+        return redirect()->route('warehouse_movements.show', ['warehouseMovement' => $wm->id])->with('success', 'Movimiento de Almacén actualizado correctamente');
+    }
+
+    public function destroy($warehouseMovement)
+    {
+        $wm = WarehouseMovement::with(['movement', 'details'])->findOrFail($warehouseMovement->id ?? $warehouseMovement);
+        try {
+            DB::beginTransaction();
+            $wm->details()->delete();
+            $wm->movement?->delete();
+            $wm->delete();
+            DB::commit();
+            $params = request()->has('view_id') ? ['view_id' => request()->input('view_id')] : [];
+            return redirect()->route('warehouse_movements.index', $params)->with('success', 'Movimiento de almacén eliminado correctamente.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            $params = request()->has('view_id') ? ['view_id' => request()->input('view_id')] : [];
+            return redirect()->route('warehouse_movements.index', $params)->with('error', 'No se pudo eliminar el movimiento: ' . $e->getMessage());
+        }
     }
 }

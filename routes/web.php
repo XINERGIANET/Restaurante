@@ -414,25 +414,18 @@ Route::middleware('auth')->group(function () {
         ->names('admin.tax_rates')
         ->parameters(['tasas-impuesto' => 'taxRate']);
 
-    //Movimientos de almacen
+    // Movimientos de almacén: resource con mismo prefijo (movimientos_almacen) para que edit/update/destroy funcionen
+    Route::get('/admin/herramientas/movimientos_almacen/entrada', [WarehouseMovementController::class, 'input'])
+        ->name('warehouse_movements.input');
+    Route::get('/admin/herramientas/movimientos_almacen/salida', [WarehouseMovementController::class, 'output'])
+        ->name('warehouse_movements.output');
+    Route::post('/admin/herramientas/movimientos_almacen/salida', [WarehouseMovementController::class, 'outputStore'])
+        ->name('warehouse_movements.output.store');
+
     Route::resource('/admin/herramientas/movimientos_almacen', WarehouseMovementController::class)
         ->names('warehouse_movements')
         ->parameters(['movimientos_almacen' => 'warehouseMovement'])
-        ->only(['index', 'store', 'show', 'edit', 'update']);
-
-    Route::get('/admin/herramientas/movimientos-almacen/entrada', [WarehouseMovementController::class, 'input'])
-        ->name('warehouse_movements.input');
-
-    Route::get('/admin/herramientas/movimientos-almacen/salida', [WarehouseMovementController::class, 'output'])
-        ->name('warehouse_movements.output');
-    Route::post('/admin/herramientas/movimientos-almacen/salida', [WarehouseMovementController::class, 'outputStore'])
-        ->name('warehouse_movements.output.store');
-    Route::get('/admin/herramientas/movimientos-almacen/{warehouseMovement}/show', [WarehouseMovementController::class, 'show'])
-        ->name('warehouse_movements.show');
-    Route::get('/admin/herramientas/movimientos-almacen/{warehouseMovement}/edit', [WarehouseMovementController::class, 'edit'])
-        ->name('warehouse_movements.edit');
-    Route::put('/admin/herramientas/movimientos-almacen/{warehouseMovement}', [WarehouseMovementController::class, 'update'])
-        ->name('warehouse_movements.update');
+        ->only(['index', 'store', 'show', 'edit', 'update', 'destroy']);
 
     //Recetario
     Route::resource('/cocina/recetario', RecipeBookController::class)

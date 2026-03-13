@@ -21,6 +21,7 @@ use App\Models\PaymentMethod;
 use App\Models\Person;
 use App\Models\Product;
 use App\Models\ProductBranch;
+use App\Models\ProductType;
 use App\Models\Profile;
 use App\Models\SalesMovement;
 use App\Models\SalesMovementDetail;
@@ -590,8 +591,15 @@ class OrderController extends Controller
 
         $people = $peopleQuery->get(['id', 'first_name', 'last_name', 'document_number']);
 
-        // Solo productos que tienen product_branch en esta sucursal y cuya categoría está en category_branch.
+        // Mismo criterio que Ventas: solo productos vendibles (sin tipo o tipo con behavior SELLABLE/BOTH), con product_branch y categoría en la sucursal.
         $products = Product::where('type', 'PRODUCT')
+            ->where(function ($q) {
+                $q->whereNull('product_type_id')
+                    ->orWhereHas('productType', fn ($q2) => $q2->whereIn('behavior', [
+                        ProductType::BEHAVIOR_SELLABLE,
+                        ProductType::BEHAVIOR_BOTH,
+                    ]));
+            })
             ->when($branchId, function ($query) use ($branchId) {
                 $query->whereHas('productBranches', function ($q) use ($branchId) {
                     $q->where('branch_id', $branchId);
@@ -607,6 +615,7 @@ class OrderController extends Controller
                 $query->whereRaw('1 = 0'); // sin sucursal = no productos
             })
             ->with('category')
+            ->orderBy('description')
             ->get()
             ->map(function ($product) use ($table, $tableId, $branchId) {
                 $imageUrl = ($product->image && !empty($product->image))
@@ -623,11 +632,16 @@ class OrderController extends Controller
                 ];
             });
 
-        // Solo product_branches de esta sucursal (precio/stock por sucursal).
+        // Solo product_branches de esta sucursal cuyo producto es vendible (mismo criterio que Ventas).
         $productBranches = $branchId
             ? ProductBranch::where('branch_id', $branchId)
-                ->with(['product', 'taxRate'])
+                ->with(['product.productType', 'taxRate'])
                 ->get()
+                ->filter(function ($productBranch) {
+                    if ($productBranch->product === null) return false;
+                    $pt = $productBranch->product->productType;
+                    return $pt === null || $pt->isSellable();
+                })
                 ->map(function ($productBranch) {
                     $taxRatePct = $productBranch->taxRate ? (float) $productBranch->taxRate->tax_rate : null;
                     return [
@@ -638,6 +652,7 @@ class OrderController extends Controller
                         'tax_rate' => $taxRatePct,
                     ];
                 })
+                ->values()
             : collect();
 
         // Categorías asignadas a esta sucursal (category_branch).
