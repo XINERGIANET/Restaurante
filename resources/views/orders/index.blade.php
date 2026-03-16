@@ -34,15 +34,11 @@
                     </template>
 
                     {{-- Buscador --}}
-                    <div class="relative w-full max-w-2xl min-w-0 flex-1 sm:min-w-[20rem]">
+                    <div class="relative w-full max-w-2xl min-w-0 flex-1 sm:min-w-[20rem] flex items-center gap-2">
                         <input type="text" x-model="searchQuery" @keydown.enter.prevent="addSearchChip"
-                            placeholder="Buscar y presionar Enter para añadir filtro..."
+                            placeholder="Buscar por cliente, mozo o producto..."
                             class="w-full pl-10 pr-4 py-2.5 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 outline-none transition-all">
-                        <svg class="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
-                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
+                        <x-ui.button size="xs" variant="primary" type="button" onclick="addSearchChip()" class="!px-1.5 !py-1.5 text-[11px] font-normal h-auto leading-tight">Añadir filtro</x-ui.button>
                     </div>
 
                 </div>
@@ -95,7 +91,11 @@
                                                 x-text="String(table.name || table.id).padStart(2, '0')">
                                             </div>
                                         </template>
-                
+                                        <div class="flex items-center gap-1">
+                                            <i class="ri-user-line text-sm"></i>
+                                            <p class="text-xs font-medium text-gray-800 dark:text-white"
+                                                x-text="table.situation === 'ocupada' ? (table.people_count || 0) : (table.diners || 0)"></p>
+                                        </div>
                                         <template x-if="table.situation === 'ocupada'">
                                             <span class="text-xs px-2.5 py-1 rounded-full font-medium"
                                                 style="background: #FFF0E6; color: #F37022;"
@@ -110,7 +110,7 @@
                                     <div class="border-t border-gray-100 dark:border-gray-700 my-3"></div>
                 
                                     {{-- Grid de metadata --}}
-                                    <div class="grid grid-cols-2 gap-x-3 gap-y-2 flex-1">
+                                    <div class="flex flex-col gap-y-2 flex-1">
                                         <div class="min-w-0">
                                             <p class="text-[10px] text-gray-400 dark:text-gray-500">Mozo</p>
                                             <p class="text-xs font-medium text-gray-800 dark:text-white truncate"
@@ -121,20 +121,11 @@
                                             <p class="text-xs font-medium text-gray-800 dark:text-white truncate"
                                                 x-text="(table.client && table.client !== '-') ? table.client : 'Público General'"
                                                 :title="(table.client && table.client !== '-') ? table.client : 'Público General'"></p>
-                                        </div>
-                                        <div>
-                                            <p class="text-[10px] text-gray-400 dark:text-gray-500">Personas</p>
-                                            <div class="flex items-center gap-1">
-                                                <i class="ri-user-line text-sm"></i>
-                                                <p class="text-xs font-medium text-gray-800 dark:text-white"
-                                                    x-text="table.situation === 'ocupada' ? (table.people_count || 0) : (table.diners || 0)"></p>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <p class="text-[10px] text-gray-400 dark:text-gray-500">Estado</p>
-                                            <p class="text-xs font-medium"
-                                                :class="table.situation === 'ocupada' ? 'text-orange-500' : 'text-blue-500'"
-                                                x-text="table.situation === 'ocupada' ? 'Ocupada' : 'Libre'"></p>
+                                            <template x-if="table.orders_count > 0">
+                                                <p class="text-[10px] text-blue-500 font-medium mt-0.5"
+                                                    x-text="table.orders_count + (table.orders_count === 1 ? ' compra anterior' : ' compras anteriores')">
+                                                </p>
+                                            </template>
                                         </div>
                                     </div>
                 
@@ -600,10 +591,38 @@
                         this.$watch('statusChip', () => {
                             this.updateFilteredTables();
                         });
+                        this.tickElapsed();
+                        const elapsedInterval = setInterval(() => this.tickElapsed(), 1000);
+                        this.$cleanup(() => clearInterval(elapsedInterval));
                         const self = this;
                         window.__posRefreshTables = function() {
                             self.refreshTables();
                         };
+                    },
+
+                    formatElapsedFromOpenedAt(openedAt) {
+                        if (!openedAt) return '0:00';
+                        const now = new Date();
+                        const parts = String(openedAt).trim().split(/[:\s]/).map(Number);
+                        const h = parts[0] || 0, m = parts[1] || 0, s = parts[2] || 0;
+                        const opened = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, s);
+                        if (opened > now) opened.setDate(opened.getDate() - 1);
+                        const diffSec = Math.max(0, Math.floor((now - opened) / 1000));
+                        const hours = Math.floor(diffSec / 3600);
+                        const mins = Math.floor((diffSec % 3600) / 60);
+                        const secs = diffSec % 60;
+                        const pad = n => String(n).padStart(2, '0');
+                        if (hours > 0) return hours + ':' + pad(mins) + ':' + pad(secs);
+                        return mins + ':' + pad(secs);
+                    },
+
+                    tickElapsed() {
+                        if (!this.tables || !Array.isArray(this.tables)) return;
+                        this.tables.forEach(t => {
+                            if (t.opened_at && t.situation === 'ocupada') {
+                                t.elapsed = this.formatElapsedFromOpenedAt(t.opened_at);
+                            }
+                        });
                     },
 
                     updateFilteredTables() {

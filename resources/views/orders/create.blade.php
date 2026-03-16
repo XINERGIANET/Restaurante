@@ -3,11 +3,10 @@
 @section('title', 'Punto de Venta')
 
 @section('content')
-    <div class="flex flex-wrap items-center justify-between gap-2 sm:gap-3 mb-4 sm:mb-6">
-
-        {{-- Breadcrumb --}}
+    {{-- Breadcrumb fuera del recuadro blanco (fondo gris de página) --}}
+    <div class="flex flex-wrap items-center justify-between gap-2 sm:gap-3 -mx-4 md:-mx-6 px-4 md:px-6 py-2 mb-4 bg-gray-50 dark:bg-gray-900/80 border-b border-gray-200 dark:border-gray-800">
         <nav class="min-w-0">
-            <ol class="flex flex-wrap items-end justify-end  gap-1 sm:gap-1.5 text-xs sm:text-sm">
+            <ol class="flex flex-wrap items-end justify-end gap-1 sm:gap-1.5 text-xs sm:text-sm">
                 <li>
                     <a class="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400"
                         href="{{ url('/') }}">
@@ -38,120 +37,126 @@
     </div>
 
     <div class="rounded-2xl border border-gray-200 dark:border-gray-300 overflow-hidden bg-blue-50 dark:bg-gray-900 fade-in max-w-full">
-        <main class="w-full lg:flex-2 flex flex-col min-w-0 min-h-0 bg-white dark:bg-gray-900/50 lg:min-h-0">
-            <header class="min-h-14 sm:h-20 py-3 px-3 sm:py-0 sm:px-6 flex flex-wrap lg:flex-nowrap items-center gap-2 sm:gap-4 dark:bg-gray-800/50 border-b border-gray-200 shadow-sm z-10 bg-gray-200 min-w-0">
-                <div class="flex items-center gap-2 sm:gap-4 md:gap-6 w-full lg:w-auto flex-shrink-0">
+        <main class="w-full lg:flex-2 flex flex-col min-w-0 bg-gray-50 dark:bg-gray-900/50 bg-gray-50 h-[calc(100vh-120px)]">
+            <header class="min-h-16 h-auto py-2 px-3 sm:px-5 flex flex-wrap lg:flex-nowrap items-center justify-between gap-4 dark:bg-gray-800/50 border-b border-gray-200 shadow-sm z-10 bg-gray-100 min-w-0 relative">
+                <div class="flex items-center gap-3 shrink-0">
                     <button onclick="goBack()" 
                         title="Volver atrás"
-                        class="h-9 sm:h-10 px-2 rounded-lg bg-gray-50 border border-gray-200 text-gray-500 hover:text-blue-600 hover:border-blue-600 transition-colors flex items-center justify-center shadow-sm shrink-0">
+                        class="h-9 w-9 sm:h-10 sm:w-10 rounded-full bg-white border border-gray-200 text-gray-500 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 transition-all flex items-center justify-center shadow-sm shrink-0">
                         <i class="ri-arrow-left-line text-lg sm:text-xl"></i>
-                        
                     </button>
                     <div class="flex items-center gap-2 min-w-0">
-                        <div class="flex items-center gap-1.5 sm:gap-2 min-w-0">
-                            <h2 class="text-base font-bold text-slate-800 dark:text-white truncate">
-                                Mesa <span id="pos-table-name">{{ $table->name ?? $table->id }}</span><br>
-                                <p class="text-xs text-gray-500 dark:text-gray-400"><i class="ri-circle-fill" style="color: #00C950;"></i> {{ $table->area->name ?? 'Sin área' }}</p>
+                        <div class="flex flex-col justify-center min-w-0">
+                            <h2 class="text-sm sm:text-base font-bold text-slate-800 dark:text-white leading-tight truncate">
+                                Mesa <span id="pos-table-name">{{ $table->name ?? $table->id }}</span>
                             </h2>
+                            <p class="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate"><i class="ri-circle-fill" style="color: #00C950;"></i> <span id="pos-table-area">{{ $table->area->name ?? 'Sin área' }}</span></p>
                         </div>
                     </div>
-                    <div class="flex items-center gap-2 sm:gap-4 md:gap-6 text-xs sm:text-sm text-gray-500 font-medium min-w-0 flex-wrap lg:flex-nowrap flex-1">
-                        <div class="flex items-center justify-end shrink-0 gap-1">
-                            <div class="w-50 sm:w-50 md:w-60 relative">
-                                <input type="text" id="search-products" placeholder="Buscar producto..." autocomplete="off"
-                                    class="w-full pl-8 pr-9 py-2 text-sm bg-white border border-gray-200 dark:border-slate-600 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-200 transition-all">
-                                <i class="fas fa-search absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
-                            </div>
-                            <x-ui.button size="sm" variant="outline" onclick="clearProductSearch()">
-                                Limpiar
-                            </x-ui.button>
+                </div>
+
+                <!-- Opciones (Flex para que fluyan) -->
+                <div class="flex items-center gap-3 sm:gap-4 lg:gap-5 text-sm font-medium shrink-0 ml-auto flex-wrap sm:flex-nowrap">
+                    <!-- Buscador -->
+                    <div class="flex items-center gap-1.5 shrink-0 bg-white p-1 rounded-xl border border-gray-200 shadow-sm">
+                        <div class="w-36 sm:w-48 md:w-56 relative">
+                            <input type="text" id="search-products" placeholder="Buscar producto..." autocomplete="off"
+                                class="w-full pl-8 pr-3 py-1.5 text-xs sm:text-sm bg-transparent border-transparent rounded-lg focus:ring-0 focus:border-transparent outline-none">
+                            <i class="fas fa-search absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
                         </div>
-                        <div class="flex items-center gap-2 sm:gap-4 md:gap-6 flex-wrap lg:flex-nowrap shrink-0 ml-auto">
-                            @if(!($isMozo ?? false))
-                            <div class="flex items-center gap-1 sm:gap-2 group min-w-0">
-                                <span class="text-gray-500 dark:text-gray-400 shrink-0">Mozo:</span>
-                                <div class="relative flex items-center min-w-0">
-                                    <select id="header-waiter-select" onchange="changeWaiter(this)"
-                                        class="min-w-0 w-16 sm:w-24 md:min-w-[100px] md:max-w-[140px] py-1 px-2 sm:px-3 bg-white dark:bg-slate-700/80 border border-gray-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 font-semibold text-xs sm:text-sm cursor-pointer focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-500/40 focus:border-blue-400 outline-none shadow-sm appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%22%236b7280%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22M6%208l4%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1rem] sm:bg-[length:1.25rem] bg-[right_0.2rem_center] sm:bg-[right_0.25rem_center] bg-no-repeat truncate">
-                                        <option value="{{ $user?->id }}" selected>{{ $user?->name ?? 'Sin asignar' }}</option>
-                                    </select>
-                                </div>
-                            </div>
+                        <x-ui.button size="xs" variant="outline" onclick="clearProductSearch()" class="!px-2 h-7" id="search-products-clear">
+                            <i class="ri-close-line"></i>
+                        </x-ui.button>
+                    </div>
 
-                            <div class="h-3 sm:h-4 w-px bg-gray-300 dark:bg-slate-600 shrink-0"></div>
-                            @endif
+                    <div class="h-6 w-px bg-gray-300 dark:bg-slate-600 shrink-0"></div>
 
-                            <div class="flex items-center gap-1 sm:gap-2 group min-w-0">
-                                <span class="text-gray-500 dark:text-gray-400 shrink-0">Cliente:</span>
-                                <div class="relative flex items-center min-w-0 gap-1">
-                                    @php
-                                        $peopleCollection = $people ?? collect();
-                                        $clientOptions = $peopleCollection->map(function($p) {
-                                            $name = trim(($p->first_name ?? '') . ' ' . ($p->last_name ?? ''));
-                                            if ($name === '' && !empty($p->document_number)) {
-                                                $name = $p->document_number;
-                                            }
-                                            return [
-                                                'id' => $p->id,
-                                                'description' => $name,
-                                            ];
-                                        })->values()->all();
-                                    @endphp
-                                    <x-form.select.combobox
-                                        :options="$clientOptions"
-                                        x-model="currentTable.person_id"
-                                        name="header_client_id"
-                                        placeholder="Seleccionar cliente..."
-                                        icon=""
-                                        class="min-w-0 w-20 sm:w-28 md:min-w-[120px] md:max-w-[180px] !py-0.5 !px-2 !text-[11px] sm:!text-xs !font-semibold !text-slate-700 dark:!text-slate-200 !bg-white dark:!bg-slate-700/80 !border !border-gray-200 dark:!border-slate-600 !rounded-lg"
-                                        x-on:change="
-                                            const selected = (@js($clientOptions)).find(o => o.id == currentTable.person_id);
-                                            const name = selected ? selected.description : 'Público General';
-                                            currentTable.person_id = currentTable.person_id ? parseInt(currentTable.person_id, 10) : null;
-                                            currentTable.clientName = name;
-                                            saveDB();
-                                            const cobroInput = document.getElementById('cobro-client-input');
-                                            if (cobroInput) cobroInput.value = name;
-                                        "
-                                    />
-                                    <button type="button"
-                                        class="inline-flex items-center justify-center h-7 w-7 rounded-full bg-white border border-gray-200 text-gray-500 hover:bg-blue-50 hover:text-blue-600 shadow-sm"
-                                        @click="$dispatch('open-person-modal')"
-                                        title="Nuevo cliente">
-                                        <i class="ri-user-add-line text-base"></i>
-                                    </button>
-                                </div>
-                            </div>
-    
-                            <div class="h-3 sm:h-4 w-px bg-gray-300 dark:bg-slate-600 shrink-0"></div>
-    
-                            <div class="flex items-center gap-1 sm:gap-1 group min-w-0">
-                                <span class="text-gray-500 dark:text-gray-400 shrink-0">Personas:</span>
-                                <span class="text-xs text-gray-400 dark:text-gray-500 shrink-0">(máx. {{ $table->capacity ?? 1 }})</span>
-                                <div class="flex items-center gap-0.5 sm:gap-1">
-                                    <button type="button" onclick="updateDiners(-1)"
-                                        class="w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded-md bg-gray-100 dark:bg-slate-600 hover:bg-blue-100 dark:hover:bg-blue-700/50 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-300 transition-colors border border-gray-200 dark:border-slate-500 text-xs font-bold leading-none select-none">
-                                        <i class="ri-subtract-line text-[9px] sm:text-[10px]"></i>
-                                    </button>
-                                    <input type="number"
-                                    id="diners-input"
-                                    value="{{ $pendingOrderMovement?->people_count ?? 1 }}"
-                                    min="1"
-                                    onchange="updateDiners(0)"
-                                    class="w-8 sm:w-9 py-1 px-0.5 text-center text-xs sm:text-sm bg-white dark:bg-slate-700/80 border border-gray-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 font-semibold focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-500/40 focus:border-blue-400 outline-none shadow-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
-                                    <button type="button" onclick="updateDiners(1)"
-                                        class="w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded-md bg-gray-100 dark:bg-slate-600 hover:bg-blue-100 dark:hover:bg-blue-700/50 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-300 transition-colors border border-gray-200 dark:border-slate-500 text-xs font-bold leading-none select-none">
-                                        <i class="ri-add-line text-[9px] sm:text-[10px]"></i>
-                                    </button>
-                                </div>
-                            </div>
+                    <!-- Mozo -->
+                    @if(!($isMozo ?? false))
+                    <div class="flex items-center gap-1.5 shrink-0">
+                        <span class="text-gray-500 dark:text-gray-400 text-xs sm:text-sm">Mozo:</span>
+                        <select id="header-waiter-select" onchange="changeWaiter(this)"
+                            class="w-24 sm:w-32 py-1.5 px-2 bg-white dark:bg-slate-700/80 border border-gray-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 font-semibold text-xs sm:text-sm cursor-pointer focus:ring-2 focus:ring-blue-200 outline-none shadow-sm truncate">
+                            <option value="{{ $user?->id }}" selected><span id="pos-waiter-name">{{ $user?->name ?? 'Sin asignar' }}</span></option>
+                        </select>
+                    </div>
+                    
+                    <div class="h-6 w-px bg-gray-300 dark:bg-slate-600 shrink-0"></div>
+                    @endif
+
+                    <!-- Cliente -->
+                    <div class="flex items-center gap-1.5 shrink-0">
+                        <span class="text-gray-500 dark:text-gray-400 text-xs sm:text-sm">Cliente:</span>
+                        <div class="flex items-center gap-1">
+                            @php
+                                $peopleCollection = $people ?? collect();
+                                $clientOptions = $peopleCollection->map(function($p) {
+                                    $name = trim(($p->first_name ?? '') . ' ' . ($p->last_name ?? ''));
+                                    if ($name === '' && !empty($p->document_number)) {
+                                        $name = $p->document_number;
+                                    }
+                                    return [
+                                        'id' => $p->id,
+                                        'description' => $name,
+                                    ];
+                                })->values()->all();
+                            @endphp
+                            <x-form.select.combobox
+                                :options="$clientOptions"
+                                x-model="currentTable.person_id"
+                                name="header_client_id"
+                                placeholder="Seleccionar..."
+                                icon=""
+                                class="w-32 sm:w-40 md:w-48 !py-1 !px-2 !text-xs sm:!text-sm !font-semibold !text-slate-700 dark:!text-slate-200 !bg-white dark:!bg-slate-700/80 !border !border-gray-200 dark:!border-slate-600 !rounded-lg"
+                                x-on:change="
+                                    const selected = (@js($clientOptions)).find(o => o.id == currentTable.person_id);
+                                    const name = selected ? selected.description : 'Público General';
+                                    currentTable.person_id = currentTable.person_id ? parseInt(currentTable.person_id, 10) : null;
+                                    currentTable.clientName = name;
+                                    saveDB();
+                                    const cobroInput = document.getElementById('cobro-client-input');
+                                    if (cobroInput) cobroInput.value = name;
+                                "
+                            />
+                            <button type="button"
+                                class="inline-flex items-center justify-center h-8 w-8 rounded-lg bg-white border border-gray-200 text-gray-500 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 shadow-sm transition-colors"
+                                @click="$dispatch('open-person-modal')"
+                                title="Nuevo cliente">
+                                <i class="ri-user-add-line text-sm sm:text-base"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="h-6 w-px bg-gray-300 dark:bg-slate-600 shrink-0"></div>
+
+                    <!-- Personas -->
+                    <div class="flex items-center gap-2 shrink-0">
+                        <div class="flex flex-col text-right">
+                            <span class="text-gray-500 dark:text-gray-400 text-xs sm:text-sm leading-none">Personas</span>
+                            <span class="text-[9px] sm:text-[10px] text-gray-400">(máx. {{ $table->capacity ?? 1 }})</span>
+                        </div>
+                        <div class="flex items-center gap-0.5 p-0.5 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg shadow-sm">
+                            <button type="button" onclick="updateDiners(-1)"
+                                class="w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-md bg-gray-50 hover:bg-blue-100 text-slate-600 hover:text-blue-600 transition-colors">
+                                <i class="ri-subtract-line text-xs"></i>
+                            </button>
+                            <input type="number"
+                                id="diners-input"
+                                value="{{ $pendingOrderMovement?->people_count ?? 1 }}"
+                                min="1"
+                                onchange="updateDiners(0)"
+                                class="w-8 sm:w-10 py-1 text-center text-xs sm:text-sm bg-transparent border-none text-slate-700 font-bold focus:ring-0 p-0 m-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
+                            <button type="button" onclick="updateDiners(1)"
+                                class="w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-md bg-gray-50 hover:bg-blue-100 text-slate-600 hover:text-blue-600 transition-colors">
+                                <i class="ri-add-line text-xs"></i>
+                            </button>
                         </div>
                     </div>
                 </div>
             </header>
 
-            <div class="flex flex-row flex-1 min-h-0 min-w-0 p-5 overflow-y-auto overflow-x-hidden" style="-webkit-overflow-scrolling: touch;">
-                <div class="flex-1 min-w-0 p-3 sm:p-5 md:p-6 bg-white flex flex-col min-h-0">                
+            <div class="flex flex-row flex-1 p-4 gap-5 overflow-hidden" style="-webkit-overflow-scrolling: touch;">
+                <div class="flex-1 min-w-0 p-3 sm:p-4 bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 flex flex-col min-h-0">                
                     <div class="flex flex-col flex-1 min-h-0 min-w-0 overflow-hidden">
                         <div class="shrink-0 border-gray-300 px-2 sm:px-4 pt-3 pb-4">
                             <div class="flex items-center justify-between">
@@ -159,13 +164,13 @@
                             <div id="categories-grid" class="flex flex-row flex-wrap gap-1.5 sm:gap-2 overflow-x-auto pb-3 overscroll-x-contain">
                             </div>
                         </div>
-                        <div class="flex-1 min-h-0 min-w-0 pt-2 sm:pt-3 flex flex-col overflow-hidden min-h-[200px]">
-                            <div id="products-grid" class="px-2 sm:px-4 md:px-5 p-3 grid grid-cols-3 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5 2xl:grid-cols-5 gap-2 sm:gap-4 overflow-y-auto overflow-x-hidden min-h-0 flex-1 content-start overscroll-contain" style="-webkit-overflow-scrolling: touch;">
+                        <div class="flex-1 overflow-y-auto pt-2 sm:pt-3">
+                            <div id="products-grid" class="px-2 sm:px-4 md:px-5 p-3 grid grid-cols-3 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5 2xl:grid-cols-5 gap-2 sm:gap-4 content-start pb-6">
                             </div>
                         </div>
                     </div>
                 </div>
-                <aside class="flex flex-col rounded-2xl shadow-2xl overflow-hidden w-[400px] sm:w-[400px] md:w-[400px] shrink-0 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 min-h-0 rounded-l-2xl" style="min-height: 550px;">
+                <aside class="flex flex-col rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden w-[400px] shrink-0 bg-white dark:bg-gray-900 min-h-0">
                     {{-- Tabs Resumen | Cobro (Cobro oculto para Mozo) --}}
                     <div class="flex shrink-0 border-b border-gray-200 dark:border-gray-700">
                         <button type="button" id="tab-resumen" onclick="switchAsideTab('resumen')"
@@ -182,7 +187,7 @@
 
                     {{-- Contenido Resumen --}}
                     <div id="aside-resumen" class="flex flex-col flex-1 min-h-0 overflow-hidden">
-                        <div id="cart-container" class="flex-1 overflow-y-auto p-3 sm:p-5 space-y-2 sm:space-y-3 bg-gray-50 dark:bg-gray-900/50 min-h-0 overscroll-contain" style="-webkit-overflow-scrolling: touch;"></div>
+                        <div id="cart-container" class="flex-1 overflow-y-auto p-3 sm:p-5 space-y-2 sm:space-y-3 bg-white dark:bg-gray-900 min-h-0 overscroll-contain" style="-webkit-overflow-scrolling: touch;"></div>
                         <div id="cancelled-platos-container" class="shrink-0 hidden border-t border-gray-200 dark:border-gray-700 bg-amber-50 dark:bg-amber-900/20 p-3 sm:p-4 max-h-40 overflow-y-auto">
                             <p class="text-xs font-semibold text-amber-800 dark:text-amber-200 mb-2 flex items-center gap-1"><i class="ri-error-warning-line"></i> Platos anulados</p>
                             <div id="cancelled-platos-list" class="space-y-1.5 text-xs"></div>
@@ -265,8 +270,12 @@
 
                     {{-- Botones Guardar / Cobrar: visibles según pestaña activa --}}
                     <div class="shrink-0 p-4 sm:p-5 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
-                        {{-- Footer Resumen: solo Guardar --}}
-                        <div id="footer-resumen" class="flex justify-end">
+                        {{-- Footer Resumen: solo Guardar y Precuenta --}}
+                        <div id="footer-resumen" class="flex justify-between">
+                            <x-ui.button id="btn-precuenta" type="button" variant="secondary" size="sm">
+                                <i class="ri-save-line text-base"></i>
+                                <span>Precuenta</span>
+                            </x-ui.button>
                             <button type="button" id="btn-guardar" onclick="processOrder()"
                                 class="py-2.5 px-4 rounded-xl bg-gray-500 text-white font-bold text-xs sm:text-sm shadow-lg hover:bg-gray-600 active:scale-95 transition-all flex justify-center items-center gap-2">
                                 <i class="ri-save-line text-base"></i>
@@ -351,8 +360,127 @@
             </div>
         </div>
     </div>
+
+    {{-- removeQuantityModal debe existir en window antes de que Alpine procese el modal --}}
+    <script>
+        window.removeQuantityModal = function() {
+            return {
+                open: false,
+                indexToRemove: null,
+                quantityToRemove: 1,
+                maxQty: 1,
+                productName: '',
+                reasonToRemove: '',
+                isComandado: false
+            };
+        };
+    </script>
+    {{-- Modal eliminar por cantidad (se abre al presionar la basurita en una línea del pedido) --}}
+    <x-ui.modal x-data="removeQuantityModal()"
+        @open-remove-quantity-modal.window="
+            if ($event.detail && $event.detail.maxQty >= 1) {
+                open = true;
+                indexToRemove = $event.detail.index ?? null;
+                maxQty = Math.max(1, $event.detail.maxQty ?? 1);
+                productName = $event.detail.productName || 'Producto';
+                quantityToRemove = 1;
+                reasonToRemove = '';
+                isComandado = !!$event.detail.isComandado;
+                $nextTick(() => { if ($refs.qtyInput) $refs.qtyInput.value = 1; });
+            }
+        "
+        @close-remove-quantity-modal.window="open = false; indexToRemove = null; quantityToRemove = 1; maxQty = 1; productName = ''; reasonToRemove = ''; isComandado = false"
+        :showCloseButton="false"
+        class="max-w-4xl z-[100]">
+        <div class="p-6 sm:p-8 bg-white dark:bg-gray-800">
+            <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div class="flex items-center gap-4">
+                    <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400">
+                        <i class="ri-delete-bin-line text-2xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-900 dark:text-white">Eliminar cantidad del pedido</h3>
+                        <p class="text-sm text-gray-600 dark:text-gray-300 mt-0.5" x-text="productName ? (productName + ' · Cantidad actual: ' + maxQty) : ''"></p>
+                    </div>
+                </div>
+                <button type="button"
+                    @click="$dispatch('close-remove-quantity-modal')"
+                    class="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600 transition-colors">
+                    <i class="ri-close-line text-xl"></i>
+                </button>
+            </div>
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Cantidad a eliminar</label>
+                <input type="number"
+                    x-ref="qtyInput"
+                    @input="
+                        let val = $event.target.value;
+                        if (val === '' || val === null) { return; }
+                        let v = parseInt(val, 10);
+                        quantityToRemove = (isNaN(v) || v < 1) ? 1 : Math.min(maxQty, Math.max(1, v));
+                        $event.target.value = quantityToRemove;
+                    "
+                    @blur="
+                        if ($event.target.value === '' || isNaN(parseInt($event.target.value, 10))) {
+                            quantityToRemove = 1;
+                            $event.target.value = 1;
+                        }
+                    "
+                    min="1"
+                    :max="maxQty"
+                    class="w-24 text-center text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-red-500 focus:border-red-500">
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1" x-text="'Entre 1 y ' + maxQty + (maxQty === 1 ? ' unidad' : ' unidades')"></p>
+                <p class="text-sm font-medium text-gray-700 dark:text-gray-300 mt-2" x-show="maxQty >= 1">
+                    Quedarán: <span x-text="Math.max(0, maxQty - quantityToRemove)"></span> <span x-text="(maxQty - quantityToRemove) === 1 ? 'unidad' : 'unidades'"></span>
+                </p>
+            </div>
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Razón <span x-show="isComandado" class="text-red-600">(requerida)</span>
+                </label>
+                <textarea x-model="reasonToRemove"
+                    rows="2"
+                    placeholder="Ej: pedido equivocado, cliente canceló..."
+                    class="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"></textarea>
+            </div>
+            <div class="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-600">
+                <button type="button" @click="$dispatch('close-remove-quantity-modal')"
+                    class="px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                    Cancelar
+                </button>
+                <button type="button"
+                    @click="
+                        if (indexToRemove != null && quantityToRemove >= 1 && (!isComandado || reasonToRemove.trim())) {
+                            var q = Math.min(quantityToRemove, maxQty);
+                            window.applyRemoveQuantity(indexToRemove, q, reasonToRemove.trim());
+                            $dispatch('close-remove-quantity-modal');
+                        }
+                    "
+                    :disabled="isComandado && !reasonToRemove.trim()"
+                    :class="isComandado && !reasonToRemove.trim() ? 'opacity-50 cursor-not-allowed' : ''"
+                    class="px-4 py-2 rounded-xl bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    Eliminar <span x-text="quantityToRemove > 1 ? quantityToRemove + ' unidades' : '1 unidad'"></span>
+                </button>
+            </div>
+        </div>
+    </x-ui.modal>
     <style>.notification-show { transform: translateY(0) !important; opacity: 1 !important; }</style>
 
+    <script>
+        document.addEventListener('alpine:init', function() {
+            window.Alpine.data('removeQuantityModal', function() {
+                return {
+                    open: false,
+                    indexToRemove: null,
+                    quantityToRemove: 1,
+                    maxQty: 1,
+                    productName: '',
+                    reasonToRemove: '',
+                    isComandado: false
+                };
+            });
+        });
+    </script>
     <script>
         (function() {
             @php
@@ -413,6 +541,9 @@
                 currentTable.order_movement_id = serverOrderMovementId;
                 currentTable.movement_id = serverMovementId;
                 currentTable.items = Array.isArray(serverPendingItems) ? serverPendingItems : [];
+                currentTable.items.forEach(function(it) {
+                    it.savedQty = parseFloat(it.qty) ?? parseFloat(it.quantity) ?? 0;
+                });
                 currentTable.cancellations = [];
                 db[activeKey] = currentTable;
                 localStorage.setItem('restaurantDB', JSON.stringify(db));
@@ -568,33 +699,39 @@
                 renderTicket();
                 renderCancelledSection();
                 fixScrollLayout();
-                const searchProductsInput = document.getElementById('search-products');
-                const searchProductsClearBtn = document.getElementById('search-products-clear');
                 function updateSearchClearVisibility() {
-                    if (searchProductsClearBtn) {
-                        searchProductsClearBtn.classList.toggle('hidden', !searchProductsInput || !searchProductsInput.value.trim());
-                    }
+                    const inp = document.getElementById('search-products');
+                    const btn = document.getElementById('search-products-clear');
+                    if (btn) btn.classList.toggle('hidden', !inp || !inp.value.trim());
                 }
                 window.clearProductSearch = function() {
-                    if (searchProductsInput) {
-                        searchProductsInput.value = '';
+                    const inp = document.getElementById('search-products');
+                    if (inp) {
+                        inp.value = '';
                         productSearchQuery = '';
-                        searchProductsInput.focus();
+                        inp.focus();
                         updateSearchClearVisibility();
                         renderProducts();
                     }
                 };
-                if (searchProductsInput) {
-                    searchProductsInput.addEventListener('input', function() {
-                        productSearchQuery = this.value.trim();
+                document.addEventListener('input', function(e) {
+                    if (e.target && e.target.id === 'search-products') {
+                        productSearchQuery = (e.target.value || '').trim();
                         updateSearchClearVisibility();
                         renderProducts();
-                    });
-                    searchProductsInput.addEventListener('keydown', function(e) {
-                        if (e.key === 'Escape') clearProductSearch();
-                    });
-                    updateSearchClearVisibility();
-                }
+                    }
+                });
+                document.addEventListener('keyup', function(e) {
+                    if (e.target && e.target.id === 'search-products') {
+                        productSearchQuery = (e.target.value || '').trim();
+                        updateSearchClearVisibility();
+                        renderProducts();
+                    }
+                });
+                document.addEventListener('keydown', function(e) {
+                    if (e.target && e.target.id === 'search-products' && e.key === 'Escape') clearProductSearch();
+                });
+                updateSearchClearVisibility();
                 if (currentTable.items && currentTable.items.length > 0) {
                     setTimeout(scheduleAutoSave, 800);
                 }
@@ -743,7 +880,7 @@
                     'border transition-all duration-150 whitespace-nowrap cursor-pointer shrink-0',
                     isAllActive
                         ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                        : 'bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-slate-600 hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400'
+                        : 'bg-white dark:bg-slate-800 text-gray-700 border-gray-300 dark:border-slate-600 hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400'
                 ].join(' ');
                 allBtn.onclick = function(e) {
                     e.preventDefault();
@@ -793,6 +930,7 @@
             
             function renderProducts() {
                 const grid = document.getElementById('products-grid');
+                if (!grid) return;
                 grid.innerHTML = '';
 
                 if (!serverProducts || serverProducts.length === 0) {
@@ -806,8 +944,11 @@
                     ? serverProducts
                     : serverProducts.filter(p => p.category_id == selectedCategoryId);
 
-                // Filtrar por texto de búsqueda (nombre o categoría del producto)
-                const q = String(productSearchQuery || '').trim().toLowerCase();
+                // Filtrar por texto de búsqueda: leer siempre del input para filtrar desde la primera letra
+                const searchInput = document.getElementById('search-products');
+                const q = (searchInput && searchInput.value !== undefined)
+                    ? String(searchInput.value || '').trim().toLowerCase()
+                    : String(productSearchQuery || '').trim().toLowerCase();
                 if (q.length > 0) {
                     productsToShow = productsToShow.filter(p => {
                         const name = String(p.name || '').toLowerCase();
@@ -946,7 +1087,7 @@
             async function updateQty(index, change) {
                 const item = currentTable.items[index];
                 const oldQty = item.qty;
-                const newQty = oldQty + change;
+                let newQty = oldQty + change;
 
                 // Aumentar cantidad: no requiere razón
                 if (change > 0) {
@@ -956,38 +1097,11 @@
                     return;
                 }
 
-                // Disminuir cantidad
-                const hasSavedOrder = !!currentTable.order_movement_id;
-                const isEditingExistingOrder = hasSavedOrder && !!serverOrderMovementId;
-
-                // Si es pedido nuevo (primera vez) o no venía guardado al abrir: bajar sin pedir razón
-                if (!isEditingExistingOrder) {
-                    item.qty = newQty;
-                    if (item.qty <= 0) currentTable.items.splice(index, 1);
-                    saveDB();
-                    renderTicket();
-                    return;
+                // Disminuir cantidad (si pedido guardado, no bajar de savedQty)
+                const savedQty = Number.isFinite(parseFloat(item.savedQty)) ? parseFloat(item.savedQty) : 0;
+                if (currentTable.order_movement_id && savedQty > 0) {
+                    newQty = Math.max(savedQty, newQty);
                 }
-
-                // Pedido ya existía al abrir: anulación en diferido (la razón se pide al Guardar). Mismo producto se junta (x5, etc.).
-                const qtyToCancel = Math.min(oldQty, Math.abs(change));
-                currentTable.cancellations = currentTable.cancellations || [];
-                const prod = serverProducts.find(p => p.id === item.pId);
-                const existing = currentTable.cancellations.find(c => c.pId === item.pId && c.cancel_reason == null);
-                if (existing) {
-                    existing.qtyCanceled = (existing.qtyCanceled || 0) + qtyToCancel;
-                } else {
-                    currentTable.cancellations.push({
-                        pId: item.pId,
-                        name: item.name,
-                        qtyCanceled: qtyToCancel,
-                        price: item.price,
-                        note: item.note || null,
-                        cancel_reason: null,
-                        product_snapshot: prod ? { ...prod } : null
-                    });
-                }
-
                 item.qty = newQty;
                 if (item.qty <= 0) currentTable.items.splice(index, 1);
                 saveDB();
@@ -1008,6 +1122,11 @@
                     item.qty = newQty;
                     saveDB();
                     renderTicket();
+                    return;
+                }
+                const savedQty = parseFloat(item.savedQty) ?? 0;
+                if (currentTable.order_movement_id && savedQty > 0 && newQty < savedQty) {
+                    inputEl.value = savedQty;
                     return;
                 }
                 await updateQty(index, newQty - oldQty);
@@ -1060,6 +1179,31 @@
                 await updateQty(index, -qty);
             }
 
+            function applyRemoveQuantity(index, qtyToRemove, reason) {
+                if (!currentTable.items || index < 0 || index >= currentTable.items.length) return;
+                const item = currentTable.items[index];
+                const prod = serverProducts.find(p => p.id === item.pId);
+                const qty = parseFloat(item.qty) || 0;
+                const toCancel = Math.min(qtyToRemove, qty);
+                if (toCancel <= 0) return;
+                if (currentTable.order_movement_id) {
+                    currentTable.cancellations = currentTable.cancellations || [];
+                    currentTable.cancellations.push({
+                        pId: item.pId,
+                        name: item.name || (prod && prod.name),
+                        qtyCanceled: toCancel,
+                        price: item.price,
+                        note: item.note || null,
+                        cancel_reason: reason || null,
+                        product_snapshot: prod ? { ...prod } : null
+                    });
+                }
+                item.qty = qty - toCancel;
+                if (item.qty <= 0) currentTable.items.splice(index, 1);
+                saveDB();
+                renderTicket();
+            }
+
             function saveNote(index, val) {
                 currentTable.items[index].note = val;
                 saveDB();
@@ -1083,7 +1227,19 @@
                 saveDB();
                 renderTicket();
             }
+
+            function changeCourtesyQty(index, delta) {
+                if (!currentTable.items || !currentTable.items[index]) return;
+                const item = currentTable.items[index];
+                const maxQty = parseFloat(item.qty) || 0;
+                let v = (parseFloat(item.courtesyQty) || 0) + delta;
+                v = Math.max(0, Math.min(maxQty, v));
+                item.courtesyQty = v;
+                saveDB();
+                renderTicket();
+            }
             window.setCourtesyQty = setCourtesyQty;
+            window.changeCourtesyQty = changeCourtesyQty;
 
             function renderTicket() {
                 const container = document.getElementById('cart-container');
@@ -1100,6 +1256,7 @@
                         <p class="font-medium text-sm">Sin productos</p>
                     </div>`;
                 } else {
+                    const isComandado = !!currentTable.order_movement_id;
                     currentTable.items.forEach((item, index) => {
                         const prod = serverProducts.find(p => p.id === item.pId);
     if (!prod) return;
@@ -1115,61 +1272,73 @@
     const noteText = typeof item.note === "string" ? item.note.trim() : "";
     const hasNote = noteText !== "";
     const row = document.createElement('div');
-                        row.className =
-                            "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl p-3 shadow-sm relative overflow-hidden group mb-2 border-l-4 border-l-blue-500";
+                        row.className = "bg-[#363636] dark:bg-[#363636] rounded-xl p-4 mb-2 border border-gray-600";
 
                         const productName = escapeHtml(prod.name || 'Sin nombre');
-                        const productImage = getImageUrl(prod.img || null);
                         const itemNote = escapeHtml(noteText || '');
                         const isDelivered = !!item.delivered;
+                        const statusLabel = isDelivered ? 'Entregado' : (isComandado ? 'Comandado' : 'Pendiente');
+                        const statusClass = isDelivered ? 'bg-green-200/90 text-green-900' : (isComandado ? 'bg-amber-200/90 text-amber-900' : 'bg-gray-400/80 text-gray-800');
+                        const rawSaved = item.savedQty != null && item.savedQty !== '' ? parseFloat(item.savedQty) : NaN;
+                        const savedQtyItem = Number.isFinite(rawSaved) ? rawSaved : (isComandado ? (parseFloat(item.qty) || 0) : 0);
+                        const canReduce = !isComandado || (parseFloat(item.qty) || 0) > savedQtyItem;
+                        const qtyMinusDisabled = canReduce ? '' : ' disabled';
+                        const qtyMinusClass = canReduce ? ' hover:bg-gray-500 transition-colors' : ' opacity-40 cursor-not-allowed';
+                        const qtyMinusOnclick = canReduce ? `onclick="updateQty(${index}, -1)"` : '';
+                        const trashOnclick = `onclick="window.dispatchEvent(new CustomEvent('open-remove-quantity-modal', { detail: { index: ${index}, maxQty: ${itemQty}, productName: '${String(prod.name || 'Producto').replace(/\\\\/g, '\\\\').replace(/'/g, "\\\\'")}', isComandado: ${isComandado} } }))"`;
 
                         row.innerHTML = `
-                        <div class="flex flex-col gap-2">
-                            <div class="flex items-center justify-between gap-2">
-                                <div class="flex-1 min-w-0">
-                                    <div class="flex justify-between items-baseline gap-2">
-                                        <span class="font-bold text-slate-800 dark:text-slate-200 text-sm truncate">${productName}</span>
-                                        <span class="text-xs text-gray-500 dark:text-gray-400 shrink-0">S/ ${paidQty === 0 ? '0.00' : parseFloat(item.price).toFixed(2)}</span>
+                        <div class="flex flex-col gap-3">
+                            <div class="flex justify-between items-start gap-2">
+                                <div class="min-w-0 flex-1">
+                                    <div class="font-bold text-base truncate">${productName}</div>
+                                    <div class="text-xs text-gray-400 mt-0.5">${noteTime ? noteTime + ' - ' : ''}S/ ${parseFloat(item.price).toFixed(2)} c/u</div>
+                                </div>
+                                <div class="flex items-center gap-1.5 shrink-0">
+                                    <span class="px-2.5 badge badge-sm py-0.5 rounded-md text-xs font-medium ${statusClass}">${statusLabel}</span>
+                                    <button type="button" ${trashOnclick} class="p-1.5 text-gray-400 hover:text-red-400 transition-colors" title="Eliminar cantidad (registrar anulación)">
+                                        <i class="ri-delete-bin-line text-sm"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="flex flex-nowrap items-center gap-3">
+                                <div class="flex items-center gap-2 shrink-0">
+                                    <span class="text-[9px] font-medium text-gray-400 uppercase tracking-wider">Cantidad</span>
+                                    <div class="inline-flex items-center rounded-lg overflow-hidden border border-gray-500">
+                                        <button type="button" ${qtyMinusOnclick} class="w-8 h-8 flex items-center justify-center ${qtyMinusClass}"${qtyMinusDisabled}>
+                                            <i class="ri-subtract-line text-sm"></i>
+                                        </button>
+                                        <input type="number" value="${item.qty}" min="1" onchange="setQtyFromInput(${index}, this)" class="w-10 h-8 text-center text-sm font-bold bg-transparent border-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus:ring-0 focus:outline-none" ${canReduce ? '' : 'readonly'}>
+                                        <button type="button" onclick="updateQty(${index}, 1)" class="w-8 h-8 flex items-center justify-center hover:bg-gray-500 transition-colors">
+                                            <i class="ri-add-line text-sm"></i>
+                                        </button>
                                     </div>
                                 </div>
-                                <div class="flex items-center gap-0.5 bg-gray-100 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600 p-0.5 shrink-0">
-                                    <button type="button" onclick="updateQty(${index}, -1)" class="w-7 h-7 flex items-center justify-center rounded-full text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
-                                        <i class="ri-subtract-line text-sm"></i>
-                                    </button>
-                                    <input type="number" value="${item.qty}" min="1" onchange="setQtyFromInput(${index}, this)" class="w-8 h-7 text-center text-xs font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
-                                    <button type="button" onclick="updateQty(${index}, 1)" class="w-7 h-7 flex items-center justify-center rounded-full text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
-                                        <i class="ri-add-line text-sm"></i>
-                                    </button>
+                                <div class="flex items-center gap-2 shrink-0">
+                                    <span class="text-[9px] font-medium text-gray-400 uppercase tracking-wider">Cortesía</span>
+                                    <div class="inline-flex items-center rounded-lg overflow-hidden border border-gray-500">
+                                        <button type="button" onclick="changeCourtesyQty(${index}, -1)" class="w-8 h-8 flex items-center justify-center hover:bg-gray-500 transition-colors">
+                                            <i class="ri-subtract-line text-sm"></i>
+                                        </button>
+                                        <span class="w-10 h-8 flex items-center justify-center text-sm font-bold">${courtesyQty}</span>
+                                        <button type="button" onclick="changeCourtesyQty(${index}, 1)" class="w-8 h-8 flex items-center justify-center hover:bg-gray-500 transition-colors">
+                                            <i class="ri-add-line text-sm"></i>
+                                        </button>
+                                    </div>
                                 </div>
-                                <span class="font-bold text-slate-800 dark:text-slate-200 text-sm shrink-0 w-14 text-right">S/ ${lineTotal.toFixed(2)}</span>
-                                <button type="button" onclick="confirmRemoveLine(${index})" class="p-1.5 text-gray-400 hover:text-red-500 transition-colors shrink-0" title="Eliminar este ítem del pedido">
-                                    <i class="ri-delete-bin-line text-base"></i>
-                                </button>
-                                <span class="text-[11px] text-gray-500 dark:text-gray-400">
-                                    ${noteTime ? 'Hora: ' + noteTime : ''}
-                                </span>
                             </div>
-                            <div class="flex items-center justify-between gap-2">
-                                <button type="button" onclick="toggleNoteInput(${index})" class="text-xs flex items-center gap-1 transition-colors ${hasNote ? 'text-blue-600 font-medium' : 'text-blue-500 hover:text-blue-600'}">
-                                    <i class="fas fa-comment-alt text-[10px]"></i> Nota
-                                </button>
-                                <div class="text-xs flex items-center gap-1">
-                                Cortesía:
-                                <input type="number"
-                                min="0"
-                                max="${itemQty}"
-                                value="${courtesyQty}"
-                                onchange="setCourtesyQty(${index}, this)"
-                                class="w-10 h-6 text-center text-[11px] border rounded" />
-                                </div>
-                                <button type="button" onclick="toggleDelivered(${index})"
-                                    class="flex items-center gap-1 text-[11px] px-2 py-1 rounded-full border ${isDelivered ? 'border-green-500 bg-green-50 text-green-700 dark:border-green-400 dark:bg-green-900/20 dark:text-green-300' : 'border-gray-300 text-gray-500 hover:border-green-400 hover:text-green-600 dark:border-gray-600 dark:text-gray-300'}">
-                                    <span class="inline-flex w-3 h-3 rounded-full border ${isDelivered ? 'border-green-500 bg-green-500' : 'border-gray-400'}"></span>
-                                    <span>Entregado</span>
-                                </button>
+                            <button type="button" onclick="toggleNoteInput(${index})" class="block text-xs hover:text-gray-300 text-left justify-start transition-colors mt-1">
+                                ${hasNote ? '<i class="fas fa-comment-alt text-[10px] mr-0.5"></i> Nota' : '+ Añadir nota'}
+                            </button>
+                            <div id="note-box-${index}" class="${hasNote ? '' : 'hidden'}">
+                                <input type="text" value="${itemNote}" oninput="saveNote(${index}, this.value)" placeholder="Escribe una nota..." class="w-full text-xs bg-gray-600 border border-gray-500 rounded-lg px-2.5 py-2 text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-amber-400">
                             </div>
-                            <div id="note-box-${index}" class="${hasNote ? '' : 'hidden'} animate-fadeIn">
-                                <input type="text" value="${itemNote}" oninput="saveNote(${index}, this.value)" placeholder="Escribe una nota..." class="w-full text-xs bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-2 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-yellow-400">
+                            <div class="flex justify-between items-center pt-1 border-t border-gray-600">
+                                <button type="button" onclick="toggleDelivered(${index})" class="text-xs flex items-center gap-1.5 text-gray-400 hover:text-gray-300 transition-colors">
+                                    <span class="inline-flex w-3 h-3 rounded-full border ${isDelivered ? 'border-green-400 bg-green-500' : 'border-gray-500'}"></span>
+                                    <span>${isDelivered ? 'Entregado' : 'Entregado'}</span>
+                                </button>
+                                <span class="font text-base">S/ ${lineTotal.toFixed(2)}</span>
                             </div>
                         </div>
                     `;
@@ -1371,14 +1540,11 @@
                     body: JSON.stringify(order)
                 })
                 .then(res => res.headers.get('content-type')?.includes('application/json') ? res.json() : Promise.reject(new Error('Respuesta inválida')))
-                .then(data => {
-                    if (data && data.success) {
-                        if (data.order_movement_id) currentTable.order_movement_id = data.order_movement_id;
-                        if (data.movement_id) currentTable.movement_id = data.movement_id;
-                        // Cancelaciones de este ciclo ya fueron persistidas
-                        currentTable.cancellations = [];
-                        saveDB();
-                    } else if (data && isMesaYaCobradaMessage(data.message)) {
+                    .then(data => {
+                        if (data && data.success) {
+                            currentTable.cancellations = [];
+                            saveDB();
+                        } else if (data && isMesaYaCobradaMessage(data.message)) {
                         if (typeof showNotification === 'function') {
                             showNotification('Aviso', data.message || 'Esta mesa ya fue cobrada.', 'info');
                         }
@@ -2132,6 +2298,7 @@
             window.setQtyFromInput = setQtyFromInput;
             window.confirmRemoveLine = confirmRemoveLine;
             window.removeFromCart = removeFromCart;
+            window.applyRemoveQuantity = applyRemoveQuantity;
             window.saveNote = saveNote;
             window.toggleDelivered = toggleDelivered;
             window.getImageUrl = getImageUrl;

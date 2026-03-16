@@ -6,6 +6,13 @@
         $productsForBranch = $productBranches->isNotEmpty()
             ? $products->filter(fn($p) => $productBranches->has($p->id))
             : $products;
+        // Opciones para el combobox: id + description con stock actual (restricción visible)
+        $comboboxOptions = $productsForBranch->map(function ($p) use ($productBranches) {
+            $pb = $productBranches->get($p->id);
+            $stock = $pb ? (float) ($pb->stock ?? 0) : 0;
+            $name = $p->description ?? $p->code ?? 'Sin nombre';
+            return ['id' => $p->id, 'description' => $name . ' (Stock: ' . number_format($stock, 0) . ')'];
+        })->values()->all();
     @endphp
     <x-common.page-breadcrumb pageTitle="Nuevo movimiento" />
     <x-common.component-card title="Nueva salida de productos" desc="Registra una nueva salida de productos del almacén." :show-header="false">
@@ -29,7 +36,7 @@
             <div class="bg-gray-100 rounded-lg p-5">
                 <p class="text-sm font-medium text-gray-700">Buscar producto</p>
                 <div class="flex flex-col gap-3 mt-3">
-                    <x-form.select.combobox name="product_id" :options="$productsForBranch" />
+                    <x-form.select.combobox name="product_id" :options="$comboboxOptions" />
                 </div>
             </div>
 

@@ -19,6 +19,10 @@ class Table extends Model
         'branch_id',
         ];
 
+    protected $casts = [
+        'opened_at' => 'datetime',
+    ];
+
     public function area()
     {
         return $this->belongsTo(Area::class);

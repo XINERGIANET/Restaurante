@@ -55,7 +55,7 @@
     },
     get showPurchaseFields() {
         const pt = this.productTypeId != null ? this.productTypesById[this.productTypeId] : null;
-        return pt ? pt.behavior === 'BOTH' : false;
+        return pt ? (pt.behavior === 'BOTH' || pt.behavior === 'SUPPLY') : false;
     },
     get showSupplyFields() {
         const pt = this.productTypeId != null ? this.productTypesById[this.productTypeId] : null;
@@ -185,7 +185,7 @@
             this.classificationValue = 'GOOD';
         }
     }
-}">
+}" @open-product-form-with-type.window="if ($event.detail && $event.detail.product_type_id != null) productTypeId = $event.detail.product_type_id">
 
     <!-- INFORMACIÓN GENERAL -->
     <div class="mb-8 p-6 bg-gray-50 dark:bg-gray-800/30 rounded-lg border border-gray-200 dark:border-gray-700">
@@ -229,10 +229,10 @@
             <div>
                 <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Tipo de producto <span
                         class="text-red-500">*</span></label>
-                <select name="product_type_id" id="product-type-id-select" required
+                <input type="hidden" name="product_type_id" id="product-type-id-select" :value="productTypeId" required>
+                <select id="product-type-id-select-display" disabled
                     x-model.number="productTypeId"
-                    @change="handleProductTypeChange($event)"
-                    class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90">
+                    class="dark:bg-dark-900 shadow-theme-xs h-11 w-full rounded-lg border border-gray-300 bg-gray-100 px-4 py-2.5 text-sm text-gray-800 cursor-not-allowed dark:border-gray-700 dark:bg-gray-800 dark:text-white/90 dark:bg-gray-800/80">
                     <option value="">Seleccione tipo</option>
                     @foreach ($productTypes as $pt)
                         <option value="{{ $pt->id }}" @selected($productTypeIdInit === (int) $pt->id)>{{ $pt->name }}</option>
@@ -361,7 +361,6 @@
     <template x-if="!showBranchDetail && showSupplyFields">
         <div class="hidden" aria-hidden="true">
             <input type="hidden" name="price" value="0">
-            <input type="hidden" name="purchase_price" value="0">
             <input type="hidden" name="minimum_sell" value="0">
             <input type="hidden" name="minimum_purchase" value="0">
             <input type="hidden" name="tax_rate_id" value="">
@@ -390,6 +389,16 @@
             </div>
         @endif
         <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            <div>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Precio de compra <span class="text-red-500">*</span></label>
+                <input type="number" name="purchase_price" step="0.01" x-model.number="branchFields.purchase_price"
+                    value="{{ old('purchase_price', $productBranch->purchase_price ?? 0) }}" required min="0"
+                    class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
+                    placeholder="0.00" />
+                @error('purchase_price')
+                    <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
+                @enderror
+            </div>
             <div>
                 <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Stock actual <span class="text-red-500">*</span></label>
                 <input type="number" name="stock" step="0.01" x-model.number="branchFields.stock"

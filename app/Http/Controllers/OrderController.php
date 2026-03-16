@@ -299,10 +299,23 @@ class OrderController extends Controller
 
         $tablesPayload = $tables->map(function (Table $table) use ($activeOrderMovements) {
             $elapsed = '--:--';
-            if ($table->opened_at instanceof \DateTimeInterface) {
-                $elapsed = $table->opened_at->format('H:i');
-            } elseif (!empty($table->opened_at)) {
-                $elapsed = (string) $table->opened_at;
+            if (!empty($table->opened_at)) {
+                try {
+                    $opened = \Carbon\Carbon::parse($table->opened_at);
+                    if ($opened->gt(now())) {
+                        $opened->subDay();
+                    }
+                    $minutes = (int) $opened->diffInMinutes(now());
+                    if ($minutes < 60) {
+                        $elapsed = $minutes . ' min';
+                    } else {
+                        $h = (int) floor($minutes / 60);
+                        $m = $minutes % 60;
+                        $elapsed = $h . 'h ' . $m . 'm';
+                    }
+                } catch (\Throwable $e) {
+                    $elapsed = '--:--';
+                }
             }
 
             $rawSituation = $table->situation ?? 'libre';
@@ -343,6 +356,23 @@ class OrderController extends Controller
                     ->implode(' ');
             }
 
+            $openedAtForJs = null;
+            if (!empty($table->opened_at)) {
+                try {
+                    $openedAtForJs = \Carbon\Carbon::parse($table->opened_at)->format('H:i:s');
+                } catch (\Throwable $e) {
+                    // ignore
+                }
+            }
+
+            $ordersCount = 0;
+            if ($orderMovement && $orderMovement->movement && $orderMovement->movement->person_id) {
+                $personId = $orderMovement->movement->person_id;
+                $ordersCount = OrderMovement::whereHas('movement', function ($query) use ($personId) {
+                    $query->where('person_id', $personId);
+                })->count();
+            }
+
             return [
                 'id' => $table->id,
                 'name' => $table->name,
@@ -356,7 +386,9 @@ class OrderController extends Controller
                 'order_movement_id' => $orderMovement?->id ?? null,
                 'movement_id' => $orderMovement?->movement_id ?? null,
                 'elapsed' => $elapsed,
+                'opened_at' => $openedAtForJs,
                 'products_text' => strtolower($productsText),
+                'orders_count' => $ordersCount,
             ];
         })->values();
 
@@ -486,10 +518,23 @@ class OrderController extends Controller
             ->get(['id', 'name', 'area_id', 'capacity', 'situation', 'opened_at']);
         $tablesPayload = $tables->map(function (Table $table) {
             $elapsed = '--:--';
-            if ($table->opened_at instanceof \DateTimeInterface) {
-                $elapsed = $table->opened_at->format('H:i');
-            } elseif (!empty($table->opened_at)) {
-                $elapsed = (string) $table->opened_at;
+            if (!empty($table->opened_at)) {
+                try {
+                    $opened = \Carbon\Carbon::parse($table->opened_at);
+                    if ($opened->gt(now())) {
+                        $opened->subDay();
+                    }
+                    $minutes = (int) $opened->diffInMinutes(now());
+                    if ($minutes < 60) {
+                        $elapsed = $minutes . ' min';
+                    } else {
+                        $h = (int) floor($minutes / 60);
+                        $m = $minutes % 60;
+                        $elapsed = $h . 'h ' . $m . 'm';
+                    }
+                } catch (\Throwable $e) {
+                    $elapsed = '--:--';
+                }
             }
             $rawSituation = $table->situation ?? 'libre';
             $situation = strtolower((string) $rawSituation);
@@ -521,6 +566,23 @@ class OrderController extends Controller
                     ->unique()
                     ->implode(' ');
             }
+            $openedAtForJs = null;
+            if (!empty($table->opened_at)) {
+                try {
+                    $openedAtForJs = \Carbon\Carbon::parse($table->opened_at)->format('H:i:s');
+                } catch (\Throwable $e) {
+                    // ignore
+                }
+            }
+
+            $ordersCount = 0;
+            if ($orderMovement && $orderMovement->movement && $orderMovement->movement->person_id) {
+                $personId = $orderMovement->movement->person_id;
+                $ordersCount = OrderMovement::whereHas('movement', function ($query) use ($personId) {
+                    $query->where('person_id', $personId);
+                })->count();
+            }
+
             return [
                 'id' => $table->id,
                 'name' => $table->name,
@@ -534,7 +596,9 @@ class OrderController extends Controller
                 'order_movement_id' => $orderMovement?->id ?? null,
                 'movement_id' => $orderMovement?->movement_id ?? null,
                 'elapsed' => $elapsed,
+                'opened_at' => $openedAtForJs,
                 'products_text' => $productsText,
+                'orders_count' => $ordersCount,
             ];
         })->values();
         $areasArray = $areas->map(fn($area) => ['id' => (int) $area->id, 'name' => $area->name])->values();

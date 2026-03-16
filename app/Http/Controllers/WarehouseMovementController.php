@@ -25,21 +25,21 @@ class WarehouseMovementController extends Controller
             abort(403, 'No se ha seleccionado una sucursal');
         }
 
-        // Cargar productos igual que OrderController - todos los productos de tipo PRODUCT
-        $products = Product::where('type', 'PRODUCT')
+        // Movimiento de almacén: todos los tipos de producto con product_branch y categoría en sucursal
+        $products = Product::query()
+            ->whereHas('productBranches', fn ($q) => $q->where('branch_id', $branchId))
+            ->whereExists(function ($sub) use ($branchId) {
+                $sub->select(DB::raw(1))
+                    ->from('category_branch')
+                    ->whereColumn('category_branch.category_id', 'products.category_id')
+                    ->where('category_branch.branch_id', $branchId)
+                    ->whereNull('category_branch.deleted_at');
+            })
             ->with(['category', 'baseUnit'])
             ->orderBy('description')
             ->get();
 
-        // Si no hay productos con type PRODUCT, cargar todos los productos sin filtro
-        if ($products->isEmpty()) {
-            $products = Product::with(['category', 'baseUnit'])
-                ->orderBy('description')
-                ->get();
-        }
-
-
-        // Cargar productBranches del branch para tener información de stock y precio
+        // Todos los product_branches de la sucursal (vendibles e ingredientes) para stock en almacén
         $productBranches = ProductBranch::where('branch_id', $branchId)
             ->with('product')
             ->get()
@@ -68,17 +68,21 @@ class WarehouseMovementController extends Controller
             abort(403, 'No se ha seleccionado una sucursal');
         }
 
-        $products = Product::where('type', 'PRODUCT')
+        // Movimiento de almacén: todos los tipos de producto con product_branch y categoría en sucursal
+        $products = Product::query()
+            ->whereHas('productBranches', fn ($q) => $q->where('branch_id', $branchId))
+            ->whereExists(function ($sub) use ($branchId) {
+                $sub->select(DB::raw(1))
+                    ->from('category_branch')
+                    ->whereColumn('category_branch.category_id', 'products.category_id')
+                    ->where('category_branch.branch_id', $branchId)
+                    ->whereNull('category_branch.deleted_at');
+            })
             ->with(['category', 'baseUnit'])
             ->orderBy('description')
             ->get();
 
-        if ($products->isEmpty()) {
-            $products = Product::with(['category', 'baseUnit'])
-                ->orderBy('description')
-                ->get();
-        }
-
+        // Todos los product_branches de la sucursal (vendibles e ingredientes) para stock en almacén
         $productBranches = ProductBranch::where('branch_id', $branchId)
             ->with('product')
             ->get()
@@ -512,15 +516,43 @@ class WarehouseMovementController extends Controller
 
     public function destroy($warehouseMovement)
     {
-        $wm = WarehouseMovement::with(['movement', 'details'])->findOrFail($warehouseMovement->id ?? $warehouseMovement);
+        $wm = WarehouseMovement::with(['movement.documentType', 'details'])->findOrFail($warehouseMovement->id ?? $warehouseMovement);
         try {
             DB::beginTransaction();
+
+            // Restablecer stock: revertir el efecto del movimiento antes de borrar
+            $branchId = $wm->branch_id;
+            $docTypeId = $wm->movement?->document_type_id;
+            $docName = $wm->movement?->documentType?->name ?? '';
+            $isEntrada = $docTypeId == 7 || stripos($docName, 'Entrada') !== false || stripos($docName, 'entry') !== false;
+            $isSalida = $docTypeId == 8 || stripos($docName, 'Salida') !== false || stripos($docName, 'exit') !== false || stripos($docName, 'output') !== false;
+
+            if ($branchId && ($isEntrada || $isSalida)) {
+                foreach ($wm->details as $detail) {
+                    $productBranch = ProductBranch::where('product_id', $detail->product_id)
+                        ->where('branch_id', $branchId)
+                        ->lockForUpdate()
+                        ->first();
+                    if (!$productBranch) {
+                        continue;
+                    }
+                    $qty = (float) $detail->quantity;
+                    $current = (float) ($productBranch->stock ?? 0);
+                    if ($isEntrada) {
+                        $newStock = max(0, $current - $qty);
+                    } else {
+                        $newStock = $current + $qty;
+                    }
+                    $productBranch->update(['stock' => $newStock]);
+                }
+            }
+
             $wm->details()->delete();
             $wm->movement?->delete();
             $wm->delete();
             DB::commit();
             $params = request()->has('view_id') ? ['view_id' => request()->input('view_id')] : [];
-            return redirect()->route('warehouse_movements.index', $params)->with('success', 'Movimiento de almacén eliminado correctamente.');
+            return redirect()->route('warehouse_movements.index', $params)->with('success', 'Movimiento de almacén eliminado correctamente. Se restableció el stock.');
         } catch (\Exception $e) {
             DB::rollBack();
             $params = request()->has('view_id') ? ['view_id' => request()->input('view_id')] : [];

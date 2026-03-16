@@ -120,8 +120,15 @@ class PurchaseController extends Controller
         $purchase = null; 
 
         $products = ProductBranch::where('branch_id', $branchId)
-            ->with(['product', 'product.baseUnit', 'product.category'])
+            ->with(['product', 'product.baseUnit', 'product.category', 'product.productType'])
             ->get()
+            ->filter(function ($pb) {
+                $product = $pb->product;
+                if (!$product) return false;
+                $pt = $product->productType;
+                if (!$pt) return false;
+                return in_array($pt->behavior, ['SUPPLY', 'BOTH'], true);
+            })
             ->map(function ($pb) {
                 $product = $pb->product;
                 if (!$product) return null;
@@ -136,7 +143,7 @@ class PurchaseController extends Controller
                     'unit_id' => $product->base_unit_id ?? 0,
                     'unit_name' => $baseUnit ? ($baseUnit->description ?? $baseUnit->name ?? '') : '',
                     'price' => $pb->price ?? 0,
-                    'cost' => $pb->price ?? 0,
+                    'cost' => $pb->purchase_price ?? 0, // Usar purchase_price si corresponde
                     'stock' => (float) ($pb->stock ?? 0),
                     'category_id' => $pb->product->category_id ?? null,
                     'category' => $pb->product->category ? $pb->product->category->description : 'General',
@@ -147,7 +154,8 @@ class PurchaseController extends Controller
             ->filter()
             ->values();
 
-        $categories = Category::orderBy('description')->get();
+        $categoryIds = collect($products)->pluck('category_id')->filter()->unique();
+        $categories = Category::whereIn('id', $categoryIds)->orderBy('description')->get();
 
         // Cargamos los datos de pago para los selectores del formulario
         $cards = Card::all();
@@ -739,8 +747,15 @@ class PurchaseController extends Controller
         $purchase = $purchaseMovement->movement; 
         
         $products = ProductBranch::where('branch_id', $branchId)
-            ->with(['product', 'product.baseUnit', 'product.category'])
+            ->with(['product', 'product.baseUnit', 'product.category', 'product.productType'])
             ->get()
+            ->filter(function ($pb) {
+                $product = $pb->product;
+                if (!$product) return false;
+                $pt = $product->productType;
+                if (!$pt) return false;
+                return in_array($pt->behavior, ['SUPPLY', 'BOTH'], true);
+            })
             ->map(function ($pb) {
                 $product = $pb->product;
                 if (!$product) return null;
@@ -755,7 +770,7 @@ class PurchaseController extends Controller
                     'unit_id' => $product->base_unit_id ?? 0,
                     'unit_name' => $baseUnit ? ($baseUnit->description ?? $baseUnit->name ?? '') : '',
                     'price' => $pb->price ?? 0,
-                    'cost' => $pb->price ?? 0,
+                    'cost' => $pb->purchase_price ?? 0,
                     'stock' => (float) ($pb->stock ?? 0),
                     'category_id' => $pb->product->category_id ?? null,
                     'category' => $pb->product->category ? $pb->product->category->description : 'General',
@@ -766,7 +781,8 @@ class PurchaseController extends Controller
             ->filter()
             ->values();
 
-        $categories = Category::orderBy('description')->get();
+        $categoryIds = collect($products)->pluck('category_id')->filter()->unique();
+        $categories = Category::whereIn('id', $categoryIds)->orderBy('description')->get();
         $paymentMethods = PaymentMethod::where('status', true)->orderBy('order_num', 'asc')->get(['id', 'description']);
 
         // Mandar los modelos de pago

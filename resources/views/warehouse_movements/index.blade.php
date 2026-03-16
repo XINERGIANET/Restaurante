@@ -15,6 +15,15 @@
                     return '#';
                 }
 
+                // DELETE debe ir a la ruta destroy con el ID del movimiento
+                if (str_contains($action, 'destroy') && $warehouseMovement) {
+                    $url = route('warehouse_movements.destroy', ['warehouseMovement' => $warehouseMovement->id]);
+                    if ($viewId) {
+                        $url .= (str_contains($url, '?') ? '&' : '?') . 'view_id=' . urlencode($viewId);
+                    }
+                    return $url;
+                }
+
                 if (str_starts_with($action, '/') || str_starts_with($action, 'http')) {
                     $url = $action;
                 } else {

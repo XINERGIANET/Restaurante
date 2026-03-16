@@ -71,7 +71,7 @@
         if (($event.detail?.name || '') !== @js($name ?? '')) return;
         clear()
     "
-
+    
     class="space-y-1.5 relative"
     x-on:mousedown.document="if (!$el.contains($event.target)) closeDropdown()"
 >
@@ -106,7 +106,7 @@
         <input 
             type="text" 
             x-model="query"
-            @focus="open = true"
+            @focus="clear(); open = true"
             @input="open = true"
             @dblclick="$el.select()" 
             @keydown.escape="closeDropdown()"

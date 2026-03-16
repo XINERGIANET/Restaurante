@@ -486,7 +486,7 @@
                                     self.$nextTick(function() {
                                         var form = document.getElementById('create-product-form');
                                         if (!form) return;
-                                        var sel = form.querySelector('#product-type-id-select');
+                                        var sel = form.querySelector('#product-type-id-select-display');
                                         if (sel) {
                                             sel.value = self.selectedProductTypeId;
                                             sel.dispatchEvent(new Event('change'));

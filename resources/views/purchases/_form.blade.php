@@ -350,16 +350,29 @@
                                     <div class="w-14 h-14 shrink-0 rounded-lg overflow-hidden bg-gray-100">
                                         <img :src="item.image_url || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%23d1d5db%22%3E%3Cpath d=%22M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z%22/%3E%3C/svg%3E'" class="w-full h-full object-cover" :alt="item.description">
                                     </div>
-                                    <div class="flex-1 min-w-0">
-                                        <p class="text-sm font-bold text-gray-800 truncate uppercase" x-text="(item.description || '').toUpperCase()"></p>
-                                        <p class="text-sm font-bold text-orange-500 mt-0.5" x-text="money((item.quantity || 0) * (item.amount || 0))"></p>
-                                        <p class="text-xs text-gray-500" x-text="money(item.amount) + ' c/u'"></p>
+                                    <div class="flex-1 min-w-0 grid grid-cols-1 gap-1">
+                                        <p class="text-[11px] sm:text-xs font-bold text-gray-800 truncate uppercase mb-1" x-text="(item.description || '').toUpperCase()"></p>
+                                        
+                                        <div class="flex items-center gap-2 mt-2">
+                                            <div class="w-2/3 relative">
+                                                <label class="text-[9px] text-gray-500 font-semibold uppercase block mb-0.5">Precio Unitario</label>
+                                                <div class="relative">
+                                                    <span class="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-medium" x-text="currency === 'USD' ? '$' : 'S/'"></span>
+                                                    <input type="number" x-model.number="item.amount" min="0" step="0.01" 
+                                                        class="w-full pl-6 pr-2 py-1.5 text-xs font-bold text-gray-700 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:border-orange-400 focus:ring-1 focus:ring-orange-400 outline-none transition-colors"
+                                                        @input="item.total_tmp = ((item.quantity || 0) * (item.amount || 0)).toFixed(2)">
+                                                </div>
+                                            </div>
+                                            <div class="w-1/3 flex justify-end items-end pt-3">
+                                                 <p class="text-[10px] text-gray-500 text-right"><span class="font-bold text-orange-600 block text-xs" x-text="money((item.quantity || 0) * (item.amount || 0))"></span>Subtotal</p>
+                                            </div>
+                                        </div>
                                     </div>
                                     <div class="flex items-center gap-2 shrink-0">
                                         <div class="inline-flex items-center rounded-lg border border-gray-200 bg-gray-50 overflow-hidden">
-                                            <button type="button" @click="updateQuantity(idx, -1)" class="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-200 text-base font-bold transition-colors">−</button>
-                                            <input type="number" :name="`items[${idx}][quantity]`" x-model.number="item.quantity" min="0.01" max="999999.99" step="0.01" class="w-12 h-8 text-center text-sm font-bold text-gray-800 border-x border-gray-200 bg-white focus:ring-0 focus:outline-none">
-                                            <button type="button" @click="updateQuantity(idx, 1)" class="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-200 text-base font-bold transition-colors">+</button>
+                                            <button type="button" @click="updateQuantity(idx, -1); item.total_tmp = ((item.quantity || 0) * (item.amount || 0)).toFixed(2);" class="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-200 text-base font-bold transition-colors">−</button>
+                                            <input type="number" :name="`items[${idx}][quantity]`" x-model.number="item.quantity" @input="item.total_tmp = ((item.quantity || 0) * (item.amount || 0)).toFixed(2);" min="0.01" max="999999.99" step="0.01" class="w-12 h-8 text-center text-sm font-bold text-gray-800 border-x border-gray-200 bg-white focus:ring-0 focus:outline-none">
+                                            <button type="button" @click="updateQuantity(idx, 1); item.total_tmp = ((item.quantity || 0) * (item.amount || 0)).toFixed(2);" class="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-200 text-base font-bold transition-colors">+</button>
                                         </div>
                                         <button type="button" @click="removeItem(idx)" class="w-9 h-9 rounded-lg border border-red-200 flex items-center justify-center text-gray-500 hover:text-red-500 hover:bg-red-50 transition-colors">
                                             <i class="ri-delete-bin-line text-lg"></i>
@@ -581,6 +594,7 @@
                         amount: Number(p.cost) || 0,
                         comment: '',
                         image_url: p.image_url || null,
+                        total_tmp: (Number(p.cost) || 0).toFixed(2),
                     });
 
                     return {
@@ -641,6 +655,7 @@
                                 amount: Number(i.amount || 0),
                                 comment: String(i.comment || ''),
                                 image_url: i.image_url || null,
+                                total_tmp: ((Number(i.quantity) || 1) * (Number(i.amount) || 0)).toFixed(2)
                             }))
                             : [],
                         taxRate: Number(taxRate || 18),

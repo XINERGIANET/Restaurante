@@ -66,8 +66,8 @@
                                 dateFormat="Y-m-d" class="h-10 !mb-0" />
                         </div>
 
-                        {{-- 6. Buttons --}}
-                        <div class="flex flex-wrap gap-1 w-full">
+                        {{-- 6. Botones: Buscar, Limpiar y Exportar PDF en una sola fila --}}
+                        <div class="flex flex-nowrap items-center gap-2 shrink-0">
                             <x-ui.button type="submit" size="sm" variant="primary"
                                 style="background-color: #63B7EC; border-color: #63B7EC;">
                                 <i class="ri-search-line"></i>
@@ -90,6 +90,7 @@
                                     ]
                                 ));
                             @endphp
+                            <span class="hidden sm:inline w-px h-6 bg-gray-200 dark:bg-gray-600 mx-0.5" aria-hidden="true"></span>
                             <x-ui.link-button href="{{ route('kardex.exportPdf', $pdfQuery) }}" size="sm" variant="primary"
                                 target="_blank" rel="noopener"
                                 style="background-color: #ef4444; border-color: #ef4444; color: #fff;"
