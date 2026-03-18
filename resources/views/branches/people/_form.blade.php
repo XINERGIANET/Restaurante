@@ -83,11 +83,79 @@
     }"
     x-init="init()"
 >
+    @if($hidePinAndRoles)
+    {{-- Buscador DNI/RUC modo POS --}}
+    <div class="col-span-4 mb-1"
+         x-data="{
+            dniQuery: '',
+            dniLoading: false,
+            dniError: '',
+            async searchDni() {
+                const q = this.dniQuery.trim();
+                if (!q) { this.dniError = 'Ingrese un DNI o RUC.'; return; }
+                this.dniLoading = true;
+                this.dniError = '';
+                try {
+                    const res = await fetch('/api/dni/' + encodeURIComponent(q));
+                    const data = await res.json();
+                    if (!res.ok) { this.dniError = data.error || 'No se encontraron datos.'; return; }
+                    const names = data.nombres || data.nombre || data.first_name || '';
+                    const lp = data.apellido_paterno || data.apellidoPaterno || '';
+                    const lm = data.apellido_materno || data.apellidoMaterno || '';
+                    const lastName = (lp + ' ' + lm).trim() || data.apellidos || data.last_name || '';
+                    const docNum = data.numero || data.ruc || data.dni || q;
+                    const docType = String(docNum).length === 11 ? 'RUC' : 'DNI';
+                    const fnInput = document.querySelector('[name=first_name]');
+                    const lnInput = document.querySelector('[name=last_name]');
+                    const docInput = document.querySelector('[name=document_number]');
+                    const typeSelect = document.querySelector('[name=person_type]');
+                    if (fnInput && names) fnInput.value = names;
+                    if (lnInput && lastName) lnInput.value = lastName;
+                    if (docInput) docInput.value = docNum;
+                    if (typeSelect) typeSelect.value = docType;
+                } catch(e) {
+                    this.dniError = 'Error al consultar. Intente de nuevo.';
+                } finally {
+                    this.dniLoading = false;
+                }
+            }
+         }">
+        <label class="mb-1.5 block text-sm font-semibold text-blue-700 dark:text-blue-400">
+            <i class="ri-search-eye-line"></i> Buscar por DNI / RUC
+            <span class="text-xs font-normal text-gray-500">(opcional, autocompleta los datos)</span>
+        </label>
+        <div class="flex gap-2">
+            <input
+                type="text"
+                x-model="dniQuery"
+                @keydown.enter.prevent="searchDni()"
+                maxlength="11"
+                placeholder="Ej: 12345678 (DNI) o 20123456789 (RUC)"
+                class="h-10 w-full rounded-lg border border-blue-300 bg-transparent px-4 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none dark:border-blue-700 dark:bg-gray-900 dark:text-white/90"
+            />
+            <button
+                type="button"
+                @click="searchDni()"
+                :disabled="dniLoading"
+                class="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-blue-700 active:scale-95 disabled:opacity-60 transition-all"
+            >
+                <i x-show="!dniLoading" class="ri-search-line"></i>
+                <i x-show="dniLoading" class="ri-loader-4-line animate-spin"></i>
+                <span x-text="dniLoading ? 'Buscando...' : 'Buscar'"></span>
+            </button>
+        </div>
+        <p x-show="dniError" x-text="dniError" class="mt-1 text-xs text-red-500"></p>
+    </div>
+    @endif
+
     <div>
-        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Tipo de persona</label>
+        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
+            Tipo de persona
+            @unless($hidePinAndRoles)<span class="text-red-500">*</span>@endunless
+        </label>
         <select
             name="person_type"
-            required
+            @unless($hidePinAndRoles) required @endunless
             class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
         >
             <option value="">Seleccione tipo</option>
@@ -102,12 +170,15 @@
     </div>
 
     <div>
-        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Documento</label>
+        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
+            Documento
+            @unless($hidePinAndRoles)<span class="text-red-500">*</span>@endunless
+        </label>
         <input
             type="text"
             name="document_number"
             value="{{ old('document_number', $person->document_number ?? '') }}"
-            required
+            @unless($hidePinAndRoles) required @endunless
             placeholder="Ingrese el documento"
             class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
         />

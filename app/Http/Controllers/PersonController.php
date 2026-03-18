@@ -13,9 +13,67 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
 
 class PersonController extends Controller
 {
+    /**
+     * Busca una persona por DNI consultando la API externa configurada en services.php.
+     * Ruta: GET /api/dni/{dni}
+     */
+    public function searchByDni(string $dni)
+    {
+        $dni = preg_replace('/\D/', '', $dni);
+
+        if (strlen($dni) !== 8) {
+            return response()->json(['error' => 'El DNI debe tener 8 dígitos.'], 422);
+        }
+
+        $apiUrl   = config('services.dni_api.url');
+        $apiToken = config('services.dni_api.token');
+
+        if (!$apiUrl || !$apiToken) {
+            return response()->json(['error' => 'La API de DNI no está configurada. Verifica DNI_API_URL y DNI_API_TOKEN en .env'], 503);
+        }
+
+        try {
+            // Perudevs suele usar ?document=XXXXXXXX&key=TOKEN
+            $response = Http::get($apiUrl, [
+                'document' => $dni,
+                'key'      => $apiToken,
+            ]);
+
+            if ($response->failed()) {
+                $status = $response->status();
+                $errorData = $response->json();
+                return response()->json([
+                    'error' => $errorData['error'] ?? $errorData['message'] ?? 'Error en el servicio externo.',
+                    'details' => $errorData
+                ], $status == 404 ? 404 : 502);
+            }
+
+            $data = $response->json();
+
+            // Si llegamos aquí pero la API devuelve un error estructurado
+            if (isset($data['error']) || (isset($data['queries']) && $data['queries'] <= 0)) {
+                return response()->json(['error' => $data['error'] ?? 'No se encontró información para el DNI proporcionado.'], 404);
+            }
+
+            // Perudevs devuelve un objeto 'resultado'
+            $res = $data['resultado'] ?? $data;
+
+            return response()->json([
+                'nombres'          => $res['nombres'] ?? '',
+                'apellido_paterno' => $res['apellido_paterno'] ?? '',
+                'apellido_materno' => $res['apellido_materno'] ?? '',
+                'documento'        => $res['documento'] ?? $dni,
+                'raw'              => $data
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Error inesperado al consultar el DNI: ' . $e->getMessage()], 500);
+        }
+    }
+
     public function index(Request $request, Company $company, Branch $branch)
     {
         $branch = $this->resolveBranch($company, $branch);
@@ -106,7 +164,7 @@ class PersonController extends Controller
         }
         $hasUserRole = in_array(1, $roleIds, true);
         $userData = $this->validateUserData($request, $hasUserRole, null);
-        
+
         DB::transaction(function () use ($branch, $data, $roleIds, $hasUserRole, $userData) {
             $person = $branch->people()->create($data);
             $this->syncRoles($person, $roleIds, $branch->id);
@@ -248,24 +306,26 @@ class PersonController extends Controller
 
     private function validatePerson(Request $request): array
     {
-        // Reglas alineadas con la migración: solo se marcan required
-        // los campos que realmente deben ser obligatorios a nivel de negocio.
+        $fromPos = $request->boolean('from_pos');
+
         $data = $request->validate([
-            'first_name' => ['required', 'string', 'max:255'],
-            'last_name' => ['required', 'string', 'max:255'],
+            'first_name'      => ['required', 'string', 'max:255'],
+            'last_name'       => ['required', 'string', 'max:255'],
             'fecha_nacimiento' => ['nullable', 'date'],
-            'genero' => ['nullable', 'string', 'max:30'],
-            'person_type' => ['required', 'string', 'max:100'],
-            'phone' => ['nullable', 'string', 'max:50'],
-            'email' => ['nullable', 'email', 'max:255'],
-            'document_number' => ['required', 'string', 'max:50'],
-            'address' => ['nullable', 'string', 'max:255'],
-            'location_id' => ['required', 'integer', 'exists:locations,id'],
-            'pin' => ['nullable', 'string', 'max:20'],
+            'genero'          => ['nullable', 'string', 'max:30'],
+            // En el POS solo nombre y apellido son obligatorios
+            'person_type'     => $fromPos ? ['nullable', 'string', 'max:100'] : ['required', 'string', 'max:100'],
+            'phone'           => ['nullable', 'string', 'max:50'],
+            'email'           => ['nullable', 'email', 'max:255'],
+            'document_number' => $fromPos ? ['nullable', 'string', 'max:50'] : ['required', 'string', 'max:50'],
+            'address'         => ['nullable', 'string', 'max:255'],
+            'location_id'     => $fromPos ? ['nullable', 'integer', 'exists:locations,id'] : ['required', 'integer', 'exists:locations,id'],
+            'pin'             => ['nullable', 'string', 'max:20'],
         ]);
 
         return $data;
     }
+
 
     private function validateRoles(Request $request): array
     {
@@ -369,4 +429,3 @@ class PersonController extends Controller
         ];
     }
 }
-

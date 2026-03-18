@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'dni_api' => [
+        'url' => env('DNI_API_URL'),
+        'token' => env('DNI_API_TOKEN'),
+    ],
+
 ];

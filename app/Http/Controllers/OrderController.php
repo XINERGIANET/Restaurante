@@ -405,7 +405,7 @@ class OrderController extends Controller
             'user' => $request->user(),
             'waiterPinEnabled' => $waiterPinEnabled,
             'canCharge' => $this->canCharge($profileId),
-             'selectedAreaId' => $selectedAreaId,
+            'selectedAreaId' => $selectedAreaId,
             'turboCacheControl' => 'no-cache',
         ]);
 
@@ -647,7 +647,7 @@ class OrderController extends Controller
         if ($clienteRoleId) {
             $peopleQuery->whereHas('roles', function ($q) use ($clienteRoleId, $branchId) {
                 $q->where('roles.id', $clienteRoleId)
-                  ->when($branchId, fn($qq) => $qq->where('role_person.branch_id', $branchId));
+                    ->when($branchId, fn($qq) => $qq->where('role_person.branch_id', $branchId));
             });
         } else {
             $peopleQuery->whereDoesntHave('user');
@@ -659,7 +659,7 @@ class OrderController extends Controller
         $products = Product::where('type', 'PRODUCT')
             ->where(function ($q) {
                 $q->whereNull('product_type_id')
-                    ->orWhereHas('productType', fn ($q2) => $q2->whereIn('behavior', [
+                    ->orWhereHas('productType', fn($q2) => $q2->whereIn('behavior', [
                         ProductType::BEHAVIOR_SELLABLE,
                         ProductType::BEHAVIOR_BOTH,
                     ]));
@@ -668,13 +668,13 @@ class OrderController extends Controller
                 $query->whereHas('productBranches', function ($q) use ($branchId) {
                     $q->where('branch_id', $branchId);
                 })
-                ->whereExists(function ($sub) use ($branchId) {
-                    $sub->select(DB::raw(1))
-                        ->from('category_branch')
-                        ->whereColumn('category_branch.category_id', 'products.category_id')
-                        ->where('category_branch.branch_id', $branchId)
-                        ->whereNull('category_branch.deleted_at');
-                });
+                    ->whereExists(function ($sub) use ($branchId) {
+                        $sub->select(DB::raw(1))
+                            ->from('category_branch')
+                            ->whereColumn('category_branch.category_id', 'products.category_id')
+                            ->where('category_branch.branch_id', $branchId)
+                            ->whereNull('category_branch.deleted_at');
+                    });
             }, function ($query) {
                 $query->whereRaw('1 = 0'); // sin sucursal = no productos
             })
@@ -699,24 +699,24 @@ class OrderController extends Controller
         // Solo product_branches de esta sucursal cuyo producto es vendible (mismo criterio que Ventas).
         $productBranches = $branchId
             ? ProductBranch::where('branch_id', $branchId)
-                ->with(['product.productType', 'taxRate'])
-                ->get()
-                ->filter(function ($productBranch) {
-                    if ($productBranch->product === null) return false;
-                    $pt = $productBranch->product->productType;
-                    return $pt === null || $pt->isSellable();
-                })
-                ->map(function ($productBranch) {
-                    $taxRatePct = $productBranch->taxRate ? (float) $productBranch->taxRate->tax_rate : null;
-                    return [
-                        'id' => $productBranch->id,
-                        'product_id' => $productBranch->product_id,
-                        'price' => (float) $productBranch->price,
-                        'stock' => (float) ($productBranch->stock ?? 0),
-                        'tax_rate' => $taxRatePct,
-                    ];
-                })
-                ->values()
+            ->with(['product.productType', 'taxRate'])
+            ->get()
+            ->filter(function ($productBranch) {
+                if ($productBranch->product === null) return false;
+                $pt = $productBranch->product->productType;
+                return $pt === null || $pt->isSellable();
+            })
+            ->map(function ($productBranch) {
+                $taxRatePct = $productBranch->taxRate ? (float) $productBranch->taxRate->tax_rate : null;
+                return [
+                    'id' => $productBranch->id,
+                    'product_id' => $productBranch->product_id,
+                    'price' => (float) $productBranch->price,
+                    'stock' => (float) ($productBranch->stock ?? 0),
+                    'tax_rate' => $taxRatePct,
+                ];
+            })
+            ->values()
             : collect();
 
         // Categorías asignadas a esta sucursal (category_branch).
@@ -734,7 +734,7 @@ class OrderController extends Controller
             })
             ->orderBy('description')
             ->get();
-        
+
         $units = Unit::query()->orderBy('description')->get();
 
         // Pedido pendiente activo para esta mesa (si existe, lo cargamos para no duplicar)
@@ -751,40 +751,40 @@ class OrderController extends Controller
 
         // Solo detalles activos (no cancelados). Mismo producto se agrupa (x5, etc.). Entregado = estado 'E'.
         $pendingItemsRaw = $pendingOrder
-    ? ($pendingOrder->details ?? collect())
-        ->filter(fn ($d) => ($d->status ?? 'A') !== 'C')
-        ->map(function ($d) {
-            $qty   = (float) ($d->quantity ?? 0);
-            $courtesyQty = (float) ($d->courtesy_quantity ?? 0);
-            $amount = (float) ($d->amount ?? 0);
-            // Precio efectivo por unidad pagada (opcional, solo para mostrar)
-            $paidQty = max(0, $qty - $courtesyQty);
-            $price = ($paidQty > 0)
-                ? ($amount / $paidQty)
-                : 0;
-            $rawComment = trim((string) ($d->comment ?? ''));
-            $note = $rawComment;
-            if ($note !== '' && preg_match('/^\d{2}:\d{2}\s*-\s*/', $note) === 1) {
-                $note = preg_replace('/^\d{2}:\d{2}(?:\s*[ap]\.?m\.?)?\s*-\s*/i', '', $note);
-                $note = trim($note);
-            }
-            $commandTime = $d->commanded_at
-                ? $d->commanded_at->format('H:i')
-                : ($d->created_at ? $d->created_at->format('H:i') : null);
-            $status = $d->status ?? 'A';
-            return [
-                'pId'         => (int) ($d->product_id ?? 0),
-                'name'        => $d->description ?? '',
-                'qty'         => $qty,
-                'price'       => round($price, 6),
-                'tax_rate'    => 10,
-                'note'        => $note,
-                'commandTime' => $commandTime,
-                'delivered'   => $status === 'E',
-                'courtesyQty' => $courtesyQty,
-            ];
-        })->values()->all()
-    : [];
+            ? ($pendingOrder->details ?? collect())
+            ->filter(fn($d) => ($d->status ?? 'A') !== 'C')
+            ->map(function ($d) {
+                $qty   = (float) ($d->quantity ?? 0);
+                $courtesyQty = (float) ($d->courtesy_quantity ?? 0);
+                $amount = (float) ($d->amount ?? 0);
+                // Precio efectivo por unidad pagada (opcional, solo para mostrar)
+                $paidQty = max(0, $qty - $courtesyQty);
+                $price = ($paidQty > 0)
+                    ? ($amount / $paidQty)
+                    : 0;
+                $rawComment = trim((string) ($d->comment ?? ''));
+                $note = $rawComment;
+                if ($note !== '' && preg_match('/^\d{2}:\d{2}\s*-\s*/', $note) === 1) {
+                    $note = preg_replace('/^\d{2}:\d{2}(?:\s*[ap]\.?m\.?)?\s*-\s*/i', '', $note);
+                    $note = trim($note);
+                }
+                $commandTime = $d->commanded_at
+                    ? $d->commanded_at->format('H:i')
+                    : ($d->created_at ? $d->created_at->format('H:i') : null);
+                $status = $d->status ?? 'A';
+                return [
+                    'pId'         => (int) ($d->product_id ?? 0),
+                    'name'        => $d->description ?? '',
+                    'qty'         => $qty,
+                    'price'       => round($price, 6),
+                    'tax_rate'    => 10,
+                    'note'        => $note,
+                    'commandTime' => $commandTime,
+                    'delivered'   => $status === 'E',
+                    'courtesyQty' => $courtesyQty,
+                ];
+            })->values()->all()
+            : [];
 
         // Agrupar mismo producto en un solo ítem (ej. PB x5 + PB x1 → PB x6)
         $pendingItems = collect($pendingItemsRaw)->groupBy('pId')->map(function ($group) {
@@ -804,20 +804,20 @@ class OrderController extends Controller
 
         // Detalles cancelados: agrupar mismo producto en uno solo (ej. PB x5 + PB x1 → PB x6)
         $pendingCancelledDetails = $pendingOrder
-            ? collect($pendingOrder->details->where('status', 'C')->map(fn ($d) => [
+            ? collect($pendingOrder->details->where('status', 'C')->map(fn($d) => [
                 'product_id' => (int) ($d->product_id ?? 0),
                 'description' => $d->description ?? 'Producto',
                 'quantity' => (float) $d->quantity,
                 'comment' => $d->comment ?? '',
             ]))
-                ->groupBy('product_id')
-                ->map(fn ($group) => [
-                    'description' => $group->first()['description'],
-                    'quantity' => $group->sum('quantity'),
-                    'comment' => $group->first()['comment'],
-                ])
-                ->values()
-                ->all()
+            ->groupBy('product_id')
+            ->map(fn($group) => [
+                'description' => $group->first()['description'],
+                'quantity' => $group->sum('quantity'),
+                'comment' => $group->first()['comment'],
+            ])
+            ->values()
+            ->all()
             : [];
 
         $saleOrOrderTypeIds = MovementType::query()
@@ -1200,7 +1200,7 @@ class OrderController extends Controller
                     $areaId = $byId->area_id;
                 }
             }
-            
+
             $existingOrderMovementForPeople = null;
             if ($request->filled('order_movement_id')) {
                 $existingOrderMovementForPeople = OrderMovement::where('id', (int) $request->order_movement_id)
@@ -1223,7 +1223,7 @@ class OrderController extends Controller
             } else {
                 $peopleCount = (int) ($table->capacity ?? 1);
             }
-    
+
             // Prioridad 2: si no, buscar por mesa
             if (!$existingOrderMovement && $tableId) {
                 $existingOrderMovement = OrderMovement::where('table_id', $tableId)
@@ -1266,7 +1266,7 @@ class OrderController extends Controller
                     'total' => $total,
                     'people_count' => $peopleCount,
                     'delivery_amount' => $deliveryAmount,
-                    
+
                     'contact_phone' => $request->filled('contact_phone') ? $request->contact_phone : null,
                     'delivery_address' => $request->filled('delivery_address') ? $request->delivery_address : null,
                     'delivery_time' => $request->filled('delivery_time') ? $request->delivery_time : null,
