@@ -263,7 +263,7 @@
                                                             <i class="{{ $operation->icon }}"></i>
                                                         </x-ui.button>
                                                         <span
-                                                            class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50"
+                                                            class="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50"
                                                             style="transition-delay: 0.3s;">{{ $operation->name }}</span>
                                                     </form>
                                                 @else
@@ -276,7 +276,7 @@
                                                             <i class="{{ $operation->icon }}"></i>
                                                         </x-ui.link-button>
                                                         <span
-                                                            class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50"
+                                                            class="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50"
                                                             style="transition-delay: 0.3s;">{{ $operation->name }}</span>
                                                     </div>
                                                 @endif

@@ -57,7 +57,7 @@ class ProductController extends Controller
         $products = Product::query()
             ->with(['category', 'baseUnit', 'productBranches.branch', 'productBranches.taxRate'])
             ->when($branchId, function ($query) use ($branchId) {
-                $query->whereHas('productBranches', fn ($q) => $q->where('branch_id', $branchId));
+                $query->whereHas('productBranches', fn($q) => $q->where('branch_id', $branchId));
             })
             ->when($search, function ($query) use ($search) {
                 $query->where('description', 'ILIKE', "%{$search}%")
@@ -95,7 +95,7 @@ class ProductController extends Controller
             ->whereNull('p.deleted_at')
             ->where('p.description', 'igv_defecto')
             ->pluck('bp.value', 'bp.branch_id')
-            ->map(fn ($v) => is_numeric($v) ? (int) $v : null)
+            ->map(fn($v) => is_numeric($v) ? (int) $v : null)
             ->filter()
             ->all();
 
@@ -130,16 +130,16 @@ class ProductController extends Controller
                             Log::error(message: 'Failed to create directory: ' . $directory);
                         }
                     }
-                    
+
                     // Verificar permisos del directorio
                     if (is_dir($directory)) {
-                    }   
+                    }
                     $path = $file->store('product', 'public');
-                    
+
                     if ($path && !empty($path)) {
                         $imagePath = $path;
                     } else {
-                            Log::warning(message: 'El path de la imagen está vacío después de guardar');
+                        Log::warning(message: 'El path de la imagen está vacío después de guardar');
                     }
                 } catch (\Exception $e) {
                     Log::error(message: 'Error al guardar imagen del producto: ' . $e->getMessage());
@@ -150,7 +150,7 @@ class ProductController extends Controller
         } else {
             Log::info(message: 'No image file in request');
         }
-        
+
         $validated = $this->validateProduct($request);
         $productType = ProductType::find($validated['product_type_id']);
         $productData = $this->prepareProductData($validated, $productType);
@@ -162,7 +162,7 @@ class ProductController extends Controller
         }
 
         $product = Product::create($productData);
-        
+
         // Crear ProductBranch para la sucursal actual
         $branchId = (int) ($request->input('branch_id') ?: $request->session()->get('branch_id'));
         if ($branchId) {
@@ -171,9 +171,9 @@ class ProductController extends Controller
             $branchData['status'] = 'A';
             ProductBranch::create($branchData);
         }
-        
+
         $viewId = $request->input('view_id');
-        
+
         return redirect()
             ->route('products.index', $viewId ? ['view_id' => $viewId] : [])
             ->with('status', 'Producto creado correctamente.');
@@ -222,12 +222,12 @@ class ProductController extends Controller
             ->whereNull('p.deleted_at')
             ->where('p.description', 'igv_defecto')
             ->pluck('bp.value', 'bp.branch_id')
-            ->map(fn ($v) => is_numeric($v) ? (int) $v : null)
+            ->map(fn($v) => is_numeric($v) ? (int) $v : null)
             ->filter()
             ->all();
         $productBranchesByBranchId = $product->productBranches
             ->keyBy('branch_id')
-            ->map(fn (ProductBranch $pb) => [
+            ->map(fn(ProductBranch $pb) => [
                 'price' => (float) ($pb->price ?? 0),
                 'purchase_price' => (float) ($pb->purchase_price ?? 0),
                 'stock' => (float) ($pb->stock ?? 0),
@@ -266,7 +266,7 @@ class ProductController extends Controller
         $productType = ProductType::find($validated['product_type_id']);
         $productData = $this->prepareProductData($validated, $productType);
         $branchData = $this->prepareBranchData($validated, $productType);
-        
+
         if ($request->hasFile('image')) {
             $file = $request->file('image');
             if ($file->isValid() && $file->getRealPath()) {
@@ -289,17 +289,17 @@ class ProductController extends Controller
                 }
             }
         }
-        
+
         // Actualizar producto
         $product->update($productData);
-        
+
         // Actualizar o crear ProductBranch para la sucursal seleccionada
         $branchId = (int) ($validated['branch_id'] ?? $request->session()->get('branch_id') ?? 0);
         if ($branchId) {
             $productBranch = $product->productBranches()
                 ->where('branch_id', $branchId)
                 ->first();
-            
+
             if ($productBranch) {
                 $productBranch->update($branchData);
             } else {
@@ -309,9 +309,9 @@ class ProductController extends Controller
                 ProductBranch::create($branchData);
             }
         }
-        
+
         $viewId = $request->input('view_id');
-        
+
         return redirect()
             ->route('products.index', $viewId ? ['view_id' => $viewId] : [])
             ->with('status', 'Producto actualizado correctamente.');
@@ -323,7 +323,7 @@ class ProductController extends Controller
         if ($product->image && !empty($product->image) && Storage::disk('public')->exists($product->image)) {
             Storage::disk('public')->delete($product->image);
         }
-        
+
         $product->delete();
         $viewId = $request->input('view_id');
 
@@ -386,12 +386,12 @@ class ProductController extends Controller
             if ($request->has('tax_rate_id') && ($taxRate === '' || $taxRate === null)) {
                 $merge['tax_rate_id'] = $productBranch->tax_rate_id
                     ?? DB::table('branch_parameters as bp')
-                        ->join('parameters as p', 'p.id', '=', 'bp.parameter_id')
-                        ->where('bp.branch_id', $branchId)
-                        ->where('p.description', 'igv_defecto')
-                        ->whereNull('bp.deleted_at')
-                        ->whereNull('p.deleted_at')
-                        ->value('bp.value');
+                    ->join('parameters as p', 'p.id', '=', 'bp.parameter_id')
+                    ->where('bp.branch_id', $branchId)
+                    ->where('p.description', 'igv_defecto')
+                    ->whereNull('bp.deleted_at')
+                    ->whereNull('p.deleted_at')
+                    ->value('bp.value');
                 if (isset($merge['tax_rate_id']) && $merge['tax_rate_id'] !== null) {
                     $merge['tax_rate_id'] = (int) $merge['tax_rate_id'];
                 }
@@ -447,7 +447,7 @@ class ProductController extends Controller
                     if (!$branchId || !$value) {
                         return;
                     }
-                    $exists = \DB::table('products')
+                    $exists = DB::table('products')
                         ->join('product_branch', 'product_branch.product_id', '=', 'products.id')
                         ->where('products.code', $value)
                         ->where('product_branch.branch_id', $branchId)
@@ -476,6 +476,19 @@ class ProductController extends Controller
             'duration_minutes' => ['nullable', 'integer', 'min:0'],
             'supplier_id' => ['nullable', 'integer'],
         ], $branchRules));
+
+        if ($isSupply) {
+            $validated['price'] = 0;
+            $validated['purchase_price'] = 0;
+            $validated['stock'] = 0;
+            $validated['stock_minimum'] = 0;
+            $validated['stock_maximum'] = 0;
+            $validated['minimum_sell'] = 0;
+            $validated['minimum_purchase'] = 0;
+            $validated['tax_rate_id'] = null;
+            $validated['unit_sale'] = 'N';
+            $validated['expiration_date'] = null;
+        }
 
         if (isset($validated['image']) && empty($validated['image'])) {
             unset($validated['image']);
@@ -512,22 +525,27 @@ class ProductController extends Controller
         if ($productType && $productType->isSupply()) {
             return [
                 'status' => $validated['status'],
-                'expiration_date' => null,
+                'expiration_date' => $validated['expiration_date'] ?? null,
                 'stock_minimum' => $validated['stock_minimum'] ?? 0,
                 'stock_maximum' => $validated['stock_maximum'] ?? 0,
                 'minimum_sell' => 0,
-                'minimum_purchase' => 0,
+                'minimum_purchase' => $validated['minimum_purchase'] ?? 0,
                 'favorite' => $validated['favorite'],
-                'tax_rate_id' => null,
-                'unit_sale' => 'N',
+                'tax_rate_id' => $validated['tax_rate_id'] ?? null,
+                'unit_sale' => $validated['unit_sale'] ?? $validated['base_unit_id'] ?? 'N',
                 'duration_minutes' => $validated['duration_minutes'] ?? 0,
                 'supplier_id' => $validated['supplier_id'] ?? null,
                 'stock' => $validated['stock'] ?? 0,
                 'price' => 0,
-                'purchase_price' => 0,
+                'purchase_price' => $validated['purchase_price'] ?? 0,
             ];
         }
-        return [
+
+
+
+
+
+        $data = [
             'status' => $validated['status'],
             'expiration_date' => $validated['expiration_date'] ?? null,
             'stock_minimum' => $validated['stock_minimum'],
@@ -543,5 +561,7 @@ class ProductController extends Controller
             'price' => $validated['price'] ?? 0,
             'purchase_price' => $validated['purchase_price'] ?? 0,
         ];
+
+        return $data;
     }
 }

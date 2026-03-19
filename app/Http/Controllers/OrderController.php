@@ -673,6 +673,7 @@ class OrderController extends Controller
                             ->from('category_branch')
                             ->whereColumn('category_branch.category_id', 'products.category_id')
                             ->where('category_branch.branch_id', $branchId)
+                            ->whereIn('category_branch.menu_type', ['VENTAS_PEDIDOS', 'COMPRAS', 'GENERAL'])
                             ->whereNull('category_branch.deleted_at');
                     });
             }, function ($query) {
@@ -721,15 +722,7 @@ class OrderController extends Controller
 
         // Categorías asignadas a esta sucursal (category_branch).
         $categories = Category::query()
-            ->when($branchId, function ($query) use ($branchId) {
-                $query->whereExists(function ($sub) use ($branchId) {
-                    $sub->select(DB::raw(1))
-                        ->from('category_branch')
-                        ->whereColumn('category_branch.category_id', 'categories.id')
-                        ->where('category_branch.branch_id', $branchId)
-                        ->whereNull('category_branch.deleted_at');
-                });
-            }, function ($query) {
+            ->when($branchId, fn($q) => $q->forBranchMenu($branchId, 'VENTAS_PEDIDOS'), function ($query) {
                 $query->whereRaw('1 = 0'); // sin sucursal = no categorías
             })
             ->orderBy('description')

@@ -43,15 +43,15 @@
 @endphp
 
 <div x-data="{
-    productTypeId: {{ $productTypeIdInit === null ? 'null' : $productTypeIdInit }},
-    productTypesById: {{ \Illuminate\Support\Js::from($productTypesById) }},
+    productTypeId: @js($productTypeIdInit),
+    productTypesById: @js($productTypesById),
     get showComplements() {
         const pt = this.productTypeId != null ? this.productTypesById[this.productTypeId] : null;
-        return pt ? (pt.behavior === 'SELLABLE' || pt.behavior === 'BOTH') : true;
+        return pt ? (pt.behavior === 'SELLABLE' || pt.behavior === 'BOTH') : false;
     },
     get showBranchDetail() {
         const pt = this.productTypeId != null ? this.productTypesById[this.productTypeId] : null;
-        return pt ? (pt.behavior === 'SELLABLE' || pt.behavior === 'BOTH') : true;
+        return pt ? (pt.behavior === 'SELLABLE' || pt.behavior === 'BOTH') : false;
     },
     get showPurchaseFields() {
         const pt = this.productTypeId != null ? this.productTypesById[this.productTypeId] : null;
@@ -65,16 +65,16 @@
     complementMode: '{{ old('complement_mode', $product->complement_mode ?? '') }}',
     classificationValue: '{{ old('classification', $product->classification ?? 'GOOD') }}',
     complements: {{ \Illuminate\Support\Js::from(old('complements', [])) }},
-    categoryId: {{ old('category_id', $product->category_id ?? 'null') }},
-    baseUnitId: {{ old('base_unit_id', $product->base_unit_id ?? 'null') }},
-    supplierId: {{ old('supplier_id', $productBranch?->supplier_id ?? 'null') }},
-    unitSaleId: {{ $unitSaleInit === null ? 'null' : $unitSaleInit }},
-    stockMin: {{ (float) old('stock_minimum', $productBranch?->stock_minimum ?? 0) }},
-    stockMax: {{ (float) old('stock_maximum', $productBranch?->stock_maximum ?? 0) }},
-    selectedBranchId: {{ $selectedBranchInit === null ? 'null' : $selectedBranchInit }},
+    categoryId: @js(old('category_id', $product->category_id ?? null)),
+    baseUnitId: @js(old('base_unit_id', $product->base_unit_id ?? null)),
+    supplierId: @js(old('supplier_id', $productBranch?->supplier_id ?? null)),
+    unitSaleId: @js($unitSaleInit),
+    stockMin: @js((float) old('stock_minimum', $productBranch?->stock_minimum ?? 0)),
+    stockMax: @js((float) old('stock_maximum', $productBranch?->stock_maximum ?? 0)),
+    selectedBranchId: @js($selectedBranchInit),
     isEdit: {{ !empty($product?->id) ? 'true' : 'false' }},
-    branchStore: {{ \Illuminate\Support\Js::from($productBranchesByBranchId ?? []) }},
-    igvByBranchId: {{ \Illuminate\Support\Js::from($igvByBranchId) }},
+    branchStore: @js($productBranchesByBranchId ?? []),
+    igvByBranchId: @js($igvByBranchId),
     branchDrafts: {},
     branchFields: {
         price: @js(old('price', $productBranch?->price ?? '')),
@@ -92,7 +92,7 @@
         duration_minutes: @js(old('duration_minutes', $productBranch?->duration_minutes ?? 0)),
     },
     // IDs resueltos por nombre en servidor (evita comparar strings en el frontend)
-    platosCategoriaIds: {{ \Illuminate\Support\Js::from($platosCategoriaIds) }},
+    platosCategoriaIds: @js($platosCategoriaIds),
 
     init() {
         const defaults = () => ({
@@ -185,7 +185,8 @@
             this.classificationValue = 'GOOD';
         }
     }
-}" @open-product-form-with-type.window="if ($event.detail && $event.detail.product_type_id != null) productTypeId = $event.detail.product_type_id">
+}"
+    @open-product-form-with-type.window="if ($event.detail && $event.detail.product_type_id != null) productTypeId = $event.detail.product_type_id">
 
     <!-- INFORMACIÓN GENERAL -->
     <div class="mb-8 p-6 bg-gray-50 dark:bg-gray-800/30 rounded-lg border border-gray-200 dark:border-gray-700">
@@ -217,9 +218,8 @@
             <div>
                 <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Abreviatura <span
                         class="text-red-500">*</span></label>
-                <input type="text" name="abbreviation"
-                    value="{{ old('abbreviation', $product->abbreviation ?? '') }}" required
-                    placeholder="Ingrese la abreviatura"
+                <input type="text" name="abbreviation" value="{{ old('abbreviation', $product->abbreviation ?? '') }}"
+                    required placeholder="Ingrese la abreviatura"
                     class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30" />
                 @error('abbreviation')
                     <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
@@ -230,8 +230,7 @@
                 <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Tipo de producto <span
                         class="text-red-500">*</span></label>
                 <input type="hidden" name="product_type_id" id="product-type-id-select" :value="productTypeId" required>
-                <select id="product-type-id-select-display" disabled
-                    x-model.number="productTypeId"
+                <select id="product-type-id-select-display" disabled x-model.number="productTypeId"
                     class="dark:bg-dark-900 shadow-theme-xs h-11 w-full rounded-lg border border-gray-300 bg-gray-100 px-4 py-2.5 text-sm text-gray-800 cursor-not-allowed dark:border-gray-700 dark:bg-gray-800 dark:text-white/90 dark:bg-gray-800/80">
                     <option value="">Seleccione tipo</option>
                     @foreach ($productTypes as $pt)
@@ -245,15 +244,8 @@
 
             <div>
                 {{-- Combobox visual para categoría, ligado a categoryId --}}
-                <x-form.select.combobox
-                    label="Categoría"
-                    :required="true"
-                    :options="$categoriesSafe"
-                    name=""
-                    x-model="categoryId"
-                    placeholder="Seleccione categoría"
-                    icon="ri-layout-grid-line"
-                />
+                <x-form.select.combobox label="Categoría" :required="true" :options="$categoriesSafe" name=""
+                    x-model="categoryId" placeholder="Seleccione categoría" icon="ri-layout-grid-line" />
                 {{-- Valor real que se envía al backend --}}
                 <input type="hidden" name="category_id" x-model="categoryId">
                 @error('category_id')
@@ -263,15 +255,8 @@
 
             <div>
                 {{-- Combobox visual para unidad base, ligado a baseUnitId --}}
-                <x-form.select.combobox
-                    label="Unidad base"
-                    :required="true"
-                    :options="$unitsSafe"
-                    name=""
-                    x-model="baseUnitId"
-                    placeholder="Seleccione la unidad"
-                    icon="ri-ruler-2-line"
-                />
+                <x-form.select.combobox label="Unidad base" :required="true" :options="$unitsSafe" name=""
+                    x-model="baseUnitId" placeholder="Seleccione la unidad" icon="ri-ruler-2-line" />
                 <input type="hidden" name="base_unit_id" x-model="baseUnitId">
                 @error('base_unit_id')
                     <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
@@ -340,8 +325,7 @@
             <div style="display: none;">
                 <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Duración
                     (minutos)</label>
-                <input type="number" name="duration_minutes"
-                    x-model.number="branchFields.duration_minutes"
+                <input type="number" name="duration_minutes" x-model.number="branchFields.duration_minutes"
                     value="{{ old('duration_minutes', $productBranch->duration_minutes ?? '') }}"
                     class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
                     placeholder="Ej: 30" />
@@ -354,7 +338,8 @@
 
     <!-- INFORMACIÓN DE PRECIOS Y STOCK (DETALLE POR SEDE) - solo para tipo vendible (SELLABLE) y compras/ventas (BOTH) -->
     <template x-if="!showBranchDetail && !showSupplyFields">
-        <div class="mb-8 p-6 bg-gray-50 dark:bg-gray-800/30 rounded-lg border border-gray-200 dark:border-gray-700" x-cloak>
+        <div class="mb-8 p-6 bg-gray-50 dark:bg-gray-800/30 rounded-lg border border-gray-200 dark:border-gray-700"
+            x-cloak>
             <p class="text-sm text-gray-600 dark:text-gray-400">Seleccione un tipo de producto para ver los campos.</p>
         </div>
     </template>
@@ -369,13 +354,16 @@
         </div>
     </template>
     <!-- Configuración de suministro: stock y proveedor (sin precio de venta) -->
-    <div x-show="showSupplyFields" x-cloak x-transition class="mb-8 p-6 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+    <div x-show="showSupplyFields" x-cloak x-transition
+        class="mb-8 p-6 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
         <h3 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">📦 Configuración de Suministro</h3>
-        <p class="mb-4 text-sm text-gray-600 dark:text-gray-400">Los suministros tienen stock por sede para inventario, pero no precio de venta. Configura stock y proveedor.</p>
+        <p class="mb-4 text-sm text-gray-600 dark:text-gray-400">Los suministros tienen stock por sede para inventario,
+            pero no precio de venta. Configura stock y proveedor.</p>
         @if (isset($branches) && $branches->isNotEmpty())
             <div class="mb-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
                 <div>
-                    <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Sede <span class="text-red-500">*</span></label>
+                    <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Sede <span
+                            class="text-red-500">*</span></label>
                     <select name="branch_id" x-model="selectedBranchId" required
                         class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90">
                         @foreach ($branches as $b)
@@ -390,7 +378,8 @@
         @endif
         <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Precio de compra <span class="text-red-500">*</span></label>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Precio de compra <span
+                        class="text-red-500">*</span></label>
                 <input type="number" name="purchase_price" step="0.01" x-model.number="branchFields.purchase_price"
                     value="{{ old('purchase_price', $productBranch->purchase_price ?? 0) }}" required min="0"
                     class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
@@ -400,7 +389,18 @@
                 @enderror
             </div>
             <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Stock actual <span class="text-red-500">*</span></label>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Compra mínima</label>
+                <input type="number" name="minimum_purchase" step="0.01" x-model.number="branchFields.minimum_purchase"
+                    value="{{ old('minimum_purchase', $productBranch->minimum_purchase ?? '') }}"
+                    class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
+                    placeholder="0.00" />
+                @error('minimum_purchase')
+                    <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
+                @enderror
+            </div>
+            <div>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Stock actual <span
+                        class="text-red-500">*</span></label>
                 <input type="number" name="stock" step="0.01" x-model.number="branchFields.stock"
                     value="{{ old('stock', $productBranch->stock ?? '') }}" required min="0"
                     class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
@@ -409,8 +409,11 @@
                     <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
                 @enderror
             </div>
+
+
             <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Stock mínimo <span class="text-red-500">*</span></label>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Stock mínimo <span
+                        class="text-red-500">*</span></label>
                 <input type="number" name="stock_minimum" step="0.01" x-model.number="branchFields.stock_minimum"
                     value="{{ old('stock_minimum', $productBranch->stock_minimum ?? '') }}" required min="0"
                     class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
@@ -420,7 +423,8 @@
                 @enderror
             </div>
             <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Stock máximo <span class="text-red-500">*</span></label>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Stock máximo <span
+                        class="text-red-500">*</span></label>
                 <input type="number" name="stock_maximum" step="0.01" x-model.number="branchFields.stock_maximum"
                     value="{{ old('stock_maximum', $productBranch->stock_maximum ?? '') }}" required min="0"
                     class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
@@ -430,18 +434,21 @@
                 @enderror
             </div>
             <div>
-                <x-form.select.combobox label="Proveedor" :required="false" :options="$suppliers ?? []" name="supplier_id"
-                    x-model="supplierId" placeholder="Seleccione proveedor" icon="ri-truck-line" />
+                <x-form.select.combobox label="Proveedor" :required="false" :options="$suppliers ?? []"
+                    name="supplier_id" x-model="supplierId" placeholder="Seleccione proveedor" icon="ri-truck-line" />
             </div>
         </div>
     </div>
-    <div class="mb-8 p-6 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800" x-show="showBranchDetail" x-cloak x-transition>
+    <div class="mb-8 p-6 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800"
+        x-show="showBranchDetail" x-cloak x-transition>
         <h3 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">💰 Información Detalle por Sede</h3>
-        <p class="mb-4 text-xs text-gray-600 dark:text-gray-400">Precio, stock y datos por sucursal (Vendible y Compras/ventas)</p>
+        <p class="mb-4 text-xs text-gray-600 dark:text-gray-400">Precio, stock y datos por sucursal (Vendible y
+            Compras/ventas)</p>
         @if (isset($branches) && $branches->isNotEmpty())
             <div class="mb-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
                 <div>
-                    <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Sede <span class="text-red-500">*</span></label>
+                    <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Sede <span
+                            class="text-red-500">*</span></label>
                     <select name="branch_id" x-model="selectedBranchId" required
                         class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90">
                         @foreach ($branches as $b)
@@ -459,8 +466,8 @@
                 <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Precio <span
                         class="text-red-500">*</span></label>
                 <input type="number" :name="showBranchDetail ? 'price' : 'price_skip'" step="0.01"
-                    x-model.number="branchFields.price"
-                    value="{{ old('price', $productBranch->price ?? '') }}" :required="showBranchDetail"
+                    x-model.number="branchFields.price" value="{{ old('price', $productBranch->price ?? '') }}"
+                    :required="showBranchDetail"
                     class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
                     placeholder="0.00" />
                 @error('price')
@@ -476,7 +483,8 @@
                         class="text-red-500">*</span></label>
                 <input type="number" :name="showPurchaseFields ? 'purchase_price' : 'purchase_price_skip'" step="0.01"
                     x-model.number="branchFields.purchase_price"
-                    value="{{ old('purchase_price', $productBranch->purchase_price ?? 0) }}" :required="showPurchaseFields" min="0"
+                    value="{{ old('purchase_price', $productBranch->purchase_price ?? 0) }}"
+                    :required="showPurchaseFields" min="0"
                     class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
                     placeholder="0.00" />
                 @error('purchase_price')
@@ -500,9 +508,8 @@
                     <input type="hidden" name="stock" x-bind:value="branchFields.stock ?? 0" />
                 </template>
 
-                <input type="number" step="0.01"
-                    :name="showBranchDetail ? 'stock' : 'stock_skip'" :required="showBranchDetail"
-                    x-model.number="branchFields.stock"
+                <input type="number" step="0.01" :name="showBranchDetail ? 'stock' : 'stock_skip'"
+                    :required="showBranchDetail" x-model.number="branchFields.stock"
                     x-bind:disabled="isEdit && branchStore && (branchStore[selectedBranchId] !== undefined)"
                     :min="Number(branchFields.stock_minimum || 0)"
                     :max="Number(branchFields.stock_maximum || 0) > 0 ? Number(branchFields.stock_maximum) : undefined"
@@ -521,8 +528,7 @@
                         class="text-red-500">*</span></label>
                 <input type="number" :name="showBranchDetail ? 'stock_minimum' : 'stock_minimum_skip'" step="0.01"
                     value="{{ old('stock_minimum', $productBranch->stock_minimum ?? '') }}"
-                    x-model.number="branchFields.stock_minimum"
-                    :required="showBranchDetail" min="0"
+                    x-model.number="branchFields.stock_minimum" :required="showBranchDetail" min="0"
                     class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
                     placeholder="0.00" />
                 @error('stock_minimum')
@@ -535,8 +541,7 @@
                         class="text-red-500">*</span></label>
                 <input type="number" :name="showBranchDetail ? 'stock_maximum' : 'stock_maximum_skip'" step="0.01"
                     value="{{ old('stock_maximum', $productBranch->stock_maximum ?? '') }}"
-                    x-model.number="branchFields.stock_maximum"
-                    :required="showBranchDetail" min="0"
+                    x-model.number="branchFields.stock_maximum" :required="showBranchDetail" min="0"
                     class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
                     placeholder="0.00" />
                 @error('stock_maximum')
@@ -561,7 +566,9 @@
             </template>
             <div x-show="showPurchaseFields" x-cloak>
                 <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Compra mínima</label>
-                <input type="hidden" name="minimum_purchase" x-bind:value="platosCategoriaIds.includes(Number(categoryId)) ? 0 : null" x-show="platosCategoriaIds.includes(Number(categoryId))">
+                <input type="hidden" name="minimum_purchase"
+                    x-bind:value="platosCategoriaIds.includes(Number(categoryId)) ? 0 : null"
+                    x-show="platosCategoriaIds.includes(Number(categoryId))">
                 <input type="number" step="0.01"
                     x-bind:name="showPurchaseFields && !platosCategoriaIds.includes(Number(categoryId)) ? 'minimum_purchase' : null"
                     x-model.number="branchFields.minimum_purchase"
@@ -579,15 +586,8 @@
             </div>
 
             <div>
-                <x-form.select.combobox
-                    label="Unidad de venta"
-                    :required="true"
-                    :options="$unitsSafe"
-                    name="unit_sale"
-                    x-model="unitSaleId"
-                    placeholder="Seleccione la unidad"
-                    icon="ri-ruler-2-line"
-                />
+                <x-form.select.combobox label="Unidad de venta" :required="true" :options="$unitsSafe" name="unit_sale"
+                    x-model="unitSaleId" placeholder="Seleccione la unidad" icon="ri-ruler-2-line" />
             </div>
 
             <div x-show="showBranchDetail" x-cloak>
@@ -599,13 +599,8 @@
                             : '';
                     }
                 @endphp
-                <x-form.date-picker
-                    name="expiration_date"
-                    label="Fecha de expiración"
-                    placeholder="Seleccione fecha de expiración"
-                    dateFormat="Y-m-d"
-                    :defaultDate="$expirationDefault"
-                />
+                <x-form.date-picker name="expiration_date" label="Fecha de expiración"
+                    placeholder="Seleccione fecha de expiración" dateFormat="Y-m-d" :defaultDate="$expirationDefault" />
                 @error('expiration_date')
                     <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
                 @enderror
@@ -614,7 +609,8 @@
     </div>
 
     <!-- CONFIGURACIÓN AVANZADA (solo Producto final) -->
-    <div x-show="showComplements" x-transition class="mb-8 p-6 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+    <div x-show="showComplements" x-transition
+        class="mb-8 p-6 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
         <h3 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">⚙️ Configuración Avanzada</h3>
         <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             <div>
@@ -637,8 +633,8 @@
             </div>
 
             <div x-show="showPurchaseFields" x-cloak>
-                <x-form.select.combobox label="Proveedor" :required="false" :options="$suppliers ?? []" name="supplier_id"
-                    x-model="supplierId" placeholder="Seleccione proveedor" icon="ri-truck-line" />
+                <x-form.select.combobox label="Proveedor" :required="false" :options="$suppliers ?? []"
+                    name="supplier_id" x-model="supplierId" placeholder="Seleccione proveedor" icon="ri-truck-line" />
             </div>
         </div>
     </div>
@@ -655,8 +651,10 @@
                     x-ref="complementSelect"
                     class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90">
                     <option value="NO" @selected(old('complement', $product->complement ?? 'NO') === 'NO')>No</option>
-                    <option value="HAS" @selected(old('complement', $product->complement ?? 'NO') === 'HAS')>Tiene complementos</option>
-                    <option value="IS" @selected(old('complement', $product->complement ?? 'NO') === 'IS')>Es complemento</option>
+                    <option value="HAS" @selected(old('complement', $product->complement ?? 'NO') === 'HAS')>Tiene
+                        complementos</option>
+                    <option value="IS" @selected(old('complement', $product->complement ?? 'NO') === 'IS')>Es complemento
+                    </option>
                 </select>
                 @error('complement')
                     <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
@@ -668,8 +666,10 @@
                     complemento</label>
                 <select name="complement_mode" x-model="complementMode" x-ref="modeSelect"
                     class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90">
-                    <option value="" @selected(old('complement_mode', $product->complement_mode ?? '') === '')>Sin modo</option>
-                    <option value="ALL" @selected(old('complement_mode', $product->complement_mode ?? '') === 'ALL')>Todo gratis</option>
+                    <option value="" @selected(old('complement_mode', $product->complement_mode ?? '') === '')>Sin modo
+                    </option>
+                    <option value="ALL" @selected(old('complement_mode', $product->complement_mode ?? '') === 'ALL')>Todo
+                        gratis</option>
                     <option value="QUANTITY" @selected(old('complement_mode', $product->complement_mode ?? '') === 'QUANTITY')>Cantidad gratis</option>
                 </select>
                 @error('complement_mode')
@@ -694,8 +694,7 @@
     </div>
 
     <!-- MULTIMEDIA E INFORMACIÓN ADICIONAL -->
-    <div
-        class="mb-8 p-6 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
+    <div class="mb-8 p-6 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
         <h3 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">📸 Multimedia e Información Adicional</h3>
         <div class="grid gap-5 lg:grid-cols-2" x-data="{
             imagePreview: '{{ isset($product) && $product->image ? asset('storage/' . $product->image) : '' }}',
@@ -761,8 +760,7 @@
                     </div>
                 </div>
 
-                <input type="file" name="image" id="image-input" accept="image/*"
-                    @change="showPreview($event)"
+                <input type="file" name="image" id="image-input" accept="image/*" @change="showPreview($event)"
                     class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 file:mr-4 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900/50 dark:file:text-blue-300" />
 
                 <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">

@@ -119,12 +119,27 @@ class PurchaseController extends Controller
         $defaultTaxRate = 18.00;
         $purchase = null; 
 
+        $categories = Category::query()
+            ->when($branchId, fn($q) => $q->forBranchMenu($branchId, 'COMPRAS'), function ($query) {
+                $query->whereRaw('1 = 0');
+            })
+            ->orderBy('description')
+            ->get();
+        
+        $validCategoryIds = $categories->pluck('id');
+
         $products = ProductBranch::where('branch_id', $branchId)
             ->with(['product', 'product.baseUnit', 'product.category', 'product.productType'])
             ->get()
-            ->filter(function ($pb) {
+            ->filter(function ($pb) use ($validCategoryIds) {
                 $product = $pb->product;
                 if (!$product) return false;
+
+                // Solo si la categoría está permitida para Compras
+                if (!in_array($product->category_id, $validCategoryIds->all())) {
+                    return false;
+                }
+
                 $pt = $product->productType;
                 if (!$pt) return false;
                 return in_array($pt->behavior, ['SUPPLY', 'BOTH'], true);
@@ -143,7 +158,7 @@ class PurchaseController extends Controller
                     'unit_id' => $product->base_unit_id ?? 0,
                     'unit_name' => $baseUnit ? ($baseUnit->description ?? $baseUnit->name ?? '') : '',
                     'price' => $pb->price ?? 0,
-                    'cost' => $pb->purchase_price ?? 0, // Usar purchase_price si corresponde
+                    'cost' => $pb->purchase_price ?? 0,
                     'stock' => (float) ($pb->stock ?? 0),
                     'category_id' => $pb->product->category_id ?? null,
                     'category' => $pb->product->category ? $pb->product->category->description : 'General',
@@ -153,9 +168,6 @@ class PurchaseController extends Controller
             })
             ->filter()
             ->values();
-
-        $categoryIds = collect($products)->pluck('category_id')->filter()->unique();
-        $categories = Category::whereIn('id', $categoryIds)->orderBy('description')->get();
 
         // Cargamos los datos de pago para los selectores del formulario
         $cards = Card::all();
@@ -746,12 +758,27 @@ class PurchaseController extends Controller
         
         $purchase = $purchaseMovement->movement; 
         
+        $categories = Category::query()
+            ->when($branchId, fn($q) => $q->forBranchMenu($branchId, 'COMPRAS'), function ($query) {
+                $query->whereRaw('1 = 0');
+            })
+            ->orderBy('description')
+            ->get();
+        
+        $validCategoryIds = $categories->pluck('id');
+
         $products = ProductBranch::where('branch_id', $branchId)
             ->with(['product', 'product.baseUnit', 'product.category', 'product.productType'])
             ->get()
-            ->filter(function ($pb) {
+            ->filter(function ($pb) use ($validCategoryIds) {
                 $product = $pb->product;
                 if (!$product) return false;
+
+                // Solo si la categoría está permitida para Compras
+                if (!in_array($product->category_id, $validCategoryIds->all())) {
+                    return false;
+                }
+
                 $pt = $product->productType;
                 if (!$pt) return false;
                 return in_array($pt->behavior, ['SUPPLY', 'BOTH'], true);
@@ -780,9 +807,6 @@ class PurchaseController extends Controller
             })
             ->filter()
             ->values();
-
-        $categoryIds = collect($products)->pluck('category_id')->filter()->unique();
-        $categories = Category::whereIn('id', $categoryIds)->orderBy('description')->get();
         $paymentMethods = PaymentMethod::where('status', true)->orderBy('order_num', 'asc')->get(['id', 'description']);
 
         // Mandar los modelos de pago

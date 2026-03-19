@@ -59,21 +59,28 @@ class CategoryController extends Controller
                 ->unique()
                 ->values()
                 ->all();
-            $categoriesQuery->whereIn('id', $categoryIdsInBranch);
+            $categoriesQuery->whereIn('categories.id', $categoryIdsInBranch);
         } else {
             $categoriesQuery->whereRaw('1 = 0');
         }
 
         $categories = $categoriesQuery
+            ->leftJoin('category_branch', function ($join) use ($branchId) {
+                $join->on('category_branch.category_id', '=', 'categories.id')
+                    ->where('category_branch.branch_id', $branchId)
+                    ->whereNull('category_branch.deleted_at');
+            })
+            ->select('categories.*', 'category_branch.menu_type')
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($q) use ($search) {
-                    $q->where('description', 'ILIKE', "%{$search}%")
-                        ->orWhere('abbreviation', 'ILIKE', "%{$search}%");
+                    $q->where('categories.description', 'ILIKE', "%{$search}%")
+                        ->orWhere('categories.abbreviation', 'ILIKE', "%{$search}%");
                 });
             })
-            ->orderByDesc('id')
+            ->orderByDesc('categories.id')
             ->paginate($perPage)
             ->withQueryString();
+
 
         return view('categories.index', [
             'categories' => $categories,
@@ -89,6 +96,7 @@ class CategoryController extends Controller
             'description'  => ['required', 'string', 'max:255'],
             'abbreviation' => ['required', 'string', 'max:255'],
             'image'        => ['nullable', 'image', 'max:2048'],
+            'menu_type'    => ['nullable', 'string', 'in:VENTAS_PEDIDOS,COMPRAS,GENERAL'],
         ]);
 
         if ($request->hasFile('image')) {
@@ -104,7 +112,7 @@ class CategoryController extends Controller
             DB::table('category_branch')->insert([
                 'category_id' => $category->id,
                 'branch_id' => $branchId,
-                'menu_type' => 'PLATOS A LA CARTA',
+                'menu_type' => $request->input('menu_type', 'VENTAS_PEDIDOS'),
                 'status' => 'E',
                 'created_at' => $now,
                 'updated_at' => $now,
@@ -120,11 +128,20 @@ class CategoryController extends Controller
 
     public function edit(Request $request, Category $category)
     {
+        $branchId = session('branch_id');
+        $currentMenuType = DB::table('category_branch')
+            ->where('category_id', $category->id)
+            ->where('branch_id', $branchId)
+            ->whereNull('deleted_at')
+            ->value('menu_type');
+
         return view('categories.edit', [
             'category' => $category,
             'viewId' => $request->input('view_id'),
+            'currentMenuType' => $currentMenuType,
         ]);
     }
+
 
     public function update(Request $request, Category $category)
     {
@@ -132,6 +149,7 @@ class CategoryController extends Controller
             'description'  => ['required', 'string', 'max:255'],
             'abbreviation' => ['required', 'string', 'max:255'],
             'image'        => ['nullable', 'image', 'max:2048'],
+            'menu_type'    => ['nullable', 'string', 'in:VENTAS_PEDIDOS,COMPRAS,GENERAL'],
         ]);
 
         if ($request->hasFile('image')) {
@@ -145,6 +163,19 @@ class CategoryController extends Controller
         }
         
         $category->update($data);
+
+        $branchId = $request->session()->get('branch_id');
+        if ($branchId && $request->has('menu_type')) {
+            DB::table('category_branch')
+                ->where('category_id', $category->id)
+                ->where('branch_id', $branchId)
+                ->whereNull('deleted_at')
+                ->update([
+                    'menu_type' => $request->input('menu_type'),
+                    'updated_at' => now(),
+                ]);
+        }
+
         $viewId = $request->input('view_id');
 
         return redirect()

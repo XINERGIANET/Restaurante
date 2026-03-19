@@ -92,18 +92,9 @@ class ProductBranchController extends Controller
             $validated['stock_minimum'] = $validated['stock_minimum'] ?? 0.0;
             $validated['stock_maximum'] = $validated['stock_maximum'] ?? 0.0;
 
-            if ($isSupply) {
-                $validated['price'] = 0;
-                $validated['purchase_price'] = 0;
-                $validated['stock'] = 0;
-                $validated['stock_minimum'] = 0;
-                $validated['stock_maximum'] = 0;
-                $validated['minimum_sell'] = 0;
-                $validated['minimum_purchase'] = 0;
-                $validated['tax_rate_id'] = null;
-                $validated['unit_sale'] = 'N';
-                $validated['expiration_date'] = null;
-            }
+
+
+
 
             $productBranch->update($validated);
             return redirect()->route('products.index', $viewId ? ['view_id' => $viewId] : [])
@@ -151,18 +142,15 @@ class ProductBranchController extends Controller
         // Campos con valores por defecto
         if ($isSupply) {
             $data['price'] = 0;
-            $data['purchase_price'] = 0;
-            $data['stock'] = 0;
-            $data['stock_minimum'] = 0;
-            $data['stock_maximum'] = 0;
             $data['minimum_sell'] = 0;
-            $data['minimum_purchase'] = 0;
-            $data['tax_rate_id'] = null;
-            $data['unit_sale'] = 'N';
-            $data['expiration_date'] = null;
         } else {
             $data['unit_sale'] = $data['unit_sale'] ?? 'N';
         }
+
+
+
+
+
         $data['status'] = 'E';
         $data['favorite'] = 'N';
         $data['duration_minutes'] = 0.0;
@@ -214,18 +202,16 @@ class ProductBranchController extends Controller
         // Campos con valores por defecto / forzado para suministro
         if ($isSupply) {
             $data['price'] = 0;
-            $data['purchase_price'] = 0;
-            $data['stock'] = 0;
-            $data['stock_minimum'] = 0;
-            $data['stock_maximum'] = 0;
             $data['minimum_sell'] = 0;
-            $data['minimum_purchase'] = 0;
-            $data['tax_rate_id'] = null;
-            $data['unit_sale'] = 'N';
-            $data['expiration_date'] = null;
         } else {
             $data['unit_sale'] = $data['unit_sale'] ?? 'N';
+            $data['expiration_date'] = $data['expiration_date'] ?? null;
         }
+
+
+
+
+
 
         $productBranch->update($data);
         return redirect()->route('products.index', $viewId ? ['view_id' => $viewId] : [])->with('status', 'Producto actualizado en sucursal correctamente.');

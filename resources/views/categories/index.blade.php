@@ -153,6 +153,9 @@
                             <th class="px-5 py-3 text-left sm:px-6">
                                 <p class="font-semibold text-white text-theme-xs uppercase">Abreviatura</p>
                             </th>
+                            <th class="px-5 py-3 text-center sm:px-6">
+                                <p class="font-semibold text-white text-theme-xs uppercase">Tipo de menú</p>
+                            </th>
                             <th class="px-5 py-3 text-center sm:px-6 last:rounded-tr-xl transition-colors">
                                 <p class="font-semibold text-white text-theme-xs">Acciones</p>
                             </th>
@@ -161,7 +164,7 @@
                     <tbody>
                         @forelse ($categories as $category)
                             <tr class="border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-white/5">
-                                 <td class="px-6 py-4 whitespace-nowrap sticky-left">
+                                <td class="px-6 py-4 whitespace-nowrap sticky-left">
                                     <div class="flex items-center">
                                         @if($category->image)
                                             <img class="h-12 w-12 object-cover rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm" 
@@ -182,6 +185,22 @@
                                 <td class="px-5 py-4 sm:px-6">
                                     <p class="text-gray-500 text-theme-sm dark:text-gray-400">{{ $category->abbreviation }}</p>
                                 </td>
+                                <td class="px-5 py-4 text-center sm:px-6">
+                                    @switch($category->menu_type)
+                                        @case('VENTAS_PEDIDOS')
+                                            <x-ui.badge variant="light" color="info" size="sm">Ventas / Pedidos</x-ui.badge>
+                                            @break
+                                        @case('COMPRAS')
+                                            <x-ui.badge variant="light" color="warning" size="sm">Compras</x-ui.badge>
+                                            @break
+                                        @case('GENERAL')
+                                            <x-ui.badge variant="light" color="success" size="sm">General (Ventas y Compras)</x-ui.badge>
+                                            @break
+                                        @default
+                                            <span class="text-gray-400">-</span>
+                                    @endswitch
+                                </td>
+
                                 <td class="px-5 py-4 sm:px-6">
                                     <div class="flex items-center justify-center gap-2">
                                         @if ($rowOperations->isNotEmpty())

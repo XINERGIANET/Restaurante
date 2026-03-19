@@ -217,11 +217,6 @@ Route::middleware('auth')->group(function () {
     Route::post('/Pedidos/validar-pin-mozo', [OrderController::class, 'validateWaiterPin'])
         ->name('orders.validateWaiterPin');
 
-    // Ticket de precuenta (vista imprimible en ventana nueva)
-    Route::get('/Pedidos/{orderMovementId}/precuenta', [OrderController::class, 'ticketPrecuenta'])
-        ->name('orders.ticketPrecuenta');
-
-
     // Dashboard pages
     Route::get('/', [\App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
 
