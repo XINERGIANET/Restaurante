@@ -40,7 +40,7 @@ class SalesController extends Controller
 
     public function index(Request $request)
     {
-        $branchId = session('branch_id'); 
+        $branchId = session('branch_id');
         $profileId = session('profile_id') ?? $request->user()?->profile_id;
         $viewId = $request->input('view_id');
         $search = $request->input('search');
@@ -91,7 +91,7 @@ class SalesController extends Controller
 
         $query = Movement::query()
             ->with(['branch', 'person', 'movementType', 'documentType', 'salesMovement'])
-            ->where('movement_type_id', 2) 
+            ->where('movement_type_id', 2)
             ->where('branch_id', $branchId)
             ->whereHas('salesMovement');
 
@@ -140,14 +140,14 @@ class SalesController extends Controller
             });
         }
 
-        $sales = $query->orderBy('moved_at', 'desc') 
+        $sales = $query->orderBy('moved_at', 'desc')
             ->paginate($perPage)
             ->withQueryString();
 
         if ($request->wantsJson() || $request->ajax()) {
             return response()->json([
-                'success' => true, 
-                'sales' => $sales, 
+                'success' => true,
+                'sales' => $sales,
                 'pagination' => [
                     'current_page' => $sales->currentPage(),
                     'last_page' => $sales->lastPage(),
@@ -233,13 +233,13 @@ class SalesController extends Controller
             ->where('type', 'PRODUCT')
             ->where(function ($q) {
                 $q->whereNull('product_type_id')
-                    ->orWhereHas('productType', fn ($q2) => $q2->whereIn('behavior', [
+                    ->orWhereHas('productType', fn($q2) => $q2->whereIn('behavior', [
                         ProductType::BEHAVIOR_SELLABLE,
                         ProductType::BEHAVIOR_BOTH,
                     ]));
             })
             ->when($branchId, function ($query) use ($branchId) {
-                $query->whereHas('productBranches', fn ($q) => $q->where('branch_id', $branchId))
+                $query->whereHas('productBranches', fn($q) => $q->where('branch_id', $branchId))
                     ->whereExists(function ($sub) use ($branchId) {
                         $sub->select(DB::raw(1))
                             ->from('category_branch')
@@ -275,30 +275,32 @@ class SalesController extends Controller
 
         $productBranches = $branchId
             ? ProductBranch::query()
-                ->where('branch_id', $branchId)
-                ->with(['product.productType', 'taxRate'])
-                ->get()
-                ->filter(function ($productBranch) {
-                    if ($productBranch->product === null) return false;
-                    $pt = $productBranch->product->productType;
-                    return $pt === null || $pt->isSellable();
-                })
-                ->map(function ($productBranch) {
-                    $taxRate = $productBranch->taxRate;
-                    $taxRatePct = $taxRate ? (float) $taxRate->tax_rate : null;
-                    return [
-                        'id' => (int) $productBranch->id,
-                        'product_id' => (int) $productBranch->product_id,
-                        'price' => (float) $productBranch->price,
-                        'tax_rate' => $taxRatePct,
-                        'stock' => (float) ($productBranch->stock ?? 0),
-                    ];
-                })
-                ->values()
+            ->where('branch_id', $branchId)
+            ->with(['product.productType', 'taxRate'])
+            ->get()
+            ->filter(function ($productBranch) {
+                if ($productBranch->product === null) return false;
+                $pt = $productBranch->product->productType;
+                return $pt === null || $pt->isSellable();
+            })
+            ->map(function ($productBranch) {
+                $taxRate = $productBranch->taxRate;
+                $taxRatePct = $taxRate ? (float) $taxRate->tax_rate : null;
+                return [
+                    'id' => (int) $productBranch->id,
+                    'product_id' => (int) $productBranch->product_id,
+                    'price' => (float) $productBranch->price,
+                    'tax_rate' => $taxRatePct,
+                    'stock' => (float) ($productBranch->stock ?? 0),
+                ];
+            })
+            ->values()
             : collect();
 
+        $saleType = 'IN_SITU';
+
         $people = Person::query()
-            ->when($branchId, fn ($query) => $query->where('branch_id', $branchId))
+            ->when($branchId, fn($query) => $query->where('branch_id', $branchId))
             ->orderBy('first_name')
             ->orderBy('last_name')
             ->get(['id', 'first_name', 'last_name', 'document_number']);
@@ -353,6 +355,7 @@ class SalesController extends Controller
             'digitalWallets' => $digitalWallets,
             'banks' => $banks,
             'cashRegisters' => $cashRegisters,
+            'saleType' => $saleType,
         ]);
     }
 
@@ -366,17 +369,17 @@ class SalesController extends Controller
             ->orderBy('name')
             ->where('movement_type_id', 2)
             ->get(['id', 'name']);
-        
+
         $paymentMethods = PaymentMethod::query()
             ->where('status', true)
             ->orderBy('order_num')
             ->get(['id', 'description', 'order_num']);
-        
+
         $paymentGateways = PaymentGateways::query()
             ->where('status', true)
             ->orderBy('order_num')
             ->get(['id', 'description', 'order_num']);
-        
+
         $cards = Card::query()
             ->where('status', true)
             ->orderBy('order_num')
@@ -391,8 +394,8 @@ class SalesController extends Controller
             ->where('status', true)
             ->orderBy('order_num')
             ->get(['id', 'description', 'order_num']);
-        
-            
+
+
         $cashRegisters = CashRegister::query()
             ->orderByRaw("CASE WHEN status = 'A' THEN 0 ELSE 1 END")
             ->orderBy('number')
@@ -400,13 +403,13 @@ class SalesController extends Controller
 
         $branchId = session('branch_id');
         $people = Person::query()
-            ->when($branchId, fn ($query) => $query->where('branch_id', $branchId))
+            ->when($branchId, fn($query) => $query->where('branch_id', $branchId))
             ->orderBy('first_name')
             ->orderBy('last_name')
             ->get(['id', 'first_name', 'last_name', 'document_number']);
 
         $defaultClientId = Person::query()
-            ->when($branchId, fn ($query) => $query->where('branch_id', $branchId))
+            ->when($branchId, fn($query) => $query->where('branch_id', $branchId))
             ->whereRaw('UPPER(first_name) = ?', ['CLIENTES'])
             ->whereRaw('UPPER(last_name) = ?', ['VARIOS'])
             ->value('id');
@@ -414,7 +417,7 @@ class SalesController extends Controller
         if (!$defaultClientId) {
             $defaultClientId = 4;
         }
-        
+
         // Si se pasa un movement_id, cargar la venta pendiente o con pago parcial
         $draftSale = null;
         $pendingAmount = 0;
@@ -423,7 +426,7 @@ class SalesController extends Controller
                 ->where('id', $request->movement_id)
                 ->whereIn('status', ['P', 'A']) // Cargar si está pendiente o activo (puede tener deuda)
                 ->first();
-            
+
             if ($movement && $movement->salesMovement) {
                 // Calcular el monto pendiente si hay una deuda
                 $relatedCashMovement = $movement->cashMovement ?: $this->resolveCashMovementBySaleMovement($movement->id);
@@ -435,7 +438,7 @@ class SalesController extends Controller
                         ->sum('amount');
                     $pendingAmount = $debt ?? 0;
                 }
-                
+
                 $defaultTaxRate = TaxRate::where('status', true)->orderBy('order_num')->first();
                 $defaultTaxPct = $defaultTaxRate ? (float) $defaultTaxRate->tax_rate : 18;
                 $draftSale = [
@@ -467,7 +470,7 @@ class SalesController extends Controller
                 ];
             }
         }
-        
+
         // Obtener todos los productos para poder mostrar sus nombres cuando se carga desde localStorage
         $products = Product::pluck('description', 'id')->toArray();
 
@@ -479,13 +482,13 @@ class SalesController extends Controller
                 $pt = $pb->product?->productType;
                 return $pt === null || $pt->isSellable();
             })
-            ->map(fn ($pb) => [
+            ->map(fn($pb) => [
                 'product_id' => (int) $pb->product_id,
                 'price' => (float) $pb->price,
                 'tax_rate' => $pb->taxRate ? (float) $pb->taxRate->tax_rate : null,
             ])
             ->values();
-        
+
         return view('sales.charge', [
             'documentTypes' => $documentTypes,
             'paymentMethods' => $paymentMethods,
@@ -542,15 +545,15 @@ class SalesController extends Controller
             $user = $request->user();
             $branchId = session('branch_id');
             $branch = Branch::findOrFail($branchId);
-            
+
             // Obtener turno de la sucursal
             $shift = Shift::where('branch_id', $branchId)->first();
-            
+
             // Si no hay turno de la sucursal, usar el primero disponible
             if (!$shift) {
                 $shift = Shift::first();
             }
-            
+
             if (!$shift) {
                 throw new \Exception('No hay turno disponible. Por favor, crea un turno primero.');
             }
@@ -598,15 +601,15 @@ class SalesController extends Controller
                 ->orWhere('description', 'like', '%sale%')
                 ->orWhere('description', 'like', '%Venta%')
                 ->first();
-            
+
             if (!$movementType) {
                 $movementType = MovementType::first();
             }
-            
+
             if (!$movementType) {
                 throw new \Exception('No se encontró un tipo de movimiento válido. Por favor, crea un tipo de movimiento primero.');
             }
-            
+
             $documentType = DocumentType::findOrFail($request->document_type_id);
 
             $selectedPerson = null;
@@ -619,14 +622,14 @@ class SalesController extends Controller
 
             // Obtener concepto de pago para ventas (Pago de cliente - ID 5)
             $paymentConcept = PaymentConcept::find(3); // Pago de cliente
-            
+
             // Si no existe el ID 5, buscar por descripción
             if (!$paymentConcept) {
                 $paymentConcept = PaymentConcept::where('description', 'like', '%pago de cliente%')
                     ->orWhere('description', 'like', '%Pago de cliente%')
                     ->first();
             }
-            
+
             // Si aún no se encuentra, buscar cualquier concepto de ingreso relacionado con venta
             if (!$paymentConcept) {
                 $paymentConcept = PaymentConcept::where('description', 'like', '%venta%')
@@ -634,12 +637,12 @@ class SalesController extends Controller
                     ->where('type', 'I')
                     ->first();
             }
-            
+
             // Si aún no se encuentra, buscar cualquier concepto de ingreso
             if (!$paymentConcept) {
                 $paymentConcept = PaymentConcept::where('type', 'I')->first();
             }
-            
+
             if (!$paymentConcept) {
                 throw new \Exception('No se encontró un concepto de pago válido. Por favor, crea un concepto de pago primero.');
             }
@@ -672,19 +675,19 @@ class SalesController extends Controller
             $isDraft = $request->has('movement_id') && $request->movement_id;
             $movement = null;
             $number = null;
-            
+
             if ($isDraft) {
                 // Cargar el movimiento existente (borrador)
                 $movement = Movement::where('id', $request->movement_id)
                     ->where('branch_id', $branchId)
                     ->first();
-                
+
                 if (!$movement) {
                     throw new \Exception('No se encontró el movimiento de venta');
                 }
-                
+
                 $number = $movement->number;
-                
+
                 // Actualizar el movimiento - siempre se completa el pago completo
                 $movement->update([
                     'comment' => $request->notes ?? 'Venta completada desde punto de venta',
@@ -695,7 +698,7 @@ class SalesController extends Controller
                         ? trim(($selectedPerson->first_name ?? '') . ' ' . ($selectedPerson->last_name ?? ''))
                         : 'Publico General',
                 ]);
-                
+
                 // Eliminar los detalles anteriores para recrearlos
                 if ($movement->salesMovement) {
                     SalesMovementDetail::where('sales_movement_id', $movement->salesMovement->id)->delete();
@@ -707,7 +710,7 @@ class SalesController extends Controller
                     (int) $cashRegister->id,
                     true
                 );
-                
+
                 $movement = Movement::create([
                     'number' => $number,
                     'moved_at' => now(),
@@ -732,7 +735,7 @@ class SalesController extends Controller
                         'end_time' => $shift->end_time
                     ],
                 ]);
-            } 
+            }
 
             // Crear o actualizar SalesMovement
             if ($isDraft && $movement->salesMovement) {
@@ -756,7 +759,7 @@ class SalesController extends Controller
                     'detail_type' => 'DETALLADO',
                     'consumption' => 'N',
                     'payment_type' => 'CONTADO', // Siempre CASH (pago completo)
-                    'status' => 'N' ,
+                    'status' => 'N',
                     'sale_type' => 'MINORISTA',
                     'currency' => 'PEN',
                     'exchange_rate' => 3.5,
@@ -771,7 +774,7 @@ class SalesController extends Controller
             // Crear SalesMovementDetails y actualizar stock (nota por producto en comment)
             foreach ($validated['items'] as $item) {
                 $product = Product::with('baseUnit')->findOrFail($item['pId']);
-                
+
                 // Bloquear el registro para evitar condiciones de carrera
                 $productBranch = ProductBranch::with('taxRate')
                     ->where('product_id', $item['pId'])
@@ -786,7 +789,7 @@ class SalesController extends Controller
                 // Validar stock disponible
                 $quantityToSell = (int) $item['qty'];
                 $currentStock = (int) ($productBranch->stock ?? 0);
-                
+
                 // if ($currentStock < $quantityToSell) {
                 //     throw new \Exception(
                 //         "Stock insuficiente para el producto {$product->description}. " .
@@ -851,10 +854,10 @@ class SalesController extends Controller
                     'stock' => max(0, $newStock) // Asegurar que no sea negativo
                 ]);
             }
-            
+
             // Crear/actualizar movimiento de caja separado del movimiento de venta
             $cashEntryMovement = $this->resolveCashEntryMovementBySaleMovement($movement->id);
-         
+
 
             if (!$cashEntryMovement) {
                 $cashEntryMovement = Movement::create([
@@ -990,19 +993,17 @@ class SalesController extends Controller
                     'total' => $total,
                 ]
             ]);
-            
-
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error al procesar la venta: ' . $e->getMessage(), [
                 'exception' => $e,
                 'trace' => $e->getTraceAsString()
             ]);
-            
-            $message = config('app.debug') 
-                ? $e->getMessage() 
+
+            $message = config('app.debug')
+                ? $e->getMessage()
                 : 'Error al procesar la venta';
-            
+
             return response()->json([
                 'success' => false,
                 'message' => $message,
@@ -1045,7 +1046,7 @@ class SalesController extends Controller
             $user = $request->user();
             $branchId = session('branch_id');
             $branch = Branch::findOrFail($branchId);
-            
+
             // Obtener turno de la sucursal
             $shift = Shift::where('branch_id', $branchId)->first();
             if (!$shift) {
@@ -1060,29 +1061,29 @@ class SalesController extends Controller
                 ->orWhere('description', 'like', '%sale%')
                 ->orWhere('description', 'like', '%Venta%')
                 ->first();
-            
+
             if (!$movementType) {
                 $movementType = MovementType::first();
             }
-            
+
             if (!$movementType) {
                 throw new \Exception('No se encontró un tipo de movimiento válido.');
             }
-            
+
             // Obtener documento por defecto si no se especifica
             $documentType = null;
             if ($request->document_type_id) {
                 $documentType = DocumentType::find($request->document_type_id);
             }
-            
+
             if (!$documentType) {
                 $documentType = DocumentType::where('movement_type_id', $movementType->id)->first();
             }
-            
+
             if (!$documentType) {
                 $documentType = DocumentType::first();
             }
-            
+
             if (!$documentType) {
                 throw new \Exception('No se encontró un tipo de documento válido.');
             }
@@ -1123,7 +1124,7 @@ class SalesController extends Controller
                     'start_time' => $shift->start_time,
                     'end_time' => $shift->end_time
                 ],
-            ]); 
+            ]);
 
             // Crear SalesMovement con payment_type 'CREDIT' (pendiente de pago)
             $salesMovement = SalesMovement::create([
@@ -1135,7 +1136,7 @@ class SalesController extends Controller
                 'year' => Carbon::now()->year,
                 'detail_type' => 'DETALLADO',
                 'consumption' => 'N',
-                'payment_type' => 'CONTADO', 
+                'payment_type' => 'CONTADO',
                 'status' => 'N',
                 'sale_type' => 'MINORISTA',
                 'currency' => 'PEN',
@@ -1223,7 +1224,6 @@ class SalesController extends Controller
                     'total' => $total,
                 ]
             ]);
-
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error al guardar borrador de venta: ' . $e->getMessage());
@@ -1340,9 +1340,9 @@ class SalesController extends Controller
             'documentTypes' => $documentTypes,
         ];
     }
-    
 
-    
+
+
     /** Obtiene la tasa de impuesto por defecto del sistema (valor 0-1, ej: 0.18 para 18%). */
     private function getDefaultTaxRateValue(): float
     {
@@ -1378,15 +1378,22 @@ class SalesController extends Controller
 
         $html = view('sales.print.ticket', $printData)->render();
         $pdfBinary = $this->renderPdfWithWkhtmltopdf($html, null, [
-            '--page-width', '80mm',
-            '--page-height', '220mm',
-            '--margin-top', '0',
-            '--margin-right', '0',
-            '--margin-bottom', '0',
-            '--margin-left', '0',
+            '--page-width',
+            '80mm',
+            '--page-height',
+            '220mm',
+            '--margin-top',
+            '0',
+            '--margin-right',
+            '0',
+            '--margin-bottom',
+            '0',
+            '--margin-left',
+            '0',
             '--print-media-type',
             '--disable-smart-shrinking',
-            '--dpi', '203',
+            '--dpi',
+            '203',
         ]);
 
         if ($pdfBinary === null) {
@@ -1444,13 +1451,20 @@ class SalesController extends Controller
             $binary,
             '--enable-local-file-access',
             '--disable-javascript',
-            '--load-error-handling', 'ignore',
-            '--load-media-error-handling', 'ignore',
-            '--encoding', 'utf-8',
-            '--margin-top', '10',
-            '--margin-right', '10',
-            '--margin-bottom', '10',
-            '--margin-left', '10',
+            '--load-error-handling',
+            'ignore',
+            '--load-media-error-handling',
+            'ignore',
+            '--encoding',
+            'utf-8',
+            '--margin-top',
+            '10',
+            '--margin-right',
+            '10',
+            '--margin-bottom',
+            '10',
+            '--margin-left',
+            '10',
         ], $extraArgs);
 
         if (!empty($pageSize)) {
@@ -1603,7 +1617,7 @@ class SalesController extends Controller
 
     public function exportPdf(Request $request)
     {
-        $branchId = session('branch_id'); 
+        $branchId = session('branch_id');
         $search = $request->input('search');
         $dateFrom = $request->input('date_from');
         $dateTo = $request->input('date_to');
@@ -1618,7 +1632,7 @@ class SalesController extends Controller
 
         $query = Movement::query()
             ->with(['branch', 'person', 'movementType', 'documentType', 'salesMovement'])
-            ->where('movement_type_id', 2) 
+            ->where('movement_type_id', 2)
             ->where('branch_id', $branchId)
             ->whereHas('salesMovement');
 
@@ -1688,7 +1702,7 @@ class SalesController extends Controller
                 'companyName',
                 'branchName'
             ));
-            
+
             $pdf->setPaper('a4')
                 ->setOption('margin-bottom', 10)
                 ->setOption('encoding', 'utf-8')
@@ -1703,12 +1717,11 @@ class SalesController extends Controller
                 'Content-Disposition' => 'attachment; filename="Reporte_Ventas.pdf"',
                 'Content-Length' => strlen($output),
             ]);
-
         } catch (\Exception $e) {
             dd("ERROR REAL: " . $e->getMessage());
         }
     }
-    
+
     /**
      * Genera numero de venta en formato correlativo simple: 00000127.
      * Mantiene compatibilidad leyendo tambien numeros historicos con formato antiguo.

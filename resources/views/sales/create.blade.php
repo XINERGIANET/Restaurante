@@ -6,8 +6,12 @@
     @php
         $viewId = request('view_id');
         $salesIndexUrl = route('sales.index', $viewId ? ['view_id' => $viewId] : []);
-        $personName = $person ? trim(($person->first_name ?? '') . ' ' . ($person->last_name ?? '')) : 'Público General';
-        if ($personName === '') $personName = 'Público General';
+        $personName = $person
+            ? trim(($person->first_name ?? '') . ' ' . ($person->last_name ?? ''))
+            : 'Público General';
+        if ($personName === '') {
+            $personName = 'Público General';
+        }
     @endphp
 
     {{-- Breadcrumb (igual que orders) --}}
@@ -15,10 +19,13 @@
         <nav class="min-w-0">
             <ol class="flex flex-wrap items-end justify-end gap-1 sm:gap-1.5 text-xs sm:text-sm">
                 <li>
-                    <a class="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400" href="{{ url('/') }}">
+                    <a class="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400"
+                        href="{{ url('/') }}">
                         Home
-                        <svg class="stroke-current" width="17" height="16" viewBox="0 0 17 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M6.0765 12.667L10.2432 8.50033L6.0765 4.33366" stroke="" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"></path>
+                        <svg class="stroke-current" width="17" height="16" viewBox="0 0 17 16" fill="none"
+                            xmlns="http://www.w3.org/2000/svg">
+                            <path d="M6.0765 12.667L10.2432 8.50033L6.0765 4.33366" stroke="" stroke-width="1.2"
+                                stroke-linecap="round" stroke-linejoin="round"></path>
                         </svg>
                     </a>
                 </li>
@@ -26,8 +33,10 @@
                     <a class="inline-flex items-center gap-1 sm:gap-1.5 text-gray-500 dark:text-gray-400 truncate max-w-[120px] sm:max-w-none"
                         href="{{ $salesIndexUrl }}">
                         <span class="truncate">Ventas</span>
-                        <svg class="stroke-current" width="17" height="16" viewBox="0 0 17 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M6.0765 12.667L10.2432 8.50033L6.0765 4.33366" stroke="" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"></path>
+                        <svg class="stroke-current" width="17" height="16" viewBox="0 0 17 16" fill="none"
+                            xmlns="http://www.w3.org/2000/svg">
+                            <path d="M6.0765 12.667L10.2432 8.50033L6.0765 4.33366" stroke="" stroke-width="1.2"
+                                stroke-linecap="round" stroke-linejoin="round"></path>
                         </svg>
                     </a>
                 </li>
@@ -37,10 +46,12 @@
     </div>
 
     {{-- Contenedor principal (mismo estilo que orders) --}}
-    <div class="rounded-2xl border border-gray-200 dark:border-gray-300 overflow-hidden bg-blue-50 dark:bg-gray-900 fade-in max-w-full">
+    <div
+        class="rounded-2xl border border-gray-200 dark:border-gray-300 overflow-hidden bg-blue-50 dark:bg-gray-900 fade-in max-w-full">
         <main class="w-full lg:flex-2 flex flex-col min-w-0 min-h-0 bg-white dark:bg-gray-900/50 lg:min-h-0">
             {{-- Header (mismo diseño que orders: back, título, search, vendedor, cliente) --}}
-            <header class="min-h-14 sm:h-20 py-3 px-3 sm:py-0 sm:px-6 flex items-center gap-2 sm:gap-4 dark:bg-gray-800/50 border-b border-gray-200 shadow-sm z-10 bg-gray-200 flex-nowrap overflow-x-auto min-w-0">
+            <header
+                class="min-h-14 sm:h-20 py-3 px-3 sm:py-0 sm:px-6 flex items-center gap-2 sm:gap-4 dark:bg-gray-800/50 border-b border-gray-200 shadow-sm z-10 bg-gray-200 flex-nowrap overflow-x-auto min-w-0">
                 <div class="flex items-center gap-2 sm:gap-4 md:gap-6 w-full min-w-max flex-nowrap">
                     <a href="{{ $salesIndexUrl }}" id="back-to-sales-link" title="Volver atrás"
                         class="h-9 sm:h-10 px-2 rounded-lg bg-gray-50 border border-gray-200 text-gray-500 hover:text-blue-600 hover:border-blue-600 transition-colors flex items-center justify-center shadow-sm shrink-0">
@@ -49,10 +60,12 @@
                     <div class="flex items-center gap-2 min-w-0">
                         <h2 class="text-base font-bold text-slate-800 dark:text-white truncate">
                             Nueva Venta<br>
-                            <p class="text-xs text-gray-500 dark:text-gray-400"><i class="ri-circle-fill" style="color: #00C950;"></i> Punto de venta</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400"><i class="ri-circle-fill"
+                                    style="color: #00C950;"></i> Punto de venta</p>
                         </h2>
                     </div>
-                    <div class="flex items-center gap-2 sm:gap-4 md:gap-6 text-xs sm:text-sm text-gray-500 font-medium min-w-0 flex-nowrap flex-1">
+                    <div
+                        class="flex items-center gap-2 sm:gap-4 md:gap-6 text-xs sm:text-sm text-gray-500 font-medium min-w-0 flex-nowrap flex-1">
                         <div class="flex items-center justify-end shrink-0">
                             <div class="w-50 sm:w-50 md:w-60 relative">
                                 <input type="text" id="search-products" placeholder="Buscar..."
@@ -64,7 +77,8 @@
                             <div class="flex items-center gap-1 sm:gap-2 group min-w-0">
                                 <span class="text-gray-500 dark:text-gray-400 shrink-0">Vendedor:</span>
                                 <div class="relative flex items-center min-w-0">
-                                    <span class="min-w-0 w-16 sm:w-24 md:min-w-[100px] py-1 px-2 sm:px-3 bg-white dark:bg-slate-700/80 border border-gray-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 font-semibold text-xs sm:text-sm truncate">
+                                    <span
+                                        class="min-w-0 w-16 sm:w-24 md:min-w-[100px] py-1 px-2 sm:px-3 bg-white dark:bg-slate-700/80 border border-gray-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 font-semibold text-xs sm:text-sm truncate">
                                         {{ $user?->name ?? 'Sin asignar' }}
                                     </span>
                                 </div>
@@ -76,9 +90,11 @@
                                     <select id="header-client-select" onchange="changeClient(this)"
                                         class="min-w-0 w-20 sm:w-28 md:min-w-[110px] md:max-w-[180px] py-1 px-2 sm:px-3 bg-white dark:bg-slate-700/80 border border-gray-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 font-semibold text-xs sm:text-sm cursor-pointer focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-500/40 focus:border-blue-400 outline-none shadow-sm appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%226b7280%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22M6%208l4%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1rem] sm:bg-[length:1.25rem] bg-[right_0.2rem_center] sm:bg-[right_0.25rem_center] bg-no-repeat truncate">
                                         <option value="{{ $person?->id ?? '' }}" selected>{{ $personName }}</option>
-                                        @foreach($people ?? collect() as $p)
-                                            @if(!$person || (isset($p->id) && $p->id != $person->id))
-                                            <option value="{{ $p->id ?? '' }}">{{ trim(($p->first_name ?? '') . ' ' . ($p->last_name ?? '')) ?: ($p->document_number ?? 'Cliente') }}</option>
+                                        @foreach ($people ?? collect() as $p)
+                                            @if (!$person || (isset($p->id) && $p->id != $person->id))
+                                                <option value="{{ $p->id ?? '' }}">
+                                                    {{ trim(($p->first_name ?? '') . ' ' . ($p->last_name ?? '')) ?: $p->document_number ?? 'Cliente' }}
+                                                </option>
                                             @endif
                                         @endforeach
                                     </select>
@@ -88,21 +104,27 @@
                     </div>
                 </div>
             </header>
-
             {{-- Cuerpo: categorías + productos + aside --}}
-            <div class="flex flex-row flex-1 min-h-0 min-w-0 p-5 overflow-y-auto overflow-x-hidden" style="-webkit-overflow-scrolling: touch;">
+            <div class="flex flex-row flex-1 min-h-0 min-w-0 p-5 overflow-y-auto overflow-x-hidden"
+                style="-webkit-overflow-scrolling: touch;">
                 <div class="flex-1 min-w-0 p-3 sm:p-5 md:p-6 bg-white flex flex-col min-h-0">
                     <div class="flex flex-col flex-1 min-h-0 min-w-0 overflow-hidden">
                         <div class="shrink-0 border-gray-300 px-2 sm:px-4 pt-3 pb-4">
-                            <div id="categories-grid" class="flex flex-row flex-wrap gap-1.5 sm:gap-2 overflow-x-auto pb-3 overscroll-x-contain"></div>
+                            <div id="categories-grid"
+                                class="flex flex-row flex-wrap gap-1.5 sm:gap-2 overflow-x-auto pb-3 overscroll-x-contain">
+                            </div>
                         </div>
                         <div class="flex-1 min-h-0 min-w-0 pt-2 sm:pt-3 flex flex-col overflow-hidden min-h-[200px]">
-                            <div id="products-grid" class="px-2 sm:px-4 md:px-5 p-3 grid grid-cols-3 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5 2xl:grid-cols-5 gap-2 sm:gap-4 overflow-y-auto overflow-x-hidden min-h-0 flex-1 content-start overscroll-contain" style="-webkit-overflow-scrolling: touch;"></div>
+                            <div id="products-grid"
+                                class="px-2 sm:px-4 md:px-5 p-3 grid grid-cols-3 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5 2xl:grid-cols-5 gap-2 sm:gap-4 overflow-y-auto overflow-x-hidden min-h-0 flex-1 content-start overscroll-contain"
+                                style="-webkit-overflow-scrolling: touch;"></div>
                         </div>
                     </div>
                 </div>
                 {{-- Aside: Tabs Resumen | Cobro --}}
-                <aside class="flex flex-col rounded-2xl shadow-2xl overflow-hidden w-[400px] sm:w-[400px] md:w-[400px] shrink-0 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 min-h-0 rounded-l-2xl" style="min-height: 550px;">
+                <aside
+                    class="flex flex-col rounded-2xl shadow-2xl overflow-hidden w-[400px] sm:w-[400px] md:w-[400px] shrink-0 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 min-h-0 rounded-l-2xl"
+                    style="min-height: 550px;">
                     <div class="flex shrink-0 border-b border-gray-200 dark:border-gray-700">
                         <button type="button" id="tab-resumen" onclick="switchAsideTab('resumen')"
                             class="flex-1 py-3 px-4 text-sm font-bold transition-colors rounded-tl-2xl bg-brand-500 text-white">
@@ -116,7 +138,9 @@
 
                     {{-- Contenido Resumen --}}
                     <div id="aside-resumen" class="flex flex-col flex-1 min-h-0 overflow-hidden">
-                        <div id="cart-container" class="flex-1 overflow-y-auto p-3 sm:p-5 space-y-2 sm:space-y-3 bg-gray-50 dark:bg-gray-900/50 min-h-0 overscroll-contain" style="-webkit-overflow-scrolling: touch;"></div>
+                        <div id="cart-container"
+                            class="flex-1 overflow-y-auto p-3 sm:p-5 space-y-2 sm:space-y-3 bg-gray-50 dark:bg-gray-900/50 min-h-0 overscroll-contain"
+                            style="-webkit-overflow-scrolling: touch;"></div>
                         <div class="shrink-0 p-4 sm:p-5 border-t border-gray-200 dark:border-gray-700">
                             <div class="space-y-2 sm:space-y-3 text-xs sm:text-sm">
                                 <div class="flex justify-between text-gray-500 font-medium">
@@ -129,9 +153,18 @@
                                 </div>
                                 <div class="border-t border-dashed border-gray-300 dark:border-gray-600 my-2"></div>
                                 <div class="flex justify-between items-center">
-                                    <span class="text-base sm:text-lg font-bold text-slate-800 dark:text-white">Total a Pagar</span>
-                                    <span class="text-xl sm:text-2xl font-black text-blue-600 dark:text-blue-400" id="ticket-total">S/ 0.00</span>
+                                    <span class="text-base sm:text-lg font-bold text-slate-800 dark:text-white">Total a
+                                        Pagar</span>
+                                    <span class="text-xl sm:text-2xl font-black text-blue-600 dark:text-blue-400"
+                                        id="ticket-total">S/ 0.00</span>
                                 </div>
+                                @if ($saleType === 'DELIVERY')
+                                    <div class="flex justify-between items-center gap-2">
+                                        <span class="text-base sm:text-lg font-bold text-slate-800 dark:text-white">Total a
+                                            Direccion de entrega</span>
+                                            <input type="text" name="delivery-address" id="delivery-address" class="w-full pl-3 pr-8 py-2.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-slate-700 dark:text-slate-200 text-sm">
+                                        </div>
+                                @endif
                             </div>
                         </div>
                     </div>
@@ -140,20 +173,23 @@
                     <div id="aside-cobro" class="hidden flex-col flex-1 min-h-0 overflow-y-auto p-4 sm:p-5">
                         <div class="space-y-4">
                             <div>
-                                <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">Cliente</label>
+                                <label
+                                    class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">Cliente</label>
                                 <div class="relative">
-                                    <input type="text" id="cobro-client-input" readonly
-                                        value="{{ $personName }}"
+                                    <input type="text" id="cobro-client-input" readonly value="{{ $personName }}"
                                         class="w-full pl-3 pr-8 py-2.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-slate-700 dark:text-slate-200 text-sm">
-                                    <button type="button" onclick="clearCobroClient()" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                                    <button type="button" onclick="clearCobroClient()"
+                                        class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
                                         <i class="ri-close-line text-lg"></i>
                                     </button>
                                 </div>
                             </div>
                             <div class="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">Documento</label>
-                                    <select id="cobro-document-type" class="w-full py-2.5 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-slate-700 dark:text-slate-200 text-sm">
+                                    <label
+                                        class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">Documento</label>
+                                    <select id="cobro-document-type"
+                                        class="w-full py-2.5 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-slate-700 dark:text-slate-200 text-sm">
                                         @forelse(($documentTypes ?? []) as $dt)
                                             <option value="{{ $dt?->id }}">{{ $dt?->name ?? '' }}</option>
                                         @empty
@@ -162,10 +198,14 @@
                                     </select>
                                 </div>
                                 <div>
-                                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">Caja</label>
-                                    <select id="cobro-cash-register" class="w-full py-2.5 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-slate-700 dark:text-slate-200 text-sm">
+                                    <label
+                                        class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">Caja</label>
+                                    <select id="cobro-cash-register"
+                                        class="w-full py-2.5 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-slate-700 dark:text-slate-200 text-sm">
                                         @forelse(($cashRegisters ?? []) as $cr)
-                                            <option value="{{ $cr?->id }}">{{ $cr?->number ?? 'Caja ' . ($cr?->id ?? '') }}</option>
+                                            <option value="{{ $cr?->id }}">
+                                                {{ $cr?->number ?? 'Caja ' . ($cr?->id ?? '') }}
+                                            </option>
                                         @empty
                                             <option value="">Sin cajas</option>
                                         @endforelse
@@ -174,17 +214,23 @@
                             </div>
                             <div>
                                 <div class="flex items-center justify-between mb-2">
-                                    <label class="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Métodos de pago</label>
+                                    <label
+                                        class="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Métodos
+                                        de pago</label>
                                     <button type="button" onclick="addCobroPaymentMethod()"
                                         class="inline-flex items-center gap-1.5 rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-brand-600 active:scale-95 transition-colors shrink-0">
                                         <i class="ri-add-line text-sm"></i> Agregar
                                     </button>
                                 </div>
-                                <div id="cobro-payment-methods-list" class="space-y-3 max-h-48 overflow-y-auto pr-1"></div>
-                                <div class="mt-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-100 dark:bg-gray-800/80 px-3 py-2.5">
+                                <div id="cobro-payment-methods-list" class="space-y-3 max-h-48 overflow-y-auto pr-1">
+                                </div>
+                                <div
+                                    class="mt-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-100 dark:bg-gray-800/80 px-3 py-2.5">
                                     <div class="flex justify-between items-center">
-                                        <span class="text-xs font-semibold text-gray-600 dark:text-gray-300">Total pagado</span>
-                                        <span class="text-base font-bold text-slate-800 dark:text-white tabular-nums" id="cobro-total-paid">S/ 0.00</span>
+                                        <span class="text-xs font-semibold text-gray-600 dark:text-gray-300">Total
+                                            pagado</span>
+                                        <span class="text-base font-bold text-slate-800 dark:text-white tabular-nums"
+                                            id="cobro-total-paid">S/ 0.00</span>
                                     </div>
                                 </div>
                             </div>
@@ -192,7 +238,8 @@
                     </div>
 
                     {{-- Botón Cobrar (solo visible en pestaña Cobro) --}}
-                    <div id="cobro-button-container" class="hidden shrink-0 p-4 sm:p-5 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+                    <div id="cobro-button-container"
+                        class="hidden shrink-0 p-4 sm:p-5 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
                         <button type="button" id="checkout-button" onclick="processSale()"
                             class="w-full py-2.5 px-3 rounded-xl bg-brand-500 text-white font-bold text-xs sm:text-sm shadow-lg hover:bg-brand-600 active:scale-95 transition-all flex justify-center items-center gap-2">
                             <i class="ri-bank-card-line text-base"></i>
@@ -204,12 +251,16 @@
         </main>
     </div>
 
-    <div id="notification" class="fixed top-24 right-8 z-50 max-w-sm opacity-0 pointer-events-none transition-opacity duration-300" aria-live="polite"></div>
+    <div id="notification"
+        class="fixed top-24 right-8 z-50 max-w-sm opacity-0 pointer-events-none transition-opacity duration-300"
+        aria-live="polite"></div>
 
     {{-- NOTIFICACIONES TOAST --}}
-    <div id="toast-container" class="fixed top-20 left-1/2 -translate-x-1/2 z-50 pointer-events-none flex flex-col gap-2 w-auto max-w-sm">
+    <div id="toast-container"
+        class="fixed top-20 left-1/2 -translate-x-1/2 z-50 pointer-events-none flex flex-col gap-2 w-auto max-w-sm">
         {{-- Stock Error --}}
-        <div id="stock-error-notification" class="transform transition-all duration-300 -translate-y-10 opacity-0 pointer-events-none bg-white dark:bg-gray-800 border-l-4 border-red-500 shadow-2xl rounded-r-lg p-4 flex items-center gap-3 min-w-[300px]">
+        <div id="stock-error-notification"
+            class="transform transition-all duration-300 -translate-y-10 opacity-0 pointer-events-none bg-white dark:bg-gray-800 border-l-4 border-red-500 shadow-2xl rounded-r-lg p-4 flex items-center gap-3 min-w-[300px]">
             <div class="text-red-500"><i class="ri-error-warning-fill text-xl"></i></div>
             <div>
                 <p class="text-xs font-bold text-gray-900 dark:text-white uppercase">Stock Insuficiente</p>
@@ -218,7 +269,8 @@
         </div>
 
         {{-- Success Add --}}
-        <div id="add-to-cart-notification" class="transform transition-all duration-300 -translate-y-10 opacity-0 pointer-events-none bg-slate-800 text-white shadow-2xl rounded-full px-6 py-3 flex items-center gap-3 min-w-[200px]">
+        <div id="add-to-cart-notification"
+            class="transform transition-all duration-300 -translate-y-10 opacity-0 pointer-events-none bg-slate-800 text-white shadow-2xl rounded-full px-6 py-3 flex items-center gap-3 min-w-[200px]">
             <i class="ri-check-line text-green-400 text-xl"></i>
             <div>
                 <p class="text-[10px] uppercase font-bold text-gray-400">Agregado</p>
@@ -230,33 +282,64 @@
     {{-- ESTILOS CSS --}}
     <style>
         /* Ocultar scrollbar estándar */
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
         /* Scrollbar personalizada */
-        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #E5E7EB; border-radius: 20px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #D1D5DB; }
-        .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #374151; }
-        .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #4B5563; }
-        
-        .notification-show { transform: translateY(0) !important; opacity: 1 !important; }
-        .tabular-nums { font-variant-numeric: tabular-nums; }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #E5E7EB;
+            border-radius: 20px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #D1D5DB;
+        }
+
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #374151;
+        }
+
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #4B5563;
+        }
+
+        .notification-show {
+            transform: translateY(0) !important;
+            opacity: 1 !important;
+        }
+
+        .tabular-nums {
+            font-variant-numeric: tabular-nums;
+        }
     </style>
 
     {{-- LÓGICA JS --}}
     <script>
-        (function () {
+        (function() {
             // --- 1. CARGA DE DATOS (DATA LOGIC) ---
             const productsRaw = @json($products ?? []);
-            const productBranchesRaw = @json($productBranches ?? $productsBranches ?? []);
+            const productBranchesRaw = @json($productBranches ?? ($productsBranches ?? []));
             const cashRegisters = @json($cashRegisters ?? []);
-            
-            // AQUÍ ESTABA EL PROBLEMA: Necesitamos pasar las categorías con imagen desde PHP
-            const categoriesDB = @json($categories ?? []); 
 
-            const productBranches = Array.isArray(productBranchesRaw) ? productBranchesRaw : Object.values(productBranchesRaw || {});
+            // AQUÍ ESTABA EL PROBLEMA: Necesitamos pasar las categorías con imagen desde PHP
+            const categoriesDB = @json($categories ?? []);
+
+            const productBranches = Array.isArray(productBranchesRaw) ? productBranchesRaw : Object.values(
+                productBranchesRaw || {});
             const serverCategories = @json($categories ?? []);
             const categoryIdsInBranch = (serverCategories || []).map(c => Number(c.id));
             // Solo productos con productBranch en sucursal Y categoría en category_branch
@@ -270,7 +353,7 @@
             const taxRateByProductId = new Map();
             const stockByProductId = new Map();
             const defaultTaxPct = 18;
-            
+
             // Mapeo de precios y stock
             productBranches.forEach((pb) => {
                 const pid = Number(pb.product_id ?? pb.id);
@@ -280,7 +363,7 @@
                     stockByProductId.set(pid, Number(pb.stock ?? 0) || 0);
                 }
             });
-            
+
             const CATEGORY_ALL_ID = '__all__';
             let selectedCategoryId = CATEGORY_ALL_ID;
             let searchQuery = '';
@@ -300,7 +383,9 @@
             }
 
             function calculateTotalsFromItems(items) {
-                let subtotal = 0, tax = 0, total = 0;
+                let subtotal = 0,
+                    tax = 0,
+                    total = 0;
                 (items || []).forEach(item => {
                     const qty = parseFloat(item.qty) || 0;
                     const courtesyQty = Math.min(parseFloat(item.courtesyQty) || 0, qty);
@@ -313,7 +398,11 @@
                     tax += lineTotal - lineSubtotal;
                     total += lineTotal;
                 });
-                return { subtotal: Math.round(subtotal * 100) / 100, tax: Math.round(tax * 100) / 100, total: Math.round(total * 100) / 100 };
+                return {
+                    subtotal: Math.round(subtotal * 100) / 100,
+                    tax: Math.round(tax * 100) / 100,
+                    total: Math.round(total * 100) / 100
+                };
             }
 
             // --- FUNCIONES AUXILIARES ---
@@ -322,6 +411,14 @@
                 if (imgUrl && String(imgUrl).trim() !== '') return imgUrl;
                 return 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y5ZmFmYiIvPjwvc3ZnPg==';
             }
+            function setSaleType(value) {
+                        const sel = document.getElementById('header-sale-type');
+                        if (!sel) return;
+                        sel.value = value;
+                        sel.dispatchEvent(new Event('change', {
+                            bubbles: true
+                        }));
+                    }
 
             // --- STORAGE LOGIC (Carrito persistente) ---
             const ACTIVE_SALE_KEY_STORAGE = 'restaurantActiveSaleKey';
@@ -369,9 +466,9 @@
 
                 let rendered = 0;
 
-                let productsToShow = selectedCategoryId === CATEGORY_ALL_ID
-                    ? products
-                    : products.filter(p => p.category_id == selectedCategoryId);
+                let productsToShow = selectedCategoryId === CATEGORY_ALL_ID ?
+                    products :
+                    products.filter(p => p.category_id == selectedCategoryId);
 
                 const q = String(searchQuery || '').trim().toLowerCase();
                 if (q.length > 0) {
@@ -396,24 +493,27 @@
                     const imageUrl = getImageUrl(prod.img);
 
                     const el = document.createElement('div');
-                    el.className = 'group cursor-pointer transition-transform duration-200 hover:scale-105 h-full flex';
-                    el.addEventListener('click', function () {
+                    el.className =
+                        'group cursor-pointer transition-transform duration-200 hover:scale-105 h-full flex';
+                    el.addEventListener('click', function() {
                         addToCart(prod, price);
                     });
 
-                    el.innerHTML = `
-                        <div class="rounded-2xl overflow-hidden p-4 sm:p-5 bg-white dark:bg-slate-800/60 border-2 border-blue-200 dark:border-blue-500/40 hover:border-blue-400 dark:hover:border-blue-400 transition-all duration-200 hover:-translate-y-0.5 flex flex-col items-center text-center h-full w-full">
-                            <div class="w-20 h-16 sm:w-20 sm:h-20 rounded-full bg-blue-500 flex items-center justify-center shrink-0 overflow-hidden mb-3">
-                                ${hasImg
-                                    ? `<img src="${imageUrl}" alt="${safeName}" class="w-full h-full object-contain rounded-full object-cover object-center" loading="lazy" onerror="this.parentElement.innerHTML='<i class=\\'ri-restaurant-2-line text-2xl sm:text-3xl text-white\\'></i>'">`
-                                    : `<i class="ri-restaurant-2-line text-2xl sm:text-3xl text-white"></i>`
-                                }
-                            </div>
-                            <h4 class="font-semibold text-gray-900 dark:text-white text-sm sm:text-base line-clamp-2 leading-tight mb-1 min-h-[2.5rem]">${safeName}</h4>
-                            <span class="text-base sm:text-lg font-bold text-blue-600 dark:text-blue-400">S/ ${safePrice}</span>
-                            <span class="mt-1 text-xs font-medium text-gray-500 dark:text-gray-400">Stock: ` + stockText + `</span>
-                        </div>
-                    `;
+                    el.innerHTML =
+                        `
+                                    <div class="rounded-2xl overflow-hidden p-4 sm:p-5 bg-white dark:bg-slate-800/60 border-2 border-blue-200 dark:border-blue-500/40 hover:border-blue-400 dark:hover:border-blue-400 transition-all duration-200 hover:-translate-y-0.5 flex flex-col items-center text-center h-full w-full">
+                                        <div class="w-20 h-16 sm:w-20 sm:h-20 rounded-full bg-blue-500 flex items-center justify-center shrink-0 overflow-hidden mb-3">
+                                            ${hasImg
+                            ? `<img src="${imageUrl}" alt="${safeName}" class="w-full h-full object-contain rounded-full object-cover object-center" loading="lazy" onerror="this.parentElement.innerHTML='<i class=\\'ri-restaurant-2-line text-2xl sm:text-3xl text-white\\'></i>'">`
+                            : `<i class="ri-restaurant-2-line text-2xl sm:text-3xl text-white"></i>`
+                        }
+                                        </div>
+                                        <h4 class="font-semibold text-gray-900 dark:text-white text-sm sm:text-base line-clamp-2 leading-tight mb-1 min-h-[2.5rem]">${safeName}</h4>
+                                        <span class="text-base sm:text-lg font-bold text-blue-600 dark:text-blue-400">S/ ${safePrice}</span>
+                                        <span class="mt-1 text-xs font-medium text-gray-500 dark:text-gray-400">Stock: ` +
+                        stockText + `</span>
+                                    </div>
+                                `;
 
                     grid.appendChild(el);
                     rendered++;
@@ -421,13 +521,13 @@
 
                 if (rendered === 0) {
                     grid.innerHTML = `
-                        <div class="col-span-full flex flex-col items-center justify-center py-20 text-gray-400">
-                            <div class="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-3">
-                                <i class="ri-search-line text-2xl opacity-50"></i>
-                            </div>
-                            <p class="text-sm font-medium">No se encontraron productos</p>
-                        </div>
-                    `;
+                                    <div class="col-span-full flex flex-col items-center justify-center py-20 text-gray-400">
+                                        <div class="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-3">
+                                            <i class="ri-search-line text-2xl opacity-50"></i>
+                                        </div>
+                                        <p class="text-sm font-medium">No se encontraron productos</p>
+                                    </div>
+                                `;
                 }
             }
 
@@ -444,9 +544,9 @@
                 allBtn.className = [
                     'inline-flex items-center gap-2 px-2.5 py-1.5 rounded-full text-xs sm:text-sm font-semibold',
                     'border transition-all duration-150 whitespace-nowrap cursor-pointer shrink-0',
-                    isAllActive
-                        ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                        : 'bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-slate-600 hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400'
+                    isAllActive ?
+                    'bg-blue-600 text-white border-blue-600 shadow-sm' :
+                    'bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-slate-600 hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400'
                 ].join(' ');
                 allBtn.onclick = function() {
                     selectedCategoryId = CATEGORY_ALL_ID;
@@ -470,9 +570,9 @@
                     el.className = [
                         'inline-flex items-center gap-2 px-2.5 py-1.5 rounded-full text-xs sm:text-sm font-semibold',
                         'border transition-all duration-150 whitespace-nowrap cursor-pointer shrink-0',
-                        isActive
-                            ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                            : 'bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-slate-600 hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400'
+                        isActive ?
+                        'bg-blue-600 text-white border-blue-600 shadow-sm' :
+                        'bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-slate-600 hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400'
                     ].join(' ');
                     el.onclick = function() {
                         selectedCategoryId = cat.id;
@@ -480,11 +580,11 @@
                         renderProducts();
                     };
                     el.innerHTML = `
-                        <img src="${imageUrl}" alt="${categoryName}"
-                            class="w-6 h-6 rounded-full object-cover shrink-0 border ${isActive ? 'border-blue-300' : 'border-gray-200 dark:border-slate-600'}"
-                            onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22200%22%3E%3Crect fill=%22%23e5e7eb%22 width=%22200%22 height=%22200%22/%3E%3C/svg%3E'">
-                        <span>${categoryName}</span>
-                    `;
+                                    <img src="${imageUrl}" alt="${categoryName}"
+                                        class="w-6 h-6 rounded-full object-cover shrink-0 border ${isActive ? 'border-blue-300' : 'border-gray-200 dark:border-slate-600'}"
+                                        onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22200%22%3E%3Crect fill=%22%23e5e7eb%22 width=%22200%22 height=%22200%22/%3E%3C/svg%3E'">
+                                    <span>${categoryName}</span>
+                                `;
                     container.appendChild(el);
                 });
             }
@@ -499,10 +599,10 @@
 
                 if (!currentSale.items || currentSale.items.length === 0) {
                     container.innerHTML = `
-                        <div class="flex flex-col items-center justify-center text-gray-300 opacity-60">
-                            <i class="fas fa-utensils text-3xl mb-2"></i>
-                            <p class="font-medium text-sm">Sin productos</p>
-                        </div>`;
+                                    <div class="flex flex-col items-center justify-center text-gray-300 opacity-60">
+                                        <i class="fas fa-utensils text-3xl mb-2"></i>
+                                        <p class="font-medium text-sm">Sin productos</p>
+                                    </div>`;
                 } else {
                     const ticketSavedTime = sessionStorage.getItem('last_saved_time') || '';
                     currentSale.items.forEach((item, index) => {
@@ -520,59 +620,60 @@
                         const itemNote = (item.note || '').replace(/</g, '&lt;');
 
                         const row = document.createElement('div');
-                        row.className = 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl p-3 shadow-sm relative overflow-hidden group mb-2 border-l-4 border-l-blue-500';
+                        row.className =
+                            'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl p-3 shadow-sm relative overflow-hidden group mb-2 border-l-4 border-l-blue-500';
                         row.innerHTML = `
-                            <div class="flex flex-col gap-2">
-                                <div class="flex items-center justify-between gap-2">
-                                    <div class="flex-1 min-w-0">
-                                        <div class="flex justify-between items-baseline gap-2">
-                                            <span class="font-bold text-slate-800 dark:text-slate-200 text-sm truncate">${productName}</span>
-                                            <span class="text-xs text-gray-500 dark:text-gray-400 shrink-0">S/ ${itemPrice.toFixed(2)}</span>
+                                        <div class="flex flex-col gap-2">
+                                            <div class="flex items-center justify-between gap-2">
+                                                <div class="flex-1 min-w-0">
+                                                    <div class="flex justify-between items-baseline gap-2">
+                                                        <span class="font-bold text-slate-800 dark:text-slate-200 text-sm truncate">${productName}</span>
+                                                        <span class="text-xs text-gray-500 dark:text-gray-400 shrink-0">S/ ${itemPrice.toFixed(2)}</span>
+                                                    </div>
+                                                </div>
+                                                <div class="flex items-center gap-0.5 bg-gray-100 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600 p-0.5 shrink-0">
+                                                    <button type="button" onclick="updateQty(${index}, -1)" class="w-7 h-7 flex items-center justify-center rounded-full text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                                                        <i class="ri-subtract-line text-sm"></i>
+                                                    </button>
+                                                    <input type="number" value="${itemQty}" min="1" readonly class="w-8 h-7 text-center text-xs font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-gray-800 border-0 rounded [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
+                                                    <button type="button" onclick="updateQty(${index}, 1)" class="w-7 h-7 flex items-center justify-center rounded-full text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
+                                                        <i class="ri-add-line text-sm"></i>
+                                                    </button>
+                                                </div>
+                                                <span class="font-bold text-slate-800 dark:text-slate-200 text-sm shrink-0 w-14 text-right">S/ ${itemTotal.toFixed(2)}</span>
+                                                <button type="button" onclick="removeFromCart(${index})" class="p-1.5 text-gray-400 hover:text-red-500 transition-colors shrink-0" title="Eliminar">
+                                                    <i class="ri-delete-bin-line text-base"></i>
+                                                </button>
+                                            </div>
+                                            <div class="flex items-center">
+                                                <span class="font-bold text-slate-800 dark:text-slate-200 text-xs text-gray-500 truncate">
+                                                    ${ticketSavedTime ? 'Hora: ' + ticketSavedTime : ''}
+                                                </span>
+                                            </div>
+                                            <div class="text-xs flex items-center gap-1">
+                                            Cortesía:
+                                            <input type="number"
+                                            min="0"
+                                            max="${itemQty}"
+                                            value="${Number(item.courtesyQty) || 0}"
+                                            onchange="setCourtesyQty(${index}, this)"
+                                            class="w-10 h-6 text-center text-[11px] border rounded" />
+                                            </div>
+                                            <div class="flex items-center">
+                                                <span class="font-bold text-slate-800 dark:text-slate-200 text-sm truncate">
+                                                    ${hasNote ? 'Nota: ' + itemNote : ''}
+                                                </span>
+                                            </div>
+                                            <div class="flex items-center">
+                                                <button type="button" onclick="toggleNoteInput(${index})" class="text-xs flex items-center gap-1 transition-colors ${hasNote ? 'text-blue-600 font-medium' : 'text-blue-500 hover:text-blue-600'}">
+                                                    <i class="fas fa-comment-alt text-[10px]"></i> Nota
+                                                </button>
+                                            </div>
+                                            <div id="note-box-${index}" class="${hasNote ? '' : 'hidden'} animate-fadeIn">
+                                                <input type="text" value="${itemNote}" oninput="saveNote(${index}, this.value)" placeholder="Escribe una nota..." class="w-full text-xs bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-2 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-yellow-400">
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div class="flex items-center gap-0.5 bg-gray-100 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600 p-0.5 shrink-0">
-                                        <button type="button" onclick="updateQty(${index}, -1)" class="w-7 h-7 flex items-center justify-center rounded-full text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
-                                            <i class="ri-subtract-line text-sm"></i>
-                                        </button>
-                                        <input type="number" value="${itemQty}" min="1" readonly class="w-8 h-7 text-center text-xs font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-gray-800 border-0 rounded [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
-                                        <button type="button" onclick="updateQty(${index}, 1)" class="w-7 h-7 flex items-center justify-center rounded-full text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
-                                            <i class="ri-add-line text-sm"></i>
-                                        </button>
-                                    </div>
-                                    <span class="font-bold text-slate-800 dark:text-slate-200 text-sm shrink-0 w-14 text-right">S/ ${itemTotal.toFixed(2)}</span>
-                                    <button type="button" onclick="removeFromCart(${index})" class="p-1.5 text-gray-400 hover:text-red-500 transition-colors shrink-0" title="Eliminar">
-                                        <i class="ri-delete-bin-line text-base"></i>
-                                    </button>
-                                </div>
-                                <div class="flex items-center">
-                                    <span class="font-bold text-slate-800 dark:text-slate-200 text-xs text-gray-500 truncate">
-                                        ${ticketSavedTime ? 'Hora: ' + ticketSavedTime : ''}
-                                    </span>
-                                </div>
-                                <div class="text-xs flex items-center gap-1">
-                                Cortesía:
-                                <input type="number"
-                                min="0"
-                                max="${itemQty}"
-                                value="${Number(item.courtesyQty) || 0}"
-                                onchange="setCourtesyQty(${index}, this)"
-                                class="w-10 h-6 text-center text-[11px] border rounded" />
-                                </div>
-                                <div class="flex items-center">
-                                    <span class="font-bold text-slate-800 dark:text-slate-200 text-sm truncate">
-                                        ${hasNote ? 'Nota: ' + itemNote : ''}
-                                    </span>
-                                </div>
-                                <div class="flex items-center">
-                                    <button type="button" onclick="toggleNoteInput(${index})" class="text-xs flex items-center gap-1 transition-colors ${hasNote ? 'text-blue-600 font-medium' : 'text-blue-500 hover:text-blue-600'}">
-                                        <i class="fas fa-comment-alt text-[10px]"></i> Nota
-                                    </button>
-                                </div>
-                                <div id="note-box-${index}" class="${hasNote ? '' : 'hidden'} animate-fadeIn">
-                                    <input type="text" value="${itemNote}" oninput="saveNote(${index}, this.value)" placeholder="Escribe una nota..." class="w-full text-xs bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-2 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-yellow-400">
-                                </div>
-                            </div>
-                        `;
+                                    `;
                         container.appendChild(row);
                     });
                 }
@@ -624,7 +725,7 @@
                 const productId = Number(prod.id);
                 if (Number.isNaN(productId)) return;
                 if (!Array.isArray(currentSale.items)) currentSale.items = [];
-                
+
                 const stock = stockByProductId.get(productId) ?? 0;
                 const existing = currentSale.items.find((i) => Number(i.pId) === productId);
                 const qtyToAdd = existing ? existing.qty + 1 : 1;
@@ -711,7 +812,8 @@
                     cobro?.classList.add('flex');
                     btnResumen?.classList.remove('bg-brand-500', 'text-white');
                     btnResumen?.classList.add('bg-gray-200', 'dark:bg-gray-700', 'text-gray-700', 'dark:text-gray-300');
-                    btnCobro?.classList.remove('bg-gray-100', 'dark:bg-gray-800', 'text-gray-500', 'dark:text-gray-400');
+                    btnCobro?.classList.remove('bg-gray-100', 'dark:bg-gray-800', 'text-gray-500',
+                        'dark:text-gray-400');
                     btnCobro?.classList.add('bg-brand-500', 'text-white');
                     cobroBtnContainer?.classList.remove('hidden');
                 } else {
@@ -720,7 +822,8 @@
                     resumen?.classList.remove('hidden');
                     btnCobro?.classList.remove('bg-brand-500', 'text-white');
                     btnCobro?.classList.add('bg-gray-100', 'dark:bg-gray-800', 'text-gray-500', 'dark:text-gray-400');
-                    btnResumen?.classList.remove('bg-gray-200', 'dark:bg-gray-700', 'text-gray-700', 'dark:text-gray-300');
+                    btnResumen?.classList.remove('bg-gray-200', 'dark:bg-gray-700', 'text-gray-700',
+                        'dark:text-gray-300');
                     btnResumen?.classList.add('bg-brand-500', 'text-white');
                     cobroBtnContainer?.classList.add('hidden');
                 }
@@ -762,7 +865,10 @@
             function autocompleteCobroAmount(inputEl) {
                 if (!inputEl) return;
                 const val = parseFloat(inputEl.value || 0) || 0;
-                if (val > 0) { inputEl.select(); return; }
+                if (val > 0) {
+                    inputEl.select();
+                    return;
+                }
                 const remaining = getCobroRemainingAmount(inputEl);
                 if (remaining > 0) {
                     inputEl.value = remaining.toFixed(2);
@@ -775,33 +881,45 @@
                 const d = (desc || '').toLowerCase();
                 return (d.includes('tarjeta') || d.includes('card')) && !d.includes('billetera');
             }
+
             function isCobroMethodWallet(desc) {
                 return ('' + (desc || '')).toLowerCase().includes('billetera');
             }
 
             function buildCobroGatewayOptions() {
                 const gws = cobroPaymentGateways || [];
-                const opts = gws.map(g => `<option value="${g.id}">${escapeHtml(g.description || '')}</option>`).join('');
-                return opts ? '<option value="">Seleccionar pasarela</option>' + opts : '<option value="">Sin pasarelas</option>';
+                const opts = gws.map(g => `<option value="${g.id}">${escapeHtml(g.description || '')}</option>`).join(
+                    '');
+                return opts ? '<option value="">Seleccionar pasarela</option>' + opts :
+                    '<option value="">Sin pasarelas</option>';
             }
+
             function buildCobroCardOptions() {
                 const cards = cobroCards || [];
                 const credit = cards.filter(c => (c.type || '').toUpperCase() === 'C');
                 const debit = cards.filter(c => (c.type || '').toUpperCase() === 'D');
                 let html = '<option value="">Seleccionar tarjeta</option>';
-                if (credit.length) html += '<optgroup label="Crédito">' + credit.map(c => `<option value="${c.id}">${escapeHtml(c.description || '')}</option>`).join('') + '</optgroup>';
-                if (debit.length) html += '<optgroup label="Débito">' + debit.map(c => `<option value="${c.id}">${escapeHtml(c.description || '')}</option>`).join('') + '</optgroup>';
+                if (credit.length) html += '<optgroup label="Crédito">' + credit.map(c =>
+                    `<option value="${c.id}">${escapeHtml(c.description || '')}</option>`).join('') + '</optgroup>';
+                if (debit.length) html += '<optgroup label="Débito">' + debit.map(c =>
+                    `<option value="${c.id}">${escapeHtml(c.description || '')}</option>`).join('') + '</optgroup>';
                 return html || '<option value="">Sin tarjetas</option>';
             }
+
             function buildCobroWalletOptions() {
                 const wls = cobroDigitalWallets || [];
-                const opts = wls.map(w => `<option value="${w.id}">${escapeHtml(w.description || '')}</option>`).join('');
-                return opts ? '<option value="">Seleccionar billetera</option>' + opts : '<option value="">Sin billeteras</option>';
+                const opts = wls.map(w => `<option value="${w.id}">${escapeHtml(w.description || '')}</option>`).join(
+                    '');
+                return opts ? '<option value="">Seleccionar billetera</option>' + opts :
+                    '<option value="">Sin billeteras</option>';
             }
+
             function buildCobroBankOptions() {
                 const banks = cobroBanks || [];
-                const opts = banks.map(b => `<option value="${b.id}">${escapeHtml(b.description || '')}</option>`).join('');
-                return opts ? '<option value="">Seleccionar banco</option>' + opts : '<option value="">Sin bancos</option>';
+                const opts = banks.map(b => `<option value="${b.id}">${escapeHtml(b.description || '')}</option>`).join(
+                    '');
+                return opts ? '<option value="">Seleccionar banco</option>' + opts :
+                    '<option value="">Sin bancos</option>';
             }
 
             function toggleCobroExtraFields(row) {
@@ -813,7 +931,8 @@
                 const desc = (methodSelect.options[methodSelect.selectedIndex]?.text || '').toLowerCase();
                 const isCard = isCobroMethodCard(desc);
                 const isWallet = isCobroMethodWallet(desc);
-                const isTransfer = desc.includes('transferencia') || desc.includes('transfer') || desc.includes('deposito') || desc.includes('depósito');
+                const isTransfer = desc.includes('transferencia') || desc.includes('transfer') || desc.includes(
+                    'deposito') || desc.includes('depósito');
                 cardGroup.classList.toggle('hidden', !isCard);
                 walletGroup.classList.toggle('hidden', !isWallet);
                 if (bankGroup) {
@@ -836,49 +955,51 @@
                 const list = document.getElementById('cobro-payment-methods-list');
                 if (!list) return;
                 const methods = cobroPaymentMethods || [];
-                const opts = methods.map(pm => `<option value="${pm.id}">${escapeHtml(pm.description || '')}</option>`).join('');
+                const opts = methods.map(pm => `<option value="${pm.id}">${escapeHtml(pm.description || '')}</option>`)
+                    .join('');
                 const autoAmount = getCobroRemainingAmount();
                 const row = document.createElement('div');
-                row.className = 'cobro-pm-row rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50 p-3 space-y-2';
+                row.className =
+                    'cobro-pm-row rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50 p-3 space-y-2';
                 row.innerHTML = `
-                    <div class="flex gap-2 items-end flex-wrap">
-                        <div class="flex-1 min-w-[120px]">
-                            <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Método</label>
-                            <select class="cobro-pm-method w-full py-2 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm" onchange="toggleCobroExtraFields(this.closest('.cobro-pm-row'))">${opts}</select>
-                        </div>
-                        <div class="w-24 shrink-0">
-                            <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Monto</label>
-                            <input type="number" step="0.01" min="0" value="${autoAmount > 0 ? autoAmount.toFixed(2) : '0.00'}" placeholder="0.00"
-                                class="w-full py-2 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm tabular-nums cobro-pm-amount"
-                                oninput="updateCobroTotalPaid()" onfocus="autocompleteCobroAmount(this)">
-                        </div>
-                        <button type="button" onclick="this.closest('.cobro-pm-row').remove(); updateCobroTotalPaid();" class="p-2 h-9 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors shrink-0" title="Eliminar">
-                            <i class="ri-delete-bin-line text-lg"></i>
-                        </button>
-                    </div>
-                    <div class="cobro-pm-card-group hidden flex gap-2 items-end flex-wrap">
-                        <div class="flex-1 min-w-[100px]">
-                            <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Pasarela</label>
-                            <select class="cobro-pm-gateway w-full py-2 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm">${buildCobroGatewayOptions()}</select>
-                        </div>
-                        <div class="flex-1 min-w-[100px]">
-                            <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Tarjeta</label>
-                            <select class="cobro-pm-card w-full py-2 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm">${buildCobroCardOptions()}</select>
-                        </div>
-                    </div>
-                    <div class="cobro-pm-wallet-group hidden flex gap-2 items-end flex-wrap">
-                        <div class="flex-1 min-w-[120px]">
-                            <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Billetera</label>
-                            <select class="cobro-pm-wallet w-full py-2 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm">${buildCobroWalletOptions()}</select>
-                        </div>
-                    </div>
-                    <div class="cobro-pm-bank-group hidden flex gap-2 items-end flex-wrap">
-                        <div class="flex-1 min-w-[120px]">
-                            <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Banco destino</label>
-                            <select class="cobro-pm-bank w-full py-2 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm">${buildCobroBankOptions()}</select>
-                        </div>
-                    </div>
-                `;
+                                <div class="flex gap-2 items-end flex-wrap">
+                                    <div class="flex-1 min-w-[120px]">
+                                        <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Método</label>
+                                        <select class="cobro-pm-method w-full py-2 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm" onchange="toggleCobroExtraFields(this.closest('.cobro-pm-row'))">${opts}</select>
+                                    </div>
+                                    <div class="w-24 shrink-0">
+                                        <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Monto</label>
+                                        <input type="number" step="0.01" min="0" value="${autoAmount > 0 ? autoAmount.toFixed(2) : '0.00'}" placeholder="0.00"
+                                            class="w-full py-2 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm tabular-nums cobro-pm-amount"
+                                            oninput="updateCobroTotalPaid()" onfocus="autocompleteCobroAmount(this)">
+                                    </div>
+                                    <button type="button" onclick="this.closest('.cobro-pm-row').remove(); updateCobroTotalPaid();" class="p-2 h-9 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors shrink-0" title="Eliminar">
+                                        <i class="ri-delete-bin-line text-lg"></i>
+                                    </button>
+                                </div>
+                                <div class="cobro-pm-card-group hidden flex gap-2 items-end flex-wrap">
+                                    <div class="flex-1 min-w-[100px]">
+                                        <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Pasarela</label>
+                                        <select class="cobro-pm-gateway w-full py-2 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm">${buildCobroGatewayOptions()}</select>
+                                    </div>
+                                    <div class="flex-1 min-w-[100px]">
+                                        <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Tarjeta</label>
+                                        <select class="cobro-pm-card w-full py-2 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm">${buildCobroCardOptions()}</select>
+                                    </div>
+                                </div>
+                                <div class="cobro-pm-wallet-group hidden flex gap-2 items-end flex-wrap">
+                                    <div class="flex-1 min-w-[120px]">
+                                        <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Billetera</label>
+                                        <select class="cobro-pm-wallet w-full py-2 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm">${buildCobroWalletOptions()}</select>
+                                    </div>
+                                </div>
+                                <div class="cobro-pm-bank-group hidden flex gap-2 items-end flex-wrap">
+                                    <div class="flex-1 min-w-[120px]">
+                                        <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Banco destino</label>
+                                        <select class="cobro-pm-bank w-full py-2 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm">${buildCobroBankOptions()}</select>
+                                    </div>
+                                </div>
+                            `;
                 list.appendChild(row);
                 toggleCobroExtraFields(row);
                 updateCobroTotalPaid();
@@ -887,7 +1008,9 @@
             function updateCobroTotalPaid() {
                 const inputs = document.querySelectorAll('.cobro-pm-amount');
                 let total = 0;
-                inputs.forEach(inp => { total += parseFloat(String(inp.value || 0).replace(',', '.')) || 0; });
+                inputs.forEach(inp => {
+                    total += parseFloat(String(inp.value || 0).replace(',', '.')) || 0;
+                });
                 const el = document.getElementById('cobro-total-paid');
                 if (el) el.textContent = 'S/ ' + total.toFixed(2);
             }
@@ -903,11 +1026,16 @@
                     const pmId = parseInt(methodSelect.value, 10);
                     const amount = parseFloat(String(input.value || 0).replace(',', '.')) || 0;
                     if (!pmId || amount <= 0) return;
-                    const obj = { payment_method_id: pmId, amount };
+                    const obj = {
+                        payment_method_id: pmId,
+                        amount
+                    };
                     const desc = (methodSelect.options[methodSelect.selectedIndex]?.text || '').toLowerCase();
-                    const isCard = (desc.includes('tarjeta') || desc.includes('card')) && !desc.includes('billetera');
+                    const isCard = (desc.includes('tarjeta') || desc.includes('card')) && !desc.includes(
+                        'billetera');
                     const isWallet = desc.includes('billetera');
-                    const isTransfer = desc.includes('transferencia') || desc.includes('transfer') || desc.includes('deposito') || desc.includes('depósito');
+                    const isTransfer = desc.includes('transferencia') || desc.includes('transfer') || desc
+                        .includes('deposito') || desc.includes('depósito');
                     if (isCard) {
                         const gw = row.querySelector('.cobro-pm-gateway');
                         const card = row.querySelector('.cobro-pm-card');
@@ -932,16 +1060,16 @@
                 if (!notification) return;
                 const isError = type === 'error';
                 notification.innerHTML = `
-                    <div class="rounded-xl border p-4 shadow-lg ${isError ? 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800' : 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800'}">
-                        <div class="flex items-start gap-3">
-                            <div class="${isError ? 'text-red-500' : 'text-green-500'}"><i class="fas fa-${isError ? 'exclamation-circle' : 'check-circle'} text-xl"></i></div>
-                            <div>
-                                <h3 class="font-semibold ${isError ? 'text-red-800 dark:text-red-200' : 'text-green-800 dark:text-green-200'}">${title}</h3>
-                                <p class="text-sm mt-1 ${isError ? 'text-red-700 dark:text-red-300' : 'text-green-700 dark:text-green-300'}">${message}</p>
-                            </div>
-                        </div>
-                    </div>
-                `;
+                                <div class="rounded-xl border p-4 shadow-lg ${isError ? 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800' : 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800'}">
+                                    <div class="flex items-start gap-3">
+                                        <div class="${isError ? 'text-red-500' : 'text-green-500'}"><i class="fas fa-${isError ? 'exclamation-circle' : 'check-circle'} text-xl"></i></div>
+                                        <div>
+                                            <h3 class="font-semibold ${isError ? 'text-red-800 dark:text-red-200' : 'text-green-800 dark:text-green-200'}">${title}</h3>
+                                            <p class="text-sm mt-1 ${isError ? 'text-red-700 dark:text-red-300' : 'text-green-700 dark:text-green-300'}">${message}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
                 notification.classList.remove('opacity-0', 'pointer-events-none');
                 setTimeout(() => notification.classList.add('opacity-0', 'pointer-events-none'), 3500);
             }
@@ -954,7 +1082,10 @@
                 }
                 // Guardar hora de guardado (solo visual, no afecta montos)
                 const now = new Date();
-                const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const timeString = now.toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
                 sessionStorage.setItem('last_saved_time', timeString);
                 const totals = calculateTotalsFromItems(items);
                 const total = totals.total;
@@ -966,13 +1097,15 @@
                     return;
                 }
                 if (Math.abs(totalPaid - total) > 0.01) {
-                    showCobroNotification('Error', 'La suma de los métodos de pago debe ser igual al total (S/ ' + total.toFixed(2) + ').', 'error');
+                    showCobroNotification('Error', 'La suma de los métodos de pago debe ser igual al total (S/ ' +
+                        total.toFixed(2) + ').', 'error');
                     return;
                 }
 
                 const docTypeEl = document.getElementById('cobro-document-type');
                 const cashRegEl = document.getElementById('cobro-cash-register');
-                const personId = currentSale.person_id || (document.getElementById('header-client-select')?.value ? parseInt(document.getElementById('header-client-select').value, 10) : null);
+                const personId = currentSale.person_id || (document.getElementById('header-client-select')?.value ?
+                    parseInt(document.getElementById('header-client-select').value, 10) : null);
 
                 const payload = {
                     items: items.map(it => ({
@@ -998,19 +1131,24 @@
                 };
 
                 const btn = document.getElementById('checkout-button');
-                if (btn) { btn.disabled = true; btn.textContent = 'Procesando...'; }
+                if (btn) {
+                    btn.disabled = true;
+                    btn.textContent = 'Procesando...';
+                }
 
                 try {
                     const r = await fetch(salesProcessUrl, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute(
+                                'content') || '',
                             'Accept': 'application/json'
                         },
                         body: JSON.stringify(payload)
                     });
-                    const data = r.headers.get('content-type')?.includes('application/json') ? await r.json() : null;
+                    const data = r.headers.get('content-type')?.includes('application/json') ? await r.json() :
+                        null;
                     if (!r.ok) {
                         const msg = data?.message || data?.error || 'Error al procesar la venta';
                         throw new Error(msg);
@@ -1029,12 +1167,15 @@
                 } catch (err) {
                     showCobroNotification('Error', err.message || 'Error al procesar la venta.', 'error');
                 } finally {
-                    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ri-bank-card-line text-base"></i><span>Cobrar</span>'; }
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="ri-bank-card-line text-base"></i><span>Cobrar</span>';
+                    }
                 }
             }
 
             function clearCart() {
-                if(currentSale.items.length > 0 && confirm('¿Vaciar toda la orden?')) {
+                if (currentSale.items.length > 0 && confirm('¿Vaciar toda la orden?')) {
                     currentSale.items = [];
                     saveDB();
                     renderTicket();
@@ -1045,9 +1186,9 @@
                 const box = document.getElementById('note-box-' + index);
                 if (box) {
                     box.classList.toggle('hidden');
-                    if(!box.classList.contains('hidden')) {
+                    if (!box.classList.contains('hidden')) {
                         const input = box.querySelector('input');
-                        if(input) setTimeout(() => input.focus(), 50);
+                        if (input) setTimeout(() => input.focus(), 50);
                     }
                 }
             }

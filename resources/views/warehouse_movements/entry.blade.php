@@ -7,7 +7,7 @@
             ? $products->filter(fn($p) => $productBranches->has($p->id))
             : $products;
         // Opciones para el combobox: id + description con stock actual (todos con restricción/visibilidad de stock)
-        $comboboxOptions = $productsForBranch->map(function ($p) use ($productBranches) {
+        $comboboxOptions = $productsForBranch->filter(fn($p) => $p->kardex === 'S')->map(function ($p) use ($productBranches) {
             $pb = $productBranches->get($p->id);
             $stock = $pb ? (float) ($pb->stock ?? 0) : 0;
             $name = $p->description ?? $p->code ?? 'Sin nombre';

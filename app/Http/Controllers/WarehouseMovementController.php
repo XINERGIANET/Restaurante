@@ -307,16 +307,19 @@ class WarehouseMovementController extends Controller
         }
 
         $warehouseMovements = WarehouseMovement::query()
+            ->join('movements', 'warehouse_movements.movement_id', '=', 'movements.id')
+            ->select('warehouse_movements.*')
             ->with(['movement.movementType', 'movement.documentType', 'branch'])
-            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->when($branchId, fn ($q) => $q->where('warehouse_movements.branch_id', $branchId))
             ->when($search, function ($query) use ($search) {
-                $query->whereHas('movement', function ($q) use ($search) {
-                    $q->where('number', 'ILIKE', "%{$search}%")
-                        ->orWhere('person_name', 'ILIKE', "%{$search}%")
-                        ->orWhere('user_name', 'ILIKE', "%{$search}%");
+                $query->where(function ($q) use ($search) {
+                    $q->where('movements.number', 'ILIKE', "%{$search}%")
+                        ->orWhere('movements.person_name', 'ILIKE', "%{$search}%")
+                        ->orWhere('movements.user_name', 'ILIKE', "%{$search}%");
                 });
             })
-            ->orderByDesc('id')
+            ->orderByDesc('movements.moved_at')
+            ->orderByDesc('warehouse_movements.id')
             ->paginate($perPage)
             ->withQueryString();
 

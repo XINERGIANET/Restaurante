@@ -103,29 +103,35 @@
             </div>
             <div class="flex flex-wrap items-end justify-between gap-3 w-full">
                 <div class="flex flex-wrap items-end gap-3">
-                    <div class="w-[155px] shrink-0 [&_label]:mb-1 [&_label]:text-xs [&_label]:font-medium [&_label]:text-gray-600 dark:[&_label]:text-gray-400">
+                    <div
+                        class="w-[155px] shrink-0 [&_label]:mb-1 [&_label]:text-xs [&_label]:font-medium [&_label]:text-gray-600 dark:[&_label]:text-gray-400">
                         <x-form.date-picker name="date_from" label="Desde" :defaultDate="$dateFrom" dateFormat="Y-m-d" />
                     </div>
-                    <div class="w-[155px] shrink-0 [&_label]:mb-1 [&_label]:text-xs [&_label]:font-medium [&_label]:text-gray-600 dark:[&_label]:text-gray-400">
+                    <div
+                        class="w-[155px] shrink-0 [&_label]:mb-1 [&_label]:text-xs [&_label]:font-medium [&_label]:text-gray-600 dark:[&_label]:text-gray-400">
                         <x-form.date-picker name="date_to" label="Hasta" :defaultDate="$dateTo" dateFormat="Y-m-d" />
                     </div>
                     <div class="w-[155px] shrink-0">
-                        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Método de pago</label>
+                        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Método de
+                            pago</label>
                         <select name="payment_method_id" onchange="this.form.submit()"
                             class="h-11 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-2 focus:ring-brand-500/10 dark:border-gray-600 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800">
                             <option value="">Todos</option>
                             @foreach ($paymentMethods ?? [] as $pm)
-                                <option value="{{ $pm->id }}" @selected(($paymentMethodId ?? '') == $pm->id)>{{ $pm->description ?? $pm->id }}</option>
+                                <option value="{{ $pm->id }}" @selected(($paymentMethodId ?? '') == $pm->id)>
+                                    {{ $pm->description ?? $pm->id }}</option>
                             @endforeach
                         </select>
                     </div>
                     <div class="w-[155px] shrink-0">
-                        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Tipo de documento</label>
+                        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Tipo de
+                            documento</label>
                         <select name="document_type_id" onchange="this.form.submit()"
                             class="h-11 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-2 focus:ring-brand-500/10 dark:border-gray-600 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800">
                             <option value="">Todos</option>
                             @foreach ($documentTypes ?? [] as $dt)
-                                <option value="{{ $dt->id }}" @selected(($documentTypeId ?? '') == $dt->id)>{{ $dt->name }}</option>
+                                <option value="{{ $dt->id }}" @selected(($documentTypeId ?? '') == $dt->id)>{{ $dt->name }}
+                                </option>
                             @endforeach
                         </select>
                     </div>
@@ -135,7 +141,8 @@
                             class="h-11 w-full rounded-lg border border-gray-300 bg-white px-5 py-2 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-2 focus:ring-brand-500/10 dark:border-gray-600 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800">
                             <option value="">Todas</option>
                             @foreach ($cashRegisters ?? [] as $cr)
-                                <option value="{{ $cr->id }}" @selected(($cashRegisterId ?? '') == $cr->id)>{{ $cr->number ?? $cr->id }}</option>
+                                <option value="{{ $cr->id }}" @selected(($cashRegisterId ?? '') == $cr->id)>
+                                    {{ $cr->number ?? $cr->id }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -143,14 +150,17 @@
                 <div class="shrink-0">
                     <button type="button"
                         class="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-orange-600 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
-                        onclick="window.location.href='{{ route('orders.pdf', array_filter([
-                            'date_from' => $dateFrom,
-                            'date_to' => $dateTo,
-                            'search' => $search,
-                            'document_type_id' => $documentTypeId ?? null,
-                            'payment_method_id' => $paymentMethodId ?? null,
-                            'cash_register_id' => $cashRegisterId ?? null,
-                        ])) }}'">
+                        onclick="window.location.href='{{ route(
+                            'orders.pdf',
+                            array_filter([
+                                'date_from' => $dateFrom,
+                                'date_to' => $dateTo,
+                                'search' => $search,
+                                'document_type_id' => $documentTypeId ?? null,
+                                'payment_method_id' => $paymentMethodId ?? null,
+                                'cash_register_id' => $cashRegisterId ?? null,
+                            ]),
+                        ) }}'">
                         <i class="ri-file-pdf-line text-base"></i>
                         <span>Descargar PDF</span>
                     </button>
@@ -160,28 +170,28 @@
     </div>
     <div x-data="{ openRow: null }"
         class="table-responsive mt-4 rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
-        <table class="w-full table-fixed text-sm">
+        <table class="w-full table-fixed text-xs">
             <thead class="bg-[#63B7EC] text-white">
                 <tr>
-                    <th class="w-14 px-2 py-2 text-center first:rounded-tl-xl text-xs font-bold uppercase tracking-wider">
+                    <th class="w-14 px-2 py-2 text-center first:rounded-tl-xl font-bold uppercase tracking-wider">
                         #
                     </th>
-                    <th class="w-20 px-2 py-2 text-left text-xs font-bold uppercase tracking-wider">
+                    <th class="w-20 px-2 py-2 text-left font-bold uppercase tracking-wider">
                         Número
                     </th>
-                    <th class="w-20 px-2 py-2 text-center text-xs font-bold uppercase tracking-wider">
+                    <th class="w-20 px-2 py-2 text-center font-bold uppercase tracking-wider">
                         Total
                     </th>
-                    <th class="w-24 px-2 py-2 text-center text-xs font-bold uppercase tracking-wider">
+                    <th class="w-24 px-2 py-2 text-center font-bold uppercase tracking-wider">
                         Fecha
                     </th>
-                    <th class="w-24 px-2 py-2 text-left text-xs font-bold uppercase tracking-wider">
+                    <th class="w-24 px-2 py-2 text-left font-bold uppercase tracking-wider">
                         Persona
                     </th>
-                    <th class="w-24 px-2 py-2 text-left text-xs font-bold uppercase tracking-wider">
-                        Responsable
+                    <th class="w-24 px-2 py-2 text-center font-bold uppercase tracking-wider">
+                        Tipo de servicio
                     </th>
-                    <th class="w-24 px-2 py-2 text-center last:rounded-tr-xl text-xs font-bold uppercase tracking-wider">
+                    <th class="w-24 px-2 py-2 text-center last:rounded-tr-xl font-bold uppercase tracking-wider">
                         Estado
                     </th>
                 </tr>
@@ -211,8 +221,8 @@
                                 <button type="button"
                                     @click="openRow === {{ $order->id }} ? openRow = null : openRow = {{ $order->id }}"
                                     class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#63B7EC] text-white transition hover:opacity-90">
-                                    <i class="ri-add-line text-sm" x-show="openRow !== {{ $order->id }}"></i>
-                                    <i class="ri-subtract-line text-sm" x-show="openRow === {{ $order->id }}"></i>
+                                    <i class="ri-add-line text-xs" x-show="openRow !== {{ $order->id }}"></i>
+                                    <i class="ri-subtract-line text-xs" x-show="openRow === {{ $order->id }}"></i>
                                 </button>
                             </div>
                         </td>
@@ -225,39 +235,73 @@
                                         : $num)
                                     : '-';
                             @endphp
-                            <span class="text-gray-700 text-xs dark:text-gray-300 truncate block max-w-full" title="{{ $numDisplay }}">{{ $numDisplay }}</span>
+                            <span class="text-gray-700 badge badge-sm badge-primary dark:text-gray-300 truncate block max-w-full"
+                                title="{{ $numDisplay }}">{{ $numDisplay }}</span>
                         </td>
                         <td class="px-2 py-2 text-center">
-                            <span class="text-gray-700 text-xs font-medium dark:text-gray-300 tabular-nums">{{ number_format((float) ($order->total ?? 0), 2) }}</span>
+                            <span
+                                class="text-gray-700 font-medium dark:text-gray-300 tabular-nums">{{ number_format((float) ($order->total ?? 0), 2) }}</span>
                         </td>
                         <td class="px-2 py-2 text-center">
-                            <span class="text-gray-600 text-xs dark:text-gray-400 tabular-nums">{{ $order->movement?->moved_at?->format('d/m/Y H:i') ?? '-' }}</span>
+                            <span
+                                class="text-gray-600 dark:text-gray-400 tabular-nums">{{ $order->movement?->moved_at?->format('d/m/Y H:i') ?? '-' }}</span>
                         </td>
                         <td class="px-2 py-2 overflow-hidden">
-                            <span class="text-gray-600 text-xs dark:text-gray-400 truncate block max-w-full" title="{{ $order->movement?->person_name ?? '-' }}">{{ $order->movement?->person_name ?? '-' }}</span>
+                            <span class="text-gray-600 dark:text-gray-400 truncate block max-w-full"
+                                title="{{ $order->movement?->person_name ?? '-' }}">{{ $order->movement?->person_name ?? '-' }}</span>
                         </td>
-                        <td class="px-2 py-2 overflow-hidden">
-                            <span class="text-gray-600 text-xs dark:text-gray-400 truncate block max-w-full" title="{{ $order->movement?->responsible_name ?? '-' }}">{{ $order->movement?->responsible_name ?? '-' }}</span>
+                        <td class="px-2 py-2 text-center justify-center items-center overflow-hidden">
+                            @php
+                                $serviceType = strtoupper(trim((string) ($order->service_type ?? '')));
+                                $serviceLabel = match ($serviceType) {
+                                    'IN_SITU' => 'Local',
+                                    'TAKE_AWAY', 'TAKE_OUT' => 'Para llevar',
+                                    'DELIVERY' => 'Delivery',
+                                    default => '-',
+                                };
+                        
+                                $serviceColor = match ($serviceType) {
+                                    'IN_SITU' => 'success',
+                                    'TAKE_AWAY', 'TAKE_OUT' => 'warning',
+                                    'DELIVERY' => 'info',
+                                    default => 'light',
+                                };
+                            @endphp
+                        
+                            <x-ui.badge
+                                variant="light"
+                                color="{{ $serviceColor }}"
+                                class="inline-flex justify-center items-center text-center text-[11px] font-medium px-2 py-0.5"
+                                title="{{ $serviceType ?: '-' }}"
+                            >
+                                {{ $serviceLabel }}
+                            </x-ui.badge>
                         </td>
+                        
                         <td class="px-2 py-2 text-center">
                             <x-ui.badge variant="light" color="{{ $rowStatusColor }}"
-                                class="inline-flex text-[11px] font-medium px-2 py-0.5">
+                                class="inline-flex justify-center items-center text-center text-[11px] font-medium px-2 py-0.5">
                                 {{ $rowStatusText }}
                             </x-ui.badge>
                         </td>
                     </tr>
-                    {{-- Acordeón: Detalle del pedido (estilo compras) --}}
+
+                    {{-- Acordeón: Detalle del pedido --}}
                     <tr x-show="openRow === {{ $order->id }}" x-cloak x-transition
                         class="bg-slate-50 dark:bg-slate-800/40 border-b border-gray-200 dark:border-gray-800">
                         <td colspan="7" class="px-6 py-5">
-                            <div class="rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900 overflow-hidden shadow-sm">
-                                <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/80 flex items-center gap-2">
+                            <div
+                                class="rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900 overflow-hidden shadow-sm">
+                                <div
+                                    class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/80 flex items-center gap-2">
                                     <i class="ri-file-list-3-line text-brand-500"></i>
-                                    <h4 class="text-sm font-bold text-gray-700 dark:text-gray-200">Detalle del pedido #{{ $order->movement?->number ?? $order->id }}</h4>
+                                    <h4 class="text-xs font-bold text-gray-700 dark:text-gray-200">Detalle del pedido
+                                        #{{ $order->movement?->number ?? $order->id }}</h4>
                                 </div>
                                 <div class="overflow-x-auto">
                                     <table class="w-full text-sm text-left">
-                                        <thead class="text-xs text-gray-500 uppercase bg-white dark:bg-gray-900 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800">
+                                        <thead
+                                            class="text-gray-500 uppercase bg-white dark:bg-gray-900 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800">
                                             <tr>
                                                 <th class="px-4 py-3 font-semibold">Producto(s)</th>
                                                 <th class="px-4 py-3 font-semibold">Cantidad</th>
@@ -267,38 +311,50 @@
                                                 <th class="px-4 py-3 font-semibold">Mozo</th>
                                             </tr>
                                         </thead>
-                                        <tbody>
-                                                <tr class="hover:bg-gray-50/50 dark:hover:bg-white/5 transition-colors">
-                                                    <td class="px-4 py-3 font-medium text-gray-700 dark:text-gray-300 tabular-nums">
-                                                        @foreach ($order->details as $detail)
-                                                            <span class="text-gray-600 text-xs dark:text-gray-400 truncate block max-w-full" title="{{ $detail->description }}">{{ $detail->description }}</span>
-                                                        @endforeach
-                                                    </td>
-                                                    <td class="px-4 py-3 text-gray-600 dark:text-gray-400 tabular-nums">
-                                                        @foreach ($order->details as $detail)
-                                                            <!--Cantidad de productos vendido y de cortesia-->
-                                                            <span class="text-gray-600 text-xs dark:text-gray-400 truncate block max-w-full" title="{{ $detail->quantity }}">
-                                                                {{ number_format((float) ($detail->quantity ?? 0), 2) }}
-                                                                @if ((float) ($detail->courtesy_quantity ?? 0) > 0)
-                                                                    <span class="text-amber-500">({{ number_format((float) $detail->courtesy_quantity, 2) }} cortesía)</span>
-                                                                @endif
-                                                            </span>
-                                                            @endforeach
-                                                    </td>
-                                                    <td class="px-4 py-3 text-right font-bold text-gray-700 dark:text-gray-300 tabular-nums">{{ $order->movement?->moved_at?->format('H:i') ?? '-' }}</td>
-                                                    <td class="px-4 py-3 text-gray-600 dark:text-gray-400">
-                                                        <x-ui.badge variant="light" color="{{ $rowStatusColor }}"
-                                                            class="inline-flex text-[11px] font-medium px-2 py-0.5">
-                                                            {{ $rowStatusText }}
-                                                        </x-ui.badge>
-                                                    </td>
-                                                    <td class="px-4 py-3 text-gray-600 dark:text-gray-400">
-                                                        <span class="text-gray-600 text-xs dark:text-gray-400 truncate block max-w-full" title="{{ $order->table?->name ?? '-' }}">{{ $order->table?->name ?? '-' }}</span>
-                                                    </td>
-                                                    <td class="px-4 py-3 text-gray-600 dark:text-gray-400">
-                                                        <span class="text-gray-600 text-xs dark:text-gray-400 truncate block max-w-full" title="{{ $order->movement?->responsible_name ?? '-' }}">{{ $order->movement?->responsible_name ?? '-' }}</span>
-                                                    </td>
-                                                </tr>
+                                        <tbody class="text-sm">
+                                            <tr class="hover:bg-gray-50/50 dark:hover:bg-white/5 transition-colors">
+                                                <td
+                                                    class="px-4 py-3 font-medium text-gray-700 dark:text-gray-300 tabular-nums">
+                                                    @foreach ($order->details as $detail)
+                                                        <span
+                                                            class="text-gray-600 dark:text-gray-400 truncate block max-w-full"
+                                                            title="{{ $detail->description }}">{{ $detail->description }}</span>
+                                                    @endforeach
+                                                </td>
+                                                <td class="px-4 py-3 text-gray-600 dark:text-gray-400 tabular-nums">
+                                                    @foreach ($order->details as $detail)
+                                                        <span
+                                                            class="text-gray-600 dark:text-gray-400 truncate block max-w-full"
+                                                            title="{{ $detail->quantity }}">
+                                                            {{ number_format((float) ($detail->quantity ?? 0), 2) }}
+                                                            @if ((float) ($detail->courtesy_quantity ?? 0) > 0)
+                                                                <span
+                                                                    class="text-amber-500">({{ number_format((float) $detail->courtesy_quantity, 2) }}
+                                                                    cortesía)</span>
+                                                            @endif
+                                                        </span>
+                                                    @endforeach
+                                                </td>
+                                                <td
+                                                    class="px-4 py-3 text-right font-bold text-gray-700 dark:text-gray-300 tabular-nums">
+                                                    {{ $order->movement?->moved_at?->format('H:i') ?? '-' }}</td>
+                                                <td class="px-4 py-3 text-gray-600 dark:text-gray-400">
+                                                    <x-ui.badge variant="light" color="{{ $rowStatusColor }}"
+                                                        class="inline-flex justify-center items-center text-center text-[11px] font-medium px-2 py-0.5">
+                                                        {{ $rowStatusText }}
+                                                    </x-ui.badge>
+                                                </td>
+                                                <td class="px-4 py-3 text-gray-600 dark:text-gray-400">
+                                                    <span
+                                                        class="text-gray-600 dark:text-gray-400 truncate block max-w-full"
+                                                        title="{{ $order->table?->name ?? '-' }}">{{ $order->table?->name ?? '-' }}</span>
+                                                </td>
+                                                <td class="px-4 py-3 text-gray-600 dark:text-gray-400">
+                                                    <span
+                                                        class="text-gray-600 dark:text-gray-400 truncate block max-w-full"
+                                                        title="{{ $order->movement?->responsible_name ?? '-' }}">{{ $order->movement?->responsible_name ?? '-' }}</span>
+                                                </td>
+                                            </tr>
                                         </tbody>
                                     </table>
                                 </div>
@@ -308,13 +364,12 @@
                 @empty
                     <tr>
                         <td colspan="7" class="px-6 py-12">
-                            <div class="flex flex-col items-center gap-3 text-center text-sm text-gray-500">
+                            <div class="flex flex-col items-center gap-3 text-center text-xs text-gray-500">
                                 <div
                                     class="rounded-full bg-gray-100 p-3 text-gray-400 dark:bg-gray-800 dark:text-gray-300">
                                     <i class="ri-restaurant-2-line"></i>
                                 </div>
-                                <p class="text-base font-semibold text-gray-700 dark:text-gray-200">No hay pedidos
-                                    registrados.</p>
+                                <p class="font-semibold text-gray-700 dark:text-gray-200">No hay pedidos registrados.</p>
                                 <p class="text-gray-500">Crea el primer pedido desde Salones de pedidos.</p>
                                 <x-ui.link-button size="sm" variant="primary"
                                     href="{{ route('orders.index', $viewId ? ['view_id' => $viewId] : []) }}">

@@ -173,6 +173,15 @@
                                     @endforeach
                                 </select>
                             </div>
+                            <div class="{{ $filterClass }}">
+                                <label class="{{ $labelClass }}">Tipo de venta</label>
+                                <select name="sale_type" onchange="this.form.submit()" class="{{ $inputClass }}">
+                                    <option value="">Todos</option>
+                                    <option value="IN_SITU" @selected(($saleType ?? '') == 'IN_SITU')>En Local</option>
+                                    <option value="TAKE_AWAY" @selected(($saleType ?? '') == 'TAKE_AWAY')>Para Llevar</option>
+                                    <option value="DELIVERY" @selected(($saleType ?? '') == 'DELIVERY')>Delivery</option>
+                                </select>
+                            </div>
                         </div>
                         <div class="shrink-0">
                             <button type="button" onclick="descargarPdf()"
@@ -221,6 +230,9 @@
                             </th>
                             <th class="px-5 py-3 text-left sm:px-6">
                                 <p class="font-semibold text-white text-theme-xs uppercase">Situación</p>
+                            </th>
+                            <th class="px-5 py-3 text-left sm:px-6">
+                                <p class="font-semibold text-white text-theme-xs uppercase">Tipo</p>
                             </th>
                             <th class="px-5 py-3 text-center sm:px-6 last:rounded-tr-xl">
                                 <p class="font-semibold text-white text-theme-xs uppercase">Acciones</p>
@@ -285,6 +297,18 @@
                                     <x-ui.badge variant="light" color="{{ $badgeColor }}">
                                         {{ $badgeText }}
                                     </x-ui.badge>
+                                </td>
+                                <td class="px-5 py-4 sm:px-6">
+                                    <p class="text-gray-800 text-theme-sm dark:text-white/90">
+                                        @php
+                                            $stVal = $sale->salesMovement?->sale_type ?? '-';
+                                            $stText = $stVal;
+                                            if ($stVal === 'IN_SITU') $stText = 'Local';
+                                            elseif ($stVal === 'TAKE_AWAY') $stText = 'LLevar';
+                                            elseif ($stVal === 'DELIVERY') $stText = 'Delivery';
+                                        @endphp
+                                        {{ $stText }}
+                                    </p>
                                 </td>
                                 <td class="px-5 text-center py-4 sm:px-6">
                                     <div class="flex items-center justify-center gap-2">

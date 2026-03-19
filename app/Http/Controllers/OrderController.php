@@ -853,6 +853,8 @@ class OrderController extends Controller
             ->orderBy('number')
             ->get(['id', 'number']);
 
+        $deliveryAreaId = Area::where('name', 'ILIKE', '%Delivery%')->value('id');
+
         $response = response()->view('orders.create', [
             'user' => $user,
             'person' => $person,
@@ -873,6 +875,10 @@ class OrderController extends Controller
             'pendingPeopleCount' => (int) ($pendingOrder?->people_count ?: ($table->capacity ?? 1)),
             'pendingCancelledDetails' => $pendingCancelledDetails,
             'pendingItems' => $pendingItems,
+            'pendingServiceType' => $pendingOrder?->service_type ?? 'IN_SITU',
+            'pendingDeliveryAddress' => $pendingOrder?->delivery_address,
+            'pendingContactPhone' => $pendingOrder?->contact_phone,
+            'pendingDeliveryAmount' => $pendingOrder?->delivery_amount ?? 0,
             'documentTypes' => $documentTypes,
             'paymentMethods' => $paymentMethods,
             'paymentGateways' => $paymentGateways,
@@ -881,6 +887,7 @@ class OrderController extends Controller
             'banks' => $banks,
             'cashRegisters' => $cashRegisters,
             'waiterPinEnabled' => $this->shouldRequireWaiterPin((int) $branchId, $profileId),
+            'deliveryAreaId' => $deliveryAreaId,
             'canCharge' => $this->canCharge($profileId),
             'isMozo' => !$this->canCharge($profileId),
             'turboCacheControl' => 'no-cache',
@@ -1334,6 +1341,7 @@ class OrderController extends Controller
                     'contact_phone' => $request->filled('contact_phone') ? $request->contact_phone : null,
                     'delivery_address' => $request->filled('delivery_address') ? $request->delivery_address : null,
                     'delivery_time' => $request->filled('delivery_time') ? $request->delivery_time : null,
+                    'service_type' => $request->input('service_type', 'IN_SITU'),
                     'status' => 'PENDIENTE',
                     'movement_id' => $movement->id,
                     'branch_id' => $branchId,
@@ -1911,10 +1919,11 @@ class OrderController extends Controller
             ], 404);
         }
 
-        Table::where('id', $table->id)->update([
-            'situation' => 'ocupada',
-            'opened_at' => $table->opened_at ?? now(),
-        ]);
+        if ($table->situation !== 'ocupada') {
+            Table::where('id', $table->id)->update([
+                'situation' => 'ocupada',
+            ]);
+        }
 
         return response()->json([
             'success' => true,

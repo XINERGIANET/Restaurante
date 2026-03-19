@@ -7,11 +7,12 @@
             ? $products->filter(fn($p) => $productBranches->has($p->id))
             : $products;
         // Opciones para el combobox: id + description con stock actual (restricción visible)
-        $comboboxOptions = $productsForBranch->map(function ($p) use ($productBranches) {
-            $pb = $productBranches->get($p->id);
-            $stock = $pb ? (float) ($pb->stock ?? 0) : 0;
-            $name = $p->description ?? $p->code ?? 'Sin nombre';
-            return ['id' => $p->id, 'description' => $name . ' (Stock: ' . number_format($stock, 0) . ')'];
+        $comboboxOptions = $productsForBranch->filter(fn($p) => $p->kardex === 'S')
+            ->map(function ($p) use ($productBranches) {
+                $pb = $productBranches->get($p->id);
+                $stock = $pb ? (float) ($pb->stock ?? 0) : 0;
+                $name = $p->description ?? $p->code ?? 'Sin nombre';
+                return ['id' => $p->id, 'description' => $name . ' (Stock: ' . number_format($stock, 0) . ')'];
         })->values()->all();
     @endphp
     <x-common.page-breadcrumb pageTitle="Nuevo movimiento" />

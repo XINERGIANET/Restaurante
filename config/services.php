@@ -40,4 +40,9 @@ return [
         'token' => env('DNI_API_TOKEN'),
     ],
 
+    'ruc_api' => [
+        'url' => env('RUC_API_URL'),
+        'token' => env('DNI_API_TOKEN'),
+    ],
+
 ];

@@ -87,32 +87,50 @@
     {{-- Buscador DNI/RUC modo POS --}}
     <div class="col-span-4 mb-1"
          x-data="{
-            dniQuery: '',
+            dniQuery: '{{ old('document_number', $person->document_number ?? '') }}',
             dniLoading: false,
             dniError: '',
             async searchDni() {
                 const q = this.dniQuery.trim();
-                if (!q) { this.dniError = 'Ingrese un DNI o RUC.'; return; }
+                const len = q.length;
+                if (len !== 8 && len !== 11) {
+                    this.dniError = 'Debe ingresar 8 dígitos para DNI o 11 para RUC.';
+                    return;
+                }
                 this.dniLoading = true;
                 this.dniError = '';
                 try {
-                    const res = await fetch('/api/dni/' + encodeURIComponent(q));
+                    const endpoint = len === 8 ? '/api/dni/' : '/api/ruc/';
+                    const res = await fetch(endpoint + encodeURIComponent(q));
                     const data = await res.json();
                     if (!res.ok) { this.dniError = data.error || 'No se encontraron datos.'; return; }
-                    const names = data.nombres || data.nombre || data.first_name || '';
-                    const lp = data.apellido_paterno || data.apellidoPaterno || '';
-                    const lm = data.apellido_materno || data.apellidoMaterno || '';
-                    const lastName = (lp + ' ' + lm).trim() || data.apellidos || data.last_name || '';
-                    const docNum = data.numero || data.ruc || data.dni || q;
-                    const docType = String(docNum).length === 11 ? 'RUC' : 'DNI';
+
+                    const typeSelect = document.querySelector('[name=person_type]');
                     const fnInput = document.querySelector('[name=first_name]');
                     const lnInput = document.querySelector('[name=last_name]');
-                    const docInput = document.querySelector('[name=document_number]');
-                    const typeSelect = document.querySelector('[name=person_type]');
-                    if (fnInput && names) fnInput.value = names;
-                    if (lnInput && lastName) lnInput.value = lastName;
-                    if (docInput) docInput.value = docNum;
-                    if (typeSelect) typeSelect.value = docType;
+                    const addrInput = document.querySelector('[name=address]');
+
+                    // Reset inputs
+                    if (fnInput) fnInput.value = '';
+                    if (lnInput) lnInput.value = '';
+                    if (addrInput) addrInput.value = '';
+
+                    if (len === 8) {
+                        // DNI - Persona natural
+                        const names = data.nombres || '';
+                        const lastName = ((data.apellido_paterno || '') + ' ' + (data.apellido_materno || '')).trim();
+                        if (fnInput) fnInput.value = names;
+                        if (lnInput) lnInput.value = lastName;
+                        if (typeSelect) typeSelect.value = 'DNI';
+                    } else {
+                        // RUC - Persona jurídica o con negocio
+                        const businessName = data.razon_social || '';
+                        const address = data.direccion || '';
+                        if (fnInput) fnInput.value = 'EMPRESA / RUC';
+                        if (lnInput) lnInput.value = businessName;
+                        if (addrInput) addrInput.value = address;
+                        if (typeSelect) typeSelect.value = 'RUC';
+                    }
                 } catch(e) {
                     this.dniError = 'Error al consultar. Intente de nuevo.';
                 } finally {
@@ -121,16 +139,18 @@
             }
          }">
         <label class="mb-1.5 block text-sm font-semibold text-blue-700 dark:text-blue-400">
-            <i class="ri-search-eye-line"></i> Buscar por DNI / RUC
-            <span class="text-xs font-normal text-gray-500">(opcional, autocompleta los datos)</span>
+            <i class="ri-search-eye-line"></i> Documento (DNI / RUC)
+            <span class="text-xs font-normal text-gray-500">(ingresa el número y pulsa Buscar para autocompletar)</span>
         </label>
         <div class="flex gap-2">
             <input
                 type="text"
+                name="document_number"
                 x-model="dniQuery"
                 @keydown.enter.prevent="searchDni()"
                 maxlength="11"
-                placeholder="Ej: 12345678 (DNI) o 20123456789 (RUC)"
+                required
+                placeholder="Ej: 12345678 o 20123456789"
                 class="h-10 w-full rounded-lg border border-blue-300 bg-transparent px-4 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none dark:border-blue-700 dark:bg-gray-900 dark:text-white/90"
             />
             <button
@@ -169,16 +189,17 @@
         @enderror
     </div>
 
+    @if(!$hidePinAndRoles)
     <div>
         <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
             Documento
-            @unless($hidePinAndRoles)<span class="text-red-500">*</span>@endunless
+            <span class="text-red-500">*</span>
         </label>
         <input
             type="text"
             name="document_number"
             value="{{ old('document_number', $person->document_number ?? '') }}"
-            @unless($hidePinAndRoles) required @endunless
+            required
             placeholder="Ingrese el documento"
             class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
         />
@@ -186,6 +207,7 @@
             <p class="mt-1 text-xs text-error-500">{{ $message }}</p>
         @enderror
     </div>
+    @endif
     <div>
         <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Nombres</label>
         <input

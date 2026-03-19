@@ -74,6 +74,65 @@ class PersonController extends Controller
         }
     }
 
+    /**
+     * Busca una empresa por RUC consultando la API externa configurada en services.php.
+     * Ruta: GET /api/ruc/{ruc}
+     */
+    public function searchByRuc(string $ruc)
+    {
+        $ruc = preg_replace('/\D/', '', $ruc);
+
+        if (strlen($ruc) !== 11) {
+            return response()->json(['error' => 'El RUC debe tener 11 dígitos.'], 422);
+        }
+
+        $apiUrl   = config('services.ruc_api.url');
+        $apiToken = config('services.ruc_api.token');
+
+        if (!$apiUrl || !$apiToken) {
+            return response()->json(['error' => 'La API de RUC no está configurada. Verifica RUC_API_URL y DNI_API_TOKEN en .env'], 503);
+        }
+
+        try {
+            // Perudevs suele usar ?document=XXXXXXXXXXX&key=TOKEN
+            $response = Http::get($apiUrl, [
+                'document' => $ruc,
+                'key'      => $apiToken,
+            ]);
+
+            if ($response->failed()) {
+                $status = $response->status();
+                $errorData = $response->json();
+                return response()->json([
+                    'error' => $errorData['error'] ?? $errorData['message'] ?? 'Error en el servicio externo.',
+                    'details' => $errorData
+                ], $status == 404 ? 404 : 502);
+            }
+
+            $data = $response->json();
+
+            // Si llegamos aquí pero la API devuelve un error estructurado
+            if (isset($data['error']) || (isset($data['queries']) && $data['queries'] <= 0)) {
+                return response()->json(['error' => $data['error'] ?? 'No se encontró información para el RUC proporcionado.'], 404);
+            }
+
+            // Perudevs devuelve un objeto 'resultado'
+            $res = $data['resultado'] ?? $data;
+
+            return response()->json([
+                'razon_social' => $res['razon_social'] ?? '',
+                'direccion'    => $res['direccion'] ?? '',
+                'estado'       => $res['estado'] ?? '',
+                'condicion'    => $res['condicion'] ?? '',
+                'documento'    => $res['ruc'] ?? $ruc,
+                'raw'          => $data
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Error inesperado al consultar el RUC: ' . $e->getMessage()], 500);
+        }
+    }
+
+
     public function index(Request $request, Company $company, Branch $branch)
     {
         $branch = $this->resolveBranch($company, $branch);

@@ -24,9 +24,11 @@ class OrderMovement extends Model
         'contact_phone',
         'delivery_address',
         'delivery_time',
+        'service_type',
         'status',
         'movement_id',
-        'branch_id',
+        'branch_id',    
+        'service_type',
     ];
 
     public function details()
@@ -53,5 +55,4 @@ class OrderMovement extends Model
     {
         return $this->belongsTo(Branch::class);
     }
-
 }

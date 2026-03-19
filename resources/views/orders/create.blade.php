@@ -83,6 +83,11 @@
                     
                     <div class="h-6 w-px bg-gray-300 dark:bg-slate-600 shrink-0"></div>
                     @endif
+                    
+                    <!-- Servicio (automático por área) -->
+                    <input type="hidden" id="header-service-type-val" value="{{ $pendingServiceType ?? 'IN_SITU' }}">
+
+                    <div class="h-6 w-px bg-gray-300 dark:bg-slate-600 shrink-0"></div>
 
                     <!-- Cliente -->
                     <div class="flex items-center gap-1.5 shrink-0">
@@ -187,6 +192,25 @@
 
                     {{-- Contenido Resumen --}}
                     <div id="aside-resumen" class="flex flex-col flex-1 min-h-0 overflow-hidden">
+                        {{-- Datos Delivery --}}
+                        <div id="delivery-info-container" class="hidden p-3 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-800 space-y-2">
+                            <div class="flex flex-col gap-2">
+                                <div class="flex-1">
+                                    <label class="block text-[10px] font-bold uppercase text-blue-600 dark:text-blue-400 mb-1">Dirección de Entrega</label>
+                                    <input type="text" id="delivery-address" oninput="updateDeliveryInfo()" placeholder="Av. Siempre Viva 123" class="w-full py-1.5 px-2 text-xs rounded border border-blue-200 focus:ring-1 focus:ring-blue-400 outline-none">
+                                </div>
+                                <div class="flex gap-2">
+                                    <div class="flex-1">
+                                        <label class="block text-[10px] font-bold uppercase text-blue-600 dark:text-blue-400 mb-1">Teléfono Contacto</label>
+                                        <input type="text" id="delivery-phone" oninput="updateDeliveryInfo()" placeholder="999..." class="w-full py-1.5 px-2 text-xs rounded border border-blue-200 focus:ring-1 focus:ring-blue-400 outline-none">
+                                    </div>
+                                    <div class="w-24">
+                                        <label class="block text-[10px] font-bold uppercase text-blue-600 dark:text-blue-400 mb-1">Costo Delivery</label>
+                                        <input type="number" step="0.5" id="delivery-amount" oninput="updateDeliveryInfo()" placeholder="0.00" class="w-full py-1.5 px-2 text-xs rounded border border-blue-200 focus:ring-1 focus:ring-blue-400 outline-none">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                         <div id="cart-container" class="flex-1 overflow-y-auto p-3 sm:p-5 space-y-2 sm:space-y-3 bg-white dark:bg-gray-900 min-h-0 overscroll-contain" style="-webkit-overflow-scrolling: touch;"></div>
                         <div id="cancelled-platos-container" class="shrink-0 hidden border-t border-gray-200 dark:border-gray-700 bg-amber-50 dark:bg-amber-900/20 p-3 sm:p-4 max-h-40 overflow-y-auto">
                             <p class="text-xs font-semibold text-amber-800 dark:text-amber-200 mb-2 flex items-center gap-1"><i class="ri-error-warning-line"></i> Platos anulados</p>
@@ -231,7 +255,7 @@
                                     <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">Documento</label>
                                     <select id="cobro-document-type" class="w-full py-2.5 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-slate-700 dark:text-slate-200 text-sm">
                                         @forelse(($documentTypes ?? []) as $dt)
-                                            <option value="{{ $dt?->id }}">{{ $dt?->name ?? '' }}</option>
+                                            <option value="{{ optional($dt)->id }}">{{ optional($dt)->name ?? '' }}</option>
                                         @empty
                                             <option value="">Sin documentos</option>
                                         @endforelse
@@ -241,7 +265,7 @@
                                     <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">Caja</label>
                                     <select id="cobro-cash-register" class="w-full py-2.5 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-slate-700 dark:text-slate-200 text-sm">
                                         @forelse(($cashRegisters ?? []) as $cr)
-                                            <option value="{{ $cr?->id }}">{{ $cr?->number ?? 'Caja ' . ($cr?->id ?? '') }}</option>
+                                            <option value="{{ optional($cr)->id }}">{{ optional($cr)->number ?? 'Caja ' . optional($cr)->id }}</option>
                                         @empty
                                             <option value="">Sin cajas</option>
                                         @endforelse
@@ -329,7 +353,7 @@
                         <input type="hidden" name="redirect_to" value="{{ request()->fullUrl() }}">
                         <input type="hidden" name="location_id" value="{{ $branch->location_id ?? '' }}">
                         <input type="hidden" name="from_pos" value="1">
-
+                        <input type="hidden" name="document_number" value="00000000">
                         @include('branches.people._form', ['person' => null, 'hidePinAndRoles' => true])
 
                         <div class="flex flex-wrap gap-3 justify-end pt-4 border-t border-gray-100 dark:border-gray-700">
@@ -496,6 +520,13 @@
                     'status' => $table->situation ?? 'libre',
                     'items' => [],
                     'people_count' => (int) ($pendingPeopleCount ?? ($table->capacity ?? 1)),
+                    'service_type' => $pendingServiceType ?? 'IN_SITU',
+                    'delivery_address' => $pendingDeliveryAddress ?? '',
+                    'contact_phone' => $pendingContactPhone ?? '',
+                    'delivery_amount' => (float) ($pendingDeliveryAmount ?? 0),
+                    'original_area_id' => $area->id ?? null,
+                    'original_area_name' => $area->name ?? 'Sin área',
+                    'delivery_area_id' => $deliveryAreaId ?? null,
                 ];
             @endphp
             const serverTable = @json($serverTableData);
@@ -540,6 +571,10 @@
                 window.currentTable = currentTable;
                 currentTable.order_movement_id = serverOrderMovementId;
                 currentTable.movement_id = serverMovementId;
+                currentTable.service_type = serverTable.service_type;
+                currentTable.delivery_address = serverTable.delivery_address;
+                currentTable.contact_phone = serverTable.contact_phone;
+                currentTable.delivery_amount = serverTable.delivery_amount;
                 currentTable.items = Array.isArray(serverPendingItems) ? serverPendingItems : [];
                 currentTable.items.forEach(function(it) {
                     it.savedQty = parseFloat(it.qty) ?? parseFloat(it.quantity) ?? 0;
@@ -693,6 +728,25 @@
                 if (dinersInput && currentTable.people_count) {
                     dinersInput.value = currentTable.people_count;
                 }
+
+                // Inicializar datos de servicio y delivery (automático por área)
+                if (currentTable.area_id == serverTable.delivery_area_id) {
+                    currentTable.service_type = 'DELIVERY';
+                } else {
+                    currentTable.service_type = 'IN_SITU';
+                }
+                
+                // Actualizar visibilidad de datos delivery
+                if (typeof changeServiceType === 'function') {
+                    changeServiceType({ value: currentTable.service_type });
+                }
+
+                const addrInput = document.getElementById('delivery-address');
+                const phoneInput = document.getElementById('delivery-phone');
+                const amountInput = document.getElementById('delivery-amount');
+                if (addrInput) addrInput.value = currentTable.delivery_address || '';
+                if (phoneInput) phoneInput.value = currentTable.contact_phone || '';
+                if (amountInput) amountInput.value = currentTable.delivery_amount || '';
                 refreshCartPricesFromServer();
                 renderCategories();
                 renderProducts();
@@ -733,7 +787,7 @@
                 });
                 updateSearchClearVisibility();
                 if (currentTable.items && currentTable.items.length > 0) {
-                    setTimeout(scheduleAutoSave, 800);
+                    // setTimeout(scheduleAutoSave, 800);
                 }
                 if (typeof addCobroPaymentMethod === 'function' && document.getElementById('cobro-payment-methods-list')?.children.length === 0) {
                     addCobroPaymentMethod();
@@ -1075,8 +1129,8 @@
                         tax_rate: parseFloat(productBranch.tax_rate ?? 10),
                         note: "",
                         delivered: false,
-                        courtesyQty: 0
-                        
+                        courtesyQty: 0,
+                        isTakeAway: false
                     });
                 }
                 saveDB();
@@ -1137,11 +1191,14 @@
                 if (box) box.classList.toggle('hidden');
             }
 
-            function toggleCourtesy(index) {
+            function toggleCourtesyInput(index) {
                 if (!currentTable.items || !currentTable.items[index]) return;
                 const item = currentTable.items[index];
-                item.courtesyQty = !item.courtesyQty;
-                item.qty = item.qty - item.courtesyQty;
+                if (item.courtesyQty > 0) {
+                    item.courtesyQty = 0;
+                } else {
+                    item.courtesyQty = 1;
+                }
                 saveDB();
                 renderTicket();
             }
@@ -1241,6 +1298,22 @@
             window.setCourtesyQty = setCourtesyQty;
             window.changeCourtesyQty = changeCourtesyQty;
 
+            function toggleTakeAway(index) {
+                if (!currentTable.items || !currentTable.items[index]) return;
+                const it = currentTable.items[index];
+                it.isTakeAway = !it.isTakeAway;
+                const tag = "(PARA LLEVAR)";
+                if (it.isTakeAway) {
+                    if (!(it.note || '').includes(tag)) {
+                        it.note = tag + " " + (it.note || '');
+                    }
+                } else {
+                    it.note = (it.note || '').replace(tag, "").trim();
+                }
+                saveDB();
+                renderTicket();
+            }
+
             function renderTicket() {
                 const container = document.getElementById('cart-container');
                 if (!container) {
@@ -1286,7 +1359,7 @@
                         const qtyMinusClass = canReduce ? ' hover:bg-gray-500 transition-colors' : ' opacity-40 cursor-not-allowed';
                         const qtyMinusOnclick = canReduce ? `onclick="updateQty(${index}, -1)"` : '';
                         const trashOnclick = `onclick="window.dispatchEvent(new CustomEvent('open-remove-quantity-modal', { detail: { index: ${index}, maxQty: ${itemQty}, productName: '${String(prod.name || 'Producto').replace(/\\\\/g, '\\\\').replace(/'/g, "\\\\'")}', isComandado: ${isComandado} } }))"`;
-
+                        const hasCourtesy = item.courtesyQty > 0;
                         row.innerHTML = `
                         <div class="flex flex-col gap-3">
                             <div class="flex justify-between items-start gap-2">
@@ -1314,7 +1387,7 @@
                                         </button>
                                     </div>
                                 </div>
-                                <div class="flex items-center gap-2 shrink-0">
+                                <div class="flex items-center gap-2 shrink-0 ${hasCourtesy ? '' : 'hidden'}">
                                     <span class="text-[9px] font-medium text-gray-400 uppercase tracking-wider">Cortesía</span>
                                     <div class="inline-flex items-center rounded-lg overflow-hidden border border-gray-500">
                                         <button type="button" onclick="changeCourtesyQty(${index}, -1)" class="w-8 h-8 flex items-center justify-center hover:bg-gray-500 transition-colors">
@@ -1327,11 +1400,20 @@
                                     </div>
                                 </div>
                             </div>
-                            <button type="button" onclick="toggleNoteInput(${index})" class="block text-xs hover:text-gray-300 text-left justify-start transition-colors mt-1">
-                                ${hasNote ? '<i class="fas fa-comment-alt text-[10px] mr-0.5"></i> Nota' : '+ Añadir nota'}
-                            </button>
+                            <div class="flex items-center justify-between gap-4">
+                                <button type="button" onclick="toggleTakeAway(${index})" class="flex items-center gap-1.5 text-[11px] ${item.isTakeAway ? 'text-orange-400' : 'text-gray-400'} hover:text-orange-400 transition-colors mt-1">
+                                    <i class="ri-shopping-bag-3-line text-[10px]"></i> Para Llevar
+                                </button>
+                                <button type="button" onclick="toggleNoteInput(${index})" class="flex items-center gap-1.5 text-[11px] text-gray-400 hover:text-amber-400 transition-colors mt-1">
+                                    ${hasNote ? '<i class="fas fa-comment-alt text-[10px]"></i> Nota' : '+ Nota'}
+                                </button>
+                                <button type="button" onclick="toggleCourtesyInput(${index})" class="flex items-center gap-1.5 text-[11px] text-gray-400 hover:text-amber-400 transition-colors mt-1">
+                                    ${hasCourtesy ? '<i class="fas fa-utensils text-[10px]"></i> Cortesía' : '+ Cortesía'}
+                                </button>
+                            </div>
+                            
                             <div id="note-box-${index}" class="${hasNote ? '' : 'hidden'}">
-                                <input type="text" value="${itemNote}" oninput="saveNote(${index}, this.value)" placeholder="Escribe una nota..." class="w-full text-xs bg-gray-600 border border-gray-500 rounded-lg px-2.5 py-2 text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-amber-400">
+                                <input type="text" value="${itemNote}" onblur="saveNote(${index}, this.value)" placeholder="Escribe una nota..." class="w-full text-xs bg-gray-600 border border-gray-500 rounded-lg px-2.5 py-2 text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-amber-400">
                             </div>
                             <div class="flex justify-between items-center pt-1 border-t border-gray-600">
                                 <button type="button" onclick="toggleDelivered(${index})" class="text-xs flex items-center gap-1.5 text-gray-400 hover:text-gray-300 transition-colors">
@@ -1452,7 +1534,7 @@
                     const hasItems = currentTable.items && currentTable.items.length > 0;
                     const hasCancels = currentTable.cancellations && currentTable.cancellations.length > 0;
                     if (hasItems || hasCancels) {
-                        scheduleAutoSave();
+                        // scheduleAutoSave(); // Deshabilitado auto-guardado automático al servidor
                     }
                 }
             }
@@ -1527,6 +1609,7 @@
                     delivery_address: currentTable.delivery_address ?? null,
                     delivery_time: currentTable.delivery_time ?? null,
                     delivery_amount: currentTable.delivery_amount ?? 0,
+                    service_type: currentTable.service_type ?? 'IN_SITU',
                     order_movement_id: currentTable.order_movement_id ?? null,
                     cancellations: currentTable.cancellations || [],
                 };
@@ -1626,6 +1709,7 @@
                     delivery_address: currentTable.delivery_address ?? null,
                     delivery_time: currentTable.delivery_time ?? null,
                     delivery_amount: currentTable.delivery_amount ?? 0,
+                    service_type: currentTable.service_type ?? 'IN_SITU',
                     order_movement_id: currentTable.order_movement_id ?? null,
                     cancellations: currentTable.cancellations || [],
                 };
@@ -1801,6 +1885,7 @@
                     delivery_address: currentTable.delivery_address ?? null,
                     delivery_time: currentTable.delivery_time ?? null,
                     delivery_amount: currentTable.delivery_amount ?? 0,
+                    service_type: currentTable.service_type ?? 'IN_SITU',
                     order_movement_id: currentTable.order_movement_id ?? null,
                     cancellations: currentTable.cancellations || [],
                 };
@@ -2292,7 +2377,42 @@
             renderTicket();
             }
 
+            function changeServiceType(valOrEl) {
+                if (!currentTable) return;
+                const val = (valOrEl && typeof valOrEl === 'object') ? valOrEl.value : valOrEl;
+                currentTable.service_type = val;
+                
+                // Mostrar/ocultar panel de delivery
+                const deliveryContainer = document.getElementById('delivery-info-container');
+                if (deliveryContainer) {
+                    if (val === 'DELIVERY') {
+                        deliveryContainer.classList.remove('hidden');
+                    } else {
+                        deliveryContainer.classList.add('hidden');
+                    }
+                }
+                
+                // Nota: El área ya está definida por la mesa abierta, no se cambia aquí
+                saveDB();
+                renderTicket();
+            }
+
+            function updateDeliveryInfo() {
+                if (!currentTable) return;
+                const addr = document.getElementById('delivery-address');
+                const phone = document.getElementById('delivery-phone');
+                const amount = document.getElementById('delivery-amount');
+                
+                if (addr) currentTable.delivery_address = addr.value;
+                if (phone) currentTable.contact_phone = phone.value;
+                if (amount) currentTable.delivery_amount = parseFloat(amount.value) || 0;
+                
+                saveDB();
+                renderTicket();
+            }
+
             // Exponer funciones usadas desde onclick en el HTML (mismo ámbito tras re-render)
+            window.toggleCourtesyInput = toggleCourtesyInput;
             window.toggleNoteInput = toggleNoteInput;
             window.updateQty = updateQty;
             window.setQtyFromInput = setQtyFromInput;
@@ -2314,6 +2434,10 @@
             window.toggleCobroExtraFields = toggleCobroExtraFields;
             window.changeClient = changeClient;
             window.changeWaiter = changeWaiter;
+            window.changeServiceType = changeServiceType;
+            window.updateDeliveryInfo = updateDeliveryInfo;
+            window.toggleTakeAway = toggleTakeAway;
+            
         })();
     </script>
 @endsection
