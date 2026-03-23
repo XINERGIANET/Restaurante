@@ -100,6 +100,7 @@
 
             <form action="{{ route('branch-parameter.store') }}" method="POST" class="mt-2">
                 @csrf
+                <input type="hidden" name="branch_payment_methods_include" value="1">
 
                 <div class="flex border-b border-gray-200 dark:border-gray-700 overflow-x-auto no-scrollbar mb-8 gap-6">
                     @foreach($categories as $category)
@@ -134,8 +135,12 @@
                                         @php
                                             $paramKey = $parameter->branch_parameter_id ?? 'p' . $parameter->id;
                                             $desc = trim($parameter->description ?? '');
+                                            $descLower = mb_strtolower($desc, 'UTF-8');
                                             $isRequerirPinMozo = strcasecmp($desc, 'Requerir PIN a mozo') === 0;
                                             $isIgvDefecto = strcasecmp($desc, 'igv_defecto') === 0;
+                                            // Por descripción (evita confundir con ids 4/8/11/12 de contraseñas si "METODOS DE PAGO" tiene mal el id)
+                                            $isMetodosPagoParam = str_contains($descLower, 'metodo') && str_contains($descLower, 'pago');
+                                            $showMetodosPagoUi = $isMetodosPagoParam || (int) $parameter->id === 6;
                                         @endphp
                                         @if($isRequerirPinMozo)
                                             {{-- REQUERIR PIN A MOZO: 0 o 1 --}}
@@ -155,6 +160,24 @@
                                                     </option>
                                                 @endforeach
                                             </select>
+                                        @elseif($showMetodosPagoUi)
+                                            {{-- Métodos de pago por sucursal (pivote branch_payment_methods). Id 6 o descripción que contenga método(s) + pago --}}
+                                            <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                                                Marca los métodos que podrán usarse en ventas y cobros de esta sucursal.
+                                                Si marcas todos o ninguno y guardas, se considera “sin restricción” (aplican todos los métodos activos del sistema, incluidos los nuevos).
+                                            </p>
+                                            <div class="max-h-48 overflow-y-auto space-y-2 border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-gray-50 dark:bg-gray-800/50">
+                                                @foreach($paymentMethods ?? [] as $method)
+                                                    <label class="flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200 cursor-pointer">
+                                                        <input type="checkbox"
+                                                               name="branch_payment_method_ids[]"
+                                                               value="{{ $method->id }}"
+                                                               class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                               {{ in_array((int) $method->id, $branchPaymentMethodIds ?? [], true) ? 'checked' : '' }}>
+                                                        <span>{{ trim(str_ireplace('de venta', '', $method->description)) }}</span>
+                                                    </label>
+                                                @endforeach
+                                            </div>
                                         @else
                                         @switch($parameter->id)
                                             
@@ -166,19 +189,6 @@
                                                     @foreach($igv ?? [] as $igvItem)
                                                         <option value="{{ $igvItem->id }}" {{ $parameter->branch_value == $igvItem->id ? 'selected' : '' }}>
                                                             {{ trim(str_ireplace('de venta', '', $igvItem->description)) }}
-                                                        </option>
-                                                    @endforeach
-                                                </select>
-                                                @break
-
-                                            {{-- CASO 6: MÉTODOS DE PAGO --}}
-                                            @case(6)
-                                                <select name="parameters[{{ $paramKey }}]" 
-                                                        class="w-full border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 px-3 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors shadow-sm">
-                                                    <option value="">Seleccionar...</option>
-                                                    @foreach($paymentMethods ?? [] as $method)
-                                                        <option value="{{ $method->id }}" {{ $parameter->branch_value == $method->id ? 'selected' : '' }}>
-                                                            {{ trim(str_ireplace('de venta', '', $method->description)) }}
                                                         </option>
                                                     @endforeach
                                                 </select>

@@ -29,6 +29,7 @@ use App\Models\Unit;
 use App\Models\Operation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
@@ -86,7 +87,11 @@ class SalesController extends Controller
             ->orderBy('name')
             ->get(['id', 'name']);
 
-        $paymentMethods = PaymentMethod::query()->where('status', true)->orderBy('order_num')->get(['id', 'description']);
+        $paymentMethods = PaymentMethod::query()
+            ->where('status', true)
+            ->restrictedToBranch($branchId ? (int) $branchId : null)
+            ->orderBy('order_num')
+            ->get(['id', 'description']);
         $cashRegisters  = CashRegister::query()->orderBy('number')->get(['id', 'number']);
 
         $query = Movement::query()
@@ -292,6 +297,7 @@ class SalesController extends Controller
                     'price' => (float) $productBranch->price,
                     'tax_rate' => $taxRatePct,
                     'stock' => (float) ($productBranch->stock ?? 0),
+                    'favorite' => ($productBranch->favorite ?? 'N'),
                 ];
             })
             ->values()
@@ -312,6 +318,7 @@ class SalesController extends Controller
 
         $paymentMethods = PaymentMethod::query()
             ->where('status', true)
+            ->restrictedToBranch($branchId)
             ->orderBy('order_num')
             ->get(['id', 'description', 'order_num']);
 
@@ -339,6 +346,8 @@ class SalesController extends Controller
             ->orderByRaw("CASE WHEN status = 'A' THEN 0 ELSE 1 END")
             ->orderBy('number')
             ->get(['id', 'number', 'status']);
+
+        $branch = $branchId ? Branch::find($branchId) : null;
 
         return view('sales.create', [
             'products' => $products,
@@ -356,6 +365,7 @@ class SalesController extends Controller
             'banks' => $banks,
             'cashRegisters' => $cashRegisters,
             'saleType' => $saleType,
+            'branch' => $branch,
         ]);
     }
 
@@ -370,8 +380,11 @@ class SalesController extends Controller
             ->where('movement_type_id', 2)
             ->get(['id', 'name']);
 
+        $branchId = session('branch_id');
+
         $paymentMethods = PaymentMethod::query()
             ->where('status', true)
+            ->restrictedToBranch($branchId ? (int) $branchId : null)
             ->orderBy('order_num')
             ->get(['id', 'description', 'order_num']);
 
@@ -400,8 +413,6 @@ class SalesController extends Controller
             ->orderByRaw("CASE WHEN status = 'A' THEN 0 ELSE 1 END")
             ->orderBy('number')
             ->get(['id', 'number', 'status']);
-
-        $branchId = session('branch_id');
         $people = Person::query()
             ->when($branchId, fn($query) => $query->where('branch_id', $branchId))
             ->orderBy('first_name')
@@ -510,6 +521,17 @@ class SalesController extends Controller
     public function processSale(Request $request)
     {
         try {
+            $branchId = session('branch_id');
+            $restrictedPmIds = PaymentMethod::paymentMethodIdsForBranchOrNull($branchId ? (int) $branchId : null);
+            $paymentMethodIdRules = [
+                'required',
+                'integer',
+                Rule::exists('payment_methods', 'id')->where('status', true),
+            ];
+            if ($restrictedPmIds !== null) {
+                $paymentMethodIdRules[] = Rule::in($restrictedPmIds);
+            }
+
             $validated = $request->validate([
                 'items' => 'required|array|min:1',
                 'items.*.pId' => 'required|integer|exists:products,id',
@@ -523,7 +545,7 @@ class SalesController extends Controller
                 'cash_register_id' => 'nullable|integer|exists:cash_registers,id',
                 'person_id' => 'nullable|integer|exists:people,id',
                 'payment_methods' => 'required|array|min:1',
-                'payment_methods.*.payment_method_id' => 'required|integer|exists:payment_methods,id',
+                'payment_methods.*.payment_method_id' => $paymentMethodIdRules,
                 'payment_methods.*.amount' => 'required|numeric|min:0.01',
                 'payment_methods.*.payment_gateway_id' => 'nullable|integer|exists:payment_gateways,id',
                 'payment_methods.*.card_id' => 'nullable|integer|exists:cards,id',

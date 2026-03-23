@@ -14,118 +14,103 @@
         }
     @endphp
 
-    {{-- Breadcrumb (igual que orders) --}}
-    <div class="flex flex-wrap items-center justify-between gap-2 sm:gap-3 mb-4 sm:mb-6">
-        <nav class="min-w-0">
-            <ol class="flex flex-wrap items-end justify-end gap-1 sm:gap-1.5 text-xs sm:text-sm">
-                <li>
-                    <a class="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400"
-                        href="{{ url('/') }}">
-                        Home
-                        <svg class="stroke-current" width="17" height="16" viewBox="0 0 17 16" fill="none"
-                            xmlns="http://www.w3.org/2000/svg">
-                            <path d="M6.0765 12.667L10.2432 8.50033L6.0765 4.33366" stroke="" stroke-width="1.2"
-                                stroke-linecap="round" stroke-linejoin="round"></path>
-                        </svg>
-                    </a>
-                </li>
-                <li class="min-w-0">
-                    <a class="inline-flex items-center gap-1 sm:gap-1.5 text-gray-500 dark:text-gray-400 truncate max-w-[120px] sm:max-w-none"
-                        href="{{ $salesIndexUrl }}">
-                        <span class="truncate">Ventas</span>
-                        <svg class="stroke-current" width="17" height="16" viewBox="0 0 17 16" fill="none"
-                            xmlns="http://www.w3.org/2000/svg">
-                            <path d="M6.0765 12.667L10.2432 8.50033L6.0765 4.33366" stroke="" stroke-width="1.2"
-                                stroke-linecap="round" stroke-linejoin="round"></path>
-                        </svg>
-                    </a>
-                </li>
-                <li class="text-gray-800 dark:text-white/90 truncate max-w-[140px] sm:max-w-none">Nueva venta</li>
-            </ol>
-        </nav>
-    </div>
-
-    {{-- Contenedor principal (mismo estilo que orders) --}}
-    <div
-        class="rounded-2xl border border-gray-200 dark:border-gray-300 overflow-hidden bg-blue-50 dark:bg-gray-900 fade-in max-w-full">
-        <main class="w-full lg:flex-2 flex flex-col min-w-0 min-h-0 bg-white dark:bg-gray-900/50 lg:min-h-0">
-            {{-- Header (mismo diseño que orders: back, título, search, vendedor, cliente) --}}
+    <div class="flex flex-col h-full bg-gray-50 dark:bg-gray-950">
+        {{-- Misma estructura visual que orders/create (sin mesa, mozo, personas, delivery/llevar) --}}
+        <div data-turbo-cache="false" class="flex flex-col flex-1 min-h-0">
             <header
-                class="min-h-14 sm:h-20 py-3 px-3 sm:py-0 sm:px-6 flex items-center gap-2 sm:gap-4 dark:bg-gray-800/50 border-b border-gray-200 shadow-sm z-10 bg-gray-200 flex-nowrap overflow-x-auto min-w-0">
-                <div class="flex items-center gap-2 sm:gap-4 md:gap-6 w-full min-w-max flex-nowrap">
+                class="flex-none bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 h-16 sm:h-18 flex items-center justify-between px-4 sm:px-6 z-10 sticky top-0 backdrop-blur-md shadow-sm">
+                <div class="flex items-center gap-3 shrink-0">
                     <a href="{{ $salesIndexUrl }}" id="back-to-sales-link" title="Volver atrás"
-                        class="h-9 sm:h-10 px-2 rounded-lg bg-gray-50 border border-gray-200 text-gray-500 hover:text-blue-600 hover:border-blue-600 transition-colors flex items-center justify-center shadow-sm shrink-0">
+                        class="h-9 w-9 sm:h-10 sm:w-10 rounded-full bg-white border border-gray-200 text-gray-500 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 transition-all flex items-center justify-center shadow-sm shrink-0">
                         <i class="ri-arrow-left-line text-lg sm:text-xl"></i>
                     </a>
-                    <div class="flex items-center gap-2 min-w-0">
-                        <h2 class="text-base font-bold text-slate-800 dark:text-white truncate">
-                            Nueva Venta<br>
-                            <p class="text-xs text-gray-500 dark:text-gray-400"><i class="ri-circle-fill"
-                                    style="color: #00C950;"></i> Punto de venta</p>
+                    <div class="flex flex-col justify-center min-w-0">
+                        <h2 class="text-sm sm:text-base font-bold text-slate-800 dark:text-white leading-tight truncate">
+                            Nueva venta
                         </h2>
+                        <p class="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate"><i
+                                class="ri-circle-fill" style="color: #00C950;"></i> Punto de venta</p>
                     </div>
-                    <div
-                        class="flex items-center gap-2 sm:gap-4 md:gap-6 text-xs sm:text-sm text-gray-500 font-medium min-w-0 flex-nowrap flex-1">
-                        <div class="flex items-center justify-end shrink-0">
-                            <div class="w-50 sm:w-50 md:w-60 relative">
-                                <input type="text" id="search-products" placeholder="Buscar..."
-                                    class="w-full pl-8 pr-3 py-2 text-sm bg-white border border-gray-200 dark:border-slate-600 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-200 transition-all">
-                                <i class="fas fa-search absolute left-2.5 sm:left-3 top-2.5 text-gray-400 text-xs"></i>
-                            </div>
+                </div>
+
+                <div
+                    class="flex items-center gap-3 sm:gap-4 lg:gap-5 text-sm font-medium shrink-0 ml-auto flex-nowrap overflow-x-auto overflow-y-hidden overscroll-x-contain min-w-0 max-w-full pb-1 touch-pan-x [-webkit-overflow-scrolling:touch]">
+                    <div class="flex items-center gap-1.5 shrink-0 bg-white dark:bg-gray-900 p-1 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+                        <div class="w-28 sm:w-36 md:w-44 xl:w-56 relative">
+                            <input type="text" id="search-products" placeholder="Buscar producto..." autocomplete="off"
+                                class="w-full pl-8 pr-3 py-1.5 text-xs sm:text-sm bg-transparent border-transparent rounded-lg focus:ring-0 focus:border-transparent outline-none dark:text-white">
+                            <i
+                                class="fas fa-search absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
                         </div>
-                        <div class="flex items-center gap-2 sm:gap-4 md:gap-6 flex-nowrap shrink-0 ml-auto">
-                            <div class="flex items-center gap-1 sm:gap-2 group min-w-0">
-                                <span class="text-gray-500 dark:text-gray-400 shrink-0">Vendedor:</span>
-                                <div class="relative flex items-center min-w-0">
-                                    <span
-                                        class="min-w-0 w-16 sm:w-24 md:min-w-[100px] py-1 px-2 sm:px-3 bg-white dark:bg-slate-700/80 border border-gray-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 font-semibold text-xs sm:text-sm truncate">
-                                        {{ $user?->name ?? 'Sin asignar' }}
-                                    </span>
-                                </div>
-                            </div>
-                            <div class="h-3 sm:h-4 w-px bg-gray-300 dark:bg-slate-600 shrink-0"></div>
-                            <div class="flex items-center gap-1 sm:gap-2 group min-w-0">
-                                <span class="text-gray-500 dark:text-gray-400 shrink-0">Cliente:</span>
-                                <div class="relative flex items-center min-w-0">
-                                    <select id="header-client-select" onchange="changeClient(this)"
-                                        class="min-w-0 w-20 sm:w-28 md:min-w-[110px] md:max-w-[180px] py-1 px-2 sm:px-3 bg-white dark:bg-slate-700/80 border border-gray-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 font-semibold text-xs sm:text-sm cursor-pointer focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-500/40 focus:border-blue-400 outline-none shadow-sm appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%226b7280%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22M6%208l4%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1rem] sm:bg-[length:1.25rem] bg-[right_0.2rem_center] sm:bg-[right_0.25rem_center] bg-no-repeat truncate">
-                                        <option value="{{ $person?->id ?? '' }}" selected>{{ $personName }}</option>
-                                        @foreach ($people ?? collect() as $p)
-                                            @if (!$person || (isset($p->id) && $p->id != $person->id))
-                                                <option value="{{ $p->id ?? '' }}">
-                                                    {{ trim(($p->first_name ?? '') . ' ' . ($p->last_name ?? '')) ?: $p->document_number ?? 'Cliente' }}
-                                                </option>
-                                            @endif
-                                        @endforeach
-                                    </select>
-                                </div>
-                            </div>
+                        <x-ui.button size="xs" variant="outline" onclick="clearProductSearch()" class="!px-2 h-7"
+                            id="search-products-clear" type="button">
+                            <i class="ri-close-line"></i>
+                        </x-ui.button>
+                    </div>
+
+                    <div class="h-6 w-px bg-gray-300 dark:bg-slate-600 shrink-0"></div>
+
+                    <div class="flex items-center gap-1.5 shrink-0">
+                        <span class="text-gray-500 dark:text-gray-400 text-xs sm:text-sm">Vendedor:</span>
+                        <span
+                            class="max-w-[8rem] sm:max-w-[12rem] py-1.5 px-2 bg-white dark:bg-slate-700/80 border border-gray-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 font-semibold text-xs sm:text-sm truncate">
+                            {{ $user?->name ?? 'Sin asignar' }}
+                        </span>
+                    </div>
+
+                    <div class="h-6 w-px bg-gray-300 dark:bg-slate-600 shrink-0"></div>
+
+                    <div class="flex items-center gap-1.5 shrink-0">
+                        <span class="text-gray-500 dark:text-gray-400 text-xs sm:text-sm">Cliente:</span>
+                        <div class="flex items-center gap-1">
+                            <select id="header-client-select" onchange="changeClient(this)"
+                                class="w-32 sm:w-40 md:w-48 py-1.5 px-2 bg-white dark:bg-slate-700/80 border border-gray-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 font-semibold text-xs sm:text-sm cursor-pointer focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-500/40 outline-none shadow-sm truncate appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%226b7280%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22M6%208l4%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1rem] sm:bg-[length:1.25rem] bg-[right_0.25rem_center] bg-no-repeat">
+                                <option value="{{ $person?->id ?? '' }}" selected>{{ $personName }}</option>
+                                @foreach ($people ?? collect() as $p)
+                                    @if (!$person || (isset($p->id) && $p->id != $person->id))
+                                        <option value="{{ $p->id ?? '' }}">
+                                            {{ trim(($p->first_name ?? '') . ' ' . ($p->last_name ?? '')) ?: $p->document_number ?? 'Cliente' }}
+                                        </option>
+                                    @endif
+                                @endforeach
+                            </select>
+                            @if ($branch ?? null)
+                                <button type="button"
+                                    class="inline-flex items-center justify-center h-8 w-8 rounded-lg bg-white border border-gray-200 text-gray-500 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 shadow-sm transition-colors dark:bg-gray-900 dark:border-gray-700"
+                                    onclick="window.dispatchEvent(new CustomEvent('open-person-modal'))"
+                                    title="Nuevo cliente">
+                                    <i class="ri-user-add-line text-sm sm:text-base"></i>
+                                </button>
+                            @endif
                         </div>
                     </div>
                 </div>
             </header>
-            {{-- Cuerpo: categorías + productos + aside --}}
-            <div class="flex flex-row flex-1 min-h-0 min-w-0 p-5 overflow-y-auto overflow-x-hidden"
-                style="-webkit-overflow-scrolling: touch;">
-                <div class="flex-1 min-w-0 p-3 sm:p-5 md:p-6 bg-white flex flex-col min-h-0">
+
+            {{-- lg:items-start: el aside NO se estira a toda la altura del panel productos (evita hueco enorme abajo) --}}
+            <div
+                class="flex-1 flex flex-col lg:flex-row lg:items-start min-h-0 overflow-hidden bg-gray-50/50 dark:bg-gray-950/50 gap-3 p-3">
+                <div
+                    class="flex-1 min-w-0 w-full min-h-[320px] lg:min-h-0 lg:overflow-hidden p-3 sm:p-4 bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 flex flex-col min-h-0">
                     <div class="flex flex-col flex-1 min-h-0 min-w-0 overflow-hidden">
                         <div class="shrink-0 border-gray-300 px-2 sm:px-4 pt-3 pb-4">
                             <div id="categories-grid"
                                 class="flex flex-row flex-wrap gap-1.5 sm:gap-2 overflow-x-auto pb-3 overscroll-x-contain">
                             </div>
                         </div>
-                        <div class="flex-1 min-h-0 min-w-0 pt-2 sm:pt-3 flex flex-col overflow-hidden min-h-[200px]">
+                        <div class="flex-1 overflow-y-auto pt-2 sm:pt-3 min-h-0">
                             <div id="products-grid"
-                                class="px-2 sm:px-4 md:px-5 p-3 grid grid-cols-3 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5 2xl:grid-cols-5 gap-2 sm:gap-4 overflow-y-auto overflow-x-hidden min-h-0 flex-1 content-start overscroll-contain"
-                                style="-webkit-overflow-scrolling: touch;"></div>
+                                class="px-2 sm:px-4 md:px-5 p-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2 sm:gap-4 content-start pb-6">
+                            </div>
                         </div>
                     </div>
                 </div>
-                {{-- Aside: Tabs Resumen | Cobro --}}
+
+                {{-- lg:self-start + sin lg:h-full: alto = contenido (no columna fantasma). Móvil: tope de alto --}}
                 <aside
-                    class="flex flex-col rounded-2xl shadow-2xl overflow-hidden w-[400px] sm:w-[400px] md:w-[400px] shrink-0 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 min-h-0 rounded-l-2xl"
-                    style="min-height: 550px;">
-                    <div class="flex shrink-0 border-b border-gray-200 dark:border-gray-700">
+                class="lg:w-[450px] w-[450px] md:w-[400px] lg:shrink-0 mx-auto lg:mx-0 flex-none bg-white dark:bg-gray-900 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-800 flex flex-col min-h-0 lg:h-full z-10 rounded-2xl shadow-sm"
+                >
+                <div class="flex w-full shrink-0 border-b border-gray-200 dark:border-gray-700">
                         <button type="button" id="tab-resumen" onclick="switchAsideTab('resumen')"
                             class="flex-1 py-3 px-4 text-sm font-bold transition-colors rounded-tl-2xl bg-brand-500 text-white">
                             Resumen
@@ -136,40 +121,30 @@
                         </button>
                     </div>
 
-                    {{-- Contenido Resumen --}}
                     <div id="aside-resumen" class="flex flex-col flex-1 min-h-0 overflow-hidden">
                         <div id="cart-container"
-                            class="flex-1 overflow-y-auto p-3 sm:p-5 space-y-2 sm:space-y-3 bg-gray-50 dark:bg-gray-900/50 min-h-0 overscroll-contain"
+                            class="overflow-y-auto overflow-x-hidden p-3 sm:p-5 space-y-2 sm:space-y-3 bg-white dark:bg-gray-900 overscroll-contain max-h-[min(42vh,340px)] sm:max-h-[min(48vh,420px)] lg:max-h-[min(65vh,560px)]"
                             style="-webkit-overflow-scrolling: touch;"></div>
-                        <div class="shrink-0 p-4 sm:p-5 border-t border-gray-200 dark:border-gray-700">
-                            <div class="space-y-2 sm:space-y-3 text-xs sm:text-sm">
-                                <div class="flex justify-between text-gray-500 font-medium">
-                                    <span>Subtotal</span>
-                                    <span class="text-slate-700 dark:text-slate-300" id="ticket-subtotal">S/ 0.00</span>
+                        <div class="shrink-0 w-full min-w-0 p-4 sm:p-5 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+                            <div class="w-full min-w-0 space-y-2 sm:space-y-3 text-xs sm:text-sm">
+                                <div class="flex w-full min-w-0 items-baseline justify-between gap-3 text-gray-500 font-medium">
+                                    <span class="shrink-0">Subtotal</span>
+                                    <span class="shrink-0 text-right tabular-nums text-slate-700 dark:text-slate-300 whitespace-nowrap" id="ticket-subtotal">S/ 0.00</span>
                                 </div>
-                                <div class="flex justify-between text-gray-500 font-medium">
-                                    <span>Impuestos</span>
-                                    <span class="text-slate-700 dark:text-slate-300" id="ticket-tax">S/ 0.00</span>
+                                <div class="flex w-full min-w-0 items-baseline justify-between gap-3 text-gray-500 font-medium">
+                                    <span class="shrink-0">Impuestos</span>
+                                    <span class="shrink-0 text-right tabular-nums text-slate-700 dark:text-slate-300 whitespace-nowrap" id="ticket-tax">S/ 0.00</span>
                                 </div>
                                 <div class="border-t border-dashed border-gray-300 dark:border-gray-600 my-2"></div>
-                                <div class="flex justify-between items-center">
-                                    <span class="text-base sm:text-lg font-bold text-slate-800 dark:text-white">Total a
-                                        Pagar</span>
-                                    <span class="text-xl sm:text-2xl font-black text-blue-600 dark:text-blue-400"
+                                <div class="flex w-full min-w-0 items-center justify-between gap-3">
+                                    <span class="min-w-0 text-base sm:text-lg font-bold text-slate-800 dark:text-white leading-tight">Total a pagar</span>
+                                    <span class="shrink-0 text-right text-xl sm:text-2xl font-black tabular-nums text-blue-600 dark:text-blue-400 whitespace-nowrap"
                                         id="ticket-total">S/ 0.00</span>
                                 </div>
-                                @if ($saleType === 'DELIVERY')
-                                    <div class="flex justify-between items-center gap-2">
-                                        <span class="text-base sm:text-lg font-bold text-slate-800 dark:text-white">Total a
-                                            Direccion de entrega</span>
-                                            <input type="text" name="delivery-address" id="delivery-address" class="w-full pl-3 pr-8 py-2.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-slate-700 dark:text-slate-200 text-sm">
-                                        </div>
-                                @endif
                             </div>
                         </div>
                     </div>
 
-                    {{-- Contenido Cobro --}}
                     <div id="aside-cobro" class="hidden flex-col flex-1 min-h-0 overflow-y-auto p-4 sm:p-5">
                         <div class="space-y-4">
                             <div>
@@ -237,19 +212,76 @@
                         </div>
                     </div>
 
-                    {{-- Botón Cobrar (solo visible en pestaña Cobro) --}}
-                    <div id="cobro-button-container"
-                        class="hidden shrink-0 p-4 sm:p-5 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
-                        <button type="button" id="checkout-button" onclick="processSale()"
-                            class="w-full py-2.5 px-3 rounded-xl bg-brand-500 text-white font-bold text-xs sm:text-sm shadow-lg hover:bg-brand-600 active:scale-95 transition-all flex justify-center items-center gap-2">
-                            <i class="ri-bank-card-line text-base"></i>
-                            <span>Cobrar</span>
-                        </button>
+                    <div
+                        class="shrink-0 p-4 sm:p-5 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+                        <div id="footer-resumen" class="flex justify-end">
+                            <x-ui.button type="button" variant="secondary" size="sm" onclick="clearCart()"
+                                class="!gap-1.5 !max-w-full" title="Vaciar orden">
+                                <i class="ri-delete-bin-line text-base shrink-0"></i>
+                                <span class="sm:hidden">Vaciar</span>
+                                <span class="hidden sm:inline">Vaciar orden</span>
+                            </x-ui.button>
+                        </div>
+                        <div id="footer-cobro" class="hidden flex justify-end">
+                            <button type="button" id="checkout-button" onclick="processSale()"
+                                class="py-2.5 px-4 rounded-xl bg-brand-500 text-white font-bold text-xs sm:text-sm shadow-lg hover:bg-brand-600 active:scale-95 transition-all flex justify-center items-center gap-2">
+                                <i class="ri-bank-card-line text-base"></i>
+                                <span>Cobrar</span>
+                            </button>
+                        </div>
                     </div>
                 </aside>
             </div>
-        </main>
+        </div>
     </div>
+
+    @if ($branch ?? null)
+        <x-ui.modal x-data="{ open: false }" @open-person-modal.window="open = true"
+            @close-person-modal.window="open = false" :isOpen="false" :showCloseButton="false"
+            class="max-w-4xl z-[100]">
+            <div class="p-6 sm:p-8 bg-white dark:bg-gray-800">
+                <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="flex items-center gap-4">
+                        <div
+                            class="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400">
+                            <i class="ri-user-add-line text-2xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-900 dark:text-white">Registrar / Editar Cliente</h3>
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Ingresa DNI y nombre de la persona.
+                            </p>
+                        </div>
+                    </div>
+                    <button type="button" @click="open = false"
+                        class="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600 transition-colors">
+                        <i class="ri-close-line text-xl"></i>
+                    </button>
+                </div>
+
+                <form method="POST"
+                    action="{{ route('admin.companies.branches.people.store', [$branch->company_id ?? '0', $branch->id ?? '0']) }}"
+                    class="space-y-6">
+                    @csrf
+                    <input type="hidden" name="redirect_to" value="{{ request()->fullUrl() }}">
+                    <input type="hidden" name="location_id" value="{{ $branch->location_id ?? '' }}">
+                    <input type="hidden" name="from_pos" value="1">
+                    <input type="hidden" name="document_number" value="00000000">
+                    @include('branches.people._form', ['person' => null, 'hidePinAndRoles' => true])
+
+                    <div class="flex flex-wrap gap-3 justify-end pt-4 border-t border-gray-100 dark:border-gray-700">
+                        <button type="button" @click="open = false"
+                            class="px-5 py-2.5 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700 transition-colors">
+                            Cancelar
+                        </button>
+                        <button type="submit"
+                            class="px-5 py-2.5 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 shadow-lg shadow-blue-500/30 transition-all">
+                            <i class="ri-save-line mr-1"></i> Guardar Cliente
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </x-ui.modal>
+    @endif
 
     <div id="notification"
         class="fixed top-24 right-8 z-50 max-w-sm opacity-0 pointer-events-none transition-opacity duration-300"
@@ -365,8 +397,14 @@
             });
 
             const CATEGORY_ALL_ID = '__all__';
-            let selectedCategoryId = CATEGORY_ALL_ID;
+            const CATEGORY_FAVORITES_ID = '__favorites__';
+            let selectedCategoryId = CATEGORY_FAVORITES_ID;
             let searchQuery = '';
+
+            function isProductFavoriteSales(productId) {
+                const pb = productBranches.find(p => Number(p.product_id) === Number(productId));
+                return pb && String(pb.favorite || 'N').toUpperCase() === 'S';
+            }
             const cobroPaymentMethods = @json($paymentMethods ?? []);
             const cobroPaymentGateways = @json($paymentGateways ?? []);
             const cobroCards = @json($cards ?? []);
@@ -420,8 +458,103 @@
                         }));
                     }
 
-            // --- STORAGE LOGIC (Carrito persistente) ---
+            // --- STORAGE ---
+            // - Recargar pestaña (F5): se mantiene el carrito (localStorage + misma clave).
+            // - Navegar a otra pantalla del sistema (Turbo) y volver: se limpia en turbo:before-visit.
             const ACTIVE_SALE_KEY_STORAGE = 'restaurantActiveSaleKey';
+
+            function normalizePathForSales(pathname) {
+                return String(pathname || '').replace(/\/+$/, '') || '';
+            }
+
+            function isVentasCreatePath(pathname) {
+                return normalizePathForSales(pathname).endsWith('/ventas/create');
+            }
+
+            function clearIncompleteSalesCartStorage() {
+                try {
+                    const dbClean = JSON.parse(localStorage.getItem('restaurantDB') || '{}');
+                    const key = localStorage.getItem(ACTIVE_SALE_KEY_STORAGE);
+                    if (key && dbClean[key] && dbClean[key].status !== 'completed') {
+                        delete dbClean[key];
+                        localStorage.setItem('restaurantDB', JSON.stringify(dbClean));
+                    }
+                    localStorage.removeItem(ACTIVE_SALE_KEY_STORAGE);
+                } catch (_) {}
+            }
+
+            /** Turbo 8 puede enviar detail.url como string o como URL */
+            function getTurboBeforeVisitUrl(e) {
+                const u = e.detail?.url;
+                if (u == null) {
+                    return null;
+                }
+                if (typeof u === 'string') {
+                    return u;
+                }
+                if (typeof u.href === 'string') {
+                    return u.href;
+                }
+                return null;
+            }
+
+            if (!window.__salesCreateTurboLeaveBound) {
+                window.__salesCreateTurboLeaveBound = true;
+                document.addEventListener('turbo:before-visit', function(e) {
+                    if (!isVentasCreatePath(window.location.pathname)) {
+                        return;
+                    }
+                    const rawUrl = getTurboBeforeVisitUrl(e);
+                    if (!rawUrl) {
+                        return;
+                    }
+                    let destPath;
+                    try {
+                        destPath = new URL(rawUrl, window.location.href).pathname;
+                    } catch (_) {
+                        return;
+                    }
+                    if (normalizePathForSales(destPath) === normalizePathForSales(window.location.pathname)) {
+                        return;
+                    }
+                    clearIncompleteSalesCartStorage();
+                });
+
+                /**
+                 * Botón "atrás" del navegador: puede restaurar /ventas/create desde bfcache
+                 * con el carrito en memoria aunque ya se hubiera limpiado localStorage.
+                 */
+                window.addEventListener('pageshow', function(event) {
+                    if (!event.persisted || !isVentasCreatePath(window.location.pathname)) {
+                        return;
+                    }
+                    const key = localStorage.getItem(ACTIVE_SALE_KEY_STORAGE);
+                    const dbSync = JSON.parse(localStorage.getItem('restaurantDB') || '{}');
+                    // Sin borrador en storage pero la página viene de bfcache: el JS en memoria puede estar viejo
+                    if (!key || !dbSync[key]) {
+                        window.location.reload();
+                    }
+                });
+
+                /**
+                 * Atrás del navegador / cerrar pestaña: descarga real de la página (Turbo no siempre dispara).
+                 * No limpiar si esta descarga es por RECARGAR (F5): el tipo de navegación suele ser "reload".
+                 * Nota: si el usuario recargó y luego sale, el tipo puede seguir "reload" y no se limpia (caso raro).
+                 */
+                window.addEventListener('pagehide', function() {
+                    if (!isVentasCreatePath(window.location.pathname)) {
+                        return;
+                    }
+                    try {
+                        const nav = performance.getEntriesByType('navigation')[0];
+                        if (nav && nav.type === 'reload') {
+                            return;
+                        }
+                    } catch (_) {}
+                    clearIncompleteSalesCartStorage();
+                });
+            }
+
             let db = JSON.parse(localStorage.getItem('restaurantDB') || '{}');
             let activeKey = localStorage.getItem(ACTIVE_SALE_KEY_STORAGE);
 
@@ -440,18 +573,8 @@
             db[activeKey] = currentSale;
             localStorage.setItem('restaurantDB', JSON.stringify(db));
 
-            document.getElementById('back-to-sales-link')?.addEventListener('click', function(e) {
-                e.preventDefault();
-                localStorage.removeItem(ACTIVE_SALE_KEY_STORAGE);
-                if (activeKey) {
-                    try {
-                        const dbClean = JSON.parse(localStorage.getItem('restaurantDB') || '{}');
-                        delete dbClean[activeKey];
-                        localStorage.setItem('restaurantDB', JSON.stringify(dbClean));
-                    } catch (_) {}
-                }
-                window.location.href = @json($salesIndexUrl ?? '#');
-            });
+            // Enlace normal: Turbo dispara turbo:before-visit y limpia el carrito antes de salir.
+            // Evitar preventDefault + location.href: antes no corría before-visit y el flujo fallaba al volver.
 
             function saveDB() {
                 db[activeKey] = currentSale;
@@ -466,9 +589,14 @@
 
                 let rendered = 0;
 
-                let productsToShow = selectedCategoryId === CATEGORY_ALL_ID ?
-                    products :
-                    products.filter(p => p.category_id == selectedCategoryId);
+                let productsToShow = products;
+                if (selectedCategoryId === CATEGORY_ALL_ID) {
+                    productsToShow = products;
+                } else if (selectedCategoryId === CATEGORY_FAVORITES_ID) {
+                    productsToShow = products.filter(p => isProductFavoriteSales(p.id));
+                } else {
+                    productsToShow = products.filter(p => p.category_id == selectedCategoryId);
+                }
 
                 const q = String(searchQuery || '').trim().toLowerCase();
                 if (q.length > 0) {
@@ -520,12 +648,17 @@
                 });
 
                 if (rendered === 0) {
+                    const emptyMsg = (q.length > 0)
+                        ? 'No se encontraron productos'
+                        : (selectedCategoryId === CATEGORY_FAVORITES_ID
+                            ? 'No hay productos favoritos en esta sucursal. Marca favoritos en el producto o elige Todos.'
+                            : 'No se encontraron productos');
                     grid.innerHTML = `
-                                    <div class="col-span-full flex flex-col items-center justify-center py-20 text-gray-400">
+                                    <div class="col-span-full flex flex-col items-center justify-center py-20 text-gray-400 px-4 text-center">
                                         <div class="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-3">
                                             <i class="ri-search-line text-2xl opacity-50"></i>
                                         </div>
-                                        <p class="text-sm font-medium">No se encontraron productos</p>
+                                        <p class="text-sm font-medium">${emptyMsg}</p>
                                     </div>
                                 `;
                 }
@@ -537,7 +670,26 @@
                 if (!container) return;
                 container.innerHTML = '';
 
-                // Botón "Todos" por defecto
+                // Favoritos (predeterminado)
+                const favBtn = document.createElement('button');
+                favBtn.type = 'button';
+                const isFavActive = selectedCategoryId === CATEGORY_FAVORITES_ID;
+                favBtn.className = [
+                    'inline-flex items-center gap-2 px-2.5 py-1.5 rounded-full text-xs sm:text-sm font-semibold',
+                    'border transition-all duration-150 whitespace-nowrap cursor-pointer shrink-0',
+                    isFavActive ?
+                    'bg-blue-600 text-white border-blue-600 shadow-sm' :
+                    'bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-slate-600 hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400'
+                ].join(' ');
+                favBtn.onclick = function() {
+                    selectedCategoryId = CATEGORY_FAVORITES_ID;
+                    renderCategoryFilters();
+                    renderProducts();
+                };
+                favBtn.innerHTML = `<i class="ri-star-fill text-lg"></i><span>Favoritos</span>`;
+                container.appendChild(favBtn);
+
+                // Botón "Todos"
                 const allBtn = document.createElement('button');
                 allBtn.type = 'button';
                 const isAllActive = selectedCategoryId === CATEGORY_ALL_ID;
@@ -614,66 +766,92 @@
                         const courtesyQty = Math.min(Number(item.courtesyQty) || 0, itemQty);
                         const paidQty = Math.max(0, itemQty - courtesyQty);
                         const itemTotal = itemPrice * paidQty;
-                        const hasNote = !!(item.note && String(item.note).trim() !== '');
-                        const productName = (prod.name || 'Sin nombre').replace(/</g, '&lt;');
-                        const productImage = getImageUrl(prod.img || null);
-                        const itemNote = (item.note || '').replace(/</g, '&lt;');
+                        const noteText = typeof item.note === 'string' ? item.note.trim() : '';
+                        const hasNote = noteText !== '';
+                        const productName = escapeHtml(prod.name || 'Sin nombre');
+                        const itemNote = escapeHtml(noteText || '');
+
+                        const statusLabel = 'Venta';
+                        const statusClass =
+                            'bg-sky-500/15 text-sky-700 border border-sky-500/35 dark:text-sky-300 dark:border-sky-500/40';
+
+                        const qtyMinusOnclick = `onclick="updateQty(${index}, -1)"`;
+                        const qtyMinusClass = ' hover:bg-slate-100 dark:hover:bg-slate-700 font-bold';
+
+                        const hasCourtesy = (parseFloat(item.courtesyQty) || 0) > 0;
+                        const showNoteBox = item.noteOpen === true || (item.noteOpen === undefined && hasNote);
+                        const showCourtesyBox = item.courtesyOpen === true || (item.courtesyOpen === undefined && hasCourtesy);
+                        const noteBtnActive = hasNote || showNoteBox;
+                        const courtesyBtnActive = hasCourtesy || showCourtesyBox;
+                        const courtesyMinusDisabled = courtesyQty <= 0 ? ' disabled' : '';
+                        const courtesyMinusClass = courtesyQty <= 0 ? ' opacity-30 cursor-not-allowed' : ' hover:bg-slate-100 dark:hover:bg-zinc-700 font-bold';
+                        const courtesyMinusOnclick = courtesyQty > 0 ? `onclick="changeCourtesyQty(${index}, -1)"` : '';
+                        const courtesyPlusDisabled = courtesyQty >= itemQty ? ' disabled' : '';
+                        const courtesyPlusClass = courtesyQty >= itemQty ? ' opacity-30 cursor-not-allowed' : ' hover:bg-slate-100 dark:hover:bg-zinc-700 font-bold';
+                        const courtesyPlusOnclick = courtesyQty < itemQty ? `onclick="changeCourtesyQty(${index}, 1)"` : '';
 
                         const row = document.createElement('div');
                         row.className =
-                            'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl p-3 shadow-sm relative overflow-hidden group mb-2 border-l-4 border-l-blue-500';
+                            'cart-item-row group relative mb-3 rounded-xl overflow-hidden border border-slate-200 bg-white text-slate-900 shadow-md dark:border-zinc-600/50 dark:bg-[#252526] dark:text-zinc-100 dark:shadow-lg dark:shadow-black/40';
+
                         row.innerHTML = `
-                                        <div class="flex flex-col gap-2">
-                                            <div class="flex items-center justify-between gap-2">
-                                                <div class="flex-1 min-w-0">
-                                                    <div class="flex justify-between items-baseline gap-2">
-                                                        <span class="font-bold text-slate-800 dark:text-slate-200 text-sm truncate">${productName}</span>
-                                                        <span class="text-xs text-gray-500 dark:text-gray-400 shrink-0">S/ ${itemPrice.toFixed(2)}</span>
-                                                    </div>
-                                                </div>
-                                                <div class="flex items-center gap-0.5 bg-gray-100 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600 p-0.5 shrink-0">
-                                                    <button type="button" onclick="updateQty(${index}, -1)" class="w-7 h-7 flex items-center justify-center rounded-full text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                                <div class="flex flex-col gap-3 p-3.5 sm:p-4">
+                                        <div class="flex items-start justify-between gap-2">
+                                            <div class="min-w-0 flex-1">
+                                                <h3 class="font-bold text-[15px] sm:text-base leading-snug tracking-tight text-slate-900 dark:text-white">${productName}</h3>
+                                                <p class="mt-1 text-[11px] sm:text-xs text-slate-500 dark:text-zinc-400 font-medium tabular-nums">${ticketSavedTime ? ticketSavedTime + ' · ' : ''}S/ ${itemPrice.toFixed(2)} <span class="text-slate-400 dark:text-zinc-500 font-normal">c/u</span></p>
+                                            </div>
+                                            <span class="shrink-0 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wide ${statusClass}">${statusLabel}</span>
+                                        </div>
+
+                                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-lg bg-slate-50 border border-slate-200 px-2.5 py-2.5 dark:bg-zinc-900/50 dark:border-zinc-600/50">
+                                            <div class="flex items-center gap-0.5 rounded-lg bg-white px-0.5 py-0.5 border border-slate-200 dark:bg-zinc-800/80 dark:border-zinc-600/60">
+                                                <button type="button" ${qtyMinusOnclick} class="w-9 h-9 flex items-center justify-center rounded-md transition-all text-slate-600 dark:text-zinc-300 ${qtyMinusClass}">
+                                                    <i class="ri-subtract-line text-base"></i>
+                                                </button>
+                                                <input type="number" value="${item.qty}" min="1" onchange="setQtyFromInput(${index}, this)" class="w-11 h-9 text-center text-sm font-bold bg-transparent border-none focus:ring-0 focus:outline-none tabular-nums text-slate-900 dark:text-white p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
+                                                <button type="button" onclick="updateQty(${index}, 1)" class="w-9 h-9 flex items-center justify-center rounded-md hover:bg-slate-100 dark:hover:bg-zinc-700 text-slate-600 dark:text-zinc-300 transition-all font-bold">
+                                                    <i class="ri-add-line text-base"></i>
+                                                </button>
+                                            </div>
+                                            <div class="text-left sm:text-right flex flex-col justify-center">
+                                                <span class="text-[10px] text-slate-500 dark:text-zinc-500 uppercase font-bold tracking-wider leading-none mb-0.5">Subtotal</span>
+                                                <span class="text-lg font-bold tabular-nums leading-none text-slate-900 dark:text-white">S/ ${itemTotal.toFixed(2)}</span>
+                                            </div>
+                                        </div>
+
+                                        <div class="flex flex-wrap items-center gap-x-2 gap-y-1.5 border-t border-slate-200 pt-2.5 dark:border-zinc-700/60">
+                                            <button type="button" onclick="toggleNoteInput(${index})" class="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-colors ${noteBtnActive ? 'bg-blue-50 text-blue-700 dark:bg-sky-500/15 dark:text-sky-300' : 'text-slate-500 hover:bg-slate-100 hover:text-blue-600 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-sky-400'}">
+                                                <i class="${hasNote ? 'ri-chat-1-fill' : 'ri-chat-1-line'}"></i> ${hasNote ? 'Editar nota' : 'Nota'}
+                                            </button>
+                                            <button type="button" onclick="toggleCourtesyInput(${index})" class="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-colors ${courtesyBtnActive ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300' : 'text-slate-500 hover:bg-slate-100 hover:text-emerald-600 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-emerald-400'}">
+                                                <i class="${courtesyBtnActive ? 'ri-star-fill' : 'ri-star-line'}"></i> Cortesía
+                                            </button>
+                                            <button type="button" onclick="removeFromCart(${index})" class="ml-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-red-500/10 hover:text-red-500 dark:text-zinc-500 dark:hover:text-red-400" title="Eliminar">
+                                                <i class="ri-delete-bin-line text-lg"></i>
+                                            </button>
+                                        </div>
+
+                                        <div id="note-box-${index}" class="${showNoteBox ? '' : 'hidden'}">
+                                            <textarea rows="2" onblur="saveNote(${index}, this.value)" placeholder="Ej: Sin cebolla, término medio..." class="w-full min-h-[3.25rem] resize-y rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-600 dark:bg-zinc-900/80 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-sky-500">${itemNote}</textarea>
+                                        </div>
+
+                                        <div id="courtesy-box-${index}" class="${showCourtesyBox ? '' : 'hidden'}">
+                                            <div class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 dark:border-zinc-600/50 dark:bg-zinc-900/40">
+                                                <span class="text-[11px] font-semibold text-slate-700 dark:text-zinc-300">Cortesía <span class="font-normal text-slate-500 dark:text-zinc-500">(sin cargo)</span></span>
+                                                <div class="flex items-center gap-0.5 rounded-lg bg-white px-0.5 py-0.5 border border-slate-200 dark:bg-zinc-800/90 dark:border-zinc-600/60">
+                                                    <button type="button" ${courtesyMinusOnclick} class="w-8 h-8 flex items-center justify-center rounded-md transition-all text-slate-700 dark:text-zinc-200${courtesyMinusClass}"${courtesyMinusDisabled}>
                                                         <i class="ri-subtract-line text-sm"></i>
                                                     </button>
-                                                    <input type="number" value="${itemQty}" min="1" readonly class="w-8 h-7 text-center text-xs font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-gray-800 border-0 rounded [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
-                                                    <button type="button" onclick="updateQty(${index}, 1)" class="w-7 h-7 flex items-center justify-center rounded-full text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
+                                                    <input type="number" min="0" max="${itemQty}" value="${courtesyQty}" onchange="setCourtesyQty(${index}, this)" class="w-10 h-8 text-center text-sm font-bold bg-transparent border-none focus:ring-0 focus:outline-none tabular-nums text-slate-900 dark:text-white p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
+                                                    <button type="button" ${courtesyPlusOnclick} class="w-8 h-8 flex items-center justify-center rounded-md transition-all text-slate-700 dark:text-zinc-200${courtesyPlusClass}"${courtesyPlusDisabled}>
                                                         <i class="ri-add-line text-sm"></i>
                                                     </button>
                                                 </div>
-                                                <span class="font-bold text-slate-800 dark:text-slate-200 text-sm shrink-0 w-14 text-right">S/ ${itemTotal.toFixed(2)}</span>
-                                                <button type="button" onclick="removeFromCart(${index})" class="p-1.5 text-gray-400 hover:text-red-500 transition-colors shrink-0" title="Eliminar">
-                                                    <i class="ri-delete-bin-line text-base"></i>
-                                                </button>
-                                            </div>
-                                            <div class="flex items-center">
-                                                <span class="font-bold text-slate-800 dark:text-slate-200 text-xs text-gray-500 truncate">
-                                                    ${ticketSavedTime ? 'Hora: ' + ticketSavedTime : ''}
-                                                </span>
-                                            </div>
-                                            <div class="text-xs flex items-center gap-1">
-                                            Cortesía:
-                                            <input type="number"
-                                            min="0"
-                                            max="${itemQty}"
-                                            value="${Number(item.courtesyQty) || 0}"
-                                            onchange="setCourtesyQty(${index}, this)"
-                                            class="w-10 h-6 text-center text-[11px] border rounded" />
-                                            </div>
-                                            <div class="flex items-center">
-                                                <span class="font-bold text-slate-800 dark:text-slate-200 text-sm truncate">
-                                                    ${hasNote ? 'Nota: ' + itemNote : ''}
-                                                </span>
-                                            </div>
-                                            <div class="flex items-center">
-                                                <button type="button" onclick="toggleNoteInput(${index})" class="text-xs flex items-center gap-1 transition-colors ${hasNote ? 'text-blue-600 font-medium' : 'text-blue-500 hover:text-blue-600'}">
-                                                    <i class="fas fa-comment-alt text-[10px]"></i> Nota
-                                                </button>
-                                            </div>
-                                            <div id="note-box-${index}" class="${hasNote ? '' : 'hidden'} animate-fadeIn">
-                                                <input type="text" value="${itemNote}" oninput="saveNote(${index}, this.value)" placeholder="Escribe una nota..." class="w-full text-xs bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-2 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-yellow-400">
                                             </div>
                                         </div>
-                                    `;
+                                </div>
+                            `;
                         container.appendChild(row);
                     });
                 }
@@ -754,10 +932,46 @@
 
             function updateQty(index, delta) {
                 if (!currentSale.items[index]) return;
-                currentSale.items[index].qty += delta;
-                if (currentSale.items[index].qty <= 0) {
-                    currentSale.items.splice(index, 1);
+                const item = currentSale.items[index];
+                if (delta > 0) {
+                    const productId = Number(item.pId);
+                    const stock = stockByProductId.get(productId) ?? 0;
+                    if (item.qty + delta > stock) {
+                        showStockError(item.name || 'Producto', stock);
+                        return;
+                    }
                 }
+                item.qty += delta;
+                if (item.qty <= 0) {
+                    currentSale.items.splice(index, 1);
+                } else {
+                    const cq = parseFloat(item.courtesyQty) || 0;
+                    if (cq > item.qty) item.courtesyQty = item.qty;
+                }
+                saveDB();
+                renderTicket();
+            }
+
+            function setQtyFromInput(index, inputEl) {
+                if (!currentSale.items || !currentSale.items[index]) return;
+                const item = currentSale.items[index];
+                const raw = parseInt(inputEl.value, 10);
+                const newQty = isNaN(raw) || raw < 1 ? 1 : raw;
+                const productId = Number(item.pId);
+                const stock = stockByProductId.get(productId) ?? 0;
+                if (newQty > stock) {
+                    showStockError(item.name || 'Producto', stock);
+                    inputEl.value = item.qty;
+                    return;
+                }
+                const oldQty = Number(item.qty) || 0;
+                if (newQty === oldQty) {
+                    inputEl.value = newQty;
+                    return;
+                }
+                item.qty = newQty;
+                const cq = parseFloat(item.courtesyQty) || 0;
+                if (cq > newQty) item.courtesyQty = newQty;
                 saveDB();
                 renderTicket();
             }
@@ -785,6 +999,28 @@
                 const maxQty = Number(item.qty) || 0;
                 if (val > maxQty) val = maxQty;
                 item.courtesyQty = val;
+                inputEl.value = val;
+                saveDB();
+                renderTicket();
+            }
+
+            function toggleCourtesyInput(index) {
+                if (!currentSale.items || !currentSale.items[index]) return;
+                const item = currentSale.items[index];
+                const hasC = (parseFloat(item.courtesyQty) || 0) > 0;
+                const shown = item.courtesyOpen === true || (item.courtesyOpen === undefined && hasC);
+                item.courtesyOpen = !shown;
+                saveDB();
+                renderTicket();
+            }
+
+            function changeCourtesyQty(index, delta) {
+                if (!currentSale.items || !currentSale.items[index]) return;
+                const item = currentSale.items[index];
+                const maxQty = parseFloat(item.qty) || 0;
+                let v = (parseFloat(item.courtesyQty) || 0) + delta;
+                v = Math.max(0, Math.min(maxQty, v));
+                item.courtesyQty = v;
                 saveDB();
                 renderTicket();
             }
@@ -805,28 +1041,71 @@
                 const cobro = document.getElementById('aside-cobro');
                 const btnResumen = document.getElementById('tab-resumen');
                 const btnCobro = document.getElementById('tab-cobro');
-                const cobroBtnContainer = document.getElementById('cobro-button-container');
+                const footerResumen = document.getElementById('footer-resumen');
+                const footerCobro = document.getElementById('footer-cobro');
+                const productsGrid = document.getElementById('products-grid');
+                const categoriesGrid = document.getElementById('categories-grid');
+                const searchInput = document.getElementById('search-products');
+                const searchClearBtn = document.getElementById('search-products-clear');
                 if (tab === 'cobro') {
                     resumen?.classList.add('hidden');
                     cobro?.classList.remove('hidden');
                     cobro?.classList.add('flex');
+                    footerResumen?.classList.add('hidden');
+                    footerCobro?.classList.remove('hidden');
                     btnResumen?.classList.remove('bg-brand-500', 'text-white');
                     btnResumen?.classList.add('bg-gray-200', 'dark:bg-gray-700', 'text-gray-700', 'dark:text-gray-300');
                     btnCobro?.classList.remove('bg-gray-100', 'dark:bg-gray-800', 'text-gray-500',
                         'dark:text-gray-400');
                     btnCobro?.classList.add('bg-brand-500', 'text-white');
-                    cobroBtnContainer?.classList.remove('hidden');
+                    if (productsGrid) {
+                        productsGrid.classList.add('pointer-events-none', 'opacity-60');
+                    }
+                    if (categoriesGrid) {
+                        categoriesGrid.classList.add('pointer-events-none', 'opacity-60');
+                    }
+                    if (searchInput) {
+                        searchInput.setAttribute('disabled', 'disabled');
+                        searchInput.classList.add('bg-gray-100', 'cursor-not-allowed', 'dark:bg-gray-800');
+                    }
+                    if (searchClearBtn) {
+                        searchClearBtn.setAttribute('disabled', 'disabled');
+                    }
                 } else {
                     cobro?.classList.add('hidden');
                     cobro?.classList.remove('flex');
                     resumen?.classList.remove('hidden');
+                    footerCobro?.classList.add('hidden');
+                    footerCobro?.classList.remove('flex');
+                    footerResumen?.classList.remove('hidden');
                     btnCobro?.classList.remove('bg-brand-500', 'text-white');
                     btnCobro?.classList.add('bg-gray-100', 'dark:bg-gray-800', 'text-gray-500', 'dark:text-gray-400');
                     btnResumen?.classList.remove('bg-gray-200', 'dark:bg-gray-700', 'text-gray-700',
                         'dark:text-gray-300');
                     btnResumen?.classList.add('bg-brand-500', 'text-white');
-                    cobroBtnContainer?.classList.add('hidden');
+                    if (productsGrid) {
+                        productsGrid.classList.remove('pointer-events-none', 'opacity-60');
+                    }
+                    if (categoriesGrid) {
+                        categoriesGrid.classList.remove('pointer-events-none', 'opacity-60');
+                    }
+                    if (searchInput) {
+                        searchInput.removeAttribute('disabled');
+                        searchInput.classList.remove('bg-gray-100', 'cursor-not-allowed', 'dark:bg-gray-800');
+                    }
+                    if (searchClearBtn) {
+                        searchClearBtn.removeAttribute('disabled');
+                    }
                 }
+            }
+
+            function clearProductSearch() {
+                searchQuery = '';
+                const el = document.getElementById('search-products');
+                if (el) {
+                    el.value = '';
+                }
+                renderProducts();
             }
 
             function clearCobroClient() {
@@ -1183,14 +1462,14 @@
             }
 
             function toggleNoteInput(index) {
-                const box = document.getElementById('note-box-' + index);
-                if (box) {
-                    box.classList.toggle('hidden');
-                    if (!box.classList.contains('hidden')) {
-                        const input = box.querySelector('input');
-                        if (input) setTimeout(() => input.focus(), 50);
-                    }
-                }
+                if (!currentSale.items || !currentSale.items[index]) return;
+                const item = currentSale.items[index];
+                const nt = typeof item.note === 'string' ? item.note.trim() : '';
+                const hasN = nt !== '';
+                const shown = item.noteOpen === true || (item.noteOpen === undefined && hasN);
+                item.noteOpen = !shown;
+                saveDB();
+                renderTicket();
             }
 
             function saveNote(index, value) {
@@ -1247,7 +1526,11 @@
             // Exponer funciones globales para los onclick="" del HTML
             window.getImageUrl = getImageUrl;
             window.updateQty = updateQty;
+            window.setQtyFromInput = setQtyFromInput;
             window.setCourtesyQty = setCourtesyQty;
+            window.changeCourtesyQty = changeCourtesyQty;
+            window.toggleCourtesyInput = toggleCourtesyInput;
+            window.removeFromCart = removeFromCart;
             window.clearCart = clearCart;
             window.toggleNoteInput = toggleNoteInput;
             window.saveNote = saveNote;
@@ -1261,6 +1544,7 @@
             window.processSale = processSale;
             window.hideStockError = hideStockError;
             window.hideNotification = hideNotification;
+            window.clearProductSearch = clearProductSearch;
 
             // Arrancar
             init();

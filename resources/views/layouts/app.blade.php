@@ -247,8 +247,13 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
             @include('layouts.app-header')
             <!-- app header end -->
             
-            <main class="flex-1 p-4 w-full md:p-6 flex flex-col min-w-0 min-h-0 overflow-y-auto overflow-x-hidden">
-                <div class="flex-1 min-w-0 w-full">
+            @php
+                $routeName = Route::currentRouteName();
+                $isPosStyle = in_array($routeName, ['orders.create', 'sales.create', 'sales.charge', 'orders.charge']);
+            @endphp
+
+            <main class="flex-1 w-full flex flex-col min-w-0 min-h-0 {{ $isPosStyle ? 'p-0 md:p-0 overflow-hidden' : 'p-4 md:p-6 overflow-y-auto overflow-x-hidden' }}">
+                <div class="flex-1 min-w-0 w-full {{ $isPosStyle ? 'h-full' : '' }}">
                     @yield('content')
                 </div>
             </main>

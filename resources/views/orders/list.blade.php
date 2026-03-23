@@ -102,16 +102,16 @@
                     </div>
             </div>
             <div class="flex flex-wrap items-end justify-between gap-3 w-full">
-                <div class="flex flex-wrap items-end gap-3">
+                <div class="flex flex-wrap items-end gap-3 justify-between">
                     <div
-                        class="w-[155px] shrink-0 [&_label]:mb-1 [&_label]:text-xs [&_label]:font-medium [&_label]:text-gray-600 dark:[&_label]:text-gray-400">
-                        <x-form.date-picker name="date_from" label="Desde" :defaultDate="$dateFrom" dateFormat="Y-m-d" />
+                        class="w-[150px] shrink-0 [&_label]:mb-1 [&_label]:text-xs [&_label]:font-medium [&_label]:text-gray-600 dark:[&_label]:text-gray-400 flex-1">
+                        <x-form.date-picker name="date_from" label="Desde" :defaultDate="$dateFrom" dateFormat="Y-m-d" class="w-full" />
                     </div>
                     <div
-                        class="w-[155px] shrink-0 [&_label]:mb-1 [&_label]:text-xs [&_label]:font-medium [&_label]:text-gray-600 dark:[&_label]:text-gray-400">
-                        <x-form.date-picker name="date_to" label="Hasta" :defaultDate="$dateTo" dateFormat="Y-m-d" />
+                        class="w-[150px] shrink-0 [&_label]:mb-1 [&_label]:text-xs [&_label]:font-medium [&_label]:text-gray-600 dark:[&_label]:text-gray-400 flex-1">
+                        <x-form.date-picker name="date_to" label="Hasta" :defaultDate="$dateTo" dateFormat="Y-m-d" class="w-full" />
                     </div>
-                    <div class="w-[155px] shrink-0">
+                    <div class="w-[150px] shrink-0 flex-1">
                         <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Método de
                             pago</label>
                         <select name="payment_method_id" onchange="this.form.submit()"
@@ -123,7 +123,7 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="w-[155px] shrink-0">
+                    <div class="w-[150px] shrink-0 flex-1">
                         <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Tipo de
                             documento</label>
                         <select name="document_type_id" onchange="this.form.submit()"
@@ -135,7 +135,7 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="w-[100px] shrink-0">
+                    <div class="w-[100px] shrink-0 flex-1">
                         <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Caja</label>
                         <select name="cash_register_id" onchange="this.form.submit()"
                             class="h-11 w-full rounded-lg border border-gray-300 bg-white px-5 py-2 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-2 focus:ring-brand-500/10 dark:border-gray-600 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800">
@@ -144,6 +144,16 @@
                                 <option value="{{ $cr->id }}" @selected(($cashRegisterId ?? '') == $cr->id)>
                                     {{ $cr->number ?? $cr->id }}</option>
                             @endforeach
+                        </select>
+                    </div>
+                    <div class="w-[120px] shrink-0 flex-1">
+                        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Estado</label>
+                        <select name="status" onchange="this.form.submit()"
+                            class="h-11 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-2 focus:ring-brand-500/10 dark:border-gray-600 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800">
+                            <option value="">Todos</option>
+                            <option value="CANCELADO" @selected(($status ?? '') == 'CANCELADO')>Cancelado</option>
+                            <option value="PENDIENTE" @selected(($status ?? '') == 'PENDIENTE')>Pendiente</option>
+                            <option value="FINALIZADO" @selected(($status ?? '') == 'FINALIZADO')>Finalizado</option>
                         </select>
                     </div>
                 </div>
@@ -211,6 +221,8 @@
                             : (in_array($rowStatus, ['CANCELADO', 'I'], true)
                                 ? 'Cancelado'
                                 : 'Pendiente');
+                        /** Cobro / cancelación / cierre; si no hay, último movimiento del documento */
+                        $orderListAt = $order->finished_at ?? $order->movement?->moved_at;
                         $situationColor = in_array($situationStatus, ['A', '1'], true) ? 'success' : 'error';
                         $situationText = in_array($situationStatus, ['A', '1'], true) ? 'Activado' : 'Inactivo';
                     @endphp
@@ -244,7 +256,7 @@
                         </td>
                         <td class="px-2 py-2 text-center">
                             <span
-                                class="text-gray-600 dark:text-gray-400 tabular-nums">{{ $order->movement?->moved_at?->format('d/m/Y H:i') ?? '-' }}</span>
+                                class="text-gray-600 dark:text-gray-400 tabular-nums">{{ $orderListAt?->format('d/m/Y H:i') ?? '-' }}</span>
                         </td>
                         <td class="px-2 py-2 overflow-hidden">
                             <span class="text-gray-600 dark:text-gray-400 truncate block max-w-full"
@@ -310,6 +322,7 @@
                                                 <th class="px-4 py-3 font-semibold">Mesa</th>
                                                 <th class="px-4 py-3 font-semibold">Mozo</th>
                                             </tr>
+                                            
                                         </thead>
                                         <tbody class="text-sm">
                                             <tr class="hover:bg-gray-50/50 dark:hover:bg-white/5 transition-colors">
@@ -332,12 +345,17 @@
                                                                     class="text-amber-500">({{ number_format((float) $detail->courtesy_quantity, 2) }}
                                                                     cortesía)</span>
                                                             @endif
+                                                            @if ((float) ($detail->takeaway_quantity ?? 0) > 0)
+                                                                <span
+                                                                    class="text-orange-600 dark:text-orange-400">({{ number_format((float) $detail->takeaway_quantity, 2) }}
+                                                                    llevar)</span>
+                                                            @endif
                                                         </span>
                                                     @endforeach
                                                 </td>
                                                 <td
                                                     class="px-4 py-3 text-right font-bold text-gray-700 dark:text-gray-300 tabular-nums">
-                                                    {{ $order->movement?->moved_at?->format('H:i') ?? '-' }}</td>
+                                                    {{ $orderListAt?->format('H:i') ?? '-' }}</td>
                                                 <td class="px-4 py-3 text-gray-600 dark:text-gray-400">
                                                     <x-ui.badge variant="light" color="{{ $rowStatusColor }}"
                                                         class="inline-flex justify-center items-center text-center text-[11px] font-medium px-2 py-0.5">
@@ -355,6 +373,14 @@
                                                         title="{{ $order->movement?->responsible_name ?? '-' }}">{{ $order->movement?->responsible_name ?? '-' }}</span>
                                                 </td>
                                             </tr>
+                                            @if ($order->status == 'CANCELADO')
+                                            <tr>
+                                                <td colspan="5" class="px-4 py-3 text-gray-600 dark:text-gray-400">
+                                                    <span class="text-gray-600 dark:text-gray-400 truncate block max-w-full"
+                                                        title="{{ $order->movement?->comment ?? '-' }}"> <strong>Motivo de cancelación:</strong> {{ $order->movement?->comment ?? '-' }}</span>
+                                                </td>
+                                            </tr>
+                                            @endif
                                         </tbody>
                                     </table>
                                 </div>

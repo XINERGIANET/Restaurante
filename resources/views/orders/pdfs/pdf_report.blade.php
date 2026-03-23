@@ -72,7 +72,7 @@
             @foreach($orders as $order)
             @php
                 $mov = $order->movement;
-                $fecha = $mov?->moved_at ?? $order->created_at;
+                $fecha = $order->finished_at ?? $mov?->moved_at ?? $order->created_at;
                 $numero = $mov ? (ctype_digit((string) $mov->number) ? str_pad($mov->number, 8, '0', STR_PAD_LEFT) : $mov->number) : $order->id;
             @endphp
             <tr>

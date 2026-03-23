@@ -87,7 +87,7 @@
     {{-- Buscador DNI/RUC modo POS --}}
     <div class="col-span-4 mb-1"
          x-data="{
-            dniQuery: '{{ old('document_number', $person->document_number ?? '') }}',
+            dniQuery: @js(old('document_number', $person->document_number ?? '')),
             dniLoading: false,
             dniError: '',
             async searchDni() {

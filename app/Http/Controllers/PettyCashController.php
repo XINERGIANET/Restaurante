@@ -315,7 +315,11 @@ class PettyCashController extends Controller
         }
 
         $shifts = Shift::where('branch_id', session('branch_id'))->get();
-        $paymentMethods = PaymentMethod::where('status', true)->orderBy('order_num', 'asc')->get();
+        $paymentMethods = PaymentMethod::query()
+            ->where('status', true)
+            ->restrictedToBranch($branchId ? (int) $branchId : null)
+            ->orderBy('order_num', 'asc')
+            ->get();
         $banks = Bank::where('status', true)->orderBy('order_num', 'asc')->get();
         $paymentGateways = PaymentGateways::where('status', true)->orderBy('order_num', 'asc')->get();
         $digitalWallets = DigitalWallet::where('status', true)->orderBy('order_num', 'asc')->get();
@@ -376,6 +380,18 @@ class PettyCashController extends Controller
             'payments.*.payment_method_id' => 'required|exists:payment_methods,id',
             'payments.*.number'  => 'nullable|string|max:100',
         ]);
+
+        $restrictedPm = PaymentMethod::paymentMethodIdsForBranchOrNull(session('branch_id') ? (int) session('branch_id') : null);
+        if ($restrictedPm !== null) {
+            foreach ($request->payments as $p) {
+                $pmId = (int) ($p['payment_method_id'] ?? 0);
+                if ($pmId > 0 && ! in_array($pmId, $restrictedPm, true)) {
+                    return back()
+                        ->withErrors(['error' => 'Método de pago no permitido para esta sucursal.'])
+                        ->withInput();
+                }
+            }
+        }
 
         // La Apertura de caja siempre se permite (es quien crea el turno activo).
         // Cualquier otro movimiento requiere un turno activo en esta caja.
@@ -613,6 +629,18 @@ class PettyCashController extends Controller
             'payments.*.payment_method_id' => 'required|exists:payment_methods,id',
             'payments.*.number'  => 'nullable|string|max:100',
         ]);
+
+        $restrictedPm = PaymentMethod::paymentMethodIdsForBranchOrNull(session('branch_id') ? (int) session('branch_id') : null);
+        if ($restrictedPm !== null) {
+            foreach ($request->payments as $p) {
+                $pmId = (int) ($p['payment_method_id'] ?? 0);
+                if ($pmId > 0 && ! in_array($pmId, $restrictedPm, true)) {
+                    return back()
+                        ->withErrors(['error' => 'Método de pago no permitido para esta sucursal.'])
+                        ->withInput();
+                }
+            }
+        }
 
         try {
             DB::transaction(function () use ($request, $validated, $id, $cash_register_id) {

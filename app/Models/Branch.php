@@ -46,4 +46,9 @@ class Branch extends Model
     {
         return $this->hasMany(ProductType::class, 'branch_id');
     }
+
+    public function branchPaymentMethods()
+    {
+        return $this->hasMany(BranchPaymentMethod::class);
+    }
 }

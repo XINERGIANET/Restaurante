@@ -3,9 +3,14 @@ import './bootstrap';
 import Alpine from 'alpinejs';
 import ApexCharts from 'apexcharts';
 
-// flatpickr
+// flatpickr (registrar locale en la instancia importada; el import de l10n/es puede correr antes de window.flatpickr)
 import flatpickr from 'flatpickr';
+import { Spanish } from 'flatpickr/dist/l10n/es.js';
 import 'flatpickr/dist/flatpickr.min.css';
+if (!flatpickr.l10ns.es) {
+    flatpickr.l10ns.es = Spanish;
+}
+flatpickr.localize(Spanish);
 // FullCalendar
 import { Calendar } from '@fullcalendar/core';
 

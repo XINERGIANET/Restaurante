@@ -13,6 +13,54 @@ use App\Models\PaymentMethod;
 
 class BranchParameterController extends Controller
 {
+    /**
+     * Sincroniza métodos de pago permitidos para la sucursal.
+     * Vacío o "todos los activos" elimina filas del pivote (sin restricción = se muestran todos en POS).
+     */
+    private function syncBranchPaymentMethodsFromRequest(Request $request, int $branchId): void
+    {
+        if (!$request->has('branch_payment_methods_include')) {
+            return;
+        }
+
+        $selected = array_values(array_unique(array_filter(array_map(
+            'intval',
+            (array) $request->input('branch_payment_method_ids', [])
+        ))));
+
+        $allActiveIds = PaymentMethod::query()
+            ->where('status', true)
+            ->orderBy('id')
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->sort()
+            ->values()
+            ->all();
+
+        sort($selected);
+
+        if ($selected === [] || $selected === $allActiveIds) {
+            DB::table('branch_payment_methods')->where('branch_id', $branchId)->delete();
+
+            return;
+        }
+
+        DB::table('branch_payment_methods')->where('branch_id', $branchId)->delete();
+        $now = now();
+        foreach ($selected as $pid) {
+            if (! in_array($pid, $allActiveIds, true)) {
+                continue;
+            }
+            DB::table('branch_payment_methods')->insert([
+                'branch_id' => $branchId,
+                'payment_method_id' => $pid,
+                'status' => 'E',
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+        }
+    }
+
     public function index(Request $request)
     {
         $viewId = $request->input('view_id');
@@ -84,7 +132,31 @@ class BranchParameterController extends Controller
 
         $igv = TaxRate::where('status', true)->get();
 
-        $paymentMethods = PaymentMethod::where('status', true)->get();
+        $paymentMethods = PaymentMethod::where('status', true)->orderBy('order_num')->get();
+
+        $branchPaymentMethodIds = [];
+        if ($branchId) {
+            $pivotIds = DB::table('branch_payment_methods')
+                ->where('branch_id', $branchId)
+                ->where('status', 'E')
+                ->pluck('payment_method_id')
+                ->map(fn ($id) => (int) $id)
+                ->sort()
+                ->values()
+                ->all();
+
+            $allActiveIds = PaymentMethod::query()
+                ->where('status', true)
+                ->orderBy('order_num')
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->values()
+                ->all();
+
+            $branchPaymentMethodIds = $pivotIds === []
+                ? $allActiveIds
+                : $pivotIds;
+        }
 
         return view('branch_parameters.index', [
             'title' => 'Parámetros de Sucursal',
@@ -93,6 +165,7 @@ class BranchParameterController extends Controller
             'tiposVenta' => $tiposVenta,
             'igv' => $igv,
             'paymentMethods' => $paymentMethods,
+            'branchPaymentMethodIds' => $branchPaymentMethodIds,
         ]);
     }
 
@@ -109,6 +182,8 @@ class BranchParameterController extends Controller
         if (is_array($parameters)) {
             DB::beginTransaction();
             try {
+                $this->syncBranchPaymentMethodsFromRequest($request, (int) $branchId);
+
                 foreach ($parameters as $paramKey => $value) {
                     $valorSeguro = $value ?? '';
 

@@ -174,7 +174,11 @@ class PurchaseController extends Controller
         $paymentGateways = PaymentGateways::all();
         $digitalWallets = DigitalWallet::all();
         $banks = Bank::all();
-        $paymentMethods = PaymentMethod::where('status', true)->orderBy('order_num', 'asc')->get(['id', 'description']);
+        $paymentMethods = PaymentMethod::query()
+            ->where('status', true)
+            ->restrictedToBranch($branchId ? (int) $branchId : null)
+            ->orderBy('order_num', 'asc')
+            ->get(['id', 'description']);
 
         $viewId = $request->input('view_id');
 
@@ -807,7 +811,11 @@ class PurchaseController extends Controller
             })
             ->filter()
             ->values();
-        $paymentMethods = PaymentMethod::where('status', true)->orderBy('order_num', 'asc')->get(['id', 'description']);
+        $paymentMethods = PaymentMethod::query()
+            ->where('status', true)
+            ->restrictedToBranch($branchId ? (int) $branchId : null)
+            ->orderBy('order_num', 'asc')
+            ->get(['id', 'description']);
 
         // Mandar los modelos de pago
         $cards = Card::all();

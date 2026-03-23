@@ -28,7 +28,9 @@
                 time_24hr: {{ $time24hr ? 'true' : 'false' }},
                 altInput: {{ $altInput ? 'true' : 'false' }},
                 altFormat: '{{ $altFormat }}',
+                @if($locale && $locale !== 'es')
                 locale: '{{ $locale }}',
+                @endif
                 onChange: (selectedDates, dateStr, instance) => {
                     this.$dispatch('date-change', {
                         selectedDates,

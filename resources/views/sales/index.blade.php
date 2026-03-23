@@ -231,9 +231,6 @@
                             <th class="px-5 py-3 text-left sm:px-6">
                                 <p class="font-semibold text-white text-theme-xs uppercase">Situación</p>
                             </th>
-                            <th class="px-5 py-3 text-left sm:px-6">
-                                <p class="font-semibold text-white text-theme-xs uppercase">Tipo</p>
-                            </th>
                             <th class="px-5 py-3 text-center sm:px-6 last:rounded-tr-xl">
                                 <p class="font-semibold text-white text-theme-xs uppercase">Acciones</p>
                             </th>
@@ -297,18 +294,6 @@
                                     <x-ui.badge variant="light" color="{{ $badgeColor }}">
                                         {{ $badgeText }}
                                     </x-ui.badge>
-                                </td>
-                                <td class="px-5 py-4 sm:px-6">
-                                    <p class="text-gray-800 text-theme-sm dark:text-white/90">
-                                        @php
-                                            $stVal = $sale->salesMovement?->sale_type ?? '-';
-                                            $stText = $stVal;
-                                            if ($stVal === 'IN_SITU') $stText = 'Local';
-                                            elseif ($stVal === 'TAKE_AWAY') $stText = 'LLevar';
-                                            elseif ($stVal === 'DELIVERY') $stText = 'Delivery';
-                                        @endphp
-                                        {{ $stText }}
-                                    </p>
                                 </td>
                                 <td class="px-5 text-center py-4 sm:px-6">
                                     <div class="flex items-center justify-center gap-2">

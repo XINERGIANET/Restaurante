@@ -160,7 +160,11 @@ class ShiftCashController extends Controller
             ->get();
 
         $shifts = Shift::where('branch_id', session('branch_id'))->get();
-        $paymentMethods = PaymentMethod::where('status', true)->orderBy('order_num', 'asc')->get();
+        $paymentMethods = PaymentMethod::query()
+            ->where('status', true)
+            ->restrictedToBranch($branchId !== null ? (int) $branchId : null)
+            ->orderBy('order_num', 'asc')
+            ->get();
         $banks = Bank::where('status', true)->orderBy('order_num', 'asc')->get();
         $paymentGateways = PaymentGateways::where('status', true)->orderBy('order_num', 'asc')->get();
         $digitalWallets = DigitalWallet::where('status', true)->orderBy('order_num', 'asc')->get();

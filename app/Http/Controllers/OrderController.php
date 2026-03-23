@@ -90,6 +90,23 @@ class OrderController extends Controller
         return $currentProfileId !== $mozoId;
     }
 
+    /**
+     * Total para tarjetas de mesa y API tablesData: productos (subtotal + impuestos) + delivery + descartables (llevar).
+     */
+    private function orderMovementDisplayTotal(?OrderMovement $orderMovement): float
+    {
+        if (!$orderMovement) {
+            return 0.0;
+        }
+        $base = round((float) ($orderMovement->subtotal ?? 0) + (float) ($orderMovement->tax ?? 0), 2);
+        $deliveryFee = strtoupper((string) ($orderMovement->service_type ?? '')) === 'DELIVERY'
+            ? (float) ($orderMovement->delivery_amount ?? 0)
+            : 0.0;
+        $disposable = (float) ($orderMovement->takeaway_disposable_amount ?? 0);
+
+        return round($base + $deliveryFee + $disposable, 2);
+    }
+
     public function validateWaiterPin(Request $request)
     {
         $branchId = (int) session('branch_id');
@@ -134,6 +151,7 @@ class OrderController extends Controller
     {
         $search = $request->input('search');
         $viewId = $request->input('view_id');
+        $status = $request->input('status');
         $perPage = (int) $request->input('per_page', 10);
         $dateFrom = $request->input('date_from');
         $dateTo = $request->input('date_to');
@@ -151,7 +169,11 @@ class OrderController extends Controller
             ->orderBy('name')
             ->where('name', 'ILIKE', '%venta%')
             ->get(['id', 'name']);
-        $paymentMethods = PaymentMethod::query()->where('status', true)->orderBy('order_num')->get(['id', 'description']);
+        $paymentMethods = PaymentMethod::query()
+            ->where('status', true)
+            ->restrictedToBranch($branchId ? (int) $branchId : null)
+            ->orderBy('order_num')
+            ->get(['id', 'description']);
         $cashRegisters = CashRegister::query()->orderBy('number')->get(['id', 'number']);
         $operaciones = collect();
         if ($viewId && $branchId && $profileId) {
@@ -228,6 +250,9 @@ class OrderController extends Controller
                         ->whereNull('cm.deleted_at');
                 });
             })
+            ->when($status, function ($query) use ($status) {
+                $query->where('status', $status);
+            })
             ->when($paymentMethodId, function ($query) use ($paymentMethodId) {
                 $query->whereExists(function ($sub) use ($paymentMethodId) {
                     $sub->select(DB::raw(1))
@@ -257,6 +282,7 @@ class OrderController extends Controller
             'documentTypeId' => $request->input('document_type_id'),
             'paymentMethodId' => $request->input('payment_method_id'),
             'cashRegisterId' => $request->input('cash_register_id'),
+            'status' => $request->input('status'),
         ]);
     }
 
@@ -328,9 +354,7 @@ class OrderController extends Controller
 
             $orderMovement = $activeOrderMovements->get($table->id)?->sortByDesc('id')->first();
 
-            $totalAmount = $orderMovement ? (float) $orderMovement->subtotal : 0;
-            $taxAmount = $orderMovement ? (float) ($orderMovement->tax ?? 0) : 0;
-            $totalWithTax = round($totalAmount + $taxAmount, 2);
+            $totalWithTax = $this->orderMovementDisplayTotal($orderMovement);
 
             // Si no hay pedido pendiente o el total es 0, la mesa debe considerarse libre
             if (!$orderMovement || $totalWithTax <= 0) {
@@ -548,9 +572,7 @@ class OrderController extends Controller
                 ->whereIn('status', ['PENDIENTE', 'P'])
                 ->orderByDesc('id')
                 ->first();
-            $totalAmount = $orderMovement ? (float) $orderMovement->subtotal : 0;
-            $taxAmount = $orderMovement ? (float) ($orderMovement->tax ?? 0) : 0;
-            $totalWithTax = round($totalAmount + $taxAmount, 2);
+            $totalWithTax = $this->orderMovementDisplayTotal($orderMovement);
 
             // Si no hay pedido pendiente o el total es 0, la mesa debe considerarse libre
             if (!$orderMovement || $totalWithTax <= 0) {
@@ -715,6 +737,7 @@ class OrderController extends Controller
                     'price' => (float) $productBranch->price,
                     'stock' => (float) ($productBranch->stock ?? 0),
                     'tax_rate' => $taxRatePct,
+                    'favorite' => ($productBranch->favorite ?? 'N'),
                 ];
             })
             ->values()
@@ -765,6 +788,9 @@ class OrderController extends Controller
                     ? $d->commanded_at->format('H:i')
                     : ($d->created_at ? $d->created_at->format('H:i') : null);
                 $status = $d->status ?? 'A';
+                $takeawayQty = (float) ($d->takeaway_quantity ?? 0);
+                $takeawayQty = max(0, min($takeawayQty, $qty));
+
                 return [
                     'pId'         => (int) ($d->product_id ?? 0),
                     'name'        => $d->description ?? '',
@@ -775,6 +801,7 @@ class OrderController extends Controller
                     'commandTime' => $commandTime,
                     'delivered'   => $status === 'E',
                     'courtesyQty' => $courtesyQty,
+                    'takeawayQty' => $takeawayQty,
                 ];
             })->values()->all()
             : [];
@@ -782,16 +809,21 @@ class OrderController extends Controller
         // Agrupar mismo producto en un solo ítem (ej. PB x5 + PB x1 → PB x6)
         $pendingItems = collect($pendingItemsRaw)->groupBy('pId')->map(function ($group) {
             $first = $group->first();
+
+            $sumQty = $group->sum('qty');
+            $sumTakeaway = $group->sum('takeawayQty');
+
             return [
                 'pId' => $first['pId'],
                 'name' => $first['name'],
-                'qty' => $group->sum('qty'),
+                'qty' => $sumQty,
                 'price' => $first['price'],
                 'tax_rate' => $first['tax_rate'] ?? 10,
                 'note' => $first['note'],
                 'commandTime' => $first['commandTime'],
                 'delivered' => $group->contains('delivered', true),
                 'courtesyQty' => $group->sum('courtesyQty'),
+                'takeawayQty' => min($sumTakeaway, $sumQty),
             ];
         })->values()->all();
 
@@ -830,6 +862,7 @@ class OrderController extends Controller
             ->get(['id', 'name']);
         $paymentMethods = PaymentMethod::query()
             ->where('status', true)
+            ->restrictedToBranch($branchId)
             ->orderBy('order_num')
             ->get(['id', 'description', 'order_num']);
         $paymentGateways = PaymentGateways::query()
@@ -875,10 +908,11 @@ class OrderController extends Controller
             'pendingPeopleCount' => (int) ($pendingOrder?->people_count ?: ($table->capacity ?? 1)),
             'pendingCancelledDetails' => $pendingCancelledDetails,
             'pendingItems' => $pendingItems,
-            'pendingServiceType' => $pendingOrder?->service_type ?? 'IN_SITU',
+            'pendingServiceType' => $pendingOrder?->service_type ?? ( (strpos(strtolower($area->name ?? ''), 'delivery') !== false) ? 'DELIVERY' : 'IN_SITU' ),
             'pendingDeliveryAddress' => $pendingOrder?->delivery_address,
             'pendingContactPhone' => $pendingOrder?->contact_phone,
             'pendingDeliveryAmount' => $pendingOrder?->delivery_amount ?? 0,
+            'pendingTakeawayDisposableAmount' => (float) ($pendingOrder?->takeaway_disposable_amount ?? 0),
             'documentTypes' => $documentTypes,
             'paymentMethods' => $paymentMethods,
             'paymentGateways' => $paymentGateways,
@@ -922,8 +956,11 @@ class OrderController extends Controller
             ->whereIn('movement_type_id', !empty($saleOrOrderTypeIds) ? $saleOrOrderTypeIds : [2])
             ->get(['id', 'name']);
 
+        $branchIdForPm = (int) session('branch_id');
+
         $paymentMethods = PaymentMethod::query()
             ->where('status', true)
+            ->restrictedToBranch($branchIdForPm ?: null)
             ->orderBy('order_num')
             ->get(['id', 'description', 'order_num']);
 
@@ -1175,6 +1212,42 @@ class OrderController extends Controller
         $areaId = $request->filled('area_id') ? $request->area_id : null;
         $peopleCount = max(0, (int) $request->input('people_count', 0));
         $deliveryAmount = round((float) ($request->input('delivery_amount', 0) ?: 0), 6);
+        $serviceType = strtoupper((string) $request->input('service_type', 'IN_SITU'));
+        if ($serviceType === 'DELIVERY' && $deliveryAmount > 0) {
+            $total = round($total + $deliveryAmount, 6);
+        }
+        if ($serviceType !== 'DELIVERY') {
+            $deliveryAmount = 0;
+        }
+
+        $chargeDisposable = filter_var($request->input('takeaway_disposable_charge'), FILTER_VALIDATE_BOOLEAN);
+        $takeawayDisposableAmount = round((float) ($request->input('takeaway_disposable_amount', 0) ?: 0), 6);
+        if ($takeawayDisposableAmount < 0) {
+            $takeawayDisposableAmount = 0;
+        }
+
+        $hasTakeawayContext = $serviceType === 'TAKE_AWAY';
+        if (!$hasTakeawayContext && !empty($items)) {
+            foreach ($items as $rawItem) {
+                $qty = (float) ($rawItem['quantity'] ?? $rawItem['qty'] ?? 1);
+                $tw = (float) ($rawItem['takeawayQty'] ?? $rawItem['takeaway_quantity'] ?? 0);
+                if ($tw > 0 && $tw <= $qty) {
+                    $hasTakeawayContext = true;
+                    break;
+                }
+            }
+        }
+
+        $takeawayDisposableStored = 0;
+        if ($serviceType === 'DELIVERY' || !$chargeDisposable || !$hasTakeawayContext) {
+            $takeawayDisposableAmount = 0;
+        } else {
+            $takeawayDisposableStored = $takeawayDisposableAmount;
+            if ($takeawayDisposableAmount > 0) {
+                $total = round($total + $takeawayDisposableAmount, 6);
+            }
+        }
+
         $clientPersonId = $request->filled('client_id') ? (int) $request->client_id : null;
         $clientPerson = $clientPersonId ? Person::find($clientPersonId) : null;
         // Si hay persona encontrada, usar siempre su nombre (ignora lo que mande el front en client_name)
@@ -1266,6 +1339,8 @@ class OrderController extends Controller
                     'total' => $total,
                     'people_count' => $peopleCount,
                     'delivery_amount' => $deliveryAmount,
+                    'takeaway_disposable_amount' => $takeawayDisposableStored,
+                    'service_type' => $serviceType,
 
                     'contact_phone' => $request->filled('contact_phone') ? $request->contact_phone : null,
                     'delivery_address' => $request->filled('delivery_address') ? $request->delivery_address : null,
@@ -1338,6 +1413,7 @@ class OrderController extends Controller
                     'table_id' => $tableId,
                     'area_id' => $areaId,
                     'delivery_amount' => $deliveryAmount,
+                    'takeaway_disposable_amount' => $takeawayDisposableStored,
                     'contact_phone' => $request->filled('contact_phone') ? $request->contact_phone : null,
                     'delivery_address' => $request->filled('delivery_address') ? $request->delivery_address : null,
                     'delivery_time' => $request->filled('delivery_time') ? $request->delivery_time : null,
@@ -1367,6 +1443,9 @@ class OrderController extends Controller
                 $courtesyQty = max(0, min($courtesyQty, $qty));
                 $paidQty = $qty - $courtesyQty;
                 $amount = $paidQty * $price;
+
+                $takeawayQty = (float) ($rawItem['takeawayQty'] ?? $rawItem['takeaway_quantity'] ?? 0);
+                $takeawayQty = max(0, min($takeawayQty, $qty));
 
                 $unitId = $rawItem['unit_id'] ?? ($product?->unit_id ?? null);
                 if (!$unitId) {
@@ -1399,6 +1478,7 @@ class OrderController extends Controller
                     'tax_rate_snapshot' => $rawItem['tax_rate_snapshot'] ?? null,
                     'quantity' => $qty,
                     'courtesy_quantity' => $courtesyQty,
+                    'takeaway_quantity' => $takeawayQty,
                     'amount' => $amount,
                     'branch_id' => $branchId,
                     'comment' => $comment,
@@ -1501,6 +1581,19 @@ class OrderController extends Controller
                 ? trim(($clientPerson->first_name ?? '') . ' ' . ($clientPerson->last_name ?? ''))
                 : null);
         $paymentMethods = collect($request->input('payment_methods', []));
+
+        $restrictedPmIds = PaymentMethod::paymentMethodIdsForBranchOrNull($branchId ?: null);
+        if ($restrictedPmIds !== null && $paymentMethods->isNotEmpty()) {
+            foreach ($paymentMethods as $row) {
+                $pid = (int) ($row['payment_method_id'] ?? 0);
+                if ($pid > 0 && ! in_array($pid, $restrictedPmIds, true)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Método de pago no permitido para esta sucursal.',
+                    ], 422);
+                }
+            }
+        }
 
         $orderMovement = null;
         if ($movementId) {
@@ -1885,11 +1978,11 @@ class OrderController extends Controller
             'finished_at' => now(),
         ]);
 
+        $movementUpdate = ['moved_at' => now()];
         if ($cancelReason !== '') {
-            Movement::where('id', $orderMovement->movement_id)->update([
-                'comment' => $cancelReason,
-            ]);
+            $movementUpdate['comment'] = $cancelReason;
         }
+        Movement::where('id', $orderMovement->movement_id)->update($movementUpdate);
 
         Table::where('id', $table->id)->update([
             'situation' => 'libre',
