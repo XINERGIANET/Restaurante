@@ -69,7 +69,7 @@
                         <input type="hidden" name="view_id" value="{{ $viewId }}">
                     @endif
 
-                    <div class="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-4">
+                    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                         <div class="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center flex-wrap">
 
                             <x-ui.per-page-selector :per-page="$perPage" />
@@ -81,16 +81,16 @@
                                 <input type="text" name="search" value="{{ $search }}" placeholder="Buscar..."
                                     class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 pl-12 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90" />
                             </div>
-                            <div class="flex gap-2">
+                            <div class="flex gap-2 w-full sm:w-auto">
                                 <x-ui.button size="md" variant="primary" type="submit"
-                                    class="h-11 px-6 shadow-sm hover:shadow-md transition-all duration-200 active:scale-95"
+                                    class="h-11 w-full sm:w-auto px-6 shadow-sm hover:shadow-md transition-all duration-200 active:scale-95"
                                     style="background-color: #244BB3; border-color: #244BB3;">
                                     <i class="ri-search-line text-gray-100"></i>
                                     <span class="font-medium text-gray-100 hidden sm:inline">Buscar</span>
                                 </x-ui.button>
                                 <x-ui.link-button size="md" variant="outline"
                                     href="{{ route('sales.index', $viewId ? ['view_id' => $viewId] : []) }}"
-                                    class="h-11 px-6 border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200">
+                                    class="h-11 w-full sm:w-auto px-6 border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200">
                                     <i class="ri-refresh-line"></i>
                                     <span class="font-medium hidden sm:inline">Limpiar</span>
                                 </x-ui.link-button>

@@ -89,7 +89,7 @@
 
             {{-- lg:items-start: el aside NO se estira a toda la altura del panel productos (evita hueco enorme abajo) --}}
             <div
-                class="flex-1 flex flex-col lg:flex-row lg:items-start min-h-0 overflow-hidden bg-gray-50/50 dark:bg-gray-950/50 gap-3 p-3">
+                class="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden bg-gray-50/50 dark:bg-gray-950/50 gap-3 p-3">
                 <div
                     class="flex-1 min-w-0 w-full min-h-[320px] lg:min-h-0 lg:overflow-hidden p-3 sm:p-4 bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 flex flex-col min-h-0">
                     <div class="flex flex-col flex-1 min-h-0 min-w-0 overflow-hidden">
@@ -105,8 +105,6 @@
                         </div>
                     </div>
                 </div>
-
-                {{-- lg:self-start + sin lg:h-full: alto = contenido (no columna fantasma). Móvil: tope de alto --}}
                 <aside
                 class="lg:w-[450px] w-[450px] md:w-[400px] lg:shrink-0 mx-auto lg:mx-0 flex-none bg-white dark:bg-gray-900 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-800 flex flex-col min-h-0 lg:h-full z-10 rounded-2xl shadow-sm"
                 >
@@ -123,7 +121,7 @@
 
                     <div id="aside-resumen" class="flex flex-col flex-1 min-h-0 overflow-hidden">
                         <div id="cart-container"
-                            class="overflow-y-auto overflow-x-hidden p-3 sm:p-5 space-y-2 sm:space-y-3 bg-white dark:bg-gray-900 overscroll-contain max-h-[min(42vh,340px)] sm:max-h-[min(48vh,420px)] lg:max-h-[min(65vh,560px)]"
+                            class="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-5 space-y-2 sm:space-y-3 bg-white dark:bg-gray-900 min-h-0 overscroll-contain"
                             style="-webkit-overflow-scrolling: touch;"></div>
                         <div class="shrink-0 w-full min-w-0 p-4 sm:p-5 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
                             <div class="w-full min-w-0 space-y-2 sm:space-y-3 text-xs sm:text-sm">
@@ -795,7 +793,7 @@
                             'cart-item-row group relative mb-3 rounded-xl overflow-hidden border border-slate-200 bg-white text-slate-900 shadow-md dark:border-zinc-600/50 dark:bg-[#252526] dark:text-zinc-100 dark:shadow-lg dark:shadow-black/40';
 
                         row.innerHTML = `
-                                <div class="flex flex-col gap-3 p-3.5 sm:p-4">
+                                <div class="flex flex-col gap-3 p-4 sm:p-4">
                                         <div class="flex items-start justify-between gap-2">
                                             <div class="min-w-0 flex-1">
                                                 <h3 class="font-bold text-[15px] sm:text-base leading-snug tracking-tight text-slate-900 dark:text-white">${productName}</h3>

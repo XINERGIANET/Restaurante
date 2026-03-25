@@ -173,7 +173,7 @@
                                 <p class="font-semibold text-white text-theme-xs uppercase">Persona</p>
                             </th>
                             <th class="px-5 py-3 text-center sm:px-6">
-                                <p class="font-semibold text-white text-theme-xs uppercase">Moneda</p>
+                                <p class="font-semibold text-white text-theme-xs uppercase">Tipo de pago</p>
                             </th>
                             <th class="px-5 py-3 text-center sm:px-6">
                                 <p class="font-semibold text-white text-theme-xs uppercase">Fecha</p>
@@ -215,7 +215,7 @@
                                 <td class="px-5 py-4 text-center justify-center sm:px-6">
                                     <p class="text-gray-800 text-center text-theme-sm dark:text-white/90 truncate max-w-[150px]" title="{{ $nombreProveedor }}">{{ $nombreProveedor }}</p>
                                 </td>
-                                <td class="px-5 py-4 text-center sm:px-6 text-gray-600 dark:text-gray-400">{{ $purchase->moneda ?? 'PEN' }}</td>
+                                <td class="px-5 py-4 text-center sm:px-6 text-gray-600 dark:text-gray-400"><span class="font-bold text-brand-600 text-theme-sm dark:text-brand-400">{{ $purchase->tipo_pago}}</span></td>
                                 <td class="px-5 py-4 text-center sm:px-6 text-gray-600 dark:text-gray-400">{{ $purchase->created_at->format('d/m/Y H:i') }}</td>
                                 
                                 {{-- 2. BOTONES DE ACCIÓN DINÁMICOS DE LA FILA (Tipo 'R') --}}
@@ -276,6 +276,7 @@
                                                         <th class="px-4 py-3 font-semibold">Código</th>
                                                         <th class="px-4 py-3 font-semibold">Descripción</th>
                                                         <th class="px-4 py-3 font-semibold text-center">Cantidad</th>
+                                                    
                                                         <th class="px-4 py-3 font-semibold text-right">Precio Unit.</th>
                                                         <th class="px-4 py-3 font-semibold text-right">Subtotal</th>
                                                     </tr>

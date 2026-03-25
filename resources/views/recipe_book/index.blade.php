@@ -214,8 +214,8 @@
     <x-common.component-card title="Recetario Maestro" desc="Gestión de fichas técnicas y costos de platillos">
         
         <!-- Sección de búsqueda y filtros -->
-        <div class="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-            <form method="GET" action="#" class="flex flex-1 items-end gap-3">
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-end justify-between sm:gap-6">
+            <form method="GET" action="#" class="flex flex-1 flex-col sm:flex-row sm:items-end gap-3">
                 <!-- Campo de búsqueda -->
                 <div class="flex-1">
                     <label class="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
@@ -236,24 +236,10 @@
                 </div>
 
                 <!-- Categoría -->
-                <div class="w-48">
-                    <label class="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                        Categoría
-                    </label>
-                    <select 
-                        name="category"
-                        class="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800"
-                    >
-                        <option value="">Todas</option>
-                        <option value="plato_fondo">Platos de Fondo</option>
-                        <option value="entrada">Entradas</option>
-                        <option value="postre">Postres</option>
-                        <option value="bebida">Bebidas</option>
-                    </select>
-                </div>
+                <x-form.select.combobox name="category" :options="$categories" placeholder="Seleccione categoría" icon="ri-layout-grid-line" />
 
                 <!-- Estado -->
-                <div class="w-40">
+                <div class="w-full sm:w-40">
                     <label class="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                         Estado
                     </label>
@@ -279,7 +265,7 @@
                 </div>
             </form>
             
-            <div class="flex items-end">
+            <div class="flex items-end w-full justify-end sm:w-auto">
                 <x-ui.button size="md" variant="primary" type="button"
                     style=" background-color: #12f00e; color: #111827;" @click="$dispatch('open-recipe-modal')">
                     <i class="ri-add-line"></i>

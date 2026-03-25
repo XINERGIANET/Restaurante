@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class ProductBranch extends Model
 {
@@ -56,5 +57,18 @@ class ProductBranch extends Model
     public function unit()
     {
         return $this->belongsTo(Unit::class);
+    }
+
+    /**
+     * Ticketeras asignadas (varias por producto+sucursal) vía pivote product_branch_printer.
+     */
+    public function printers(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            PrinterBranch::class,
+            'product_branch_printer',
+            'product_branch_id',
+            'printer_id'
+        )->withTimestamps();
     }
 }

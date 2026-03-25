@@ -42,6 +42,7 @@
                     'igvByBranchId' => $igvByBranchId ?? [],
                     'categories' => $categories ?? collect(),
                     'units' => $units ?? collect(),
+                    'printers' => $printers ?? collect(),
                 ])
 
                 <div class="flex flex-wrap gap-3">

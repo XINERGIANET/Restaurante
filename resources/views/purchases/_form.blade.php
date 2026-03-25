@@ -66,6 +66,8 @@
                 digitalWallets: @js(($digitalWallets ?? collect())->map(fn($dw) => ['id' => $dw->id, 'description' => $dw->description ?? ''])->values()->all()),
                 banks: @js(($banks ?? collect())->map(fn($b) => ['id' => $b->id, 'description' => $b->description ?? ''])->values()->all()),
                 initialProviderOptions: @js(($people ?? collect())->map(fn($person) => ['id' => $person->id, 'description' => trim(($person->first_name ?? '') . ' ' . ($person->last_name ?? '')) . ' - ' . ($person->document_number ?? '')])->values()->all()),
+                initialCreditDays: @js((int) old('credit_days', 0)),
+                initialDueDate: @js((string) old('due_date', '')),
             })" x-init="initForm()" @submit.prevent="
                 if (!canSubmit) {
                     alert(submitErrorMessage);
@@ -92,9 +94,9 @@
         @endif
 
         <div class="rounded-xl bg-white border border-gray-200 shadow-sm p-6">
-            <div class="flex flex-nowrap gap-6 w-full overflow-x-auto">
+            <div class="flex flex-col xl:flex-row gap-6 w-full">
                 {{-- Panel izquierdo: Productos y categorías (2/3 del ancho) --}}
-                <div class="flex-1 min-w-[280px] space-y-4">
+                <div class="flex-1 min-w-0 space-y-4">
                     {{-- Fecha de compra --}}
                     <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
                         <label class="mb-2 block text-xs font-semibold uppercase text-gray-500 tracking-wider">Fecha de
@@ -103,7 +105,7 @@
                             <input type="text" name="moved_at" x-ref="movedAtInput"
                                 value="{{ old('moved_at', optional($purchase)->moved_at?->format('Y-m-d H:i') ?? now()->format('Y-m-d H:i')) }}"
                                 placeholder="dd/mm/yyyy hh:mm"
-                                class="h-10 w-full rounded-lg border border-gray-300 px-3 pr-10 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 bg-white"
+                                class="h-10 w-full rounded-lg border border-gray-300 px-3 pr-10 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 bg-white"
                                 required />
                             <i
                                 class="ri-calendar-line absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg pointer-events-none"></i>
@@ -117,7 +119,7 @@
                                 <label
                                     class="mb-1.5 block text-xs font-semibold uppercase text-gray-500 tracking-wider">DOCUMENTO</label>
                                 <select name="document_type_id"
-                                    class="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 bg-white"
+                                    class="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 bg-white"
                                     required>
                                     @foreach($documentTypes as $documentType)
                                         <option value="{{ $documentType->id }}" @selected((int) old('document_type_id', $purchase?->document_type_id ?? 0) === (int) $documentType->id)>
@@ -129,7 +131,7 @@
                                 <label
                                     class="mb-1.5 block text-xs font-semibold uppercase text-gray-500 tracking-wider">SERIE</label>
                                 <input type="text" name="series"
-                                    class="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                                    class="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
                                     value="{{ old('series', $purchaseMovement?->serie ?? '001') }}" placeholder="001"
                                     required>
                             </div>
@@ -137,7 +139,7 @@
                                 <label
                                     class="mb-1.5 block text-xs font-semibold uppercase text-gray-500 tracking-wider">NUMERO</label>
                                 <input type="text" name="number"
-                                    class="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                                    class="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
                                     value="{{ old('number', $purchaseMovement?->numero ?? '001') }}" placeholder="001"
                                     required>
                             </div>
@@ -187,7 +189,7 @@
                                 <p x-show="providerError" x-text="providerError"
                                     class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-900/20 dark:text-red-400">
                                 </p>
-                                @php $inputClass = 'h-10 w-full rounded-lg border border-gray-300 px-3 text-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500 bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-white placeholder:text-gray-400'; @endphp
+                                @php $inputClass = 'h-10 w-full rounded-lg border border-gray-300 px-3 text-sm focus:border-brand-500 focus:ring-1 focus:ring-brand-500 bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-white placeholder:text-gray-400'; @endphp
                                 <div class="grid grid-cols-2 gap-3">
                                     <div>
                                         <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Tipo
@@ -246,13 +248,13 @@
                             </div>
                             {{-- Footer --}}
                             <div
-                                class="flex justify-end gap-2 border-t border-gray-200 px-5 py-4 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/30 rounded-b-2xl">
+                                class="flex  justify-end gap-2 border-t border-gray-200 px-5 py-4 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/30 rounded-b-2xl">
                                 <button type="button" @click="closeModalProveedor()"
                                     class="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 bg-white border border-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
                                     Cancelar
                                 </button>
                                 <button type="button" @click="submitProviderModal()" :disabled="providerLoading"
-                                    class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                                    class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-brand-500 hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                                     <span x-show="!providerLoading">Guardar proveedor</span>
                                     <span x-show="providerLoading" x-cloak>Guardando...</span>
                                 </button>
@@ -266,7 +268,7 @@
                         <div class="relative mb-4">
                             <i class="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg"></i>
                             <input type="text" x-model="catalogSearch" placeholder="Buscar por nombre o categoría"
-                                class="h-10 w-full rounded-lg border border-gray-300 pl-10 pr-3 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500" />
+                                class="h-10 w-full rounded-lg border border-gray-300 pl-10 pr-3 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500" />
                         </div>
                         <div class="flex flex-wrap gap-2 mb-4">
                             <button type="button" @click="selectedCategory = null"
@@ -286,19 +288,19 @@
                             class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 max-h-[400px] overflow-y-auto">
                             <template x-for="product in filteredCatalogProducts" :key="product.id">
                                 <button type="button" @click="addProductToCart(product)"
-                                    class="flex flex-col rounded-xl border border-gray-200 bg-white p-3 text-left hover:border-orange-400 hover:shadow-md transition-all group">
+                                    class="flex flex-col rounded-xl border border-gray-200 bg-white p-3 text-left hover:border-brand-400 hover:shadow-md transition-all group">
                                     <div class="relative aspect-square mb-2 rounded-lg bg-gray-100 overflow-hidden">
                                         <img :src="product.image_url || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3Crect fill=%22%23e5e7eb%22 width=%22100%22 height=%22100%22/%3E%3C/svg%3E'"
                                             :alt="product.name"
                                             class="w-full h-full object-cover group-hover:scale-105 transition-transform"
                                             @@error="$el.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3Crect fill=%22%23e5e7eb%22 width=%22100%22 height=%22100%22/%3E%3C/svg%3E'" />
                                         <span
-                                            class="absolute top-1 right-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-orange-500/90 text-white"
+                                            class="absolute top-1 right-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-brand-500/90 text-white"
                                             x-text="'Stock: ' + (product.stock ?? 0)"></span>
                                     </div>
                                     <p class="text-xs font-medium text-gray-800 line-clamp-2 mb-1" x-text="product.name">
                                     </p>
-                                    <p class="text-sm font-bold text-orange-600" x-text="money(product.cost)"></p>
+                                    <p class="text-sm font-bold text-brand-600" x-text="money(product.cost)"></p>
                                 </button>
                             </template>
                         </div>
@@ -306,7 +308,7 @@
                 </div>
 
                 {{-- Panel derecho: Resumen y Pago (altura igual al panel izquierdo) --}}
-                <div class="w-[420px] min-w-[420px] max-w-[420px] min-h-[680px] shrink-0 flex flex-col gap-4 self-stretch">
+                <div class="w-full center xl:w-2/5 min-h-[500px] shrink-0 flex flex-col gap-4 self-stretch">
                     <div
                         class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden flex flex-col flex-1 min-h-0">
                         {{-- Tabs --}}
@@ -474,7 +476,7 @@
                                         <span
                                             class="text-base font-bold uppercase tracking-wide text-gray-700 text-left">TOTAL
                                             A PAGAR</span>
-                                        <span class="text-xl font-black text-orange-600 text-right"
+                                        <span class="text-xl font-black text-brand-600 text-right"
                                             x-text="money(summary.total)"></span>
                                     </div>
                                     <p x-show="payment_type === 'CONTADO' && totalPaid > 0 && Math.abs(totalPaid - summary.total) > 0.02"
@@ -515,6 +517,33 @@
                                         <option value="S" @selected(old('affects_cash', $purchaseMovement?->afecta_caja ?? 'N') === 'S')>Si</option>
                                     </select>
                                 </div>
+                                <div x-show="payment_type === 'CREDITO'" x-cloak
+                                    class="rounded-xl border border-orange-200 bg-orange-50/40 p-3 space-y-3">
+                                    <p class="text-sm text-orange-800">
+                                        Esta compra se registrará como deuda y se enviará a cuentas por pagar.
+                                    </p>
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label
+                                                class="mb-1 block text-[11px] font-bold uppercase text-orange-700 tracking-wider">DIAS
+                                                DE CREDITO</label>
+                                            <input type="number" min="0" step="1" name="credit_days"
+                                                x-model.number="creditDays" @input="recalculateDueDate()"
+                                                class="h-10 w-full rounded-lg border border-orange-300 bg-white px-3 text-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500">
+                                        </div>
+                                        <div>
+                                            <label
+                                                class="mb-1 block text-[11px] font-bold uppercase text-orange-700 tracking-wider">FECHA
+                                                VENCIMIENTO</label>
+                                            <x-form.date-picker type="date" name="due_date"
+                                                @date-change="onDueDateChange($event)"
+                                                class="h-10 w-full rounded-lg border border-orange-300 bg-white px-3 text-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+                                                dateFormat="Y-m-d"
+                                                :defaultDate="old('due_date', $purchase?->due_date ? \Carbon\Carbon::parse($purchase->due_date)->format('Y-m-d') : '')"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
                                 <div x-show="payment_type === 'CONTADO'" class="space-y-3">
                                     <div class="flex items-center justify-between">
                                         <h4 class="text-sm font-bold text-gray-700">Métodos de pago</h4>
@@ -526,37 +555,19 @@
                                     <template x-for="(row, index) in paymentRows" :key="row.id">
                                         <div class="space-y-2 p-3 rounded-lg border border-gray-200 bg-white">
                                             <div class="flex gap-2 items-start flex-wrap">
-                                                {{-- Autocomplete método de pago --}}
-                                                <div class="flex-1 min-w-[180px] relative"
-                                                    x-data="{ open: false, query: '' }"
-                                                    x-init="query = row.methodName || ''" @click.outside="open = false">
+                                                {{-- Combobox método de pago --}}
+                                                <div class="flex-1 min-w-[180px] relative">
                                                     <label class="block text-[10px] text-gray-500 mb-0.5">Método</label>
-                                                    <input type="text" x-model="query" @focus="open = true"
-                                                        @input="open = true" placeholder="Buscar método..."
-                                                        class="w-full h-9 rounded-lg border border-gray-300 pl-2 pr-8 text-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
-                                                        autocomplete="off">
-                                                    <i
-                                                        class="ri-arrow-down-s-line absolute right-2 top-7 text-gray-400 pointer-events-none"></i>
-                                                    <div x-show="open" x-cloak
-                                                        class="absolute z-20 left-0 right-0 mt-1 max-h-40 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg"
-                                                        x-transition>
-                                                        <template
-                                                            x-for="pm in paymentMethods.filter(p => (p.description || '').toLowerCase().includes((query || '').toLowerCase()))"
-                                                            :key="pm.id">
-                                                            <button type="button"
-                                                                @click="row.methodId = pm.id; row.methodName = pm.description; query = pm.description; open = false"
-                                                                class="w-full px-3 py-2 text-left text-sm hover:bg-orange-50"
-                                                                :class="{ 'bg-orange-50': row.methodId == pm.id }"
-                                                                x-text="pm.description">
-                                                            </button>
-                                                        </template>
-                                                        <p x-show="paymentMethods.filter(p => (p.description || '').toLowerCase().includes((query || '').toLowerCase())).length === 0"
-                                                            class="px-3 py-2 text-xs text-gray-500">Sin resultados</p>
-                                                    </div>
+                                                    <x-form.select.combobox label="" name="" x-model="row.methodId"
+                                                        :options="($paymentMethods ?? collect())->map(fn($pm) => [
+                                                            'id' => $pm->id,
+                                                            'description' => $pm->description ?? '',
+                                                        ])->values()->all()"
+                                                        placeholder="Buscar método..." icon="ri-bank-card-line" />
                                                     <input type="hidden" :name="`payments[${index}][payment_method_id]`"
                                                         :value="row.methodId">
                                                     <input type="hidden" :name="`payments[${index}][payment_method]`"
-                                                        :value="row.methodName">
+                                                        :value="methodNameById(row.methodId)">
                                                 </div>
                                                 <div class="flex items-end gap-2">
                                                     <div>
@@ -580,7 +591,7 @@
                                                 </div>
                                             </div>
                                             {{-- Tarjeta: tipo tarjeta + pasarela --}}
-                                            <div x-show="needsCard(row.methodName)"
+                                            <div x-show="needsCard(methodNameById(row.methodId))"
                                                 class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-gray-200">
                                                 <div>
                                                     <label class="block text-[10px] text-gray-500 mb-0.5">Tipo
@@ -627,7 +638,7 @@
                                                 </div>
                                             </div>
                                             {{-- Transferencia: banco --}}
-                                            <div x-show="needsBank(row.methodName)"
+                                            <div x-show="needsBank(methodNameById(row.methodId))"
                                                 class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-gray-200">
                                                 <div>
                                                     <label class="block text-[10px] text-gray-500 mb-0.5">Banco
@@ -650,7 +661,7 @@
                                                 </div>
                                             </div>
                                             {{-- Billetera digital: Yape, Plin, etc. --}}
-                                            <div x-show="needsWallet(row.methodName)"
+                                            <div x-show="needsWallet(methodNameById(row.methodId))"
                                                 class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-gray-200">
                                                 <div>
                                                     <label class="block text-[10px] text-gray-500 mb-0.5">Aplicación</label>
@@ -715,7 +726,8 @@
                 function purchaseFormCatalog({
                     products, categories, units, initialProviderId, initialItems, taxRate, includesTax,
                     initialCurrency, initialBranchId, initialPaymentType, defaultExchangeRate, initialAffectsKardex,
-                    paymentMethods, cards, paymentGateways, digitalWallets, banks, initialProviderOptions
+                    paymentMethods, cards, paymentGateways, digitalWallets, banks, initialProviderOptions,
+                    initialCreditDays, initialDueDate
                 }) {
                     const toItem = (p, qty = 1) => ({
                         product_id: Number(p.id),
@@ -796,6 +808,8 @@
                         payment_type: initialPaymentType || 'CONTADO',
                         exchangeRate: Number(defaultExchangeRate || 3.5),
                         affectsKardex: initialAffectsKardex || 'S',
+                        creditDays: Number(initialCreditDays || 0),
+                        dueDate: String(initialDueDate || ''),
                         catalogSearch: '',
                         selectedCategory: null,
                         activeTab: 'resumen',
@@ -814,6 +828,12 @@
                         needsWallet(desc) {
                             const d = (desc || '').toLowerCase();
                             return /yape|plin|tunki|billetera|wallet|digital/.test(d);
+                        },
+                        methodNameById(id) {
+                            const target = Number(id || 0);
+                            if (!target) return '';
+                            const found = (this.paymentMethods || []).find(p => Number(p.id) === target);
+                            return found ? String(found.description || '') : '';
                         },
 
                         get filteredCatalogProducts() {
@@ -909,6 +929,37 @@
                         money(v) {
                             return `${this.currency === 'USD' ? '$' : 'S/'} ${Number(v || 0).toFixed(2)}`;
                         },
+                        formatDateYmd(date) {
+                            const y = date.getFullYear();
+                            const m = String(date.getMonth() + 1).padStart(2, '0');
+                            const d = String(date.getDate()).padStart(2, '0');
+                            return `${y}-${m}-${d}`;
+                        },
+                        onDueDateChange(event) {
+                            this.dueDate = String(event?.detail?.dateStr || '').trim();
+                        },
+                        setDueDatePickerValue(value) {
+                            const input = document.querySelector('input[name="due_date"]');
+                            if (!input) return;
+                            const next = String(value || '').trim();
+                            if (input._flatpickr) {
+                                input._flatpickr.setDate(next || null, true, 'Y-m-d');
+                            } else {
+                                input.value = next;
+                            }
+                        },
+                        recalculateDueDate() {
+                            const movedAtRaw = String(this.$refs?.movedAtInput?.value || '').trim();
+                            const base = movedAtRaw
+                                ? new Date(movedAtRaw.replace(' ', 'T'))
+                                : new Date();
+                            if (Number.isNaN(base.getTime())) return;
+                            const days = Math.max(0, parseInt(this.creditDays || 0, 10));
+                            base.setHours(0, 0, 0, 0);
+                            base.setDate(base.getDate() + days);
+                            this.dueDate = this.formatDateYmd(base);
+                            this.setDueDatePickerValue(this.dueDate);
+                        },
 
                         initForm() {
                             const applyAutofill = (total) => {
@@ -922,7 +973,18 @@
                                 }
                                 this._previousTotal = total;
                             };
+                            if (this.payment_type === 'CREDITO' && !this.dueDate) {
+                                this.recalculateDueDate();
+                            }
+                            if (this.dueDate) {
+                                this.$nextTick(() => this.setDueDatePickerValue(this.dueDate));
+                            }
                             this.$watch('summary.total', (value) => applyAutofill(value));
+                            this.$watch('payment_type', (value) => {
+                                if (value === 'CREDITO' && !this.dueDate) {
+                                    this.recalculateDueDate();
+                                }
+                            });
                             this.$nextTick(() => applyAutofill(this.summary.total));
                             if (typeof flatpickr !== 'undefined') {
                                 const input = this.$refs?.movedAtInput;
@@ -935,6 +997,16 @@
                                         altFormat: 'd/m/Y H:i',
                                         defaultDate: input.value || new Date(),
                                         locale: 'es',
+                                        onChange: () => {
+                                            if (this.payment_type === 'CREDITO') {
+                                                this.recalculateDueDate();
+                                            }
+                                        }
+                                    });
+                                    input.addEventListener('change', () => {
+                                        if (this.payment_type === 'CREDITO') {
+                                            this.recalculateDueDate();
+                                        }
                                     });
                                 }
                             }

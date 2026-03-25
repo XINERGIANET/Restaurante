@@ -377,39 +377,60 @@
 
         {{-- MODAL --}}
         <x-ui.modal
-            x-data="{ open: false, selectedShiftId: null }"
-            @open-shift-cash-modal.window="open = true; selectedShiftId = $event.detail?.shiftId || null"
+            x-data="{ open: false }"
+            @open-shift-cash-modal.window="open = true"
             @close-shift-cash-modal.window="open = false"
             :isOpen="false"
             :showCloseButton="false"
             class="max-w-3xl"
         >
-            <div class="p-6 sm:p-8">
-                <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div class="flex items-center gap-4">
-                        <div>
-                            <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Imprimir PDF de cierre de caja</h3>
-                            <p class="mt-1 text-sm text-gray-500">Elige informacion para el PDF.</p>
+            <form
+                id="shift-print-form"
+                method="GET"
+                x-data="{ selectedShiftId: null }"
+                @open-shift-cash-modal.window="selectedShiftId = $event.detail?.shiftId ?? null"
+            >
+                <div class="p-6 sm:p-8">
+                    <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div class="flex items-center gap-4">
+                            <div>
+                                <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Imprimir PDF de cierre de caja</h3>
+                                <p class="mt-1 text-sm text-gray-500">Elige informacion para el PDF.</p>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-            @include('shift_cash.modal_cash')
-            <div class="p-6 sm:p-8 flex items-center justify-end gap-3">
-                <x-ui.button size="md" variant="primary" type="button" class="h-11 px-4" style="background-color: #244BB3;">
-                    <i class="ri-file-pdf-line text-gray-100"></i> <span class="text-gray-100">Descargar PDF</span>
-                </x-ui.button>
-                <x-ui.button
-                    size="md"
-                    variant="outline"
-                    type="button"
-                    class="h-11 px-4"
-                    style="background-color: #FFFFFF; color: #244BB3;"
-                    @click="$dispatch('close-shift-cash-modal')"
-                >
-                    <i class="ri-close-line"></i> <span>Cancelar</span>
-                </x-ui.button>
-            </div>
+                @include('shift_cash.modal_cash')
+                <div class="p-6 sm:p-8 flex items-center justify-end gap-3">
+                    <x-ui.button
+                        size="md"
+                        variant="primary"
+                        type="button"
+                        class="h-11 px-4"
+                        style="background-color: #244BB3;"
+                        x-bind:disabled="!selectedShiftId"
+                        @click="
+                            if (!selectedShiftId) return;
+                            const form = document.getElementById('shift-print-form');
+                            const qs = form ? new URLSearchParams(new FormData(form)).toString() : '';
+                            const base = '{{ url('/caja/turno-caja') }}/' + selectedShiftId + '/print';
+                            window.location.assign(base + (qs ? '?' + qs : ''));
+                        "
+                    >
+                        <i class="ri-file-pdf-line text-gray-100"></i> <span class="text-gray-100">Descargar PDF</span>
+                    </x-ui.button>
+                    <x-ui.button
+                        size="md"
+                        variant="outline"
+                        type="button"
+                        class="h-11 px-4"
+                        style="background-color: #FFFFFF; color: #244BB3;"
+                        @click="$dispatch('close-shift-cash-modal')"
+                    >
+                        <i class="ri-close-line"></i> <span>Cancelar</span>
+                    </x-ui.button>
+                </div>
+            </form>
         </x-ui.modal>
     </div>
 @endsection

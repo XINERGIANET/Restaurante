@@ -80,18 +80,18 @@
             })();
         </script>
         <header
-            class="flex-none bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 h-16 sm:h-18 flex items-center justify-between px-4 sm:px-6 z-10 sticky top-0 backdrop-blur-md shadow-sm">
-            <div class="flex items-center gap-3 shrink-0">
+            class="flex-none bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 h-16 sm:h-18 flex items-center px-4 sm:px-6 backdrop-blur-md shadow-sm">
+            <div class="flex items-center justify-between gap-3 shrink-0">
                 <button onclick="goBack()" title="Volver atrás"
                     class="h-9 w-9 sm:h-10 sm:w-10 rounded-full bg-white border border-gray-200 text-gray-500 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 transition-all flex items-center justify-center shadow-sm shrink-0">
                     <i class="ri-arrow-left-line text-lg sm:text-xl"></i>
                 </button>
                 <div class="flex items-center gap-2 min-w-0">
                     <div class="flex flex-col justify-center min-w-0">
-                        <h2 class="text-sm sm:text-base font-bold text-slate-800 dark:text-white leading-tight truncate">
+                        <h2 class="text-sm sm:text-base font-bold text-slate-800 dark:text-white leading-tight">
                             Mesa <span id="pos-table-name">{{ $table->name ?? $table->id }}</span>
                         </h2>
-                        <p class="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate"><i
+                        <p class="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mt-0.5"><i
                                 class="ri-circle-fill" style="color: #00C950;"></i> <span
                                 id="pos-table-area">{{ $table->area->name ?? 'Sin área' }}</span></p>
                     </div>
@@ -100,7 +100,7 @@
 
             <!-- Opciones (Flex para que fluyan) -->
             <div
-            class="flex items-center gap-3 sm:gap-4 lg:gap-5 text-sm font-medium shrink-0 ml-auto flex-nowrap overflow-x-auto overflow-y-hidden overscroll-x-contain min-w-0 max-w-full pb-1 touch-pan-x [-webkit-overflow-scrolling:touch]"
+            class="flex-1 min-w-0 ml-2 flex items-end gap-3 sm:gap-4 lg:gap-5 text-sm font-medium flex-nowrap overflow-x-auto overflow-y-hidden overscroll-x-contain pb-1 touch-pan-x [-webkit-overflow-scrolling:touch]"
             >
             <!-- Buscador -->
                 <div class="flex items-center gap-1.5 shrink-0 bg-white p-1 rounded-xl border border-gray-200 shadow-sm">

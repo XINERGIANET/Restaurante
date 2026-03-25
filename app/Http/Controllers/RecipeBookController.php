@@ -29,7 +29,8 @@ class RecipeBookController extends Controller
             ->whereNotIn('id', function($subquery) use ($companyId) {
                 $subquery->select('product_id')
                             ->from('recipes')
-                            ->where('company_id', $companyId);
+                            ->where('company_id', $companyId)
+                            ->whereNull('deleted_at');
             })
             ->distinct() 
             ->orderBy('description')
@@ -69,7 +70,15 @@ class RecipeBookController extends Controller
         }
 
         $recipes = $query->with(['product', 'unit'])->paginate(12);
-        $categories = Category::get();
+        $categories = Category::whereExists(function ($sub) use ($currentBranchId) {
+                $sub->select(DB::raw(1))
+                    ->from('category_branch')
+                    ->whereColumn('category_branch.category_id', 'categories.id')
+                    ->where('category_branch.branch_id', $currentBranchId)
+                    ->whereNull('category_branch.deleted_at');
+            })
+            ->orderBy('description')
+            ->get();
         $units = Unit::all();
         $recipe = new Recipe();
 
@@ -189,7 +198,8 @@ class RecipeBookController extends Controller
                 $subquery->select('product_id')
                             ->from('recipes')
                             ->where('company_id', $companyId)
-                            ->where('id', '!=', $recipe->id); 
+                            ->where('id', '!=', $recipe->id)
+                            ->whereNull('deleted_at'); 
             })
             ->distinct()
             ->orderBy('description')
@@ -320,7 +330,8 @@ class RecipeBookController extends Controller
                 $subquery->select('product_id')
                             ->from('recipes')
                             ->where('company_id', $companyId)
-                            ->where('id', '!=', $recipe->id); 
+                            ->where('id', '!=', $recipe->id)
+                            ->whereNull('deleted_at'); 
             })
             ->distinct()
             ->orderBy('description')

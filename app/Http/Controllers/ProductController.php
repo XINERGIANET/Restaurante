@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Branch;
 use App\Models\Category;
 use App\Models\Operation;
+use App\Models\PrinterBranch;
 use App\Models\Product;
 use App\Models\ProductBranch;
 use App\Models\ProductType;
@@ -25,6 +26,7 @@ class ProductController extends Controller
         $allowedPerPage = [10, 20, 50, 100];
         $viewId = $request->input('view_id');
         $branchId = \effective_branch_id();
+        $printers = PrinterBranch::query()->with('branch')->where('branch_id', $branchId)->orderBy('name')->get();
         $profileId = $request->session()->get('profile_id') ?? $request->user()?->profile_id;
         $operaciones = collect();
         if ($viewId && $branchId && $profileId) {
@@ -108,6 +110,7 @@ class ProductController extends Controller
             'branches' => $branches,
             'productTypes' => $productTypes,
             'igvByBranchId' => $igvByBranchId,
+            'printers' => $printers,
             'search' => $search,
             'perPage' => $perPage,
             'operaciones' => $operaciones,
@@ -169,7 +172,8 @@ class ProductController extends Controller
             $branchData['product_id'] = $product->id;
             $branchData['branch_id'] = $branchId;
             $branchData['status'] = 'A';
-            ProductBranch::create($branchData);
+            $productBranch = ProductBranch::create($branchData);
+            $this->syncProductBranchPrinters($productBranch, $request, $branchId);
         }
 
         $viewId = $request->input('view_id');
@@ -181,7 +185,7 @@ class ProductController extends Controller
 
     public function edit(Request $request, Product $product)
     {
-        $product->load(['category', 'productType', 'productBranches']);
+        $product->load(['category', 'productType', 'productBranches.printers']);
         $branchId = $request->session()->get('branch_id');
         $categoryBranchId = \effective_branch_id();
         $categories = Category::query()
@@ -199,8 +203,10 @@ class ProductController extends Controller
         $units = Unit::query()->orderBy('description')->get();
         $taxRates = TaxRate::query()->where('status', true)->orderBy('order_num')->get();
         $branchId = $request->session()->get('branch_id');
+        $printers = PrinterBranch::query()->with('branch')->where('branch_id', $branchId)->orderBy('id')->get();
         $productBranch = $product->productBranches()
             ->where('branch_id', $branchId)
+            ->with('printers')
             ->first();
 
         $productTypes = $branchId
@@ -241,6 +247,7 @@ class ProductController extends Controller
                 'supplier_id' => $pb->supplier_id,
                 'favorite' => $pb->favorite ?? 'N',
                 'duration_minutes' => (float) ($pb->duration_minutes ?? 0),
+                'printer_id' => $pb->printers->first()?->id,
             ]);
 
         return view('products.edit', [
@@ -255,6 +262,7 @@ class ProductController extends Controller
             'igvByBranchId' => $igvByBranchId,
             'productBranchesByBranchId' => $productBranchesByBranchId,
             'viewId' => $request->input('view_id'),
+            'printers' => $printers,
         ]);
     }
 
@@ -306,8 +314,9 @@ class ProductController extends Controller
                 $branchData['product_id'] = $product->id;
                 $branchData['branch_id'] = $branchId;
                 $branchData['status'] = 'E';
-                ProductBranch::create($branchData);
+                $productBranch = ProductBranch::create($branchData);
             }
+            $this->syncProductBranchPrinters($productBranch, $request, $branchId);
         }
 
         $viewId = $request->input('view_id');
@@ -563,5 +572,29 @@ class ProductController extends Controller
         ];
 
         return $data;
+    }
+
+    /**
+     * Guarda la relación producto+sucursal ↔ ticketeras en la pivote product_branch_printer.
+     */
+    private function syncProductBranchPrinters(ProductBranch $productBranch, Request $request, int $branchId): void
+    {
+        $ids = $request->input('printer_ids', []);
+        if (! is_array($ids)) {
+            $ids = [];
+        }
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids))));
+        $single = (int) $request->input('printer_id', 0);
+        if ($single > 0 && $ids === []) {
+            $ids = [$single];
+        }
+
+        $validIds = PrinterBranch::query()
+            ->where('branch_id', $branchId)
+            ->whereIn('id', $ids)
+            ->pluck('id')
+            ->all();
+
+        $productBranch->printers()->sync($validIds);
     }
 }

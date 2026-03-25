@@ -41,6 +41,7 @@ use App\Http\Controllers\CashRegisterController;
 use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\BranchParameterController;
 use App\Http\Controllers\ProductTypeController;
+use App\Http\Controllers\PrinterBranchController;
 
 Route::prefix('restaurante')->name('restaurant.')->group(function () {
     Route::view('/', 'restaurant.home', ['title' => 'Xinergia Restaurante'])->name('home');
@@ -451,4 +452,10 @@ Route::middleware('auth')->group(function () {
         ->name('branch-parameter.index');
     Route::post('/configuracion/parametros-sucursal/guardar', [BranchParameterController::class, 'store'])
         ->name('branch-parameter.store');
+
+    //Configuracion de impresoras de sucursal
+    Route::resource('/configuracion/impresoras-sucursal', PrinterBranchController::class)
+        ->names('printers_branch')
+        ->parameters(['impresoras-sucursal' => 'printerBranch'])
+        ->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
 });

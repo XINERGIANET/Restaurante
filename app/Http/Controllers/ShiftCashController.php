@@ -15,8 +15,9 @@ use App\Models\PaymentMethod;
 use App\Models\Card;
 use App\Models\PaymentGateways;
 use App\Models\DigitalWallet;
+use App\Services\ShiftCashClosePdfService;
+use Barryvdh\Snappy\Facades\SnappyPdf as PDF;
 use Illuminate\Http\Request;
-use Symfony\Component\Process\Process;
 use Illuminate\Support\Facades\Log;
 
 class ShiftCashController extends Controller
@@ -196,155 +197,55 @@ class ShiftCashController extends Controller
     public function print(Request $request, CashShiftRelation $shiftCash)
     {
         $branchId = \effective_branch_id();
-        $options = $request->input('options');
-        $query = CashShiftRelation::query()
-            ->with([
-                'cashMovementStart.movement.documentType',
-                'cashMovementStart.movement.movementType',
-                'cashMovementEnd.movement.documentType',
-                'cashMovementEnd.movement.movementType',
-                'branch',
-                'movements.paymentConcept',
-                'movements.details.paymentMethod',
-                'movements.movement.salesMovement',
-                'movements.movement.warehouseMovement',
-                'movements.movement.orderMovement' => function ($query) {
-                    $query->where('status', 'FINALIZADO');
-                }
-            ])
-            ->where('id', $shiftCash->id)
-            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
-            ->when($options, function ($query, $options) {
-                $query->where(function ($q) use ($options) {
-                    $q->where('sales_payments_summary', true)
-                        ->orWhere('products_sold_summary', true)
-                        ->orWhere('cancellations_products', true)
-                        ->orWhere('expenses_by_payment_method_paid', true)
-                        ->orWhere('discounts_by_product', true)
-                        ->orWhere('debts_sales', true)
-                        ->orWhere('paid_sales_by_method', true)
-                        ->orWhere('sales_details_by_product', true)
-                        ->orWhere('sales_cancellations', true)
-                        ->orWhere('cancellations_history', true)
-                        ->orWhere('income_by_payment_method_paid', true)
-                        ->orWhere('discounts_by_person', true)
-                        ->orWhere('courtesies', true)
-                        ->orWhere('debts_sales_summary', true);
-                });
-            })
-            ->orderBy('started_at', 'desc')
-            ->withQueryString();
-        $shifts = $query->get();
+        if ($branchId !== null && (int) $shiftCash->branch_id !== (int) $branchId) {
+            abort(403);
+        }
+
+        $shiftCash->load([
+            'cashMovementStart.movement.documentType',
+            'cashMovementStart.movement.movementType',
+            'cashMovementStart.cashRegister',
+            'cashMovementEnd.movement.documentType',
+            'cashMovementEnd.movement.movementType',
+            'branch.company',
+        ]);
+
+        $options = ShiftCashClosePdfService::normalizeOptions($request->input('options'));
+        $report = app(ShiftCashClosePdfService::class)->buildReport($shiftCash, $options);
 
         $printedAt = now();
         $viewData = [
-            'shifts' => $shifts,
+            'shift' => $shiftCash,
+            'report' => $report,
+            'options' => $options,
             'printedAt' => $printedAt,
             'autoPrint' => false,
         ];
 
-        $html = view('shift_cash.print', $viewData)->render();
-        $pdfBinary = $this->renderPdfWithWkhtmltopdf($html, 'A4');
-
-        if ($pdfBinary === null) {
-            // Fallback: mostrar HTML con autoPrint para al menos poder imprimir
-            $viewData['autoPrint'] = true;
-            return view('shift_cash.print', $viewData);
-        }
-
-        $docName = 'cierre-caja-' . ($shifts->first()->cashMovementEnd?->movement?->number ?? $shifts->first()->id);
-        return response($pdfBinary, 200, [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'attachment; filename="' . $docName . '.pdf"',
-        ]);
-    }
-
-    private function resolveWkhtmltopdfBinary(): ?string
-    {
-        $candidates = array_filter([
-            env('SNAPPY_PDF_BINARY'),
-        ]);
-
-        foreach ($candidates as $candidate) {
-            if (is_string($candidate) && file_exists($candidate)) {
-                return $candidate;
-            }
-        }
-
-        return null;
-    }
-
-    private function renderPdfWithWkhtmltopdf(string $html, ?string $pageSize = 'A4', array $extraArgs = []): ?string
-    {
-        $binary = $this->resolveWkhtmltopdfBinary();
-        if (!$binary) {
-            return null;
-        }
-
-        $tmpDir = storage_path('app/tmp');
-        if (!is_dir($tmpDir)) {
-            @mkdir($tmpDir, 0775, true);
-        }
-
-        $htmlFile = tempnam($tmpDir, 'shift_html_');
-        $pdfFile = tempnam($tmpDir, 'shift_pdf_');
-
-        if ($htmlFile === false || $pdfFile === false) {
-            return null;
-        }
-
-        $htmlPath = $htmlFile . '.html';
-        $pdfPath = $pdfFile . '.pdf';
-        @rename($htmlFile, $htmlPath);
-        @rename($pdfFile, $pdfPath);
-
-        file_put_contents($htmlPath, $html);
-
-        $args = array_merge([
-            $binary,
-            '--enable-local-file-access',
-            '--disable-javascript',
-            '--load-error-handling', 'ignore',
-            '--load-media-error-handling', 'ignore',
-            '--encoding', 'utf-8',
-            '--margin-top', '10',
-            '--margin-right', '10',
-            '--margin-bottom', '10',
-            '--margin-left', '10',
-        ], $extraArgs);
-
-        if (!empty($pageSize)) {
-            $args[] = '--page-size';
-            $args[] = $pageSize;
-        }
-
-        $args = array_merge($args, [
-            $htmlPath,
-            $pdfPath,
-        ]);
-
-        $process = new Process($args);
+        $docName = 'cierre-caja-' . ($shiftCash->cashMovementEnd?->movement?->number ?? $shiftCash->id);
+        $docName = preg_replace('/[^\p{L}\p{N}_-]+/u', '-', (string) $docName);
+        $fileName = $docName . '.pdf';
 
         try {
-            $process->setTimeout(120);
-            $process->run();
-            $pdfExists = file_exists($pdfPath) && filesize($pdfPath) > 0;
-            if (!$pdfExists) {
-                Log::warning('wkhtmltopdf fallo al generar PDF de cierre de caja', [
-                    'error' => $process->getErrorOutput(),
-                    'output' => $process->getOutput(),
-                ]);
-                return null;
-            }
+            // Misma secuencia que SalesController::exportPdf; descarga como OrderController::exportPdf (download)
+            $pdf = PDF::loadView('shift_cash.print', $viewData);
 
-            $content = file_get_contents($pdfPath);
-            return $content === false ? null : $content;
+            $pdf->setPaper('a4')
+                ->setOption('margin-bottom', 10)
+                ->setOption('encoding', 'utf-8')
+                ->setOption('enable-local-file-access', true);
+
+            return $pdf->download($fileName);
         } catch (\Throwable $e) {
-            Log::warning('Error ejecutando wkhtmltopdf para cierre de caja: ' . $e->getMessage());
-            return null;
-        } finally {
-            @unlink($htmlPath);
-            @unlink($pdfPath);
+            Log::warning('PDF cierre de caja (Snappy): ' . $e->getMessage(), [
+                'exception' => $e,
+            ]);
+            $viewData['autoPrint'] = true;
+            $viewData['pdfGenerationFailed'] = true;
+
+            return response()
+                ->view('shift_cash.print', $viewData, 200)
+                ->header('X-Pdf-Error', '1');
         }
     }
 }

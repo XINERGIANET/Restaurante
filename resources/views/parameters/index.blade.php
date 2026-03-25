@@ -297,7 +297,7 @@
     <!--Modal de creacion de parametro-->
     <x-ui.modal x-data="{ open: {{ $errors->any() ? 'true' : 'false' }}, parameter: null }"
         @open-create-parameter-modal.window="open = true; parameter = $event.detail.parameter"
-        @close-create-parameter-modal.window="open = false" :isOpen="false" class="max-w-md" x-init="@if ($errors->any()) open = true; @endif">
+        @close-create-parameter-modal.window="open = false" :isOpen="false" class="max-w-md" x-init="open = @js($errors->any())">
         <div class="p-6 space-y-4">
             <h3 class="mb-6 text-lg font-semibold text-gray-800 dark:text-white/90">Crear Parametro</h3>
             @if ($errors->any())

@@ -12,9 +12,9 @@
                     @if ($viewId)
                         <input type="hidden" name="view_id" value="{{ $viewId }}">
                     @endif
-                    <div class="flex flex-col xl:flex-row gap-2 items-end">
+                    <div class="flex flex-col xl:flex-row gap-2 items-end justify-between">
 
-                        <x-ui.per-page-selector :per-page="$perPage" />
+                        <x-ui.per-page-selector class="flex-none" :per-page="$perPage" />
 
                         {{-- 1. Product --}}
                         <div class="w-full">
@@ -79,69 +79,48 @@
                                 Limpiar
                             </x-ui.link-button>
                             @php
-                                $pdfQuery = array_filter(array_merge(
-                                    $viewId ? ['view_id' => $viewId] : [],
-                                    [
+                                $pdfQuery = array_filter(
+                                    array_merge($viewId ? ['view_id' => $viewId] : [], [
                                         'product_id' => $productId,
                                         'source' => $sourceFilter,
                                         'movement_type' => $typeFilter,
                                         'date_from' => $dateFrom,
                                         'date_to' => $dateTo,
-                                    ]
-                                ));
+                                    ]),
+                                );
                             @endphp
-                            <span class="hidden sm:inline w-px h-6 bg-gray-200 dark:bg-gray-600 mx-0.5" aria-hidden="true"></span>
-                            <x-ui.link-button href="{{ route('kardex.exportPdf', $pdfQuery) }}" size="sm" variant="primary"
-                                target="_blank" rel="noopener"
-                                style="background-color: #ef4444; border-color: #ef4444; color: #fff;"
-                                title="Exportar PDF con los filtros actuales">
-                                <i class="ri-file-pdf-line"></i>
-                                Exportar PDF
-                            </x-ui.link-button>
+                            <span class="hidden sm:inline w-px h-6 bg-gray-200 dark:bg-gray-600 mx-0.5"
+                                aria-hidden="true"></span>
                         </div>
-
                     </div>
                 </form>
-                <div class="flex justify-end gap-2">
+                <div class="flex flex-wrap justify-end gap-2">
                     @foreach ($topOperations as $operation)
                         @php
                             $topTextColor = $resolveTextColor($operation);
                             $topColor = $operation->color ?: '#3B82F6';
                             $topStyle = "background-color: {$topColor}; color: {$topTextColor};";
-
-                            // Si la operación corresponde al PDF de Kardex, usamos la ruta de exportación
-                            // y le pasamos los filtros actuales. Para otras operaciones, usamos su acción normal.
                             $isKardexPdf = in_array($operation->action, ['kardex.pdf', 'kardex.exportPdf'], true);
-                            $topActionUrl = $isKardexPdf
-                                ? route(
-                                    'kardex.exportPdf',
-                                    array_merge(
-                                        ['view_id' => $viewId],
-                                        request()->only([
-                                            'product_id',
-                                            'source',
-                                            'movement_type',
-                                            'date_from',
-                                            'date_to',
-                                        ]),
-                                    ),
-                                )
-                                : $resolveActionUrl($operation->action ?? '', null, $operation);
+
+                            if ($isKardexPdf) {
+                                continue;
+                            }
+
+                            $topActionUrl = $resolveActionUrl($operation->action ?? '', [], $operation);
                         @endphp
-                        @if ($isKardexPdf)
-                            <x-ui.link-button size="sm" variant="primary" style="{{ $topStyle }}" target="_blank"
-                                href="{{ $topActionUrl }}">
-                                <i class="{{ $operation->icon }}"></i>
-                                <span>{{ $operation->name }}</span>
-                            </x-ui.link-button>
-                        @else
-                        <x-ui.link-button size="sm" variant="primary" style="{{ $topStyle }}"
-                            href="{{ $topActionUrl  }}">
+                        <x-ui.link-button size="sm" variant="primary" style="{{ $topStyle }}" href="{{ $topActionUrl }}">
                             <i class="{{ $operation->icon }}"></i>
                             <span>{{ $operation->name }}</span>
                         </x-ui.link-button>
-                        @endif
                     @endforeach
+
+                    <x-ui.link-button href="{{ route('kardex.exportPdf', $pdfQuery) }}" size="sm" variant="primary"
+                        target="_blank" rel="noopener"
+                        style="background-color: #ef4444; border-color: #ef4444; color: #fff;"
+                        title="Exportar PDF con los filtros actuales">
+                        <i class="ri-file-pdf-line"></i>
+                        <span>Exportar PDF</span>
+                    </x-ui.link-button>
                 </div>
             </div>
 

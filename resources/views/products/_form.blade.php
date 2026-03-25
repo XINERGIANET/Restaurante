@@ -10,8 +10,15 @@
     $selectedBranchInit = old('branch_id', $productBranch?->branch_id ?? session('branch_id') ?? null);
     $selectedBranchInit = is_numeric($selectedBranchInit) ? (int) $selectedBranchInit : null;
 
+    $printerIdInit = old(
+        'printer_id',
+        $productBranch?->printers?->first()?->id
+    );
+    $printerIdInit = is_numeric($printerIdInit) ? (int) $printerIdInit : null;
+
     $categoriesSafe = $categories ?? collect();
     $unitsSafe = $units ?? collect();
+    $printersSafe = $printers ?? collect();
     $platosCategoriaIds = $categoriesSafe
         ->filter(fn($c) => str_contains(strtolower((string) ($c->description ?? '')), 'platos a la carta'))
         ->pluck('id')
@@ -75,6 +82,7 @@
     isEdit: {{ !empty($product?->id) ? 'true' : 'false' }},
     branchStore: @js($productBranchesByBranchId ?? []),
     igvByBranchId: @js($igvByBranchId),
+    printerId: @js($printerIdInit),
     branchDrafts: {},
     branchFields: {
         price: @js(old('price', $productBranch?->price ?? '')),
@@ -314,19 +322,34 @@
                         class="text-red-500">*</span></label>
                 <select name="favorite" required x-model="branchFields.favorite"
                     class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90">
-                    <option value="N" @selected(old('favorite', $productBranch->favorite ?? 'N') === 'N')>No</option>
-                    <option value="S" @selected(old('favorite', $productBranch->favorite ?? 'N') === 'S')>Sí</option>
+                    <option value="N" @selected(old('favorite', $productBranch?->favorite ?? 'N') === 'N')>No</option>
+                    <option value="S" @selected(old('favorite', $productBranch?->favorite ?? 'N') === 'S')>Sí</option>
                 </select>
                 @error('favorite')
                     <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
                 @enderror
             </div>
 
+            <!--Configuracion de ticketera-->
+            <div>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Ticketera <span
+                        class="text-red-500">*</span></label>
+                <select name="printer_id" required
+                    class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90">
+                    <option value="">Seleccione ticketera</option>
+                    @foreach ($printersSafe as $printer)
+                        <option value="{{ $printer->id }}" @selected((int) $printer->id === (int) $printerIdInit)>{{ $printer->name }}</option>
+                    @endforeach
+                </select>
+                @error('printer_id')
+                    <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
+                @enderror
+            </div>
             <div style="display: none;">
                 <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Duración
                     (minutos)</label>
                 <input type="number" name="duration_minutes" x-model.number="branchFields.duration_minutes"
-                    value="{{ old('duration_minutes', $productBranch->duration_minutes ?? '') }}"
+                    value="{{ old('duration_minutes', $productBranch?->duration_minutes ?? '') }}"
                     class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
                     placeholder="Ej: 30" />
                 @error('duration_minutes')
@@ -381,7 +404,7 @@
                 <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Precio de compra <span
                         class="text-red-500">*</span></label>
                 <input type="number" name="purchase_price" step="0.01" x-model.number="branchFields.purchase_price"
-                    value="{{ old('purchase_price', $productBranch->purchase_price ?? 0) }}" required min="0"
+                    value="{{ old('purchase_price', $productBranch?->purchase_price ?? 0) }}" required min="0"
                     class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
                     placeholder="0.00" />
                 @error('purchase_price')
@@ -391,7 +414,7 @@
             <div>
                 <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Compra mínima</label>
                 <input type="number" name="minimum_purchase" step="0.01" x-model.number="branchFields.minimum_purchase"
-                    value="{{ old('minimum_purchase', $productBranch->minimum_purchase ?? '') }}"
+                    value="{{ old('minimum_purchase', $productBranch?->minimum_purchase ?? '') }}"
                     class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
                     placeholder="0.00" />
                 @error('minimum_purchase')
@@ -402,7 +425,7 @@
                 <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Stock actual <span
                         class="text-red-500">*</span></label>
                 <input type="number" name="stock" step="0.01" x-model.number="branchFields.stock"
-                    value="{{ old('stock', $productBranch->stock ?? '') }}" required min="0"
+                    value="{{ old('stock', $productBranch?->stock ?? '') }}" required min="0"
                     class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
                     placeholder="0.00" />
                 @error('stock')
@@ -415,7 +438,7 @@
                 <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Stock mínimo <span
                         class="text-red-500">*</span></label>
                 <input type="number" name="stock_minimum" step="0.01" x-model.number="branchFields.stock_minimum"
-                    value="{{ old('stock_minimum', $productBranch->stock_minimum ?? '') }}" required min="0"
+                    value="{{ old('stock_minimum', $productBranch?->stock_minimum ?? '') }}" required min="0"
                     class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
                     placeholder="0.00" />
                 @error('stock_minimum')
@@ -426,7 +449,7 @@
                 <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Stock máximo <span
                         class="text-red-500">*</span></label>
                 <input type="number" name="stock_maximum" step="0.01" x-model.number="branchFields.stock_maximum"
-                    value="{{ old('stock_maximum', $productBranch->stock_maximum ?? '') }}" required min="0"
+                    value="{{ old('stock_maximum', $productBranch?->stock_maximum ?? '') }}" required min="0"
                     class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
                     placeholder="0.00" />
                 @error('stock_maximum')
@@ -466,7 +489,7 @@
                 <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Precio <span
                         class="text-red-500">*</span></label>
                 <input type="number" :name="showBranchDetail ? 'price' : 'price_skip'" step="0.01"
-                    x-model.number="branchFields.price" value="{{ old('price', $productBranch->price ?? '') }}"
+                    x-model.number="branchFields.price" value="{{ old('price', $productBranch?->price ?? '') }}"
                     :required="showBranchDetail"
                     class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
                     placeholder="0.00" />
@@ -483,7 +506,7 @@
                         class="text-red-500">*</span></label>
                 <input type="number" :name="showPurchaseFields ? 'purchase_price' : 'purchase_price_skip'" step="0.01"
                     x-model.number="branchFields.purchase_price"
-                    value="{{ old('purchase_price', $productBranch->purchase_price ?? 0) }}"
+                    value="{{ old('purchase_price', $productBranch?->purchase_price ?? 0) }}"
                     :required="showPurchaseFields" min="0"
                     class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
                     placeholder="0.00" />
@@ -527,7 +550,7 @@
                 <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Stock mínimo <span
                         class="text-red-500">*</span></label>
                 <input type="number" :name="showBranchDetail ? 'stock_minimum' : 'stock_minimum_skip'" step="0.01"
-                    value="{{ old('stock_minimum', $productBranch->stock_minimum ?? '') }}"
+                    value="{{ old('stock_minimum', $productBranch?->stock_minimum ?? '') }}"
                     x-model.number="branchFields.stock_minimum" :required="showBranchDetail" min="0"
                     class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
                     placeholder="0.00" />
@@ -540,7 +563,7 @@
                 <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Stock máximo <span
                         class="text-red-500">*</span></label>
                 <input type="number" :name="showBranchDetail ? 'stock_maximum' : 'stock_maximum_skip'" step="0.01"
-                    value="{{ old('stock_maximum', $productBranch->stock_maximum ?? '') }}"
+                    value="{{ old('stock_maximum', $productBranch?->stock_maximum ?? '') }}"
                     x-model.number="branchFields.stock_maximum" :required="showBranchDetail" min="0"
                     class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
                     placeholder="0.00" />
@@ -553,7 +576,7 @@
                 <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Venta mínima</label>
                 <input type="number" :name="showBranchDetail ? 'minimum_sell' : 'minimum_sell_skip'" step="0.01"
                     x-model.number="branchFields.minimum_sell"
-                    value="{{ old('minimum_sell', $productBranch->minimum_sell ?? '') }}" :required="showBranchDetail"
+                    value="{{ old('minimum_sell', $productBranch?->minimum_sell ?? '') }}" :required="showBranchDetail"
                     class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
                     placeholder="0.00" />
                 @error('minimum_sell')
@@ -572,7 +595,7 @@
                 <input type="number" step="0.01"
                     x-bind:name="showPurchaseFields && !platosCategoriaIds.includes(Number(categoryId)) ? 'minimum_purchase' : null"
                     x-model.number="branchFields.minimum_purchase"
-                    value="{{ old('minimum_purchase', $productBranch->minimum_purchase ?? '') }}"
+                    value="{{ old('minimum_purchase', $productBranch?->minimum_purchase ?? '') }}"
                     x-bind:disabled="platosCategoriaIds.includes(Number(categoryId))"
                     x-effect="if (platosCategoriaIds.includes(Number(categoryId))) { $el.value = 0; branchFields.minimum_purchase = 0 }"
                     class="dark:bg-dark-900 shadow-theme-xs h-11 w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm placeholder:text-gray-400 dark:border-gray-700 dark:text-white/90 dark:placeholder:text-white/30"
@@ -595,7 +618,7 @@
                     $expirationDefault = old('expiration_date');
                     if ($expirationDefault === null || $expirationDefault === '') {
                         $expirationDefault = $productBranch?->expiration_date
-                            ? \Carbon\Carbon::parse($productBranch->expiration_date)->format('Y-m-d')
+                            ? \Carbon\Carbon::parse($productBranch?->expiration_date)->format('Y-m-d')
                             : '';
                     }
                 @endphp
@@ -621,7 +644,7 @@
                     <option value="">Seleccione tasa impositiva</option>
                     @if (isset($taxRates))
                         @foreach ($taxRates as $rate)
-                            <option value="{{ $rate->id }}" @selected(old('tax_rate_id', $productBranch->tax_rate_id ?? '') == $rate->id)>
+                            <option value="{{ $rate->id }}" @selected(old('tax_rate_id', $productBranch?->tax_rate_id ?? '') == $rate->id)>
                                 {{ $rate->description }}
                             </option>
                         @endforeach
@@ -786,5 +809,4 @@
                 </p>
             </div>
         </div>
-    </div>
 </div>

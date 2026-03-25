@@ -405,8 +405,7 @@
                             <div class="relative">
                                 <span class="absolute left-3 top-2.5 text-gray-400 text-xs font-bold">S/</span>
                                 <input type="text" readonly
-                                    :value="((parseFloat(row.quantity) || 0) * (parseFloat(row.unit_cost) || 0))
-                                    .toFixed(2)"
+                                    :value="((parseFloat(ingredient.quantity) || 0) * (parseFloat(ingredient.unit_cost) || 0)).toFixed(2)"
                                     class="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 pl-9 px-3 text-sm font-bold text-gray-700 focus:outline-none cursor-default dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
                             </div>
                         </div>

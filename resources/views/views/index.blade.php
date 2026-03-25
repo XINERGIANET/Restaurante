@@ -200,7 +200,7 @@
                                                     class="relative group js-swal-delete"
                                                     data-swal-title="Eliminar vista?"
                                                     data-swal-text="Se eliminara {{ $view->name }}. Esta accion no se puede deshacer."
-                                                    data-swal-confirm="S�, eliminar"
+                                                    data-swal-confirm="Si, eliminar"
                                                     data-swal-cancel="Cancelar"
                                                     data-swal-confirm-color="#ef4444"
                                                     data-swal-cancel-color="#6b7280">

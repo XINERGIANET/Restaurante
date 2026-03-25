@@ -13,7 +13,7 @@
         </div>
         <button type="button"
             @click="$dispatch('close-product-type-modal')"
-            class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500 transition-colors hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
+            class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500 transition-colors hover:bg-gray-200 hover:text-gray-700"
             aria-label="Cerrar">
             <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -30,7 +30,7 @@
         $isBoth = function ($pt) { return $pt->behavior === \App\Models\ProductType::BEHAVIOR_BOTH; };
     @endphp
     {{-- Cards: una por cada tipo de producto de la sucursal --}}
-    <div class="mb-8 grid gap-6 sm:grid-cols-2">
+    <div class="mb-8 grid gap-6 sm:grid-cols-3">
         @foreach ($productTypes as $pt)
             @php
                 $isSellableType = $isSellable($pt);

@@ -458,7 +458,7 @@
             @close-product-type-modal.window="open = false"
             :isOpen="false"
             :showCloseButton="false"
-            class="w-full max-w-2xl"
+            class="w-full max-w-4xl"
         >
             @include('products.select_type', ['productTypes' => $productTypes ?? collect()])
         </x-ui.modal>
@@ -511,7 +511,7 @@
             @open-product-form-with-type.window="selectedProductTypeId = $event.detail?.product_type_id ?? null; open = true"
             @close-product-modal.window="open = false"
             :showCloseButton="false"
-            class="w-full max-w-5xl sm:max-w-6xl lg:max-w-7xl"
+            class="w-full max-w-4xl"
         >
             <div x-show="open" x-cloak class="flex w-full flex-col min-h-0 p-6 sm:p-8">
                 <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

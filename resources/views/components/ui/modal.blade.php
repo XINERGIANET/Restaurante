@@ -5,9 +5,12 @@
 ])
 
 @php
-    $customData = $attributes->get('x-data');
-    $defaultData = "{ open: ".\Illuminate\Support\Js::from($isOpen)." }";
-    $xData = $customData ?: $defaultData;
+    // x-data debe conservarse (Laravel a veces lo expone como clave distinta en el bag)
+    $customData = $attributes->get('x-data')
+        ?? $attributes->get('xData')
+        ?? $attributes->whereStartsWith('x-data')->first();
+    $defaultData = '{ open: '.\Illuminate\Support\Js::from($isOpen).' }';
+    $xData = $customData !== null && $customData !== '' ? $customData : $defaultData;
 @endphp
 
 <div
