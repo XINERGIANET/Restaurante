@@ -2385,7 +2385,7 @@
                                         </div>
 
                                         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-lg bg-slate-50 border border-slate-200 px-2.5 py-2.5 dark:bg-zinc-900/50 dark:border-zinc-600/50">
-                                            <div class="flex items-center gap-0.5 rounded-lg bg-white px-0.5 py-0.5 border border-slate-200 dark:bg-zinc-800/80 dark:border-zinc-600/60">
+                                            <div class="flex justify-center items-center gap-0.5 rounded-lg bg-white px-0.5 py-0.5 border border-slate-200 dark:bg-zinc-800/80 dark:border-zinc-600/60">
                                                 <button type="button" ${qtyMinusOnclick} class="w-9 h-9 flex items-center justify-center rounded-md transition-all text-slate-600 dark:text-zinc-300 ${qtyMinusClass}"${qtyMinusDisabled}>
                                                     <i class="ri-subtract-line text-base"></i>
                                                 </button>
@@ -2394,7 +2394,7 @@
                                                     <i class="ri-add-line text-base"></i>
                                                 </button>
                                             </div>
-                                            <div class="text-left sm:text-right flex flex-col justify-center">
+                                            <div class="text-center sm:text-right flex flex-col justify-center">
                                                 <span class="text-[10px] text-slate-500 dark:text-zinc-500 uppercase font-bold tracking-wider leading-none mb-0.5">Subtotal</span>
                                                 <span class="text-lg font-bold tabular-nums leading-none text-slate-900 dark:text-white">S/ ${lineTotal.toFixed(2)}</span>
                                             </div>
