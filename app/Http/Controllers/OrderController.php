@@ -1851,10 +1851,11 @@ class OrderController extends Controller
                 default           => 'CAST(movements.number AS UNSIGNED)',
             };
 
+            // lockForUpdate() no es compatible con MAX() en PostgreSQL.
+            // La serialización ya la garantiza el advisory lock de arriba.
             $maxNumber = DB::table('order_movements')
                 ->join('movements', 'movements.id', '=', 'order_movements.movement_id')
                 ->where('movements.branch_id', $branchId)
-                ->lockForUpdate()
                 ->max(DB::raw($castExpr));
 
             $next = (int) ($maxNumber ?? 0) + 1;
