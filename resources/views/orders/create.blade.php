@@ -85,7 +85,7 @@
             })();
         </script>
         <header
-            class="flex bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 min-h-[4rem] sm:h-18 flex flex-wrap items-center gap-2 sm:gap-3 px-3 sm:px-6 py-2 backdrop-blur-md shadow-sm overflow-visible">
+            class="flex bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 min-h-[4rem] sm:h-18 flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-3 px-3 sm:px-6 py-2 backdrop-blur-md z-50 sticky top-0 shadow-sm overflow-visible">
             <div class="order-1 flex shrink-0 items-center gap-2 sm:gap-3">
                 <button onclick="goBack()" title="Volver atrás"
                     class="h-9 w-9 sm:h-10 sm:w-10 rounded-full bg-white border border-gray-200 text-gray-500 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 transition-all flex items-center justify-center shadow-sm shrink-0">
@@ -143,11 +143,11 @@
                 </div>
             </div>
 
-            <div class="order-2 ml-auto flex shrink-0 items-center gap-3 sm:gap-4 lg:gap-5 pl-2 sm:order-3 sm:ml-0">
+            <div class="order-2 w-full flex items-center gap-2 sm:w-auto sm:ml-auto sm:flex-nowrap sm:gap-4 lg:gap-5 sm:order-3 sm:pl-2">
                 <!-- Cliente -->
-                <div class="flex items-center gap-1.5 shrink-0">
-                    <span class="text-gray-500 dark:text-gray-400 text-xs sm:text-sm whitespace-nowrap">Cliente:</span>
-                    <div class="flex items-center gap-1 min-w-0">
+                <div class="flex items-center gap-1.5 flex-1 min-w-0 sm:flex-none sm:shrink-0">
+                    <span class="hidden sm:inline text-gray-500 dark:text-gray-400 text-xs sm:text-sm whitespace-nowrap">Cliente:</span>
+                    <div class="flex items-center gap-1 flex-1 min-w-0 sm:flex-none">
                         @php
                             $peopleCollection = $people ?? collect();
                             $clientOptions = $peopleCollection->map(function ($p) {
@@ -162,12 +162,7 @@
                             })->values()->all();
                         @endphp
                         <script>window.__orderClientOptions = @json($clientOptions);</script>
-                        {{--
-                            x-model en el combobox requiere un scope Alpine padre que exponga la variable.
-                            currentTable es un objeto global window, no Alpine-reactivo, por eso se usa
-                            un wrapper x-data mínimo que refleja cambios hacia window.currentTable.
-                        --}}
-                        <div class="flex items-center gap-1 shrink-0"
+                        <div class="flex items-center gap-1 flex-1 min-w-0 sm:flex-none sm:shrink-0"
                             id="order-client-picker"
                             x-data="{
                                 clientId: @json($pendingClientId ?? null),
@@ -190,43 +185,42 @@
                                 }
                             }">
                             <x-form.select.combobox :options="$clientOptions" x-model="clientId"
-                                name="header_client_id" placeholder="Seleccionar..."
+                                name="header_client_id" placeholder="Cliente..."
                                 :compact="true"
                                 input-id="order_client_search"
-                                class="w-32 sm:w-40 md:w-48" />
+                                class="w-full sm:w-36 lg:w-44" />
                         </div>
                         <button type="button"
-                            class="inline-flex items-center justify-center h-8 w-8 rounded-lg bg-white border border-gray-200 text-gray-500 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 shadow-sm transition-colors"
+                            class="inline-flex shrink-0 items-center justify-center h-8 w-8 rounded-lg bg-white border border-gray-200 text-gray-500 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 shadow-sm transition-colors"
                             @click="$dispatch('open-person-modal')" title="Nuevo cliente">
                             <i class="ri-user-add-line text-sm sm:text-base"></i>
                         </button>
                     </div>
                 </div>
 
-                    <div class="h-6 w-px bg-gray-300 dark:bg-slate-600 shrink-0"></div>
+                <div class="hidden sm:block h-6 w-px bg-gray-300 dark:bg-slate-600 shrink-0"></div>
 
-                    <!-- Personas -->
-                    <div id="diners-section" class="flex items-center gap-2 shrink-0">
-                    <div class="flex flex-col text-right">
+                <!-- Personas -->
+                <div id="diners-section" class="flex items-center gap-1.5 shrink-0">
+                    <div class="hidden sm:flex flex-col text-right">
                         <span class="text-gray-500 dark:text-gray-400 text-xs sm:text-sm leading-none">Personas</span>
                         <span class="text-[9px] sm:text-[10px] text-gray-400">(máx. {{ $table->capacity ?? 1 }})</span>
                     </div>
-                    <div
-                        class="flex items-center gap-0.5 p-0.5 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg shadow-sm">
+                    <div class="flex items-center gap-0.5 p-0.5 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg shadow-sm">
                         <button type="button" onclick="updateDiners(-1)"
-                            class="w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-md bg-gray-50 hover:bg-blue-100 text-slate-600 hover:text-blue-600 transition-colors">
+                            class="w-7 h-7 flex items-center justify-center rounded-md bg-gray-50 hover:bg-blue-100 text-slate-600 hover:text-blue-600 transition-colors">
                             <i class="ri-subtract-line text-xs"></i>
                         </button>
                         <input type="number" id="diners-input" value="{{ $pendingOrderMovement?->people_count ?? 1 }}"
                             min="1" onchange="updateDiners(0)"
-                            class="w-8 sm:w-10 py-1 text-center text-xs sm:text-sm bg-transparent border-none text-slate-700 font-bold focus:ring-0 p-0 m-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
+                            class="w-8 py-1 text-center text-xs sm:text-sm bg-transparent border-none text-slate-700 font-bold focus:ring-0 p-0 m-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
                         <button type="button" onclick="updateDiners(1)"
-                            class="w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-md bg-gray-50 hover:bg-blue-100 text-slate-600 hover:text-blue-600 transition-colors">
+                            class="w-7 h-7 flex items-center justify-center rounded-md bg-gray-50 hover:bg-blue-100 text-slate-600 hover:text-blue-600 transition-colors">
                             <i class="ri-add-line text-xs"></i>
                         </button>
                     </div>
-                    </div>
                 </div>
+            </div>
         </header>
 
         {{-- &lt; lg: columna (tablet/móvil) + Resumen a ancho completo. lg+: productos + aside fijo al costado (laptop). --}}

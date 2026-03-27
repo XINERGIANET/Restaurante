@@ -2133,17 +2133,14 @@ class OrderController extends Controller
     {
         $q = Person::query()
             ->orderBy('first_name')
-            ->orderBy('last_name');
-
-        if ($branchId) {
-            $q->where(function ($q2) use ($branchId) {
-                $q2->where('people.branch_id', $branchId)
-                    ->orWhereHas('roles', function ($qq) use ($branchId) {
-                        $qq->where('role_person.branch_id', $branchId)
-                            ->whereNull('role_person.deleted_at');
-                    });
+            ->orderBy('last_name')
+            ->whereHas('roles', function ($qq) use ($branchId) {
+                $qq->whereRaw("LOWER(TRIM(roles.name)) = 'cliente'")
+                    ->whereNull('role_person.deleted_at');
+                if ($branchId) {
+                    $qq->where('role_person.branch_id', $branchId);
+                }
             });
-        }
 
         return $q->get(['id', 'first_name', 'last_name', 'document_number']);
     }
