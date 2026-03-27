@@ -1833,29 +1833,41 @@ class OrderController extends Controller
     {
         $driver = DB::connection()->getDriverName();
 
+        // Advisory lock por driver para serializar la generación del número
+        // evitando duplicados cuando dos pedidos se crean al mismo tiempo.
         if ($driver === 'pgsql') {
             DB::statement('SELECT pg_advisory_xact_lock(?)', [7000000 + $branchId]);
+        } elseif ($driver === 'mysql' || $driver === 'mariadb') {
+            $lockName = "order_num_{$branchId}_{$movementTypeId}_{$documentTypeId}";
+            DB::statement('SELECT GET_LOCK(?, 10)', [$lockName]);
         }
 
-        $last = Movement::query()
-            ->where('branch_id', $branchId)
-            ->where('movement_type_id', $movementTypeId)
-            ->where('document_type_id', $documentTypeId)
-            ->orderByDesc('id')
-            ->lockForUpdate()
-            ->first();
+        try {
+            $last = Movement::query()
+                ->where('branch_id', $branchId)
+                ->where('movement_type_id', $movementTypeId)
+                ->where('document_type_id', $documentTypeId)
+                ->orderByDesc('id')
+                ->lockForUpdate()
+                ->first();
 
-        $lastCorrelative = 0;
-        if ($last) {
-            $raw = trim((string) $last->number);
-            if (preg_match('/^\d+$/', $raw) === 1) {
-                $lastCorrelative = (int) $raw;
-            } elseif (preg_match('/(\d+)-\d{4}$/', $raw, $matches) === 1) {
-                $lastCorrelative = (int) $matches[1];
+            $lastCorrelative = 0;
+            if ($last) {
+                $raw = trim((string) $last->number);
+                if (preg_match('/^\d+$/', $raw) === 1) {
+                    $lastCorrelative = (int) $raw;
+                } elseif (preg_match('/(\d+)-\d{4}$/', $raw, $matches) === 1) {
+                    $lastCorrelative = (int) $matches[1];
+                }
+            }
+
+            return str_pad((string) ($lastCorrelative + 1), 8, '0', STR_PAD_LEFT);
+        } finally {
+            if ($driver === 'mysql' || $driver === 'mariadb') {
+                $lockName = "order_num_{$branchId}_{$movementTypeId}_{$documentTypeId}";
+                DB::statement('SELECT RELEASE_LOCK(?)', [$lockName]);
             }
         }
-
-        return str_pad((string) ($lastCorrelative + 1), 8, '0', STR_PAD_LEFT);
     }
 
     private function resolveCashMovementTypeId(): int
@@ -1993,22 +2005,36 @@ class OrderController extends Controller
 
     private function generateCashMovementNumber(int $branchId, int $cashRegisterId, ?int $paymentConceptId = null): string
     {
-        $lastRecord = Movement::query()
-            ->select('movements.number')
-            ->join('cash_movements', 'cash_movements.movement_id', '=', 'movements.id')
-            ->where('movements.branch_id', $branchId)
-            ->where('cash_movements.cash_register_id', $cashRegisterId)
-            ->when($paymentConceptId !== null, function ($query) use ($paymentConceptId) {
-                $query->where('cash_movements.payment_concept_id', $paymentConceptId);
-            })
-            ->lockForUpdate()
-            ->orderByDesc('movements.number')
-            ->first();
+        $driver = DB::connection()->getDriverName();
 
-        $lastNumber = $lastRecord?->number;
-        $nextSequence = $lastNumber ? ((int) $lastNumber + 1) : 1;
+        if ($driver === 'mysql' || $driver === 'mariadb') {
+            $lockName = "cash_num_{$branchId}_{$cashRegisterId}";
+            DB::statement('SELECT GET_LOCK(?, 10)', [$lockName]);
+        }
 
-        return str_pad((string) $nextSequence, 8, '0', STR_PAD_LEFT);
+        try {
+            $lastRecord = Movement::query()
+                ->select('movements.number')
+                ->join('cash_movements', 'cash_movements.movement_id', '=', 'movements.id')
+                ->where('movements.branch_id', $branchId)
+                ->where('cash_movements.cash_register_id', $cashRegisterId)
+                ->when($paymentConceptId !== null, function ($query) use ($paymentConceptId) {
+                    $query->where('cash_movements.payment_concept_id', $paymentConceptId);
+                })
+                ->lockForUpdate()
+                ->orderByDesc('movements.number')
+                ->first();
+
+            $lastNumber = $lastRecord?->number;
+            $nextSequence = $lastNumber ? ((int) $lastNumber + 1) : 1;
+
+            return str_pad((string) $nextSequence, 8, '0', STR_PAD_LEFT);
+        } finally {
+            if ($driver === 'mysql' || $driver === 'mariadb') {
+                $lockName = "cash_num_{$branchId}_{$cashRegisterId}";
+                DB::statement('SELECT RELEASE_LOCK(?)', [$lockName]);
+            }
+        }
     }
 
     private function resolveCashEntryMovementByParentMovement(int $parentMovementId): ?Movement
