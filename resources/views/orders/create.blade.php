@@ -156,7 +156,7 @@
                                 ];
                             })->values()->all();
                         @endphp
-                        <script>window.__orderClientOptions = @json($clientOptions);</script>
+                        <script>window.__orderClientOptions = @json($clientOptions); </script>
                         <div class="flex items-center gap-1 flex-1 min-w-0 sm:flex-none sm:shrink-0"
                             id="order-client-picker"
                             x-data="{
@@ -238,7 +238,7 @@
                 </div>
             </div>
             <aside
-            class="lg:w-[450px] w-[320px] md:w-[320px] lg:shrink-0 mx-auto lg:mx-0 flex-none bg-white dark:bg-gray-900 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-800 flex flex-col min-h-0 lg:h-full rounded-2xl shadow-sm"
+            class="lg:w-[450px] w-full md:w-[350px] lg:shrink-0 mx-auto lg:mx-0 flex-none bg-white dark:bg-gray-900 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-800 flex flex-col min-h-0 lg:h-full rounded-2xl shadow-sm"
             >
             {{-- Tabs Resumen | Cobro (Cobro oculto para Mozo) --}}
             <div class="flex w-full shrink-0 border-b border-gray-200 dark:border-gray-700">
