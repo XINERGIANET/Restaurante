@@ -1,4 +1,6 @@
-import qz from 'qz-tray';
+function getQz() {
+    return window.qz || null;
+}
 
 function readMeta(name) {
     const el = document.querySelector(`meta[name="${name}"]`);
@@ -14,6 +16,11 @@ function qzCsrfToken() {
  * Requiere meta: qz-sign-url, qz-certificate-url (rutas nombradas qz.sign, qz.certificate).
  */
 export function configureQzSecurity() {
+    const qz = getQz();
+    if (!qz) {
+        return false;
+    }
+
     const cfg = window.__qzConfig || {};
     const signUrl = readMeta('qz-sign-url') || cfg.signUrl || '';
     const certUrl = readMeta('qz-certificate-url') || cfg.certificateUrl || '';
@@ -23,7 +30,6 @@ export function configureQzSecurity() {
     }
 
     if (window.__qzTraySecurityConfigured) {
-        window.qz = qz;
         return true;
     }
 
@@ -64,7 +70,6 @@ export function configureQzSecurity() {
     });
 
     window.__qzTraySecurityConfigured = true;
-    window.qz = qz;
     return true;
 }
 
