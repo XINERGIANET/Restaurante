@@ -300,12 +300,24 @@ class OrderController extends Controller
             ->orderBy('id')
             ->get(['id', 'name']);
 
-        // Área seleccionada explícitamente (por query) o por defecto la primera
-        $selectedAreaId = $request->has('area_id')
-            ? (int) $request->input('area_id')
-            : ($areas->first()?->id ?? null);
+        // Cargar todas las mesas de la sucursal primero
+        $tables = Table::query()
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+            ->when(!$branchId, fn($q) => $q->whereRaw('1 = 0'))
+            ->orderBy('name')
+            ->get(['id', 'name', 'area_id', 'capacity', 'situation', 'opened_at']);
 
-        // Si hay al menos un área y no se especificó ninguna, redirigir a la primera área
+        // Área seleccionada explícitamente (por query)
+        if ($request->has('area_id')) {
+            $selectedAreaId = (int) $request->input('area_id');
+        } else {
+            // Preferir la primera área que tenga mesas; si ninguna, usar la primera área
+            $areaIdsWithTables = $tables->pluck('area_id')->unique()->filter()->values();
+            $firstAreaWithTables = $areas->firstWhere(fn($a) => $areaIdsWithTables->contains($a->id));
+            $selectedAreaId = $firstAreaWithTables?->id ?? $areas->first()?->id ?? null;
+        }
+
+        // Redirigir para fijar area_id en la URL si no venía en el request
         if ($areas->isNotEmpty() && !$request->has('area_id') && $selectedAreaId) {
             $params = array_merge(
                 $request->except('area_id'),
@@ -313,12 +325,6 @@ class OrderController extends Controller
             );
             return redirect()->route('orders.index', $params);
         }
-
-        $tables = Table::query()
-            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
-            ->when(!$branchId, fn($q) => $q->whereRaw('1 = 0'))
-            ->orderBy('name')
-            ->get(['id', 'name', 'area_id', 'capacity', 'situation', 'opened_at']);
 
         $activeOrderMovements = OrderMovement::with(['movement', 'details'])
             ->whereIn('table_id', $tables->pluck('id'))

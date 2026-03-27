@@ -353,6 +353,13 @@ Route::middleware('auth')->group(function () {
         ->parameters(['areas' => 'area'])
         ->only(['index', 'store', 'edit', 'update', 'destroy']);
 
+    Route::get('/areas/importar', [AreaController::class, 'importForm'])
+        ->name('areas.import.form');
+    Route::post('/areas/importar', [AreaController::class, 'import'])
+        ->name('areas.import');
+    Route::get('/areas/importar/plantilla', [AreaController::class, 'downloadTemplate'])
+        ->name('areas.import.template');
+
     // Mesas
     Route::resource('/areas/{area}/mesas', TableController::class)
         ->names('areas.tables')

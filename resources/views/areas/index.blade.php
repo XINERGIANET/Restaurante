@@ -107,6 +107,10 @@
                     </div>
                 </form>
                 <div class="flex items-center gap-2">
+                    <x-ui.link-button size="md" variant="primary" href="{{ route('areas.import') }}" class="flex-1 sm:flex-none h-11 px-4 border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200">
+                        <i class="ri-file-excel-line"></i>
+                        <span>Importar</span>
+                    </x-ui.link-button>
                     @foreach ($topOperations as $operation)
                         @php
                             $topTextColor = $resolveTextColor($operation);

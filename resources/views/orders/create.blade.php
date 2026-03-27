@@ -120,8 +120,6 @@
                         </x-ui.button>
                     </div>
 
-                    <div class="h-6 w-px bg-gray-300 dark:bg-slate-600 shrink-0"></div>
-
                     <!-- Mozo -->
                     @if(!($isMozo ?? false))
                         <div class="flex items-center gap-1.5 shrink-0">
@@ -132,14 +130,11 @@
                                         id="pos-waiter-name">{{ $user?->name ?? 'Sin asignar' }}</span></option>
                             </select>
                         </div>
-
-                        <div class="h-6 w-px bg-gray-300 dark:bg-slate-600 shrink-0"></div>
                     @endif
 
                     <!-- Servicio (automático por área) -->
                     <input type="hidden" id="header-service-type-val" value="{{ $pendingServiceType ?? 'IN_SITU' }}">
 
-                    <div class="h-6 w-px bg-gray-300 dark:bg-slate-600 shrink-0"></div>
                 </div>
             </div>
 

@@ -531,6 +531,16 @@
                         }
                     },
 
+                    // Devuelve la primera área que tenga mesas; si ninguna, la primera área disponible
+                    resolveDefaultArea() {
+                        if (!this.areas || this.areas.length === 0) return null;
+                        if (!this.tables || this.tables.length === 0) return Number(this.areas[0].id);
+                        const areaWithTables = this.areas.find(a =>
+                            this.tables.some(t => Number(t.area_id) === Number(a.id))
+                        );
+                        return areaWithTables ? Number(areaWithTables.id) : Number(this.areas[0].id);
+                    },
+
                     async refreshTables() {
                         try {
                             const res = await fetch(this.tablesDataUrl, {
@@ -546,6 +556,13 @@
                             }
                             if (data.areas && Array.isArray(data.areas)) {
                                 this.areas = data.areas;
+                            }
+                            // Si el área actual no tiene mesas, cambiar automáticamente
+                            if (this.currentAreaId) {
+                                const hasTables = this.tables.some(t => Number(t.area_id) === Number(this.currentAreaId));
+                                if (!hasTables) {
+                                    this.currentAreaId = this.resolveDefaultArea();
+                                }
                             }
                             this.updateFilteredTables();
                         } catch (e) {
@@ -577,8 +594,10 @@
                         if (this.currentAreaId) {
                             this.currentAreaId = Number(this.currentAreaId);
                         }
-                        if (!this.currentAreaId && this.areas && this.areas.length > 0) {
-                            this.currentAreaId = Number(this.areas[0].id);
+                        // Seleccionar automáticamente la primera área que tenga mesas
+                        const defaultArea = this.resolveDefaultArea();
+                        if (!this.currentAreaId || !this.tables.some(t => Number(t.area_id) === this.currentAreaId)) {
+                            this.currentAreaId = defaultArea;
                         }
                         this.updateFilteredTables();
                         this.refreshTables();

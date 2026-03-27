@@ -2,10 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\PlantillaAreasTablesExport;
+use App\Imports\AreasTablesImport;
 use App\Support\InsensitiveSearch;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use App\Models\Area;
 use App\Models\Operation;
+use Maatwebsite\Excel\Facades\Excel;
 
 class AreaController extends Controller
 {
@@ -175,5 +179,49 @@ class AreaController extends Controller
             return redirect()->route('areas.index', $params)
                 ->withErrors(['error' => 'Error al eliminar el area: ' . $e->getMessage()]);
         }
+    }
+
+    public function importForm(Request $request)
+    {
+        $viewId = $request->input('view_id');
+        return view('areas.import', compact('viewId'));
+    }
+
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => ['required', 'file', 'mimes:xlsx,xls', 'max:5120'],
+        ], [
+            'file.required' => 'Debes seleccionar un archivo.',
+            'file.mimes'    => 'El archivo debe ser .xlsx o .xls.',
+            'file.max'      => 'El archivo no debe superar 5 MB.',
+        ]);
+
+        $branchId = (int) session('branch_id');
+        if (!$branchId) {
+            return back()->withErrors(['file' => 'No hay sucursal activa en la sesión.']);
+        }
+
+        $import = new AreasTablesImport($branchId);
+        Excel::import($import, $request->file('file'));
+
+        $viewId = $request->input('view_id');
+
+        return redirect()
+            ->route('areas.import.form', $viewId ? ['view_id' => $viewId] : [])
+            ->with([
+                'import_errors'   => $import->errors(),
+                'import_imported' => $import->imported(),
+                'import_updated'  => $import->updated(),
+                'import_areas_imported'  => $import->areasSheet->imported,
+                'import_areas_updated'   => $import->areasSheet->updated,
+                'import_tables_imported' => $import->tablesSheet->imported,
+                'import_tables_updated'  => $import->tablesSheet->updated,
+            ]);
+    }
+
+    public function downloadTemplate()
+    {
+        return Excel::download(new PlantillaAreasTablesExport(), 'plantilla_areas_mesas.xlsx');
     }
 }
