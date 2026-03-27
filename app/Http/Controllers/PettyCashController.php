@@ -18,6 +18,7 @@ use App\Models\DigitalWallet;
 use App\Models\Card;
 use App\Models\CashMovementDetail;
 use App\Models\Operation;
+use App\Support\InsensitiveSearch;
 
 
 class PettyCashController extends Controller
@@ -158,12 +159,12 @@ class PettyCashController extends Controller
             $movementsQuery->whereRaw('1 = 0');
         }
 
-        $movements = $movementsQuery->when($search, function ($query, $search) {
+        $movements = $movementsQuery->when($search, function ($query) use ($search) {
                 $query->where(function ($q) use ($search) {
-                    $q->where('person_name', 'ILIKE', "%{$search}%")
-                        ->orWhere('user_name', 'ILIKE', "%{$search}%")
-                        ->orWhere('responsible_name', 'ILIKE', "%{$search}%")
-                        ->orWhere('number', 'ILIKE', "%{$search}%");
+                    InsensitiveSearch::whereInsensitiveLike($q, 'person_name', $search);
+                    InsensitiveSearch::whereInsensitiveLike($q, 'user_name', $search, 'or');
+                    InsensitiveSearch::whereInsensitiveLike($q, 'responsible_name', $search, 'or');
+                    InsensitiveSearch::whereInsensitiveLike($q, 'number', $search, 'or');
                 });
             })
             ->orderBy('movements.id', 'desc')

@@ -27,6 +27,7 @@ use App\Models\Shift;
 use App\Models\TaxRate;
 use App\Models\Unit;
 use App\Models\Operation;
+use App\Support\InsensitiveSearch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -92,12 +93,15 @@ class SalesController extends Controller
             ->restrictedToBranch($branchId ? (int) $branchId : null)
             ->orderBy('order_num')
             ->get(['id', 'description']);
-        $cashRegisters  = CashRegister::query()->orderBy('number')->get(['id', 'number']);
+        $cashRegisters = $branchId
+            ? CashRegister::query()->where('branch_id', $branchId)->orderBy('number')->get(['id', 'number'])
+            : CashRegister::query()->whereRaw('1 = 0')->get(['id', 'number']);
 
         $query = Movement::query()
             ->with(['branch', 'person', 'movementType', 'documentType', 'salesMovement'])
             ->where('movement_type_id', 2)
-            ->where('branch_id', $branchId)
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->when(! $branchId, fn ($q) => $q->whereRaw('1 = 0'))
             ->whereHas('salesMovement');
 
         if ($documentTypeId !== null && $documentTypeId !== '' && is_numeric($documentTypeId)) {
@@ -305,11 +309,7 @@ class SalesController extends Controller
 
         $saleType = 'IN_SITU';
 
-        $people = Person::query()
-            ->when($branchId, fn($query) => $query->where('branch_id', $branchId))
-            ->orderBy('first_name')
-            ->orderBy('last_name')
-            ->get(['id', 'first_name', 'last_name', 'document_number']);
+        $people = $this->branchClientsForBranch($branchId);
 
         $documentTypes = DocumentType::query()
             ->orderBy('name')
@@ -413,11 +413,7 @@ class SalesController extends Controller
             ->orderByRaw("CASE WHEN status = 'A' THEN 0 ELSE 1 END")
             ->orderBy('number')
             ->get(['id', 'number', 'status']);
-        $people = Person::query()
-            ->when($branchId, fn($query) => $query->where('branch_id', $branchId))
-            ->orderBy('first_name')
-            ->orderBy('last_name')
-            ->get(['id', 'first_name', 'last_name', 'document_number']);
+        $people = $this->branchClientsForBranch($branchId);
 
         $defaultClientId = Person::query()
             ->when($branchId, fn($query) => $query->where('branch_id', $branchId))
@@ -500,6 +496,9 @@ class SalesController extends Controller
             ])
             ->values();
 
+        $branch = $branchId ? Branch::find($branchId) : null;
+        $company = $branch ? \App\Models\Company::find($branch->company_id) : null;
+
         return view('sales.charge', [
             'documentTypes' => $documentTypes,
             'paymentMethods' => $paymentMethods,
@@ -515,6 +514,8 @@ class SalesController extends Controller
             'products' => $products,
             'productBranches' => $productBranches,
             'person' => $person,
+            'branch' => $branch,
+            'company' => $company,
         ]);
     }
     // POS: procesar venta
@@ -1879,8 +1880,8 @@ class SalesController extends Controller
     {
         $movementTypeId = MovementType::query()
             ->where(function ($query) {
-                $query->where('description', 'ILIKE', '%caja%')
-                    ->orWhere('description', 'ILIKE', '%cash%');
+                InsensitiveSearch::whereInsensitiveLikePattern($query, 'description', '%caja%');
+                InsensitiveSearch::whereInsensitiveLikePattern($query, 'description', '%cash%', 'or');
             })
             ->orderBy('id')
             ->value('id');
@@ -1919,5 +1920,27 @@ class SalesController extends Controller
         $nextSequence = $lastNumber ? ((int) $lastNumber + 1) : 1;
 
         return str_pad((string) $nextSequence, 8, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Clientes de la sucursal (misma lógica que OrderController::resolveClientPeople).
+     */
+    protected function branchClientsForBranch(?int $branchId): \Illuminate\Support\Collection
+    {
+        $q = Person::query()
+            ->orderBy('first_name')
+            ->orderBy('last_name');
+
+        if ($branchId) {
+            $q->where(function ($q2) use ($branchId) {
+                $q2->where('people.branch_id', $branchId)
+                    ->orWhereHas('roles', function ($qq) use ($branchId) {
+                        $qq->where('role_person.branch_id', $branchId)
+                            ->whereNull('role_person.deleted_at');
+                    });
+            });
+        }
+
+        return $q->get(['id', 'first_name', 'last_name', 'document_number']);
     }
 }

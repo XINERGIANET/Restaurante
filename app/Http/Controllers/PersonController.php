@@ -10,6 +10,7 @@ use App\Models\Person;
 use App\Models\Profile;
 use App\Models\Role;
 use App\Models\User;
+use App\Support\InsensitiveSearch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -178,10 +179,10 @@ class PersonController extends Controller
             ->with(['location', 'user.profile'])
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
-                    $inner->where('first_name', 'ILIKE', "%{$search}%")
-                        ->orWhere('last_name', 'ILIKE', "%{$search}%")
-                        ->orWhere('document_number', 'ILIKE', "%{$search}%")
-                        ->orWhere('email', 'ILIKE', "%{$search}%");
+                    InsensitiveSearch::whereInsensitiveLike($inner, 'first_name', $search);
+                    InsensitiveSearch::whereInsensitiveLike($inner, 'last_name', $search, 'or');
+                    InsensitiveSearch::whereInsensitiveLike($inner, 'document_number', $search, 'or');
+                    InsensitiveSearch::whereInsensitiveLike($inner, 'email', $search, 'or');
                 });
             })
             ->orderByDesc('id')
@@ -224,7 +225,8 @@ class PersonController extends Controller
         $hasUserRole = in_array(1, $roleIds, true);
         $userData = $this->validateUserData($request, $hasUserRole, null);
 
-        DB::transaction(function () use ($branch, $data, $roleIds, $hasUserRole, $userData) {
+        $person = null;
+        DB::transaction(function () use ($branch, $data, $roleIds, $hasUserRole, $userData, &$person) {
             $person = $branch->people()->create($data);
             $this->syncRoles($person, $roleIds, $branch->id);
 
@@ -238,6 +240,17 @@ class PersonController extends Controller
                 ]);
             }
         });
+
+        if (($request->expectsJson() || $request->ajax()) && $request->boolean('from_pos')) {
+            $fullName = trim(($person->first_name ?? '') . ' ' . ($person->last_name ?? ''));
+            return response()->json([
+                'success' => true,
+                'id' => $person->id,
+                'name' => $fullName !== '' ? $fullName : ($person->document_number ?? 'Cliente'),
+                'document_number' => $person->document_number,
+                'message' => 'Cliente creado correctamente.',
+            ]);
+        }
 
         // Si viene redirect_to (por ejemplo, desde POS), volver a esa URL
         if ($request->filled('redirect_to')) {

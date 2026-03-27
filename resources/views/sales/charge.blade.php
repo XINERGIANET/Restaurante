@@ -7,10 +7,15 @@
 
         $peopleCollection = $people ?? collect();
 
-        $clientOptions = $peopleCollection->map(function($p) {
+        $clientOptions = $peopleCollection->map(function ($p) {
+            $name = trim(($p->first_name ?? '') . ' ' . ($p->last_name ?? ''));
+            if ($name === '' && !empty($p->document_number)) {
+                $name = $p->document_number;
+            }
+
             return [
                 'id' => $p->id,
-                'description' => trim(($p->document_number ?? '') . ' - ' . ($p->first_name ?? '') . ' ' . ($p->last_name ?? ''))
+                'description' => $name,
             ];
         })->values()->all();
 
@@ -352,13 +357,14 @@
         </div>
     </div>
 
+    @if ($branch ?? null)
     <x-ui.modal 
         x-data="{ open: false }" 
         @open-person-modal.window="open = true" 
         @close-person-modal.window="open = false" 
         :isOpen="false" 
         :showCloseButton="false"
-        class="max-w-4xl z-[100]" {{-- Z-index alto para que se vea sobre todo --}}
+        class="max-w-4xl z-[100]"
     >
         <div class="p-6 sm:p-8 bg-white dark:bg-gray-800">
             
@@ -395,14 +401,15 @@
             @endif
 
             {{-- Formulario --}}
-            {{-- IMPORTANTE: Verifica que la ruta 'admin.companies.branches.people.store' acepte null o pasa los IDs correctos --}}
-            <form method="POST" 
+            <form method="POST" data-quick-client-form
                 action="{{ route('admin.companies.branches.people.store', [$company->id ?? '0', $branch->id ?? '0']) }}" 
                 class="space-y-6">
                 @csrf
+                <input type="hidden" name="redirect_to" value="{{ request()->fullUrl() }}">
+                <input type="hidden" name="location_id" value="{{ $branch->location_id ?? '' }}">
+                <input type="hidden" name="from_pos" value="1">
 
-                {{-- Aquí incluimos el formulario que pediste --}}
-                @include('branches.people._form', ['person' => null])
+                @include('branches.people._form', ['person' => null, 'hidePinAndRoles' => true])
 
                 {{-- Footer del Modal --}}
                 <div class="flex flex-wrap gap-3 justify-end pt-4 border-t border-gray-100 dark:border-gray-700">
@@ -416,6 +423,7 @@
             </form>
         </div>
     </x-ui.modal>
+    @endif
 
     <style>
         .doc-type-btn.doc-active { border-color: #3b82f6; background: linear-gradient(135deg, #eff6ff, #fff); color: #1d4ed8; }
@@ -462,6 +470,7 @@
             const cards = @json($cards ?? []);
             const digitalWallets = @json($digitalWallets ?? []);
             const banks = @json($banks ?? []);
+            const clientOptions = @json($clientOptions ?? []);
             const defaultClientId = @json($defaultClientId ?? 4);
             const productsMap = @json($products ?? []);
             const productBranches = @json($productBranches ?? []);
@@ -481,6 +490,62 @@
             const clientInput = document.querySelector('input[name="client_id"]'); 
             const cashRegisterInput = document.getElementById('cash-register-id');
             const cashRegisterDisplay = document.getElementById('cash-register-display');
+
+            function setupQuickClientCreate() {
+                const form = document.querySelector('form[data-quick-client-form]');
+                if (!form) return;
+                form.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    const submitBtn = form.querySelector('button[type="submit"]');
+                    const originalHtml = submitBtn ? submitBtn.innerHTML : '';
+                    if (submitBtn) {
+                        submitBtn.disabled = true;
+                        submitBtn.innerHTML = '<i class="ri-loader-4-line animate-spin mr-1"></i> Guardando...';
+                    }
+                    try {
+                        const res = await fetch(form.action, {
+                            method: 'POST',
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'Accept': 'application/json'
+                            },
+                            body: new FormData(form)
+                        });
+                        const data = await res.json().catch(() => ({}));
+                        if (!res.ok || !data?.success || !data?.id) {
+                            const validation = data?.errors && typeof data.errors === 'object'
+                                ? Object.values(data.errors).flat().join(', ')
+                                : '';
+                            throw new Error(validation || data?.message || 'No se pudo crear el cliente.');
+                        }
+
+                        const label = [data.name, data.document_number].filter(Boolean).join(' - ');
+                        const normalizedOptions = Array.isArray(clientOptions) ? [...clientOptions] : [];
+                        const exists = normalizedOptions.some((c) => String(c.id) === String(data.id));
+                        if (!exists) {
+                            normalizedOptions.push({ id: data.id, description: label || 'Cliente' });
+                        }
+                        clientOptions.length = 0;
+                        clientOptions.push(...normalizedOptions);
+                        window.dispatchEvent(new CustomEvent('update-combobox-options', {
+                            detail: { name: 'client_id', options: normalizedOptions }
+                        }));
+                        if (clientInput) {
+                            clientInput.value = String(data.id);
+                            clientInput.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+                        showNotification('Cliente', data.message || 'Cliente creado y seleccionado.', 'success');
+                        window.dispatchEvent(new CustomEvent('close-person-modal'));
+                    } catch (err) {
+                        showNotification('Error', err?.message || 'Error al crear cliente.', 'error');
+                    } finally {
+                        if (submitBtn) {
+                            submitBtn.disabled = false;
+                            submitBtn.innerHTML = originalHtml;
+                        }
+                    }
+                });
+            }
             
             fetch('/api/session/cash-register', {
                 method: 'GET',
@@ -501,6 +566,8 @@
             .catch(err => {
                 console.error('Error al obtener caja de sesión:', err);
             });
+
+            setupQuickClientCreate();
 
             const paymentMethodsList = document.getElementById('payment-methods-list');
             const addPaymentMethodBtn = document.getElementById('add-payment-method-btn');

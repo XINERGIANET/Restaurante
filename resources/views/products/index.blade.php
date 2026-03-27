@@ -221,7 +221,14 @@
                                         {{ $product->baseUnit?->description ?? '-' }}</p>
                                 </td>
                                 <td class="hidden xl:table-cell px-3 py-4 sm:px-3">
-                                    <p class="text-gray-500 text-theme-sm dark:text-gray-400">{{ $product->type }}</p>
+                                    @php
+                                        $typeLabel = match($product->type) {
+                                            'PRODUCT'  => 'Producto',
+                                            'INGREDENT' => 'Ingrediente',
+                                            default    => $product->type,
+                                        };
+                                    @endphp
+                                    <p class="text-gray-500 text-theme-sm dark:text-gray-400">{{ $typeLabel }}</p>
                                 </td>
                                 <td class="px-3 py-4 sm:px-3 text-center">
                                     @php
@@ -555,6 +562,7 @@
                         'igvByBranchId' => $igvByBranchId ?? [],
                         'categories' => $categories ?? collect(),
                         'units' => $units ?? collect(),
+                        'suppliers' => $suppliers ?? collect(),
                     ])
 
                     <div class="flex flex-wrap gap-3">

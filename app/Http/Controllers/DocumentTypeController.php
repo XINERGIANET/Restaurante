@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\DocumentType;
 use App\Models\MovementType;
 use App\Models\Operation;
+use App\Support\InsensitiveSearch;
 use Illuminate\Http\Request;
 
 class DocumentTypeController extends Controller
@@ -50,7 +51,7 @@ class DocumentTypeController extends Controller
             ->with('movementType')
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
-                    $inner->where('name', 'ILIKE', "%{$search}%");
+                    InsensitiveSearch::whereInsensitiveLike($inner, 'name', $search);
                 });
             })
             ->orderByDesc('id')

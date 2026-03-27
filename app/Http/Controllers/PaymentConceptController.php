@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\PaymentConcept;
 use App\Models\Operation;
+use App\Support\InsensitiveSearch;
 
 class PaymentConceptController extends Controller
 {
@@ -46,7 +47,7 @@ class PaymentConceptController extends Controller
 
         $paymentConcepts = PaymentConcept::query()
             ->when($search, function ($query) use ($search) {
-                $query->where('description', 'ILIKE', "%{$search}%");
+                InsensitiveSearch::whereInsensitiveLike($query, 'description', $search);
             })
             ->orderBy('id')
             ->paginate($perPage)

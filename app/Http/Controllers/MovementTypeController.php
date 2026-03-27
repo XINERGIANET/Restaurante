@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\MovementType;
 use App\Models\Operation;
+use App\Support\InsensitiveSearch;
 use Illuminate\Http\Request;
 
 class MovementTypeController extends Controller
@@ -47,7 +48,7 @@ class MovementTypeController extends Controller
 
         $movementTypes = MovementType::query()
             ->when($search, function ($query) use ($search) {
-                $query->where('description', 'ILIKE', "%{$search}%");
+                InsensitiveSearch::whereInsensitiveLike($query, 'description', $search);
             })
             ->orderByDesc('id')
             ->paginate($perPage)

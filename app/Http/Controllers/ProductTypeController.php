@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Branch;
 use App\Models\ProductType;
+use App\Support\InsensitiveSearch;
 use Illuminate\Http\Request;
 
 class ProductTypeController extends Controller
@@ -25,9 +26,11 @@ class ProductTypeController extends Controller
             $query->where('branch_id', $branchId);
         }
         $query->when($search, function ($q) use ($search) {
-            $q->where('name', 'ILIKE', "%{$search}%")
-                ->orWhere('description', 'ILIKE', "%{$search}%")
-                ->orWhere('behavior', 'ILIKE', "%{$search}%");
+            $q->where(function ($inner) use ($search) {
+                InsensitiveSearch::whereInsensitiveLike($inner, 'name', $search);
+                InsensitiveSearch::whereInsensitiveLike($inner, 'description', $search, 'or');
+                InsensitiveSearch::whereInsensitiveLike($inner, 'behavior', $search, 'or');
+            });
         });
         $productTypes = $query->orderByRaw("CASE behavior WHEN 'SELLABLE' THEN 1 WHEN 'BOTH' THEN 2 WHEN 'SUPPLY' THEN 3 ELSE 4 END")
             ->orderBy('name')

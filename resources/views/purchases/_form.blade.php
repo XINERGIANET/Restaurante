@@ -132,7 +132,7 @@
                                     class="mb-1.5 block text-xs font-semibold uppercase text-gray-500 tracking-wider">SERIE</label>
                                 <input type="text" name="series"
                                     class="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-                                    value="{{ old('series', $purchaseMovement?->serie ?? '001') }}" placeholder="001"
+                                    value="{{ old('series', $purchaseMovement?->serie ?? '') }}" placeholder="Ej: F001"
                                     required>
                             </div>
                             <div>
@@ -140,7 +140,7 @@
                                     class="mb-1.5 block text-xs font-semibold uppercase text-gray-500 tracking-wider">NUMERO</label>
                                 <input type="text" name="number"
                                     class="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-                                    value="{{ old('number', $purchaseMovement?->numero ?? '001') }}" placeholder="001"
+                                    value="{{ old('number', $purchaseMovement?->numero ?? '') }}" placeholder="Ej: 00123"
                                     required>
                             </div>
                         </div>
@@ -775,12 +775,18 @@
                                 });
                                 const data = await res.json().catch(() => ({}));
                                 if (!res.ok) {
-                                    this.providerError = data.message || data.errors ? Object.values(data.errors || {}).flat().join(' ') : 'Error al crear el proveedor.';
+                                    const validationMessage = (data.errors && typeof data.errors === 'object')
+                                        ? Object.values(data.errors).flat().join(' ')
+                                        : '';
+                                    this.providerError = validationMessage || data.message || 'Error al crear el proveedor.';
                                     return;
                                 }
-                                this.providerOptions.push({ id: data.id, description: data.description });
+                                const alreadyExists = this.providerOptions.some(opt => String(opt.id) === String(data.id));
+                                if (!alreadyExists) {
+                                    this.providerOptions.push({ id: data.id, description: data.description });
+                                }
                                 window.dispatchEvent(new CustomEvent('update-combobox-options', { detail: { name: 'person_id', options: this.providerOptions } }));
-                                this.selectedProviderId = data.id;
+                                this.selectedProviderId = String(data.id);
                                 this.closeModalProveedor();
                             } catch (e) {
                                 this.providerError = 'Error de conexión. Intente de nuevo.';

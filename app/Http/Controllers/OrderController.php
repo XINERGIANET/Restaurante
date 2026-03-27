@@ -29,8 +29,8 @@ use App\Models\Shift;
 use App\Models\Table;
 use App\Models\Unit;
 use App\Models\User;
-use App\Models\Role;
 use App\Models\Operation;
+use App\Support\InsensitiveSearch;
 use Barryvdh\Snappy\Facades\SnappyPdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -167,7 +167,7 @@ class OrderController extends Controller
         $cashRegisterId = $request->input('cash_register_id');
         $documentTypes = DocumentType::query()
             ->orderBy('name')
-            ->where('name', 'ILIKE', '%venta%')
+            ->tap(fn ($q) => InsensitiveSearch::whereInsensitiveLikePattern($q, 'name', '%venta%'))
             ->get(['id', 'name']);
         $paymentMethods = PaymentMethod::query()
             ->where('status', true)
@@ -227,12 +227,14 @@ class OrderController extends Controller
                 $query->where(function ($inner) use ($search) {
                     $inner->whereHas('movement', function ($movementQuery) use ($search) {
                         $movementQuery->where(function ($movementInner) use ($search) {
-                            $movementInner->where('number', 'ILIKE', "%{$search}%")
-                                ->orWhere('person_name', 'ILIKE', "%{$search}%")
-                                ->orWhere('user_name', 'ILIKE', "%{$search}%");
+                            InsensitiveSearch::whereInsensitiveLike($movementInner, 'number', $search);
+                            InsensitiveSearch::whereInsensitiveLike($movementInner, 'person_name', $search, 'or');
+                            InsensitiveSearch::whereInsensitiveLike($movementInner, 'user_name', $search, 'or');
                         });
                     })
-                        ->orWhere('status', 'ILIKE', "%{$search}%");
+                        ->orWhere(function ($q) use ($search) {
+                            InsensitiveSearch::whereInsensitiveLike($q, 'status', $search);
+                        });
                 });
             })
             ->when($documentTypeId, function ($query) use ($documentTypeId) {
@@ -323,7 +325,7 @@ class OrderController extends Controller
             ->get()
             ->groupBy('table_id');
 
-        $tablesPayload = $tables->map(function (Table $table) use ($activeOrderMovements) {
+        $tablesPayload = $tables->map(function (Table $table) use ($activeOrderMovements, $branchId) {
             $elapsed = '--:--';
             if (!empty($table->opened_at)) {
                 try {
@@ -392,8 +394,11 @@ class OrderController extends Controller
             $ordersCount = 0;
             if ($orderMovement && $orderMovement->movement && $orderMovement->movement->person_id) {
                 $personId = $orderMovement->movement->person_id;
-                $ordersCount = OrderMovement::whereHas('movement', function ($query) use ($personId) {
+                $ordersCount = OrderMovement::whereHas('movement', function ($query) use ($personId, $branchId) {
                     $query->where('person_id', $personId);
+                    if ($branchId) {
+                        $query->where('branch_id', $branchId);
+                    }
                 })->count();
             }
 
@@ -462,12 +467,14 @@ class OrderController extends Controller
                 $query->where(function ($inner) use ($search) {
                     $inner->whereHas('movement', function ($movementQuery) use ($search) {
                         $movementQuery->where(function ($movementInner) use ($search) {
-                            $movementInner->where('number', 'ILIKE', "%{$search}%")
-                                ->orWhere('person_name', 'ILIKE', "%{$search}%")
-                                ->orWhere('user_name', 'ILIKE', "%{$search}%");
+                            InsensitiveSearch::whereInsensitiveLike($movementInner, 'number', $search);
+                            InsensitiveSearch::whereInsensitiveLike($movementInner, 'person_name', $search, 'or');
+                            InsensitiveSearch::whereInsensitiveLike($movementInner, 'user_name', $search, 'or');
                         });
                     })
-                        ->orWhere('status', 'ILIKE', "%{$search}%");
+                        ->orWhere(function ($q) use ($search) {
+                            InsensitiveSearch::whereInsensitiveLike($q, 'status', $search);
+                        });
                 });
             })
             ->when($documentTypeId, function ($query) use ($documentTypeId) {
@@ -540,7 +547,7 @@ class OrderController extends Controller
             ->when($branchId && $areas->isEmpty(), fn($q) => $q->whereRaw('1 = 0'))
             ->orderBy('name')
             ->get(['id', 'name', 'area_id', 'capacity', 'situation', 'opened_at']);
-        $tablesPayload = $tables->map(function (Table $table) {
+        $tablesPayload = $tables->map(function (Table $table) use ($branchId) {
             $elapsed = '--:--';
             if (!empty($table->opened_at)) {
                 try {
@@ -600,8 +607,11 @@ class OrderController extends Controller
             $ordersCount = 0;
             if ($orderMovement && $orderMovement->movement && $orderMovement->movement->person_id) {
                 $personId = $orderMovement->movement->person_id;
-                $ordersCount = OrderMovement::whereHas('movement', function ($query) use ($personId) {
+                $ordersCount = OrderMovement::whereHas('movement', function ($query) use ($personId, $branchId) {
                     $query->where('person_id', $personId);
+                    if ($branchId) {
+                        $query->where('branch_id', $branchId);
+                    }
                 })->count();
             }
 
@@ -654,28 +664,8 @@ class OrderController extends Controller
         $branchId = (int) ($table->branch_id ?? $area?->branch_id ?? session('branch_id')) ?: null;
         $branch = $branchId ? Branch::find($branchId) : null;
 
-        // Lista de clientes de la sucursal para el selector de cliente:
-        // personas con rol "Cliente" (si existe); si no existe, se listan todas sin usuario.
-        $peopleQuery = Person::query()
-            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
-            ->orderBy('first_name')
-            ->orderBy('last_name');
-
-        $clienteRoleId = Role::query()
-            ->whereNull('deleted_at')
-            ->whereRaw('LOWER(TRIM(name)) = ?', ['cliente'])
-            ->value('id');
-
-        if ($clienteRoleId) {
-            $peopleQuery->whereHas('roles', function ($q) use ($clienteRoleId, $branchId) {
-                $q->where('roles.id', $clienteRoleId)
-                    ->when($branchId, fn($qq) => $qq->where('role_person.branch_id', $branchId));
-            });
-        } else {
-            $peopleQuery->whereDoesntHave('user');
-        }
-
-        $people = $peopleQuery->get(['id', 'first_name', 'last_name', 'document_number']);
+        // Clientes del selector: rol «Cliente» → sin usuario → todos de la sucursal (fallbacks).
+        $people = $this->resolveClientPeople($branchId);
 
         // Mismo criterio que Ventas: solo productos vendibles (sin tipo o tipo con behavior SELLABLE/BOTH), con product_branch y categoría en la sucursal.
         $products = Product::where('type', 'PRODUCT')
@@ -912,7 +902,9 @@ class OrderController extends Controller
             ->orderBy('number')
             ->get(['id', 'number']);
 
-        $deliveryAreaId = Area::where('name', 'ILIKE', '%Delivery%')->value('id');
+        $deliveryAreaId = Area::query()
+            ->tap(fn ($q) => InsensitiveSearch::whereInsensitiveLikePattern($q, 'name', '%delivery%'))
+            ->value('id');
 
         $response = response()->view('orders.create', [
             'user' => $user,
@@ -1853,8 +1845,8 @@ class OrderController extends Controller
     {
         $movementTypeId = MovementType::query()
             ->where(function ($query) {
-                $query->where('description', 'ILIKE', '%caja%')
-                    ->orWhere('description', 'ILIKE', '%cash%');
+                InsensitiveSearch::whereInsensitiveLikePattern($query, 'description', '%caja%');
+                InsensitiveSearch::whereInsensitiveLikePattern($query, 'description', '%cash%', 'or');
             })
             ->orderBy('id')
             ->value('id');
@@ -1876,7 +1868,7 @@ class OrderController extends Controller
     {
         $documentTypeId = DocumentType::query()
             ->where('movement_type_id', $cashMovementTypeId)
-            ->where('name', 'ILIKE', '%ingreso%')
+            ->tap(fn ($q) => InsensitiveSearch::whereInsensitiveLikePattern($q, 'name', '%ingreso%'))
             ->orderBy('id')
             ->value('id');
 
@@ -1920,9 +1912,9 @@ class OrderController extends Controller
         $paymentConcept = PaymentConcept::query()
             ->where('type', 'I')
             ->where(function ($query) {
-                $query->where('description', 'ILIKE', '%pago de cliente%')
-                    ->orWhere('description', 'ILIKE', '%venta%')
-                    ->orWhere('description', 'ILIKE', '%pedido%');
+                InsensitiveSearch::whereInsensitiveLikePattern($query, 'description', '%pago de cliente%');
+                InsensitiveSearch::whereInsensitiveLikePattern($query, 'description', '%venta%', 'or');
+                InsensitiveSearch::whereInsensitiveLikePattern($query, 'description', '%pedido%', 'or');
             })
             ->orderBy('id')
             ->first();
@@ -2048,5 +2040,29 @@ class OrderController extends Controller
             'success' => true,
             'message' => 'Mesa abierta',
         ]);
+    }
+
+    /**
+     * Lista de personas para el selector de cliente en el POS de pedidos.
+     * Incluye: personas con branch_id de la sucursal, o con cualquier rol asignado en role_person para esa sucursal
+     * (evita listas vacías si el rol «Cliente» no coincide o faltan datos en el pivot).
+     */
+    private function resolveClientPeople(?int $branchId): \Illuminate\Support\Collection
+    {
+        $q = Person::query()
+            ->orderBy('first_name')
+            ->orderBy('last_name');
+
+        if ($branchId) {
+            $q->where(function ($q2) use ($branchId) {
+                $q2->where('people.branch_id', $branchId)
+                    ->orWhereHas('roles', function ($qq) use ($branchId) {
+                        $qq->where('role_person.branch_id', $branchId)
+                            ->whereNull('role_person.deleted_at');
+                    });
+            });
+        }
+
+        return $q->get(['id', 'first_name', 'last_name', 'document_number']);
     }
 }

@@ -27,6 +27,7 @@ use App\Models\PaymentGateways;
 use App\Models\PaymentMethod;
 use App\Models\Operation;
 use App\Models\Role;
+use App\Support\InsensitiveSearch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -72,12 +73,14 @@ class PurchaseController extends Controller
                 ->get();
         }
 
-        $query = PurchaseMovement::query();
+        $query = PurchaseMovement::query()
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->when(! $branchId, fn ($q) => $q->whereRaw('1 = 0'));
 
         if ($search) {
-            $query->whereHas('movement', function($q) use ($search) {
-                $q->where('number', 'ILIKE', "%{$search}%")
-                ->orWhere('person_name', 'ILIKE', "%{$search}%");
+            $query->whereHas('movement', function ($q) use ($search) {
+                InsensitiveSearch::whereInsensitiveLike($q, 'number', $search);
+                InsensitiveSearch::whereInsensitiveLike($q, 'person_name', $search, 'or');
             });
         }
 
@@ -87,12 +90,15 @@ class PurchaseController extends Controller
             ->withQueryString();
 
         $startOfMonth = Carbon::now()->startOfMonth();
+        $metricsQuery = PurchaseMovement::query()
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->when(! $branchId, fn ($q) => $q->whereRaw('1 = 0'));
         $metrics = [
-            'total_month' => PurchaseMovement::where('created_at', '>=', $startOfMonth)->sum('total'),
-            'igv_month'   => PurchaseMovement::where('created_at', '>=', $startOfMonth)->sum('igv'),
-            'count_invoices' => PurchaseMovement::where('serie', 'LIKE', 'F%')->count(),
-            'count_tickets'  => PurchaseMovement::where('serie', 'LIKE', 'B%')->count(),
-            'total_docs'     => PurchaseMovement::count(),
+            'total_month'    => (clone $metricsQuery)->where('created_at', '>=', $startOfMonth)->sum('total'),
+            'igv_month'      => (clone $metricsQuery)->where('created_at', '>=', $startOfMonth)->sum('igv'),
+            'count_invoices' => (clone $metricsQuery)->where('serie', 'LIKE', 'F%')->count(),
+            'count_tickets'  => (clone $metricsQuery)->where('serie', 'LIKE', 'B%')->count(),
+            'total_docs'     => (clone $metricsQuery)->count(),
         ];
 
         return view('purchases.index', compact('purchases', 'search', 'metrics', 'operaciones', 'perPage', 'viewId'));
@@ -351,7 +357,9 @@ class PurchaseController extends Controller
 
                 if ($data['affects_kardex'] === 'S') {
                     // Buscamos un tipo de documento que el Kardex identifique como Entrada (Ej: "Nota de Entrada")
-                    $docEntrada = DocumentType::where('name', 'ILIKE', '%entrada%')->first();
+                    $docEntrada = DocumentType::query()
+                        ->tap(fn ($q) => InsensitiveSearch::whereInsensitiveLikePattern($q, 'name', '%entrada%'))
+                        ->first();
                     $docEntradaId = $docEntrada ? $docEntrada->id : $data['document_type_id'];
 
                     // Creamos un Movement gemelo para el Kardex, usando el prefijo 'E-' para que sea tomado como Ingreso
@@ -425,7 +433,9 @@ class PurchaseController extends Controller
                 // REGISTRAR LOS PAGOS EN LA CAJA (SOLO SI AFECTA CAJA)
                 if ($data['payment_type'] === 'CONTADO' && $data['affects_cash'] === 'S' && !empty($data['payments'])) {
                     
-                    $paymentConcept = PaymentConcept::where('description', 'ILIKE', '%compra%')->first();
+                    $paymentConcept = PaymentConcept::query()
+                        ->tap(fn ($q) => InsensitiveSearch::whereInsensitiveLikePattern($q, 'description', '%compra%'))
+                        ->first();
                     $conceptId = $paymentConcept ? $paymentConcept->id : 1; 
 
                     $shiftId = null;
@@ -672,7 +682,9 @@ class PurchaseController extends Controller
 
                 // Y creamos el nuevo si corresponde
                 if ($data['payment_type'] === 'CONTADO' && $data['affects_cash'] === 'S' && !empty($data['payments'])) {
-                    $paymentConcept = PaymentConcept::where('description', 'ILIKE', '%compra%')->first();
+                    $paymentConcept = PaymentConcept::query()
+                        ->tap(fn ($q) => InsensitiveSearch::whereInsensitiveLikePattern($q, 'description', '%compra%'))
+                        ->first();
                     $conceptId = $paymentConcept ? $paymentConcept->id : 1; 
 
                     $shiftId = null;

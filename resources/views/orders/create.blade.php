@@ -85,67 +85,69 @@
             })();
         </script>
         <header
-            class="flex-none bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 h-16 sm:h-18 flex items-center px-4 sm:px-6 backdrop-blur-md shadow-sm">
-            <div class="flex items-center justify-between gap-3 shrink-0">
+            class="flex bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 min-h-[4rem] sm:h-18 flex flex-wrap items-center gap-2 sm:gap-3 px-3 sm:px-6 py-2 backdrop-blur-md shadow-sm overflow-visible">
+            <div class="order-1 flex shrink-0 items-center gap-2 sm:gap-3">
                 <button onclick="goBack()" title="Volver atrás"
                     class="h-9 w-9 sm:h-10 sm:w-10 rounded-full bg-white border border-gray-200 text-gray-500 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 transition-all flex items-center justify-center shadow-sm shrink-0">
                     <i class="ri-arrow-left-line text-lg sm:text-xl"></i>
                 </button>
-                <div class="flex items-center gap-2 min-w-0">
-                    <div class="flex flex-col justify-center min-w-0">
-                        <h2 class="text-sm sm:text-base font-bold text-slate-800 dark:text-white leading-tight">
-                            Mesa <span id="pos-table-name">{{ $table->name ?? $table->id }}</span>
-                        </h2>
-                        <p class="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mt-0.5"><i
-                                class="ri-circle-fill" style="color: #00C950;"></i> <span
-                                id="pos-table-area">{{ $table->area->name ?? 'Sin área' }}</span></p>
-                    </div>
+                <div class="flex flex-col justify-center min-w-0 max-w-[40vw] sm:max-w-none">
+                    <h2 class="text-sm sm:text-base font-bold text-slate-800 dark:text-white leading-tight truncate">
+                        Mesa <span id="pos-table-name">{{ $table->name ?? $table->id }}</span>
+                    </h2>
+                    <p class="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate"><i
+                            class="ri-circle-fill" style="color: #00C950;"></i> <span
+                            id="pos-table-area">{{ $table->area->name ?? 'Sin área' }}</span></p>
                 </div>
             </div>
 
-            <!-- Opciones (Flex para que fluyan) -->
+            {{-- Una sola franja horizontal con scroll (móvil/tablet): todo el toolbar junto --}}
             <div
-            class="flex-1 min-w-0 ml-2 flex items-end gap-3 sm:gap-4 lg:gap-5 text-sm font-medium flex-nowrap overflow-x-auto overflow-y-hidden overscroll-x-contain pb-1 touch-pan-x [-webkit-overflow-scrolling:touch]"
-            >
-            <!-- Buscador -->
-                <div class="flex items-center gap-1.5 shrink-0 bg-white p-1 rounded-xl border border-gray-200 shadow-sm">
-                    <div class="w-28 sm:w-36 md:w-44 xl:w-56 relative">
-                        <input type="text" id="search-products" placeholder="Buscar producto..." autocomplete="off"
-                            class="w-full pl-8 pr-3 py-1.5 text-xs sm:text-sm bg-transparent border-transparent rounded-lg focus:ring-0 focus:border-transparent outline-none">
-                        <i
-                            class="fas fa-search absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
-                    </div>
-                    <x-ui.button size="xs" variant="outline" onclick="clearProductSearch()" class="!px-2 h-7"
-                        id="search-products-clear">
-                        <i class="ri-close-line"></i>
-                    </x-ui.button>
-                </div>
-
-                <div class="h-6 w-px bg-gray-300 dark:bg-slate-600 shrink-0"></div>
-
-                <!-- Mozo -->
-                @if(!($isMozo ?? false))
-                    <div class="flex items-center gap-1.5 shrink-0">
-                        <span class="text-gray-500 dark:text-gray-400 text-xs sm:text-sm">Mozo:</span>
-                        <select id="header-waiter-select" onchange="changeWaiter(this)"
-                            class="w-24 sm:w-32 py-1.5 px-2 bg-white dark:bg-slate-700/80 border border-gray-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 font-semibold text-xs sm:text-sm cursor-pointer focus:ring-2 focus:ring-blue-200 outline-none shadow-sm truncate">
-                            <option value="{{ $user?->id }}" selected><span
-                                    id="pos-waiter-name">{{ $user?->name ?? 'Sin asignar' }}</span></option>
-                        </select>
+                class="order-3 basis-full w-full min-w-0 flex items-center overflow-x-auto overflow-y-hidden overscroll-x-contain touch-pan-x [-webkit-overflow-scrolling:touch] [scrollbar-width:thin] pb-0.5 sm:order-2 sm:basis-auto sm:w-auto sm:flex-1">
+                <div
+                    class="flex w-max min-h-full items-center gap-3 sm:gap-4 lg:gap-5 text-sm font-medium pr-1 shrink-0">
+                    <!-- Buscador -->
+                    <div class="flex items-center gap-1.5 shrink-0 bg-white p-1 rounded-xl border border-gray-200 shadow-sm">
+                        <div class="w-28 sm:w-36 md:w-44 xl:w-56 relative">
+                            <input type="text" id="search-products" placeholder="Buscar producto..." autocomplete="off"
+                                class="w-full pl-8 pr-3 py-1.5 text-xs sm:text-sm bg-transparent border-transparent rounded-lg focus:ring-0 focus:border-transparent outline-none">
+                            <i
+                                class="fas fa-search absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                        </div>
+                        <x-ui.button size="xs" variant="outline" onclick="clearProductSearch()" class="!px-2 h-7"
+                            id="search-products-clear">
+                            <i class="ri-close-line"></i>
+                        </x-ui.button>
                     </div>
 
                     <div class="h-6 w-px bg-gray-300 dark:bg-slate-600 shrink-0"></div>
-                @endif
 
-                <!-- Servicio (automático por área) -->
-                <input type="hidden" id="header-service-type-val" value="{{ $pendingServiceType ?? 'IN_SITU' }}">
+                    <!-- Mozo -->
+                    @if(!($isMozo ?? false))
+                        <div class="flex items-center gap-1.5 shrink-0">
+                            <span class="text-gray-500 dark:text-gray-400 text-xs sm:text-sm">Mozo:</span>
+                            <select id="header-waiter-select" onchange="changeWaiter(this)"
+                                class="w-24 sm:w-32 py-1.5 px-2 bg-white dark:bg-slate-700/80 border border-gray-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 font-semibold text-xs sm:text-sm cursor-pointer focus:ring-2 focus:ring-blue-200 outline-none shadow-sm truncate">
+                                <option value="{{ $user?->id }}" selected><span
+                                        id="pos-waiter-name">{{ $user?->name ?? 'Sin asignar' }}</span></option>
+                            </select>
+                        </div>
 
-                <div class="h-6 w-px bg-gray-300 dark:bg-slate-600 shrink-0"></div>
+                        <div class="h-6 w-px bg-gray-300 dark:bg-slate-600 shrink-0"></div>
+                    @endif
 
+                    <!-- Servicio (automático por área) -->
+                    <input type="hidden" id="header-service-type-val" value="{{ $pendingServiceType ?? 'IN_SITU' }}">
+
+                    <div class="h-6 w-px bg-gray-300 dark:bg-slate-600 shrink-0"></div>
+                </div>
+            </div>
+
+            <div class="order-2 ml-auto flex shrink-0 items-center gap-3 sm:gap-4 lg:gap-5 pl-2 sm:order-3 sm:ml-0">
                 <!-- Cliente -->
                 <div class="flex items-center gap-1.5 shrink-0">
-                    <span class="text-gray-500 dark:text-gray-400 text-xs sm:text-sm">Cliente:</span>
-                    <div class="flex items-center gap-1">
+                    <span class="text-gray-500 dark:text-gray-400 text-xs sm:text-sm whitespace-nowrap">Cliente:</span>
+                    <div class="flex items-center gap-1 min-w-0">
                         @php
                             $peopleCollection = $people ?? collect();
                             $clientOptions = $peopleCollection->map(function ($p) {
@@ -159,18 +161,40 @@
                                 ];
                             })->values()->all();
                         @endphp
-                        <x-form.select.combobox :options="$clientOptions" x-model="currentTable.person_id"
-                            name="header_client_id" placeholder="Seleccionar..." icon=""
-                            class="w-32 sm:w-40 md:w-48 !py-1 !px-2 !text-xs sm:!text-sm !font-semibold !text-slate-700 dark:!text-slate-200 !bg-white dark:!bg-slate-700/80 !border !border-gray-200 dark:!border-slate-600 !rounded-lg"
-                            x-on:change="
-                                            const selected = (@js($clientOptions)).find(o => o.id == currentTable.person_id);
-                                            const name = selected ? selected.description : 'Público General';
-                                            currentTable.person_id = currentTable.person_id ? parseInt(currentTable.person_id, 10) : null;
-                                            currentTable.clientName = name;
-                                            saveDB();
-                                            const cobroInput = document.getElementById('cobro-client-input');
-                                            if (cobroInput) cobroInput.value = name;
-                                        " />
+                        <script>window.__orderClientOptions = @json($clientOptions);</script>
+                        {{--
+                            x-model en el combobox requiere un scope Alpine padre que exponga la variable.
+                            currentTable es un objeto global window, no Alpine-reactivo, por eso se usa
+                            un wrapper x-data mínimo que refleja cambios hacia window.currentTable.
+                        --}}
+                        <div class="flex items-center gap-1 shrink-0"
+                            id="order-client-picker"
+                            x-data="{
+                                clientId: @json($pendingClientId ?? null),
+                                init() {
+                                    if (window.currentTable?.person_id) {
+                                        this.clientId = window.currentTable.person_id;
+                                    }
+                                    this.$watch('clientId', v => {
+                                        const opts = window.__orderClientOptions || [];
+                                        const sel = opts.find(o => String(o.id) === String(v));
+                                        const name = sel ? sel.description : 'Público General';
+                                        if (window.currentTable) {
+                                            window.currentTable.person_id = v ? parseInt(v, 10) : null;
+                                            window.currentTable.clientName = name;
+                                            if (typeof saveDB === 'function') saveDB();
+                                        }
+                                        const ci = document.getElementById('cobro-client-input');
+                                        if (ci) ci.value = name;
+                                    });
+                                }
+                            }">
+                            <x-form.select.combobox :options="$clientOptions" x-model="clientId"
+                                name="header_client_id" placeholder="Seleccionar..."
+                                :compact="true"
+                                input-id="order_client_search"
+                                class="w-32 sm:w-40 md:w-48" />
+                        </div>
                         <button type="button"
                             class="inline-flex items-center justify-center h-8 w-8 rounded-lg bg-white border border-gray-200 text-gray-500 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 shadow-sm transition-colors"
                             @click="$dispatch('open-person-modal')" title="Nuevo cliente">
@@ -179,10 +203,10 @@
                     </div>
                 </div>
 
-                <div class="h-6 w-px bg-gray-300 dark:bg-slate-600 shrink-0"></div>
+                    <div class="h-6 w-px bg-gray-300 dark:bg-slate-600 shrink-0"></div>
 
-                <!-- Personas -->
-                <div id="diners-section" class="flex items-center gap-2 shrink-0">
+                    <!-- Personas -->
+                    <div id="diners-section" class="flex items-center gap-2 shrink-0">
                     <div class="flex flex-col text-right">
                         <span class="text-gray-500 dark:text-gray-400 text-xs sm:text-sm leading-none">Personas</span>
                         <span class="text-[9px] sm:text-[10px] text-gray-400">(máx. {{ $table->capacity ?? 1 }})</span>
@@ -201,8 +225,8 @@
                             <i class="ri-add-line text-xs"></i>
                         </button>
                     </div>
+                    </div>
                 </div>
-            </div>
         </header>
 
         {{-- &lt; lg: columna (tablet/móvil) + Resumen a ancho completo. lg+: productos + aside fijo al costado (laptop). --}}
@@ -225,7 +249,7 @@
                 </div>
             </div>
             <aside
-            class="lg:w-[450px] w-[450px] md:w-[400px] lg:shrink-0 mx-auto lg:mx-0 flex-none bg-white dark:bg-gray-900 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-800 flex flex-col min-h-0 lg:h-full z-10 rounded-2xl shadow-sm"
+            class="lg:w-[450px] w-[320px] md:w-[320px] lg:shrink-0 mx-auto lg:mx-0 flex-none bg-white dark:bg-gray-900 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-800 flex flex-col min-h-0 lg:h-full z-0 rounded-2xl shadow-sm"
             >
             {{-- Tabs Resumen | Cobro (Cobro oculto para Mozo) --}}
             <div class="flex w-full shrink-0 border-b border-gray-200 dark:border-gray-700">
@@ -458,7 +482,7 @@
                     @endif
                 </div>
             </aside>
-        </div>
+        
     </div>
 
     {{-- Modal para crear/editar cliente rápido --}}
@@ -874,18 +898,18 @@
                 if (new URLSearchParams(window.location.search).get('cobro') === '1' && typeof switchAsideTab === 'function') {
                     setTimeout(() => switchAsideTab('cobro'), 100);
                 }
-                // const btnPrecuenta = document.getElementById('btn-precuenta');
-                // if (btnPrecuenta && !btnPrecuenta.dataset.boundPrecuenta) {
-                //     btnPrecuenta.dataset.boundPrecuenta = '1';
-                //     btnPrecuenta.addEventListener('click', () => {
-                //         printPreAccountTicket();
-                //     });
-                // }
-                // if (new URLSearchParams(window.location.search).get('pre_account') === '1') {
-                //     setTimeout(() => {
-                //         printPreAccountTicket();
-                //     }, 250);
-                // }
+                const btnPrecuenta = document.getElementById('btn-precuenta');
+                if (btnPrecuenta && !btnPrecuenta.dataset.boundPrecuenta) {
+                    btnPrecuenta.dataset.boundPrecuenta = '1';
+                    btnPrecuenta.addEventListener('click', () => {
+                        openPreAccountPdfTab();
+                    });
+                }
+                if (new URLSearchParams(window.location.search).get('pre_account') === '1') {
+                    setTimeout(() => {
+                        openPreAccountPdfTab();
+                    }, 250);
+                }
             }
 
             function fixScrollLayout() {
@@ -1128,13 +1152,34 @@
                 return `${dd}/${mm}/${yy} ${hh}:${mi}`;
             }
 
+            function normalizeCancellationsForTicket(rawCancellations) {
+                const list = Array.isArray(rawCancellations) ? rawCancellations : [];
+                const map = new Map();
+                list.forEach((c) => {
+                    const name = String(c?.name ?? c?.description ?? 'Producto').trim() || 'Producto';
+                    const reason = String(c?.cancel_reason ?? '').trim();
+                    const productId = parseInt(c?.product_id ?? c?.pId ?? 0, 10) || 0;
+                    const qty = parseFloat(c?.qtyCanceled ?? c?.quantity ?? 1) || 1;
+                    const key = `${productId}|${name}|${reason}`;
+                    if (!map.has(key)) {
+                        map.set(key, { ...c, name, cancel_reason: reason, qtyCanceled: qty });
+                        return;
+                    }
+                    const current = map.get(key);
+                    current.qtyCanceled = (parseFloat(current.qtyCanceled ?? 0) || 0) + qty;
+                    map.set(key, current);
+                });
+                return Array.from(map.values());
+            }
+
             function buildPreAccountTicketText(table, groupedItems, canceledItems, paperWidth = 58) {
                 const lineWidth = paperWidth === 80 ? 48 : 24;
                 const colQty = 4;
                 const colPrice = 10;
                 const colName = lineWidth - colQty - colPrice;
                 const sep = '='.repeat(lineWidth) + '\n';
-                const hasCanceled = Array.isArray(canceledItems) && canceledItems.length > 0;
+                const normalizedCanceledItems = normalizeCancellationsForTicket(canceledItems);
+                const hasCanceled = normalizedCanceledItems.length > 0;
 
                 function padEndSafe(str, length) {
                     const s = String(str ?? '').trim();
@@ -1181,10 +1226,10 @@
                     txt += sep;
                     txt += 'DETALLE ANULADO\n';
                     txt += sep;
-                    canceledItems.forEach((c) => {
+                    normalizedCanceledItems.forEach((c) => {
                         const cName = String(c?.name || c?.description || 'Producto').trim();
                         const cQty = parseFloat(c?.qtyCanceled ?? c?.quantity ?? 1) || 1;
-                        txt += padEndSafe(cName, colName) + padStartSafe(String(cQty) + ' S/', colQty) + '\n';
+                        txt += padEndSafe(cName, colName) + padStartSafe('x' + String(cQty), colQty) + '\n';
                         if (c?.cancel_reason && String(c.cancel_reason).trim()) {
                             txt += 'Motivo: ' + String(c.cancel_reason).trim() + '\n';
                         }
@@ -1201,6 +1246,128 @@
 
                 txt += '\n';
                 return txt;
+            }
+
+            function openPreAccountPdfTab() {
+                const groupedItems = getItemsGroupedByProduct();
+                const canceledItems = Array.isArray(currentTable?.cancellations) ? currentTable.cancellations : [];
+                if (!groupedItems.length && !canceledItems.length) {
+                    if (typeof showNotification === 'function') {
+                        showNotification('Precuenta', 'No hay productos para generar la precuenta.', 'warning');
+                    }
+                    return;
+                }
+
+                const ticketText = buildPreAccountTicketText(currentTable, groupedItems, canceledItems, 58);
+                const escaped = escapeHtmlForQzPrint(ticketText);
+                const html = '<!DOCTYPE html><html><head><meta charset="utf-8">' +
+                    '<title>Precuenta</title>' +
+                    '<style>body{font-family:Courier New,monospace;margin:24px;background:#f5f5f5;}' +
+                    '.paper{width:58mm;max-width:58mm;background:#fff;border:1px solid #ddd;padding:8px;box-shadow:0 2px 8px rgba(0,0,0,.08);}' +
+                    'pre{margin:0;white-space:pre-wrap;word-wrap:break-word;line-height:1.25;font-size:11px;}' +
+                    '.hint{font:12px/1.4 Segoe UI,Arial,sans-serif;color:#444;margin-top:12px;}</style>' +
+                    '</head><body><div class="paper"><pre>' + escaped + '</pre></div>' +
+                    '<div class="hint">Vista previa temporal sin ticketera. Presiona Ctrl+P y guarda como PDF.</div>' +
+                    '</body></html>';
+
+                const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                window.open(url, '_blank', 'noopener,noreferrer');
+                setTimeout(() => URL.revokeObjectURL(url), 10000);
+            }
+
+            function openKitchenCommandPdfTab(items, table) {
+                const activeItems = Array.isArray(items) ? items : [];
+                const cancellations = normalizeCancellationsForTicket(table?.cancellations);
+                if (!activeItems.length && !cancellations.length) {
+                    if (typeof showNotification === 'function') {
+                        showNotification('Comanda', 'No hay productos para generar la comanda.', 'warning');
+                    }
+                    return;
+                }
+
+                const firstPid = parseInt(activeItems[0]?.pId ?? activeItems[0]?.product_id, 10) || 0;
+                const firstPrinterName = firstPid ? (resolveQzPrinterNames(firstPid)[0] || '') : '';
+                const paperWidth = firstPrinterName ? resolvePrinterWidthByName(firstPrinterName) : 58;
+                const lineWidth = paperWidth === 80 ? 32 : 24;
+                const colQty = 4;
+                const colTime = 6;
+                const colName = lineWidth - colQty - colTime;
+                const sep = '='.repeat(lineWidth) + '\n';
+                const tableLabel = table?.name ?? table?.table_id ?? 'Mesa';
+                const areaLabel = (table?.original_area_name || '').trim();
+
+                const padEnd = (s, len) => {
+                    const v = String(s ?? '');
+                    return v.length >= len ? v.slice(0, len) : (v + ' '.repeat(len - v.length));
+                };
+                const padStart = (s, len) => {
+                    const v = String(s ?? '');
+                    return v.length >= len ? v.slice(-len) : (' '.repeat(len - v.length) + v);
+                };
+                const padCenter = (s, len) => {
+                    const v = String(s ?? '');
+                    if (v.length >= len) return v.slice(0, len);
+                    const l = Math.floor((len - v.length) / 2);
+                    const r = len - v.length - l;
+                    return ' '.repeat(l) + v + ' '.repeat(r);
+                };
+
+                let text = '';
+                text += padCenter('COMANDA', lineWidth) + '\n';
+                if (areaLabel) text += padCenter(areaLabel, lineWidth) + '\n';
+                text += padCenter('Mesa ' + tableLabel, lineWidth) + '\n';
+                text += 'Mozo: ' + (table?.waiter || '-') + '\n';
+                text += 'Fecha: ' + formatDateTimeForTicket(new Date()) + '\n';
+                text += sep;
+                text += padEnd('Producto', colName) + padCenter('Hora', colTime) + padStart('Cant', colQty) + '\n';
+                text += sep;
+
+                activeItems.forEach((it) => {
+                    const qty = it?.qty ?? 1;
+                    const name = (it?.name || 'Producto').trim();
+                    const hour = (it?.commandTime || '').trim();
+                    const status = String(it?.status ?? '').toUpperCase();
+                    const isDelivered = !!it?.delivered || status === 'ENTREGADO' || status === 'E';
+                    const prefix = isDelivered ? 'ENTREGADO ' : '';
+                    text += padEnd(prefix + name, colName) + padCenter(hour, colTime) + padStart('x' + qty, colQty) + '\n';
+                    if (it?.note && String(it.note).trim()) text += 'Nota: ' + String(it.note).trim() + '\n';
+                    text += '\n';
+                });
+
+                // Cancelados: cada uno con "ANULADO" encima y cantidad anulada
+                if (cancellations.length) {
+                    text += sep;
+                    cancellations.forEach((c) => {
+                        const cName = String(c?.name ?? c?.description ?? 'Producto').trim();
+                        const cQty = parseFloat(c?.qtyCanceled ?? c?.quantity ?? 1) || 1;
+                        text += 'ANULADO\n';
+                        text += padEnd(cName, colName) + padCenter('', colTime) + padStart('x' + cQty, colQty) + '\n';
+                        if (c?.cancel_reason && String(c.cancel_reason).trim()) text += 'Motivo: ' + String(c.cancel_reason).trim() + '\n';
+                        text += '\n';
+                    });
+                }
+
+                const escaped = escapeHtmlForQzPrint(text);
+                const hasCancellations = cancellations.length > 0;
+                const html = '<!DOCTYPE html><html><head><meta charset="utf-8">' +
+                    '<title>' + (hasCancellations ? 'ANULADO - Comanda' : 'Comanda') + '</title>' +
+                    '<style>body{font-family:Courier New,monospace;margin:24px;background:#f5f5f5;}' +
+                    '.paper{width:' + (paperWidth === 80 ? '80mm' : '58mm') + ';max-width:' + (paperWidth === 80 ? '80mm' : '58mm') + ';background:#fff;border:' + (hasCancellations ? '2px solid #dc2626' : '1px solid #ddd') + ';padding:8px;box-shadow:0 2px 8px rgba(0,0,0,.08);}' +
+                    '.anulado-badge{background:#dc2626;color:#fff;font-weight:bold;text-align:center;padding:4px;font-size:13px;letter-spacing:2px;margin-bottom:6px;}' +
+                    'pre{margin:0;white-space:pre-wrap;word-wrap:break-word;line-height:1.25;font-size:11px;}' +
+                    '.hint{font:12px/1.4 Segoe UI,Arial,sans-serif;color:#444;margin-top:12px;}</style>' +
+                    '</head><body>' +
+                    '<div class="paper">' +
+                    (hasCancellations ? '<div class="anulado-badge">&#9733; ANULADO &#9733;</div>' : '') +
+                    '<pre>' + escaped + '</pre></div>' +
+                    '<div class="hint">Vista previa temporal sin ticketera. Presiona Ctrl+P y guarda como PDF.</div>' +
+                    '</body></html>';
+
+                const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                window.open(url, '_blank', 'noopener,noreferrer');
+                setTimeout(() => URL.revokeObjectURL(url), 10000);
             }
 
             async function printPreAccountTicket() {
@@ -1987,18 +2154,18 @@
                 const qty = parseFloat(item.qty) || 0;
                 const toCancel = Math.min(qtyToRemove, qty);
                 if (toCancel <= 0) return;
-                if (currentTable.order_movement_id) {
-                    currentTable.cancellations = currentTable.cancellations || [];
-                    currentTable.cancellations.push({
-                        pId: item.pId,
-                        name: item.name || (prod && prod.name),
-                        qtyCanceled: toCancel,
-                        price: item.price,
-                        note: item.note || null,
-                        cancel_reason: reason || null,
-                        product_snapshot: prod ? { ...prod } : null
-                    });
-                }
+                // Siempre registrar la cancelación (no solo cuando hay order_movement_id)
+                currentTable.cancellations = currentTable.cancellations || [];
+                currentTable.cancellations.push({
+                    pId: item.pId,
+                    product_id: item.pId,
+                    name: item.name || (prod && prod.name),
+                    qtyCanceled: toCancel,
+                    price: item.price,
+                    note: item.note || null,
+                    cancel_reason: reason || null,
+                    product_snapshot: prod ? { ...prod } : null
+                });
                 item.qty = qty - toCancel;
                 clampTakeawayQty(item);
                 if (item.qty <= 0) currentTable.items.splice(index, 1);
@@ -2616,6 +2783,13 @@
                     })
                     .then(async data => {
                         if (data && data.success) {
+                            // Capturar cancelaciones ANTES de limpiarlas para que aparezcan en el PDF
+                            const cancellationsSnapshot = (currentTable.cancellations || []).slice();
+                            try {
+                                openKitchenCommandPdfTab(items, { ...currentTable, cancellations: cancellationsSnapshot });
+                            } catch (pdfErr) {
+                                console.error('Comanda PDF:', pdfErr);
+                            }
                             // try {
                             //     await printKitchenTickets(items, currentTable);
                             // } catch (pzErr) {
@@ -3045,15 +3219,14 @@
                     currentTable.person_id = null;
                     saveDB();
                 }
-                const headerSelect = document.getElementById('header-client-select');
-                if (headerSelect) {
-                    for (let i = 0; i < headerSelect.options.length; i++) {
-                        if (headerSelect.options[i].text === 'Público General') {
-                            headerSelect.selectedIndex = i;
-                            break;
-                        }
-                    }
+                const picker = document.getElementById('order-client-picker');
+                if (picker && window.Alpine) {
+                    const d = Alpine.$data(picker);
+                    if (d) d.clientId = null;
                 }
+                window.dispatchEvent(new CustomEvent('clear-combobox', {
+                    detail: { name: 'header_client_id' }
+                }));
             }
 
             function getCobroOrderTotal() {
@@ -3338,6 +3511,7 @@
             window.updateTakeAwayInfo = updateTakeAwayInfo;
             window.updateTakeawayDisposableInfo = updateTakeawayDisposableInfo;
             window.printPreAccountTicket = printPreAccountTicket;
+            window.openPreAccountPdfTab = openPreAccountPdfTab;
         })();
     </script>
 

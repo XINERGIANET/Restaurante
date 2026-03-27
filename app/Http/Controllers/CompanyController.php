@@ -7,6 +7,7 @@ use App\Models\Company;
 use App\Models\Operation;
 use App\Models\Person;
 use App\Models\User;
+use App\Support\InsensitiveSearch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -95,9 +96,9 @@ class CompanyController extends Controller
         $companies = Company::query()
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
-                    $inner->where('legal_name', 'ILIKE', "%{$search}%")
-                        ->orWhere('tax_id', 'ILIKE', "%{$search}%")
-                        ->orWhere('address', 'ILIKE', "%{$search}%");
+                    InsensitiveSearch::whereInsensitiveLike($inner, 'legal_name', $search);
+                    InsensitiveSearch::whereInsensitiveLike($inner, 'tax_id', $search, 'or');
+                    InsensitiveSearch::whereInsensitiveLike($inner, 'address', $search, 'or');
                 });
             })
             ->orderByDesc('id')

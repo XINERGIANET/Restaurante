@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\DigitalWallet;
 use App\Models\Operation;
+use App\Support\InsensitiveSearch;
 use Illuminate\Http\Request;
 
 class DigitalWalletController extends Controller
@@ -45,7 +46,7 @@ class DigitalWalletController extends Controller
 
         $digitalWallets = DigitalWallet::query()
             ->when($search, function ($query) use ($search) {
-                $query->where('description', 'ILIKE', "%{$search}%");
+                InsensitiveSearch::whereInsensitiveLike($query, 'description', $search);
             })
             ->orderBy('order_num')
             ->paginate($perPage)

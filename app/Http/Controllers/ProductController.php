@@ -5,12 +5,14 @@ namespace App\Http\Controllers;
 use App\Models\Branch;
 use App\Models\Category;
 use App\Models\Operation;
+use App\Models\Person;
 use App\Models\PrinterBranch;
 use App\Models\Product;
 use App\Models\ProductBranch;
 use App\Models\ProductType;
 use App\Models\TaxRate;
 use App\Models\Unit;
+use App\Support\InsensitiveSearch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -62,9 +64,11 @@ class ProductController extends Controller
                 $query->whereHas('productBranches', fn($q) => $q->where('branch_id', $branchId));
             })
             ->when($search, function ($query) use ($search) {
-                $query->where('description', 'ILIKE', "%{$search}%")
-                    ->orWhere('code', 'ILIKE', "%{$search}%")
-                    ->orWhere('abbreviation', 'ILIKE', "%{$search}%");
+                $query->where(function ($inner) use ($search) {
+                    InsensitiveSearch::whereInsensitiveLike($inner, 'description', $search);
+                    InsensitiveSearch::whereInsensitiveLike($inner, 'code', $search, 'or');
+                    InsensitiveSearch::whereInsensitiveLike($inner, 'abbreviation', $search, 'or');
+                });
             })
             ->orderByDesc('id')
             ->paginate($perPage)
@@ -101,6 +105,21 @@ class ProductController extends Controller
             ->filter()
             ->all();
 
+        $proveedorRoleId = (int) env('PROVEEDOR_ROLE_ID', 4);
+        $suppliers = Person::whereHas('roles', function ($query) use ($branchId, $proveedorRoleId) {
+            $query->where('roles.id', $proveedorRoleId)
+                ->where('role_person.branch_id', $branchId);
+        })
+        ->when(!$branchId, fn($q) => $q->whereRaw('1=0'))
+        ->orderBy('last_name')
+        ->orderBy('first_name')
+        ->get()
+        ->map(fn($p) => [
+            'id' => $p->id,
+            'description' => trim($p->first_name . ' ' . $p->last_name) . ($p->document_number ? ' - ' . $p->document_number : ''),
+        ])
+        ->values();
+
         return view('products.index', [
             'products' => $products,
             'categories' => $categories,
@@ -114,6 +133,7 @@ class ProductController extends Controller
             'search' => $search,
             'perPage' => $perPage,
             'operaciones' => $operaciones,
+            'suppliers' => $suppliers,
         ]);
     }
 
@@ -250,6 +270,22 @@ class ProductController extends Controller
                 'printer_id' => $pb->printers->first()?->id,
             ]);
 
+        $editBranchId = $request->session()->get('branch_id');
+        $editProveedorRoleId = (int) env('PROVEEDOR_ROLE_ID', 4);
+        $editSuppliers = Person::whereHas('roles', function ($query) use ($editBranchId, $editProveedorRoleId) {
+            $query->where('roles.id', $editProveedorRoleId)
+                ->where('role_person.branch_id', $editBranchId);
+        })
+        ->when(!$editBranchId, fn($q) => $q->whereRaw('1=0'))
+        ->orderBy('last_name')
+        ->orderBy('first_name')
+        ->get()
+        ->map(fn($p) => [
+            'id' => $p->id,
+            'description' => trim($p->first_name . ' ' . $p->last_name) . ($p->document_number ? ' - ' . $p->document_number : ''),
+        ])
+        ->values();
+
         return view('products.edit', [
             'product' => $product,
             'productBranch' => $productBranch,
@@ -257,7 +293,7 @@ class ProductController extends Controller
             'units' => $units,
             'taxRates' => $taxRates,
             'productTypes' => $productTypes,
-            'suppliers' => collect(),
+            'suppliers' => $editSuppliers,
             'branches' => $branches,
             'igvByBranchId' => $igvByBranchId,
             'productBranchesByBranchId' => $productBranchesByBranchId,

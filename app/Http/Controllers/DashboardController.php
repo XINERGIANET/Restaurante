@@ -11,17 +11,22 @@ class DashboardController extends Controller
         $now = now();
         $startOfYear = $now->copy()->startOfYear();
         $endOfYear = $now->copy()->endOfYear();
+        $branchId = session('branch_id');
 
         // 1. Customers Count
-        $customersCount = \App\Models\Person::count();
+        $customersCount = \App\Models\Person::query()
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->count();
 
         // 2. Orders Metrics (Current Month vs Previous Month)
         $currentMonthOrders = \App\Models\OrderMovement::whereMonth('created_at', $now->month)
             ->whereYear('created_at', $now->year)
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
             ->count();
         
         $prevMonthOrders = \App\Models\OrderMovement::whereMonth('created_at', $now->copy()->subMonth()->month)
             ->whereYear('created_at', $now->copy()->subMonth()->year)
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
             ->count();
 
         $ordersDiff = 0;
@@ -34,6 +39,7 @@ class DashboardController extends Controller
         // 3. Monthly Sales (Current Year)
         $salesByMonth = \App\Models\SalesMovement::selectRaw('EXTRACT(MONTH FROM created_at) as month, SUM(total) as total')
             ->whereYear('created_at', $now->year)
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
             ->groupBy('month')
             ->get()
             ->pluck('total', 'month')
@@ -47,6 +53,7 @@ class DashboardController extends Controller
         // 4. Statistics Trend (Sales and Revenue/Subtotal)
         $subtotalByMonth = \App\Models\SalesMovement::selectRaw('EXTRACT(MONTH FROM created_at) as month, SUM(subtotal) as subtotal')
             ->whereYear('created_at', $now->year)
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
             ->groupBy('month')
             ->get()
             ->pluck('subtotal', 'month')
@@ -59,6 +66,9 @@ class DashboardController extends Controller
 
         // 5. Recent Orders
         $recentOrders = \App\Models\OrderMovementDetail::with(['product.category', 'orderMovement'])
+            ->when($branchId, function ($q) use ($branchId) {
+                $q->whereHas('orderMovement', fn ($inner) => $inner->where('branch_id', $branchId));
+            })
             ->latest()
             ->limit(5)
             ->get()
@@ -74,19 +84,26 @@ class DashboardController extends Controller
             });
 
         // 6. Table Occupancy
-        $totalTables = \App\Models\Table::count();
-        $occupiedTables = \App\Models\Table::whereIn('situation', ['OCUPADA', 'ocupada', 'PENDIENTE', 'Pendiente'])->count();
+        $totalTables = \App\Models\Table::query()
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->count();
+        $occupiedTables = \App\Models\Table::query()
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->whereIn('situation', ['OCUPADA', 'ocupada', 'PENDIENTE', 'Pendiente'])
+            ->count();
         $occupancyRate = $totalTables > 0 ? ($occupiedTables / $totalTables) * 100 : 0;
 
         // 7. Financial Balance (Income vs Expenses)
         $monthlyIncome = \App\Models\CashMovements::whereMonth('created_at', $now->month)
             ->whereYear('created_at', $now->year)
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
             ->whereHas('paymentConcept', function ($q) {
                 $q->where('type', 'I');
             })->sum('total');
 
         $monthlyExpense = \App\Models\CashMovements::whereMonth('created_at', $now->month)
             ->whereYear('created_at', $now->year)
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
             ->whereHas('paymentConcept', function ($q) {
                 $q->where('type', 'E');
             })->sum('total');

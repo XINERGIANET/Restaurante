@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\PaymentGateways;
 use App\Models\Operation;
+use App\Support\InsensitiveSearch;
 use Illuminate\Http\Request;
 
 class PaymentGatewaysController extends Controller
@@ -46,7 +47,7 @@ class PaymentGatewaysController extends Controller
 
         $paymentGateways = PaymentGateways::query()
             ->when($search, function ($query) use ($search) {
-                $query->where('description', 'ILIKE', "%{$search}%");
+                InsensitiveSearch::whereInsensitiveLike($query, 'description', $search);
             })
             ->orderBy('order_num')
             ->paginate($perPage)

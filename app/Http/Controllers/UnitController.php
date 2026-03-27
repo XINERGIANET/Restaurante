@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Unit;
 use App\Models\Operation;
+use App\Support\InsensitiveSearch;
 use Illuminate\Http\Request;
 
 class UnitController extends Controller
@@ -44,9 +45,11 @@ class UnitController extends Controller
         }
         $units = Unit::query()
             ->when($search, function ($query) use ($search) {
-                $query->where('description', 'ILIKE', "%{$search}%")
-                    ->orWhere('abbreviation', 'ILIKE', "%{$search}%")
-                    ->orWhere('type', 'ILIKE', "%{$search}%");
+                $query->where(function ($inner) use ($search) {
+                    InsensitiveSearch::whereInsensitiveLike($inner, 'description', $search);
+                    InsensitiveSearch::whereInsensitiveLike($inner, 'abbreviation', $search, 'or');
+                    InsensitiveSearch::whereInsensitiveLike($inner, 'type', $search, 'or');
+                });
             })
             ->orderByDesc('id')
             ->paginate($perPage)

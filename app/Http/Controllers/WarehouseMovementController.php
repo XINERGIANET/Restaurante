@@ -10,6 +10,7 @@ use App\Models\Product;
 use App\Models\ProductBranch;
 use App\Models\WarehouseMovement;
 use App\Models\WarehouseMovementDetail;
+use App\Support\InsensitiveSearch;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -177,6 +178,7 @@ class WarehouseMovementController extends Controller
             // Generar número de movimiento (secuencia independiente por tipo de documento)
             $todayCount = Movement::where('document_type_id', $documentType->id)
                 ->whereDate('created_at', Carbon::today())
+                ->where('branch_id', $branchId)
                 ->count();
             $number = str_pad($todayCount + 1, 8, '0', STR_PAD_LEFT);
 
@@ -311,11 +313,12 @@ class WarehouseMovementController extends Controller
             ->select('warehouse_movements.*')
             ->with(['movement.movementType', 'movement.documentType', 'branch'])
             ->when($branchId, fn ($q) => $q->where('warehouse_movements.branch_id', $branchId))
+            ->when(! $branchId, fn ($q) => $q->whereRaw('1 = 0'))
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($q) use ($search) {
-                    $q->where('movements.number', 'ILIKE', "%{$search}%")
-                        ->orWhere('movements.person_name', 'ILIKE', "%{$search}%")
-                        ->orWhere('movements.user_name', 'ILIKE', "%{$search}%");
+                    InsensitiveSearch::whereInsensitiveLike($q, 'movements.number', $search);
+                    InsensitiveSearch::whereInsensitiveLike($q, 'movements.person_name', $search, 'or');
+                    InsensitiveSearch::whereInsensitiveLike($q, 'movements.user_name', $search, 'or');
                 });
             })
             ->orderByDesc('movements.moved_at')
@@ -389,6 +392,7 @@ class WarehouseMovementController extends Controller
             // Generar número de movimiento (secuencia independiente por tipo de documento)
             $todayCount = Movement::where('document_type_id', $documentType->id)
                 ->whereDate('created_at', Carbon::today())
+                ->where('branch_id', $branchId)
                 ->count();
             $number = str_pad($todayCount + 1, 8, '0', STR_PAD_LEFT);
 

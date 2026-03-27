@@ -12,19 +12,31 @@
         if ($personName === '') {
             $personName = 'Público General';
         }
+        $peopleCollection = $people ?? collect();
+        $clientOptions = $peopleCollection->map(function ($p) {
+            $name = trim(($p->first_name ?? '') . ' ' . ($p->last_name ?? ''));
+            if ($name === '' && !empty($p->document_number)) {
+                $name = $p->document_number;
+            }
+
+            return ['id' => $p->id, 'description' => $name];
+        })->values()->all();
     @endphp
+    <script>
+        window.__salesClientOptions = @json($clientOptions);
+    </script>
 
     <div class="flex flex-col h-full bg-gray-50 dark:bg-gray-950">
         {{-- Misma estructura visual que orders/create (sin mesa, mozo, personas, delivery/llevar) --}}
         <div data-turbo-cache="false" class="flex flex-col flex-1 min-h-0">
             <header
-                class="flex-none bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 h-16 sm:h-18 flex items-center justify-between px-4 sm:px-6 z-10 sticky top-0 backdrop-blur-md shadow-sm">
-                <div class="flex items-center gap-3 shrink-0">
+                class="relative flex-none bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 min-h-[4rem] sm:h-18 flex flex-wrap items-center gap-2 sm:gap-3 px-3 sm:px-6 py-2 z-50 sticky top-0 backdrop-blur-md shadow-sm overflow-visible">
+                <div class="order-1 flex shrink-0 items-center gap-2 sm:gap-3 sm:mr-2">
                     <a href="{{ $salesIndexUrl }}" id="back-to-sales-link" title="Volver atrás"
                         class="h-9 w-9 sm:h-10 sm:w-10 rounded-full bg-white border border-gray-200 text-gray-500 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 transition-all flex items-center justify-center shadow-sm shrink-0">
                         <i class="ri-arrow-left-line text-lg sm:text-xl"></i>
                     </a>
-                    <div class="flex flex-col justify-center min-w-0">
+                    <div class="flex flex-col justify-center min-w-0 max-w-[40vw] sm:max-w-none">
                         <h2 class="text-sm sm:text-base font-bold text-slate-800 dark:text-white leading-tight truncate">
                             Nueva venta
                         </h2>
@@ -33,47 +45,70 @@
                     </div>
                 </div>
 
+                {{-- Una sola franja con scroll horizontal (móvil/tablet): buscador + vendedor + cliente --}}
                 <div
-                    class="flex items-center gap-3 sm:gap-4 lg:gap-5 text-sm font-medium shrink-0 ml-auto flex-nowrap overflow-x-auto overflow-y-hidden overscroll-x-contain min-w-0 max-w-full pb-1 touch-pan-x [-webkit-overflow-scrolling:touch]">
-                    <div class="flex items-center gap-1.5 shrink-0 bg-white dark:bg-gray-900 p-1 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
-                        <div class="w-28 sm:w-36 md:w-44 xl:w-56 relative">
-                            <input type="text" id="search-products" placeholder="Buscar producto..." autocomplete="off"
-                                class="w-full pl-8 pr-3 py-1.5 text-xs sm:text-sm bg-transparent border-transparent rounded-lg focus:ring-0 focus:border-transparent outline-none dark:text-white">
-                            <i
-                                class="fas fa-search absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                    class="order-3 basis-full w-full min-w-0 flex items-center overflow-x-auto overflow-y-hidden overscroll-x-contain touch-pan-x [-webkit-overflow-scrolling:touch] [scrollbar-width:thin] pb-0.5 sm:order-2 sm:basis-auto sm:w-auto sm:flex-1">
+                    <div
+                        class="flex w-max min-h-full items-center gap-3 sm:gap-4 lg:gap-5 text-sm font-medium pr-1 shrink-0">
+                        <div class="flex items-center gap-1.5 shrink-0 bg-white dark:bg-gray-900 p-1 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+                            <div class="w-28 sm:w-36 md:w-44 xl:w-56 relative">
+                                <input type="text" id="search-products" placeholder="Buscar producto..." autocomplete="off"
+                                    class="w-full pl-8 pr-3 py-1.5 text-xs sm:text-sm bg-transparent border-transparent rounded-lg focus:ring-0 focus:border-transparent outline-none dark:text-white">
+                                <i
+                                    class="fas fa-search absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                            </div>
+                            <x-ui.button size="xs" variant="outline" onclick="clearProductSearch()" class="!px-2 h-7"
+                                id="search-products-clear" type="button">
+                                <i class="ri-close-line"></i>
+                            </x-ui.button>
                         </div>
-                        <x-ui.button size="xs" variant="outline" onclick="clearProductSearch()" class="!px-2 h-7"
-                            id="search-products-clear" type="button">
-                            <i class="ri-close-line"></i>
-                        </x-ui.button>
+
+                        <div class="h-6 w-px bg-gray-300 dark:bg-slate-600 shrink-0"></div>
+
+                        <div class="flex items-center gap-1.5 shrink-0">
+                            <span class="text-gray-500 dark:text-gray-400 text-xs sm:text-sm whitespace-nowrap">Vendedor:</span>
+                            <span
+                                class="max-w-[8rem] sm:max-w-[12rem] py-1.5 px-2 bg-white dark:bg-slate-700/80 border border-gray-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 font-semibold text-xs sm:text-sm truncate">
+                                {{ $user?->name ?? 'Sin asignar' }}
+                            </span>
+                        </div>
+
+                        <div class="h-6 w-px bg-gray-300 dark:bg-slate-600 shrink-0"></div>
                     </div>
+                </div>
 
-                    <div class="h-6 w-px bg-gray-300 dark:bg-slate-600 shrink-0"></div>
-
-                    <div class="flex items-center gap-1.5 shrink-0">
-                        <span class="text-gray-500 dark:text-gray-400 text-xs sm:text-sm">Vendedor:</span>
-                        <span
-                            class="max-w-[8rem] sm:max-w-[12rem] py-1.5 px-2 bg-white dark:bg-slate-700/80 border border-gray-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 font-semibold text-xs sm:text-sm truncate">
-                            {{ $user?->name ?? 'Sin asignar' }}
-                        </span>
-                    </div>
-
-                    <div class="h-6 w-px bg-gray-300 dark:bg-slate-600 shrink-0"></div>
-
-                    <div class="flex items-center gap-1.5 shrink-0">
-                        <span class="text-gray-500 dark:text-gray-400 text-xs sm:text-sm">Cliente:</span>
-                        <div class="flex items-center gap-1">
-                            <select id="header-client-select" onchange="changeClient(this)"
-                                class="w-32 sm:w-40 md:w-48 py-1.5 px-2 bg-white dark:bg-slate-700/80 border border-gray-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 font-semibold text-xs sm:text-sm cursor-pointer focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-500/40 outline-none shadow-sm truncate appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%226b7280%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22M6%208l4%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1rem] sm:bg-[length:1.25rem] bg-[right_0.25rem_center] bg-no-repeat">
-                                <option value="{{ $person?->id ?? '' }}" selected>{{ $personName }}</option>
-                                @foreach ($people ?? collect() as $p)
-                                    @if (!$person || (isset($p->id) && $p->id != $person->id))
-                                        <option value="{{ $p->id ?? '' }}">
-                                            {{ trim(($p->first_name ?? '') . ' ' . ($p->last_name ?? '')) ?: $p->document_number ?? 'Cliente' }}
-                                        </option>
-                                    @endif
-                                @endforeach
-                            </select>
+                <div class="order-2 w-full flex shrink-0 items-center justify-end gap-1.5 overflow-visible sm:order-3 sm:w-auto sm:pl-2 sm:ml-0">
+                    <span class="text-gray-500 dark:text-gray-400 text-xs sm:text-sm whitespace-nowrap">Cliente:</span>
+                    <div class="relative z-[70] flex items-center gap-1 min-w-[220px] sm:min-w-0 overflow-visible" id="sales-client-picker" x-data="{
+                            person_id: {{ $person?->id ? (int) $person->id : 'null' }},
+                            init() {
+                                this.$nextTick(() => {
+                                    if (typeof currentSale !== 'undefined' && currentSale.person_id) {
+                                        this.person_id = currentSale.person_id;
+                                    }
+                                });
+                                this.$watch('person_id', () => {
+                                    const opts = window.__salesClientOptions || [];
+                                    const selected = opts.find(o => String(o.id) === String(this.person_id));
+                                    const name = selected ? selected.description : 'Público General';
+                                    if (typeof currentSale !== 'undefined') {
+                                        currentSale.person_id = this.person_id ? parseInt(this.person_id, 10) : null;
+                                        currentSale.clientName = name;
+                                        if (typeof saveDB === 'function') {
+                                            saveDB();
+                                        }
+                                    }
+                                    const cobroInput = document.getElementById('cobro-client-input');
+                                    if (cobroInput) {
+                                        cobroInput.value = name;
+                                    }
+                                });
+                            }
+                        }">
+                            <x-form.select.combobox :options="$clientOptions" x-model="person_id"
+                                name="header_client_id" placeholder="Buscar cliente..."
+                                :compact="true"
+                                class="w-32 sm:w-40 md:w-48" />
                             @if ($branch ?? null)
                                 <button type="button"
                                     class="inline-flex items-center justify-center h-8 w-8 rounded-lg bg-white border border-gray-200 text-gray-500 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 shadow-sm transition-colors dark:bg-gray-900 dark:border-gray-700"
@@ -84,7 +119,6 @@
                             @endif
                         </div>
                     </div>
-                </div>
             </header>
 
             {{-- lg:items-start: el aside NO se estira a toda la altura del panel productos (evita hueco enorme abajo) --}}
@@ -106,8 +140,7 @@
                     </div>
                 </div>
                 <aside
-                class="lg:w-[450px] w-[450px] md:w-[400px] lg:shrink-0 mx-auto lg:mx-0 flex-none bg-white dark:bg-gray-900 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-800 flex flex-col min-h-0 lg:h-full z-10 rounded-2xl shadow-sm"
-                >
+                class="lg:w-[450px] w-[320px] md:w-[320px] lg:shrink-0 mx-auto lg:mx-0 flex-none bg-white dark:bg-gray-900 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-800 flex flex-col min-h-0 lg:h-full z-0 rounded-2xl shadow-sm"                >
                 <div class="flex w-full shrink-0 border-b border-gray-200 dark:border-gray-700">
                         <button type="button" id="tab-resumen" onclick="switchAsideTab('resumen')"
                             class="flex-1 py-3 px-4 text-sm font-bold transition-colors rounded-tl-2xl bg-brand-500 text-white">
@@ -256,7 +289,7 @@
                     </button>
                 </div>
 
-                <form method="POST"
+                <form method="POST" data-quick-client-form data-client-combobox-name="header_client_id"
                     action="{{ route('admin.companies.branches.people.store', [$branch->company_id ?? '0', $branch->id ?? '0']) }}"
                     class="space-y-6">
                     @csrf
@@ -1023,15 +1056,73 @@
                 renderTicket();
             }
 
-            function changeClient(selectEl) {
-                if (!selectEl || !currentSale) return;
-                const name = selectEl.options[selectEl.selectedIndex]?.text || 'Público General';
-                const personId = selectEl.value ? parseInt(selectEl.value, 10) : null;
-                currentSale.clientName = name;
-                currentSale.person_id = personId;
-                saveDB();
-                const cobroInput = document.getElementById('cobro-client-input');
-                if (cobroInput) cobroInput.value = name;
+            function setupQuickClientCreate() {
+                const form = document.querySelector('form[data-quick-client-form]');
+                if (!form) return;
+                form.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    const submitBtn = form.querySelector('button[type="submit"]');
+                    const originalText = submitBtn ? submitBtn.innerHTML : '';
+                    if (submitBtn) {
+                        submitBtn.disabled = true;
+                        submitBtn.innerHTML = '<i class="ri-loader-4-line animate-spin mr-1"></i> Guardando...';
+                    }
+                    try {
+                        const fd = new FormData(form);
+                        const res = await fetch(form.action, {
+                            method: 'POST',
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'Accept': 'application/json'
+                            },
+                            body: fd
+                        });
+                        const data = await res.json().catch(() => ({}));
+                        if (!res.ok || !data?.success || !data?.id) {
+                            const validation = data?.errors && typeof data.errors === 'object'
+                                ? Object.values(data.errors).flat().join('\n')
+                                : '';
+                            throw new Error(validation || data?.message || 'No se pudo crear el cliente.');
+                        }
+
+                        const comboName = form.dataset.clientComboboxName || 'header_client_id';
+                        const label = [data.name, data.document_number].filter(Boolean).join(' - ') || 'Cliente';
+                        const newOpts = [...(window.__salesClientOptions || [])];
+                        if (!newOpts.some(o => String(o.id) === String(data.id))) {
+                            newOpts.push({
+                                id: data.id,
+                                description: label
+                            });
+                        } else {
+                            const o = newOpts.find(x => String(x.id) === String(data.id));
+                            if (o) {
+                                o.description = label;
+                            }
+                        }
+                        window.__salesClientOptions = newOpts;
+                        window.dispatchEvent(new CustomEvent('update-combobox-options', {
+                            detail: {
+                                name: comboName,
+                                options: newOpts
+                            }
+                        }));
+                        const root = document.getElementById('sales-client-picker');
+                        if (root && window.Alpine) {
+                            const d = Alpine.$data(root);
+                            if (d) {
+                                d.person_id = data.id;
+                            }
+                        }
+                        window.dispatchEvent(new CustomEvent('close-person-modal'));
+                    } catch (err) {
+                        alert(err?.message || 'Error al crear cliente.');
+                    } finally {
+                        if (submitBtn) {
+                            submitBtn.disabled = false;
+                            submitBtn.innerHTML = originalText;
+                        }
+                    }
+                });
             }
 
             function switchAsideTab(tab) {
@@ -1114,15 +1205,18 @@
                     currentSale.person_id = null;
                     saveDB();
                 }
-                const headerSelect = document.getElementById('header-client-select');
-                if (headerSelect) {
-                    for (let i = 0; i < headerSelect.options.length; i++) {
-                        if (headerSelect.options[i].text === 'Público General') {
-                            headerSelect.selectedIndex = i;
-                            break;
-                        }
+                const root = document.getElementById('sales-client-picker');
+                if (root && window.Alpine) {
+                    const d = Alpine.$data(root);
+                    if (d) {
+                        d.person_id = null;
                     }
                 }
+                window.dispatchEvent(new CustomEvent('clear-combobox', {
+                    detail: {
+                        name: 'header_client_id'
+                    }
+                }));
             }
 
             function getCobroOrderTotal() {
@@ -1381,8 +1475,9 @@
 
                 const docTypeEl = document.getElementById('cobro-document-type');
                 const cashRegEl = document.getElementById('cobro-cash-register');
-                const personId = currentSale.person_id || (document.getElementById('header-client-select')?.value ?
-                    parseInt(document.getElementById('header-client-select').value, 10) : null);
+                const headerClientHidden = document.querySelector('input[name="header_client_id"]');
+                const personId = currentSale.person_id || (headerClientHidden?.value ?
+                    parseInt(headerClientHidden.value, 10) : null);
 
                 const payload = {
                     items: items.map(it => ({
@@ -1507,6 +1602,7 @@
                 renderCategoryFilters();
                 renderProducts();
                 renderTicket();
+                setupQuickClientCreate();
                 const cobroInput = document.getElementById('cobro-client-input');
                 if (cobroInput) cobroInput.value = currentSale?.clientName || '{{ $personName }}';
                 if (document.getElementById('cobro-payment-methods-list')?.children.length === 0) {
@@ -1538,7 +1634,6 @@
             window.updateCobroTotalPaid = updateCobroTotalPaid;
             window.autocompleteCobroAmount = autocompleteCobroAmount;
             window.toggleCobroExtraFields = toggleCobroExtraFields;
-            window.changeClient = changeClient;
             window.processSale = processSale;
             window.hideStockError = hideStockError;
             window.hideNotification = hideNotification;

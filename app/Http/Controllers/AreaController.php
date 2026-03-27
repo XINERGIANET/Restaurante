@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\InsensitiveSearch;
 use Illuminate\Http\Request;
 use App\Models\Area;
 use App\Models\Operation;
@@ -49,10 +50,10 @@ class AreaController extends Controller
             ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
-                    $inner->where('name', 'ILIKE', "%{$search}%")
-                        ->orWhereHas('branch', function ($branchQuery) use ($search) {
-                            $branchQuery->where('legal_name', 'ILIKE', "%{$search}%");
-                        });
+                    InsensitiveSearch::whereInsensitiveLike($inner, 'name', $search);
+                    $inner->orWhereHas('branch', function ($branchQuery) use ($search) {
+                        InsensitiveSearch::whereInsensitiveLike($branchQuery, 'legal_name', $search);
+                    });
                 });
             })
             ->orderBy('name')

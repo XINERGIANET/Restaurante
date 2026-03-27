@@ -8,6 +8,7 @@ use App\Models\Branch;
 use App\Models\Profile;
 use App\Models\View; 
 use App\Models\Operation;
+use App\Support\InsensitiveSearch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -53,8 +54,8 @@ class MenuOptionController extends Controller
         $menuOptions = $module->menuOptions()
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
-                    $inner->where('name', 'ILIKE', "%{$search}%")
-                        ->orWhere('action', 'ILIKE', "%{$search}%");
+                    InsensitiveSearch::whereInsensitiveLike($inner, 'name', $search);
+                    InsensitiveSearch::whereInsensitiveLike($inner, 'action', $search, 'or');
                 });
             })
             ->orderBy('id', 'asc')

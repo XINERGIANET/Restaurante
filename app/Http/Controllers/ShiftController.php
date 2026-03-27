@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Branch;
 use App\Models\Operation;
 use App\Models\Shift;
+use App\Support\InsensitiveSearch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -51,9 +52,11 @@ class ShiftController extends Controller
         $shifts = Shift::query()
             ->with('branch')
             ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
-            ->when($search, function ($query, $search) {
-                $query->where('name', 'ILIKE', "%{$search}%")
-                    ->orWhere('abbreviation', 'ILIKE', "%{$search}%");
+            ->when($search, function ($query) use ($search) {
+                $query->where(function ($inner) use ($search) {
+                    InsensitiveSearch::whereInsensitiveLike($inner, 'name', $search);
+                    InsensitiveSearch::whereInsensitiveLike($inner, 'abbreviation', $search, 'or');
+                });
             })
             ->orderByDesc('id')
             ->paginate($perPage)

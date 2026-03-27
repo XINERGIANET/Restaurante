@@ -16,6 +16,7 @@ use App\Models\Card;
 use App\Models\PaymentGateways;
 use App\Models\DigitalWallet;
 use App\Services\ShiftCashClosePdfService;
+use App\Support\InsensitiveSearch;
 use Barryvdh\Snappy\Facades\SnappyPdf as PDF;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -125,13 +126,13 @@ class ShiftCashController extends Controller
             ->whereHas('cashMovementStart', function($q) use ($selectedBoxId) {
                 $q->where('cash_register_id', $selectedBoxId);
             })
-            ->when($search, function ($query, $search) {
+            ->when($search, function ($query) use ($search) {
                 $query->where(function ($q2) use ($search) {
                     $q2->whereHas('cashMovementStart.movement', function ($q) use ($search) {
-                        $q->where('number', 'ILIKE', "%{$search}%");
+                        InsensitiveSearch::whereInsensitiveLike($q, 'number', $search);
                     })
                     ->orWhereHas('cashMovementEnd.movement', function ($q) use ($search) {
-                        $q->where('number', 'ILIKE', "%{$search}%");
+                        InsensitiveSearch::whereInsensitiveLike($q, 'number', $search);
                     });
                 });
             })

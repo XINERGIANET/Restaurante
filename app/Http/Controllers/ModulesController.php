@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Modules;
 use App\Models\Operation;
+use App\Support\InsensitiveSearch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
@@ -44,8 +45,8 @@ class ModulesController extends Controller
         }
 
         $modules = Modules::query()
-            ->when($search, function ($query, $search) {
-                $query->where('name', 'ILIKE', "%{$search}%");
+            ->when($search, function ($query) use ($search) {
+                InsensitiveSearch::whereInsensitiveLike($query, 'name', $search);
             })
             ->orderBy('order_num', 'asc')
             ->paginate(10)

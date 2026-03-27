@@ -13,6 +13,7 @@ use App\Models\Profile;
 use App\Models\Role;
 use App\Models\User;
 use App\Models\View;
+use App\Support\InsensitiveSearch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -78,9 +79,9 @@ class BranchController extends Controller
             ->with('location')
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
-                    $inner->where('legal_name', 'ILIKE', "%{$search}%")
-                        ->orWhere('ruc', 'ILIKE', "%{$search}%")
-                        ->orWhere('address', 'ILIKE', "%{$search}%");
+                    InsensitiveSearch::whereInsensitiveLike($inner, 'legal_name', $search);
+                    InsensitiveSearch::whereInsensitiveLike($inner, 'ruc', $search, 'or');
+                    InsensitiveSearch::whereInsensitiveLike($inner, 'address', $search, 'or');
                 });
             })
             ->orderByDesc('id')

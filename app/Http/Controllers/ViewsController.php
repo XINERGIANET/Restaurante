@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\View;
 use App\Models\Operation;
 use App\Models\Branch;
+use App\Support\InsensitiveSearch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
@@ -46,8 +47,8 @@ class ViewsController extends Controller
         }
 
         $views = View::query()
-            ->when($search, function ($query, $search) {
-                $query->where('name', 'ILIKE', "%{$search}%");
+            ->when($search, function ($query) use ($search) {
+                InsensitiveSearch::whereInsensitiveLike($query, 'name', $search);
             })
             ->paginate(10)
             ->withQueryString(); 

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Role;
 use App\Models\Operation;
+use App\Support\InsensitiveSearch;
 use Illuminate\Http\Request;
 
 class RoleController extends Controller
@@ -48,8 +49,8 @@ class RoleController extends Controller
         $roles = Role::query()
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
-                    $inner->where('name', 'ILIKE', "%{$search}%")
-                        ->orWhere('description', 'ILIKE', "%{$search}%");
+                    InsensitiveSearch::whereInsensitiveLike($inner, 'name', $search);
+                    InsensitiveSearch::whereInsensitiveLike($inner, 'description', $search, 'or');
                 });
             })
             ->orderByDesc('id')

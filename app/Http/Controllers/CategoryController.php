@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Branch;
 use App\Models\Category;
 use App\Models\Operation;
+use App\Support\InsensitiveSearch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -73,8 +74,8 @@ class CategoryController extends Controller
             ->select('categories.*', 'category_branch.menu_type')
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($q) use ($search) {
-                    $q->where('categories.description', 'ILIKE', "%{$search}%")
-                        ->orWhere('categories.abbreviation', 'ILIKE', "%{$search}%");
+                    InsensitiveSearch::whereInsensitiveLike($q, 'categories.description', $search);
+                    InsensitiveSearch::whereInsensitiveLike($q, 'categories.abbreviation', $search, 'or');
                 });
             })
             ->orderByDesc('categories.id')

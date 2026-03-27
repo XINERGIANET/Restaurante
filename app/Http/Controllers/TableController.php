@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Area;
 use App\Models\Operation;
 use App\Models\Table;
+use App\Support\InsensitiveSearch;
 use Illuminate\Http\Request;
 
 class TableController extends Controller
@@ -50,7 +51,7 @@ class TableController extends Controller
         $tables = Table::query()
             ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
             ->when($search, function ($query) use ($search) {
-                $query->where('name', 'ILIKE', "%{$search}%");
+                InsensitiveSearch::whereInsensitiveLike($query, 'name', $search);
             })
             ->orderByDesc('id')
             ->paginate($perPage)
@@ -82,7 +83,7 @@ class TableController extends Controller
         $tables = Table::query()
             ->where('area_id', $area->id)
             ->when($search, function ($query) use ($search) {
-                $query->where('name', 'ILIKE', "%{$search}%");
+                InsensitiveSearch::whereInsensitiveLike($query, 'name', $search);
             })
             ->orderByDesc('id')
             ->paginate($perPage)

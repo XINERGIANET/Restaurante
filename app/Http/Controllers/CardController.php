@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\InsensitiveSearch;
 use Illuminate\Http\Request;
 use App\Models\Card;
 use App\Models\Operation;
@@ -44,7 +45,7 @@ class CardController extends Controller
 
         $cards = Card::query()
             ->when($search, function ($query) use ($search) {
-                $query->where('description', 'ILIKE', "%{$search}%");
+                InsensitiveSearch::whereInsensitiveLike($query, 'description', $search);
             })
             ->orderBy('order_num')
             ->paginate($perPage)

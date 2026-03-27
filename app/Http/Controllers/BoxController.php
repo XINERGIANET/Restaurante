@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\InsensitiveSearch;
 use Illuminate\Http\Request;
 use App\Models\CashRegister;
 use App\Models\Operation;
@@ -46,10 +47,10 @@ class BoxController extends Controller
 
         $cash = CashRegister::query()
             ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
-            ->when($search, function ($query, $search) {
+            ->when($search, function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
-                    $inner->where('number', 'ILIKE', "%{$search}%")
-                        ->orWhere('series', 'ILIKE', "%{$search}%");
+                    InsensitiveSearch::whereInsensitiveLike($inner, 'number', $search);
+                    InsensitiveSearch::whereInsensitiveLike($inner, 'series', $search, 'or');
                 });
             })
             ->orderBy('number', 'asc')

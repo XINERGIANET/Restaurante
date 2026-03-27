@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Branch;
 use App\Models\Operation;
 use App\Models\Profile;
+use App\Support\InsensitiveSearch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -49,7 +50,7 @@ class ProfileController extends Controller
 
         $profiles = Profile::query()
             ->when($search, function ($query) use ($search) {
-                $query->where('name', 'ILIKE', "%{$search}%");
+                InsensitiveSearch::whereInsensitiveLike($query, 'name', $search);
             })
             ->orderBy('id')
             ->paginate($perPage)

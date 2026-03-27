@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\TaxRate;
 use App\Models\Operation;
+use App\Support\InsensitiveSearch;
 use Illuminate\Http\Request;
 
 class TaxRateController extends Controller
@@ -44,7 +45,7 @@ class TaxRateController extends Controller
         }
         $taxRates = TaxRate::query()
             ->when($search, function ($query) use ($search) {
-                $query->where('description', 'ILIKE', "%{$search}%");
+                InsensitiveSearch::whereInsensitiveLike($query, 'description', $search);
             })
             ->orderBy('order_num')
             ->paginate($perPage)
