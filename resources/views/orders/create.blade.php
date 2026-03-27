@@ -249,7 +249,7 @@
                 </div>
             </div>
             <aside
-            class="lg:w-[450px] w-[320px] md:w-[320px] lg:shrink-0 mx-auto lg:mx-0 flex-none bg-white dark:bg-gray-900 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-800 flex flex-col min-h-0 lg:h-full z-0 rounded-2xl shadow-sm"
+            class="lg:w-[450px] w-[320px] md:w-[320px] lg:shrink-0 mx-auto lg:mx-0 flex-none bg-white dark:bg-gray-900 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-800 flex flex-col min-h-0 lg:h-full rounded-2xl shadow-sm"
             >
             {{-- Tabs Resumen | Cobro (Cobro oculto para Mozo) --}}
             <div class="flex w-full shrink-0 border-b border-gray-200 dark:border-gray-700">
@@ -341,7 +341,8 @@
                                     descartables (S/)</label>
                                 <input type="number" step="0.01" min="0" id="takeaway-disposable-amount"
                                     disabled
-                                    oninput="updateTakeawayDisposableInfo()"
+                                    oninput="updateTakeawayDisposableInfo(false)"
+                                    onblur="updateTakeawayDisposableInfo(true)"
                                     placeholder="0.00"
                                     class="w-full py-1.5 px-2 text-xs rounded border border-amber-200 dark:border-amber-800 bg-white dark:bg-zinc-900 focus:ring-1 focus:ring-amber-400 outline-none disabled:opacity-50">
                             </div>
@@ -1219,7 +1220,15 @@
                     const name = String(it?.name || 'Producto').trim();
                     const qty = parseFloat(it?.qty ?? 1) || 1;
                     const price = parseFloat(it?.price ?? 0) || 0;
+                    const courtesyQty = Math.max(0, Math.min(qty, parseFloat(it?.courtesyQty ?? 0) || 0));
+                    const takeawayQty = Math.max(0, Math.min(qty, parseFloat(it?.takeawayQty ?? 0) || 0));
                     txt += padEndSafe(name, colName) + padCenterSafe(String(qty), colQty) + padStartSafe('S/.' + price.toFixed(2), colPrice) + '\n';
+                    if (courtesyQty > 0 || takeawayQty > 0) {
+                        const tags = [];
+                        if (courtesyQty > 0) tags.push('Cortesia: ' + courtesyQty);
+                        if (takeawayQty > 0) tags.push('Llevar: ' + takeawayQty);
+                        txt += '  * ' + tags.join(' | ') + '\n';
+                    }
                 });
 
                 if (hasCanceled) {
@@ -1236,12 +1245,18 @@
                     });
                 }
 
-                // Total
-                const totalAmount = (groupedItems || []).reduce((sum, it) => {
-                    return sum + (parseFloat(it?.price ?? 0) * (parseFloat(it?.qty ?? 1) || 1));
-                }, 0);
+                // Totales alineados con el panel (descuenta cortesias y suma cargos aplicables).
+                const totals = getTotalsWithDelivery(groupedItems || []);
                 txt += sep;
-                txt += padEndSafe('TOTAL', lineWidth - 10) + padStartSafe('S/. ' + totalAmount.toFixed(2), 10) + '\n';
+                txt += padEndSafe('Subtotal', lineWidth - 10) + padStartSafe('S/. ' + (totals.subtotal || 0).toFixed(2), 10) + '\n';
+                txt += padEndSafe('Impuestos', lineWidth - 10) + padStartSafe('S/. ' + (totals.tax || 0).toFixed(2), 10) + '\n';
+                if ((totals.deliveryFee || 0) > 0) {
+                    txt += padEndSafe('Delivery', lineWidth - 10) + padStartSafe('S/. ' + totals.deliveryFee.toFixed(2), 10) + '\n';
+                }
+                if ((totals.takeawayDisposableFee || 0) > 0) {
+                    txt += padEndSafe('Descartables', lineWidth - 10) + padStartSafe('S/. ' + totals.takeawayDisposableFee.toFixed(2), 10) + '\n';
+                }
+                txt += padEndSafe('TOTAL', lineWidth - 10) + padStartSafe('S/. ' + (totals.total || 0).toFixed(2), 10) + '\n';
                 txt += sep;
 
                 txt += '\n';
@@ -1327,11 +1342,19 @@
                     const qty = it?.qty ?? 1;
                     const name = (it?.name || 'Producto').trim();
                     const hour = (it?.commandTime || '').trim();
+                    const courtesyQty = Math.max(0, Math.min(parseFloat(qty) || 0, parseFloat(it?.courtesyQty ?? 0) || 0));
+                    const takeawayQty = Math.max(0, Math.min(parseFloat(qty) || 0, parseFloat(it?.takeawayQty ?? 0) || 0));
                     const status = String(it?.status ?? '').toUpperCase();
                     const isDelivered = !!it?.delivered || status === 'ENTREGADO' || status === 'E';
-                    const prefix = isDelivered ? 'ENTREGADO ' : '';
-                    text += padEnd(prefix + name, colName) + padCenter(hour, colTime) + padStart('x' + qty, colQty) + '\n';
-                    if (it?.note && String(it.note).trim()) text += 'Nota: ' + String(it.note).trim() + '\n';
+                    text += '  ' + padEnd(name, Math.max(0, colName - 2)) + padCenter(hour, colTime) + padStart('x' + qty, colQty) + '\n';
+                    if (isDelivered) text += '  [ENTREGADO]\n';
+                    if (courtesyQty > 0 || takeawayQty > 0) {
+                        const tags = [];
+                        if (courtesyQty > 0) tags.push('Cortesia: ' + courtesyQty);
+                        if (takeawayQty > 0) tags.push('Llevar: ' + takeawayQty);
+                        text += '    * ' + tags.join(' | ') + '\n';
+                    }
+                    if (it?.note && String(it.note).trim()) text += '      Nota: ' + String(it.note).trim() + '\n';
                     text += '\n';
                 });
 
@@ -1574,7 +1597,15 @@
                         const nm = (it.name || 'Producto').trim();
                         const qtyCol = 'x' + qty;
                         const timeCol = (it.commandTime ? String(it.commandTime).trim() : '');
+                        const courtesyQty = Math.max(0, Math.min(parseFloat(qty) || 0, parseFloat(it?.courtesyQty ?? 0) || 0));
+                        const takeawayQty = Math.max(0, Math.min(parseFloat(qty) || 0, parseFloat(it?.takeawayQty ?? 0) || 0));
                         body += padEnd(nm, COL_NAME) + padCenter(timeCol, COL_TIME) + padStart(qtyCol, COL_QTY) + '\n';
+                        if (courtesyQty > 0 || takeawayQty > 0) {
+                            const tags = [];
+                            if (courtesyQty > 0) tags.push('Cortesia: ' + courtesyQty);
+                            if (takeawayQty > 0) tags.push('Llevar: ' + takeawayQty);
+                            body += '  * ' + tags.join(' | ') + '\n';
+                        }
                         if (it.note && String(it.note).trim()) {
                             body += 'Nota: ' + String(it.note).trim() + '\n';
                         }
@@ -1725,7 +1756,7 @@
                 }
             }
 
-            function updateTakeawayDisposableInfo() {
+            function updateTakeawayDisposableInfo(normalizeInput = false) {
                 if (!currentTable) return;
                 const chk = document.getElementById('takeaway-disposable-charge');
                 const inp = document.getElementById('takeaway-disposable-amount');
@@ -1739,7 +1770,9 @@
                         let n = parseFloat(inp.value);
                         if (isNaN(n) || n < 0) n = 0;
                         currentTable.takeaway_disposable_amount = Math.round(n * 100) / 100;
-                        inp.value = currentTable.takeaway_disposable_amount.toFixed(2);
+                        if (normalizeInput) {
+                            inp.value = currentTable.takeaway_disposable_amount.toFixed(2);
+                        }
                     }
                 }
                 saveDB();

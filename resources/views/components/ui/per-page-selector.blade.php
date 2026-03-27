@@ -1,7 +1,7 @@
 @props([
     'perPage' => 10,
     'options' => [10, 20, 50, 100],
-    'submitForm' => true, 
+    'submitForm' => false,
 ])
 
 <div {{ $attributes->merge(['class' => 'w-24']) }}> 

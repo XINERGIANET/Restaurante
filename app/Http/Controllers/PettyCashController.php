@@ -402,6 +402,8 @@ class PettyCashController extends Controller
         if (!$isApertura) {
             $hasActiveShift = CashShiftRelation::where('branch_id', session('branch_id'))
                 ->where('status', '1')
+                ->whereNull('ended_at')
+                ->whereNull('cash_movement_end_id')
                 ->whereHas('cashMovementStart', function ($query) use ($cash_register_id) {
                     $query->where('cash_register_id', $cash_register_id);
                 })

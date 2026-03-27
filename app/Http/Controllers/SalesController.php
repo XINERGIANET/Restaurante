@@ -52,6 +52,7 @@ class SalesController extends Controller
         $documentTypeId = $request->input('document_type_id');
         $paymentMethodId = $request->input('payment_method_id');
         $cashRegisterId = $request->input('cash_register_id');
+        $saleType = $request->input('sale_type');
         $perPage = (int) $request->input('per_page', 10);
         $allowedPerPage = [10, 20, 50, 100];
         if (!in_array($perPage, $allowedPerPage, true)) {
@@ -121,10 +122,10 @@ class SalesController extends Controller
             $query->where('person_id', $personId);
         }
         if ($dateFrom !== null && $dateFrom !== '') {
-            $query->where('moved_at', '>=', $dateFrom);
+            $query->where('moved_at', '>=', $dateFrom . ' 00:00:00');
         }
         if ($dateTo !== null && $dateTo !== '') {
-            $query->where('moved_at', '<=', $dateTo);
+            $query->where('moved_at', '<=', $dateTo . ' 23:59:59');
         }
         if ($paymentMethodId) {
             $query->whereExists(function ($sub) use ($paymentMethodId) {
@@ -146,6 +147,11 @@ class SalesController extends Controller
                     ->whereColumn('m.parent_movement_id', 'movements.id')
                     ->where('cm.cash_register_id', $cashRegisterId)
                     ->whereNull('cm.deleted_at');
+            });
+        }
+        if ($saleType !== null && $saleType !== '') {
+            $query->whereHas('salesMovement', function ($sub) use ($saleType) {
+                $sub->where('detail_type', $saleType);
             });
         }
 
@@ -183,6 +189,7 @@ class SalesController extends Controller
             'cashRegisterId' => $cashRegisterId,
             'cashRegisters' => $cashRegisters,
             'personId' => $personId,
+            'saleType' => $saleType,
         ];
 
         return view('sales.index', $viewData);
@@ -562,6 +569,38 @@ class SalesController extends Controller
             ], 422);
         }
 
+        // ── Validar caja ANTES de iniciar la transacción ──────────────────────
+        $branchIdForCheck = (int) session('branch_id');
+        $cashRegisterId   = $request->input('cash_register_id') ?: session('cash_register_id');
+
+        if (!$cashRegisterId) {
+            return response()->json(['success' => false, 'message' => 'Selecciona una caja antes de registrar la venta.'], 422);
+        }
+
+        $cashRegisterCheck = CashRegister::where('id', $cashRegisterId)->where('status', true)->first();
+        if (!$cashRegisterCheck) {
+            return response()->json(['success' => false, 'message' => 'La caja seleccionada no está habilitada.'], 422);
+        }
+
+        $activeShiftCheck = CashShiftRelation::query()
+            ->where('branch_id', $branchIdForCheck)
+            ->where('status', '1')
+            ->whereNull('ended_at')
+            ->whereNull('cash_movement_end_id')
+            ->whereHas('cashMovementStart', function ($q) use ($cashRegisterId) {
+                $q->where('cash_register_id', $cashRegisterId);
+            })
+            ->latest('id')
+            ->first();
+
+        if (!$activeShiftCheck) {
+            return response()->json([
+                'success' => false,
+                'message' => 'La caja "' . $cashRegisterCheck->number . '" no tiene un turno abierto. Realice una Apertura de Caja primero.',
+            ], 422);
+        }
+        // ──────────────────────────────────────────────────────────────────────
+
         try {
             DB::beginTransaction();
 
@@ -579,44 +618,6 @@ class SalesController extends Controller
 
             if (!$shift) {
                 throw new \Exception('No hay turno disponible. Por favor, crea un turno primero.');
-            }
-
-            // Obtener caja: del request (formulario Cobro) o de la sesión
-            $cashRegisterId = $request->input('cash_register_id') ?: session('cash_register_id');
-            if (!$cashRegisterId) {
-                throw new \Exception('Selecciona una caja en el formulario de cobro.');
-            }
-
-            // Verificar si la caja está abierta basándose en los movimientos
-            // Obtener el último movimiento de apertura para esta caja
-            $lastOpeningMovement = Movement::query()
-                ->whereHas('cashMovement', function ($query) use ($cashRegisterId) {
-                    $query->where('cash_register_id', $cashRegisterId);
-                })
-                ->whereHas('cashMovement.paymentConcept', function ($query) {
-                    $query->where('description', 'like', '%Apertura%');
-                })
-                ->orderBy('id', 'desc')
-                ->first();
-
-            if (!$lastOpeningMovement) {
-                throw new \Exception('No hay apertura de caja. Por favor, abre la caja primero.');
-            }
-
-            // Obtener el último movimiento de cierre para esta caja
-            $lastClosingMovement = Movement::query()
-                ->whereHas('cashMovement', function ($query) use ($cashRegisterId) {
-                    $query->where('cash_register_id', $cashRegisterId);
-                })
-                ->whereHas('cashMovement.paymentConcept', function ($query) {
-                    $query->where('description', 'like', '%Cierre%');
-                })
-                ->orderBy('id', 'desc')
-                ->first();
-
-            // Verificar que no haya cierre DESPUÉS de la apertura
-            if ($lastClosingMovement && $lastClosingMovement->id > $lastOpeningMovement->id) {
-                throw new \Exception('La caja está cerrada. Por favor, abre la caja primero.');
             }
 
             // Obtener tipos de movimiento y documento para ventas
@@ -1648,6 +1649,7 @@ class SalesController extends Controller
         $paymentMethodId = $request->input('payment_method_id');
         $cashRegisterId = $request->input('cash_register_id');
         $personId = $request->input('person_id');
+        $saleType = $request->input('sale_type');
 
         $branch = $branchId ? Branch::with('company')->find($branchId) : null;
         $companyName = $branch?->company?->legal_name;
@@ -1670,8 +1672,8 @@ class SalesController extends Controller
                     ->orWhere('user_name', 'like', "%{$search}%");
             });
         }
-        if ($dateFrom) $query->where('moved_at', '>=', $dateFrom);
-        if ($dateTo) $query->where('moved_at', '<=', $dateTo);
+        if ($dateFrom) $query->where('moved_at', '>=', $dateFrom . ' 00:00:00');
+        if ($dateTo) $query->where('moved_at', '<=', $dateTo . ' 23:59:59');
         if ($paymentMethodId) {
             $query->whereExists(function ($sub) use ($paymentMethodId) {
                 $sub->select(DB::raw(1))
@@ -1694,6 +1696,11 @@ class SalesController extends Controller
                     ->whereNull('cm.deleted_at');
             });
         }
+        if ($saleType) {
+            $query->whereHas('salesMovement', function ($sub) use ($saleType) {
+                $sub->where('detail_type', $saleType);
+            });
+        }
 
         $sales = $query->orderBy('moved_at', 'desc')->get();
 
@@ -1714,6 +1721,9 @@ class SalesController extends Controller
         if ($cashRegisterId) {
             $cr = CashRegister::find($cashRegisterId);
             $filters['Caja'] = $cr ? ($cr->number ?? $cr->id) : "ID {$cashRegisterId}";
+        }
+        if ($saleType) {
+            $filters['Tipo de venta'] = $saleType;
         }
 
         try {
@@ -1741,7 +1751,13 @@ class SalesController extends Controller
                 'Content-Length' => strlen($output),
             ]);
         } catch (\Exception $e) {
-            dd("ERROR REAL: " . $e->getMessage());
+            Log::error('Error al exportar PDF de ventas', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return redirect()
+                ->back()
+                ->with('error', 'No se pudo generar el PDF de ventas.');
         }
     }
 

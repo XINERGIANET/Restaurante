@@ -8,6 +8,7 @@ use App\Models\Branch;
 use App\Models\Card;
 use App\Models\CashMovements;
 use App\Models\CashRegister;
+use App\Models\CashShiftRelation;
 use App\Models\Category;
 use App\Models\DigitalWallet;
 use App\Models\DocumentType;
@@ -452,6 +453,7 @@ class OrderController extends Controller
         $documentTypeId = $request->input('document_type_id');
         $paymentMethodId = $request->input('payment_method_id');
         $cashRegisterId = $request->input('cash_register_id');
+        $status = $request->input('status');
         $branchId = $request->session()->get('branch_id');
 
         $branch = $branchId ? Branch::with('company')->find($branchId) : null;
@@ -502,6 +504,9 @@ class OrderController extends Controller
                         ->whereNull('cmd.deleted_at');
                 });
             })
+            ->when($status, function ($query) use ($status) {
+                $query->where('status', $status);
+            })
             ->orderByDesc('id')
             ->get();
 
@@ -522,6 +527,9 @@ class OrderController extends Controller
         if ($cashRegisterId) {
             $cr = CashRegister::find($cashRegisterId);
             $filters['Caja'] = $cr ? ($cr->number ?? $cr->id) : "ID {$cashRegisterId}";
+        }
+        if ($status) {
+            $filters['Estado'] = $status;
         }
 
         $pdf = SnappyPdf::loadView('orders.pdfs.pdf_report', [
@@ -1613,6 +1621,19 @@ class OrderController extends Controller
             }
         }
 
+        // ── Validar caja ANTES de tocar la base de datos ──────────────────────
+        $requestCashRegisterId = $request->input('cash_register_id');
+        $cashRegisterId = ($requestCashRegisterId && CashRegister::find((int) $requestCashRegisterId))
+            ? (int) $requestCashRegisterId
+            : $this->resolveActiveCashRegisterId($branchId);
+
+        try {
+            $this->assertCashRegisterIsOpen($cashRegisterId, $branchId);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        }
+        // ──────────────────────────────────────────────────────────────────────
+
         $orderMovement = null;
         if ($movementId) {
             $orderMovement = OrderMovement::where('movement_id', $movementId)->first();
@@ -1651,10 +1672,6 @@ class OrderController extends Controller
                 $paymentConcept = $this->resolveOrderPaymentConcept();
                 $cashMovementTypeId = $this->resolveCashMovementTypeId();
                 $cashDocumentTypeId = $this->resolveCashIncomeDocumentTypeId($cashMovementTypeId);
-                $requestCashRegisterId = $request->input('cash_register_id');
-                $cashRegisterId = ($requestCashRegisterId && CashRegister::find((int) $requestCashRegisterId))
-                    ? (int) $requestCashRegisterId
-                    : $this->resolveActiveCashRegisterId($branchId);
                 $cashRegister = CashRegister::find($cashRegisterId);
                 $shift = Shift::where('branch_id', $branchId)->first() ?? Shift::first();
                 if (!$shift) {
@@ -1888,11 +1905,22 @@ class OrderController extends Controller
 
     private function resolveActiveCashRegisterId(int $branchId): int
     {
-        // cash_registers no tiene branch_id; branch_id viene de session para movimientos/shifts
-        $cashRegisterId = CashRegister::query()
-            ->where('status', 'A')
-            ->orderBy('id')
-            ->value('id');
+        // Preferir caja con turno activo en esta sucursal
+        $cashRegisterId = CashShiftRelation::query()
+            ->where('branch_id', $branchId)
+            ->where('status', '1')
+            ->whereNull('ended_at')
+            ->whereNull('cash_movement_end_id')
+            ->latest('id')
+            ->value(DB::raw('(SELECT cash_register_id FROM cash_movements WHERE cash_movements.id = cash_shift_relations.cash_movement_start_id LIMIT 1)'));
+
+        if (!$cashRegisterId) {
+            // Fallback: primera caja habilitada (status booleano true=1)
+            $cashRegisterId = CashRegister::query()
+                ->where('status', true)
+                ->orderBy('id')
+                ->value('id');
+        }
 
         if (!$cashRegisterId) {
             $cashRegisterId = CashRegister::query()
@@ -1905,6 +1933,36 @@ class OrderController extends Controller
         }
 
         return (int) $cashRegisterId;
+    }
+
+    private function assertCashRegisterIsOpen(int $cashRegisterId, int $branchId): void
+    {
+        // 1. Verificar que la caja exista y esté habilitada (status es booleano: true=1, false=0)
+        $cashRegister = CashRegister::query()
+            ->where('id', $cashRegisterId)
+            ->where('status', true)
+            ->first();
+
+        if (!$cashRegister) {
+            throw new \Exception('La caja seleccionada no está habilitada.');
+        }
+
+        // 2. Verificar turno activo para esta caja específica en esta sucursal
+        // (status='1', sin ended_at ni cash_movement_end_id = turno no cerrado)
+        $activeShift = CashShiftRelation::query()
+            ->where('branch_id', $branchId)
+            ->where('status', '1')
+            ->whereNull('ended_at')
+            ->whereNull('cash_movement_end_id')
+            ->whereHas('cashMovementStart', function ($query) use ($cashRegisterId) {
+                $query->where('cash_register_id', $cashRegisterId);
+            })
+            ->latest('id')
+            ->first();
+
+        if (!$activeShift) {
+            throw new \Exception('La caja "' . $cashRegister->number . '" no tiene un turno abierto. Realice una Apertura de Caja primero.');
+        }
     }
 
     private function resolveOrderPaymentConcept(): PaymentConcept

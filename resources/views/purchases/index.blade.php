@@ -94,7 +94,7 @@
                     
                     <div class="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-4">
                         <div class="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center flex-wrap">
-                            <x-ui.per-page-selector :per-page="$perPage ?? 10" />
+                            <x-ui.per-page-selector :per-page="$perPage ?? 10" :submit-form="false" />
 
                             <div class="relative flex-1 min-w-[200px]">
                                 <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
@@ -103,7 +103,6 @@
                                 <input type="text" name="search" value="{{ $search ?? '' }}" placeholder="Buscar por proveedor, serie, documento..."
                                     class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 pl-12 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90" />
                             </div>
-
                             <div class="flex gap-2">
                                 <x-ui.button size="md" variant="primary" type="submit"
                                     class="h-11 px-6 shadow-sm hover:shadow-md transition-all duration-200 active:scale-95"
@@ -144,6 +143,51 @@
                                     <span>Nueva Compra</span>
                                 </a>
                             @endif
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap items-end gap-3 w-full">
+                        <div class="w-[150px] shrink-0 [&_label]:mb-1 [&_label]:text-xs [&_label]:font-medium [&_label]:text-gray-600 dark:[&_label]:text-gray-400">
+                            <x-form.date-picker name="date_from" label="Desde" :defaultDate="$dateFrom ?? null" dateFormat="Y-m-d" class="w-full" />
+                        </div>
+                        <div class="w-[150px] shrink-0 [&_label]:mb-1 [&_label]:text-xs [&_label]:font-medium [&_label]:text-gray-600 dark:[&_label]:text-gray-400">
+                            <x-form.date-picker name="date_to" label="Hasta" :defaultDate="$dateTo ?? null" dateFormat="Y-m-d" class="w-full" />
+                        </div>
+                        <div class="w-[170px] shrink-0">
+                            <label class="mb-1.5 block text-xs font-medium text-gray-600 dark:text-gray-400">Método de pago</label>
+                            <select name="payment_method_id"
+                                class="h-11 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-2 focus:ring-brand-500/10 dark:border-gray-600 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800">
+                                <option value="">Todos</option>
+                                @foreach ($paymentMethods ?? [] as $pm)
+                                    <option value="{{ $pm->id }}" @selected(($paymentMethodId ?? '') == $pm->id)>
+                                        {{ $pm->description ?? $pm->id }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="w-[170px] shrink-0">
+                            <label class="mb-1.5 block text-xs font-medium text-gray-600 dark:text-gray-400">Tipo de documento</label>
+                            <select name="document_type_id"
+                                class="h-11 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-2 focus:ring-brand-500/10 dark:border-gray-600 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800">
+                                <option value="">Todos</option>
+                                @foreach ($documentTypes ?? [] as $dt)
+                                    <option value="{{ $dt->id }}" @selected(($documentTypeId ?? '') == $dt->id)>
+                                        {{ $dt->name ?? $dt->id }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="w-[130px] shrink-0">
+                            <label class="mb-1.5 block text-xs font-medium text-gray-600 dark:text-gray-400">Caja</label>
+                            <select name="cash_register_id"
+                                class="h-11 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-2 focus:ring-brand-500/10 dark:border-gray-600 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800">
+                                <option value="">Todas</option>
+                                @foreach ($cashRegisters ?? [] as $cr)
+                                    <option value="{{ $cr->id }}" @selected(($cashRegisterId ?? '') == $cr->id)>
+                                        {{ $cr->number ?? $cr->id }}
+                                    </option>
+                                @endforeach
+                            </select>
                         </div>
                     </div>
                 </form>

@@ -37,6 +37,11 @@ class PurchaseController extends Controller
     public function index(Request $request)
     {
         $search = $request->input('search');
+        $dateFrom = $request->input('date_from');
+        $dateTo = $request->input('date_to');
+        $documentTypeId = $request->input('document_type_id');
+        $paymentMethodId = $request->input('payment_method_id');
+        $cashRegisterId = $request->input('cash_register_id');
         $perPage = (int) $request->input('per_page', 10);
         $allowedPerPage = [10, 20, 50, 100];
         
@@ -83,11 +88,59 @@ class PurchaseController extends Controller
                 InsensitiveSearch::whereInsensitiveLike($q, 'person_name', $search, 'or');
             });
         }
+        if ($dateFrom) {
+            $query->where('created_at', '>=', $dateFrom . ' 00:00:00');
+        }
+        if ($dateTo) {
+            $query->where('created_at', '<=', $dateTo . ' 23:59:59');
+        }
+        if ($documentTypeId) {
+            $query->whereHas('movement', function ($q) use ($documentTypeId) {
+                $q->where('document_type_id', $documentTypeId);
+            });
+        }
+        if ($cashRegisterId) {
+            $query->whereExists(function ($sub) use ($cashRegisterId) {
+                $sub->select(DB::raw(1))
+                    ->from('cash_movements as cm')
+                    ->whereColumn('cm.movement_id', 'purchase_movements.movement_id')
+                    ->where('cm.cash_register_id', $cashRegisterId)
+                    ->whereNull('cm.deleted_at');
+            });
+        }
+        if ($paymentMethodId) {
+            $query->whereExists(function ($sub) use ($paymentMethodId) {
+                $sub->select(DB::raw(1))
+                    ->from('cash_movements as cm')
+                    ->join('cash_movement_details as cmd', 'cmd.cash_movement_id', '=', 'cm.id')
+                    ->whereColumn('cm.movement_id', 'purchase_movements.movement_id')
+                    ->where('cmd.payment_method_id', $paymentMethodId)
+                    ->whereNull('cm.deleted_at')
+                    ->whereNull('cmd.deleted_at');
+            });
+        }
 
         $purchases = $query->with(['movement', 'details'])
             ->orderBy('created_at', 'desc')
             ->paginate($perPage)
             ->withQueryString();
+
+        $documentTypes = DocumentType::query()
+            ->where('movement_type_id', 1)
+            ->whereNull('deleted_at')
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        $paymentMethods = PaymentMethod::query()
+            ->whereNull('deleted_at')
+            ->orderBy('description')
+            ->get(['id', 'description']);
+
+        $cashRegisters = CashRegister::query()
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->whereNull('deleted_at')
+            ->orderBy('number')
+            ->get(['id', 'number']);
 
         $startOfMonth = Carbon::now()->startOfMonth();
         $metricsQuery = PurchaseMovement::query()
@@ -101,7 +154,22 @@ class PurchaseController extends Controller
             'total_docs'     => (clone $metricsQuery)->count(),
         ];
 
-        return view('purchases.index', compact('purchases', 'search', 'metrics', 'operaciones', 'perPage', 'viewId'));
+        return view('purchases.index', compact(
+            'purchases',
+            'search',
+            'dateFrom',
+            'dateTo',
+            'metrics',
+            'operaciones',
+            'perPage',
+            'viewId',
+            'documentTypeId',
+            'paymentMethodId',
+            'cashRegisterId',
+            'documentTypes',
+            'paymentMethods',
+            'cashRegisters'
+        ));
     }
     
     public function create(Request $request)
@@ -276,6 +344,8 @@ class PurchaseController extends Controller
             $activeShiftRelation = CashShiftRelation::with('cashMovementStart')
                 ->where('branch_id', session('branch_id'))
                 ->where('status', '1')
+                ->whereNull('ended_at')
+                ->whereNull('cash_movement_end_id')
                 ->whereHas('cashMovementStart', function ($q) use ($cashRegisterId) {
                     $q->where('cash_register_id', $cashRegisterId);
                 })
@@ -582,6 +652,8 @@ class PurchaseController extends Controller
             $activeShiftRelation = CashShiftRelation::with('cashMovementStart')
                 ->where('branch_id', session('branch_id'))
                 ->where('status', '1')
+                ->whereNull('ended_at')
+                ->whereNull('cash_movement_end_id')
                 ->whereHas('cashMovementStart', function ($q) use ($cashRegisterId) {
                     $q->where('cash_register_id', $cashRegisterId);
                 })

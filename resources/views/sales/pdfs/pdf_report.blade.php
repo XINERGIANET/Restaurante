@@ -30,6 +30,7 @@
     <div class="header">
         @if(!empty($companyId))
             <p style="font-weight: bold; font-size: 12px; margin-bottom: 2px;">{{ $companyId }}</p>
+        @endif
         <h1>Reporte Detallado de Ventas</h1>
         <p>Generado el: {{ now()->format('d/m/Y H:i') }}</p>
         <p>

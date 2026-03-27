@@ -72,7 +72,7 @@
                     <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                         <div class="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center flex-wrap">
 
-                            <x-ui.per-page-selector :per-page="$perPage" />
+                            <x-ui.per-page-selector :per-page="$perPage" :submit-form="false" />
 
                             <div class="relative flex-1 min-w-[200px]">
                                 <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
@@ -145,7 +145,7 @@
                             </div>
                             <div class="{{ $filterClass }}">
                                 <label class="{{ $labelClass }}">Método de pago</label>
-                                <select name="payment_method_id" onchange="this.form.submit()" class="{{ $inputClass }}">
+                                <select name="payment_method_id" class="{{ $inputClass }}">
                                     <option value="">Todos</option>
                                     @foreach ($paymentMethods ?? [] as $pm)
                                         <option value="{{ $pm->id }}" @selected(($paymentMethodId ?? '') == $pm->id)>
@@ -155,7 +155,7 @@
                             </div>
                             <div class="{{ $filterClass }}">
                                 <label class="{{ $labelClass }}">Tipo de documento</label>
-                                <select name="document_type_id" onchange="this.form.submit()" class="{{ $inputClass }}">
+                                <select name="document_type_id" class="{{ $inputClass }}">
                                     <option value="">Todos</option>
                                     @foreach ($documentTypes ?? [] as $dt)
                                         <option value="{{ $dt->id }}" @selected(($documentTypeId ?? '') == $dt->id)>
@@ -165,7 +165,7 @@
                             </div>
                             <div class="{{ $filterClass }}">
                                 <label class="{{ $labelClass }}">Caja</label>
-                                <select name="cash_register_id" onchange="this.form.submit()" class="{{ $inputClass }}">
+                                <select name="cash_register_id" class="{{ $inputClass }}">
                                     <option value="">Todas</option>
                                     @foreach ($cashRegisters ?? [] as $cr)
                                         <option value="{{ $cr->id }}" @selected(($cashRegisterId ?? '') == $cr->id)>
@@ -175,7 +175,7 @@
                             </div>
                             <div class="{{ $filterClass }}">
                                 <label class="{{ $labelClass }}">Tipo de venta</label>
-                                <select name="sale_type" onchange="this.form.submit()" class="{{ $inputClass }}">
+                                <select name="sale_type" class="{{ $inputClass }}">
                                     <option value="">Todos</option>
                                     <option value="IN_SITU" @selected(($saleType ?? '') == 'IN_SITU')>En Local</option>
                                     <option value="TAKE_AWAY" @selected(($saleType ?? '') == 'TAKE_AWAY')>Para Llevar</option>
@@ -188,12 +188,14 @@
                                 data-pdf-url="{{ route(
                                     'admin.sales.pdf',
                                     array_filter([
+                                        'view_id' => $viewId ?? null,
                                         'date_from' => $dateFrom,
                                         'date_to' => $dateTo,
                                         'search' => $search,
                                         'document_type_id' => $documentTypeId ?? null,
                                         'payment_method_id' => $paymentMethodId ?? null,
                                         'cash_register_id' => $cashRegisterId ?? null,
+                                        'sale_type' => $saleType ?? null,
                                     ]),
                                 ) }}"
                                 class="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-orange-600 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2">
