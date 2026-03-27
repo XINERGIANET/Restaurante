@@ -127,6 +127,11 @@
                 </form>
 
                 <div class="flex items-center gap-2">
+                    <a href="{{ route('products.import.form', $viewId ? ['view_id' => $viewId] : []) }}"
+                       class="inline-flex items-center gap-2 rounded-lg border border-green-300 bg-green-50 hover:bg-green-100 dark:border-green-700 dark:bg-green-900/20 dark:hover:bg-green-900/40 px-4 py-2.5 text-sm font-semibold text-green-700 dark:text-green-300 transition-colors h-11 shadow-sm">
+                        <i class="ri-file-excel-2-line text-base"></i>
+                        <span>Importar Excel</span>
+                    </a>
                     @foreach ($topOperations as $operation)
                         @php
                             $topTextColor = $resolveTextColor($operation);

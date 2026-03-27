@@ -315,8 +315,8 @@ class OrderController extends Controller
         }
 
         $tables = Table::query()
-            ->when($areas->isNotEmpty(), fn($q) => $q->whereIn('area_id', $areas->pluck('id')))
-            ->when($branchId && $areas->isEmpty(), fn($q) => $q->whereRaw('1 = 0'))
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+            ->when(!$branchId, fn($q) => $q->whereRaw('1 = 0'))
             ->orderBy('name')
             ->get(['id', 'name', 'area_id', 'capacity', 'situation', 'opened_at']);
 
@@ -551,8 +551,8 @@ class OrderController extends Controller
             ->orderBy('id')
             ->get(['id', 'name']);
         $tables = Table::query()
-            ->when($areas->isNotEmpty(), fn($q) => $q->whereIn('area_id', $areas->pluck('id')))
-            ->when($branchId && $areas->isEmpty(), fn($q) => $q->whereRaw('1 = 0'))
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+            ->when(!$branchId, fn($q) => $q->whereRaw('1 = 0'))
             ->orderBy('name')
             ->get(['id', 'name', 'area_id', 'capacity', 'situation', 'opened_at']);
         $tablesPayload = $tables->map(function (Table $table) use ($branchId) {

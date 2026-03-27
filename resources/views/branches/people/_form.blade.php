@@ -149,7 +149,6 @@
                 x-model="dniQuery"
                 @keydown.enter.prevent="searchDni()"
                 maxlength="11"
-                required
                 placeholder="Ej: 12345678 o 20123456789"
                 class="h-10 w-full rounded-lg border border-blue-300 bg-transparent px-4 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none dark:border-blue-700 dark:bg-gray-900 dark:text-white/90"
             />

@@ -164,6 +164,13 @@ Route::middleware('auth')->group(function () {
         ->parameters(['productos' => 'product'])
         ->only(['index', 'store', 'edit', 'update', 'destroy']);
 
+    Route::get('/products/importar', [ProductController::class, 'importForm'])
+        ->name('products.import.form');
+    Route::post('/products/importar', [ProductController::class, 'import'])
+        ->name('products.import');
+    Route::get('/products/importar/plantilla', [ProductController::class, 'downloadTemplate'])
+        ->name('products.import.template');
+
     Route::resource('/tipos-producto', ProductTypeController::class)
         ->names('product_types')
         ->parameters(['tipos-producto' => 'productType'])

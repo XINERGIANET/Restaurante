@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Imports\ProductsImport;
 use App\Models\Branch;
 use App\Models\Category;
 use App\Models\Operation;
@@ -18,6 +19,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
+use App\Exports\PlantillaProductosExport;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ProductController extends Controller
 {
@@ -632,5 +635,47 @@ class ProductController extends Controller
             ->all();
 
         $productBranch->printers()->sync($validIds);
+    }
+
+    // ─── Importación desde Excel ──────────────────────────────────────────────
+
+    public function importForm(Request $request)
+    {
+        $viewId = $request->input('view_id');
+        return view('products.import', compact('viewId'));
+    }
+
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => ['required', 'file', 'mimes:xlsx,xls,csv', 'max:5120'],
+        ], [
+            'file.required' => 'Debes seleccionar un archivo.',
+            'file.mimes'    => 'El archivo debe ser .xlsx, .xls o .csv.',
+            'file.max'      => 'El archivo no debe superar 5 MB.',
+        ]);
+
+        $branchId = (int) session('branch_id');
+        if (!$branchId) {
+            return back()->withErrors(['file' => 'No hay sucursal activa en la sesión.']);
+        }
+
+        $import = new ProductsImport($branchId);
+        Excel::import($import, $request->file('file'));
+
+        $viewId = $request->input('view_id');
+
+        return redirect()
+            ->route('products.import.form', $viewId ? ['view_id' => $viewId] : [])
+            ->with([
+                'import_errors'   => $import->errors,
+                'import_imported' => $import->imported,
+                'import_updated'  => $import->updated,
+            ]);
+    }
+
+    public function downloadTemplate()
+    {
+        return Excel::download(new PlantillaProductosExport(), 'plantilla_productos.xlsx');
     }
 }
