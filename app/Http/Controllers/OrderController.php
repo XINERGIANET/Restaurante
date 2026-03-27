@@ -1844,11 +1844,18 @@ class OrderController extends Controller
             // Buscar el máximo número usado en order_movements para esta sucursal,
             // sin depender de movement_type_id / document_type_id (que pueden variar
             // por fallback y reiniciarían la secuencia incorrectamente).
+            // El CAST varía por driver: UNSIGNED en MySQL, BIGINT en PostgreSQL/SQLite.
+            $castExpr = match ($driver) {
+                'pgsql'           => 'CAST(movements.number AS BIGINT)',
+                'sqlite'          => 'CAST(movements.number AS INTEGER)',
+                default           => 'CAST(movements.number AS UNSIGNED)',
+            };
+
             $maxNumber = DB::table('order_movements')
                 ->join('movements', 'movements.id', '=', 'order_movements.movement_id')
                 ->where('movements.branch_id', $branchId)
                 ->lockForUpdate()
-                ->max(DB::raw("CAST(movements.number AS UNSIGNED)"));
+                ->max(DB::raw($castExpr));
 
             $next = (int) ($maxNumber ?? 0) + 1;
 
