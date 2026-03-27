@@ -6,6 +6,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="turbo-cache-control" content="{{ $turboCacheControl ?? (session('status') || session('error') ? 'no-cache' : 'no-preview') }}">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    @stack('head')
+    <script>
+        // Config global para QZ (usado por resources/js/qz-tray-init.js si no hay metas en la vista)
+        window.__qzConfig = {
+            certificateUrl: @json(route('qz.certificate')),
+            signUrl: @json(route('qz.sign')),
+            signatureAlgorithm: @json(config('qz.signature_algorithm', 'SHA512')),
+            defaultPrinterName: @json(config('qz.printer_name', 'Ticketera')),
+            printMode: @json(config('qz.print_mode', 'auto')),
+            productionLock: @json((bool) config('qz.production_lock', false)),
+            allowedOrigins: @json(config('qz.allowed_origins', [])),
+        };
+    </script>
 
     <title>{{ $title ?? 'Dashboard' }} | Xinergia FOOD</title>
 

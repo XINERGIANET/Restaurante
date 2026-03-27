@@ -1,5 +1,10 @@
 @extends('layouts.app')
 
+@push('head')
+    <meta name="qz-sign-url" content="{{ route('qz.sign') }}">
+    <meta name="qz-certificate-url" content="{{ route('qz.certificate') }}">
+@endpush
+
 @section('title', 'Punto de Venta')
 
 @section('content')
@@ -869,6 +874,18 @@
                 if (new URLSearchParams(window.location.search).get('cobro') === '1' && typeof switchAsideTab === 'function') {
                     setTimeout(() => switchAsideTab('cobro'), 100);
                 }
+                // const btnPrecuenta = document.getElementById('btn-precuenta');
+                // if (btnPrecuenta && !btnPrecuenta.dataset.boundPrecuenta) {
+                //     btnPrecuenta.dataset.boundPrecuenta = '1';
+                //     btnPrecuenta.addEventListener('click', () => {
+                //         printPreAccountTicket();
+                //     });
+                // }
+                // if (new URLSearchParams(window.location.search).get('pre_account') === '1') {
+                //     setTimeout(() => {
+                //         printPreAccountTicket();
+                //     }, 250);
+                // }
             }
 
             function fixScrollLayout() {
@@ -932,6 +949,517 @@
                 serverProductBranches.some(pb => Number(pb.product_id) === Number(p.id)) &&
                 categoryIdsInBranch.includes(Number(p.category_id))
             );
+
+            /** Nombre de impresora QZ (printers_branch) asignado al producto en esta sucursal (primera ticketera). */
+            function resolveQzPrinterName(productId) {
+                const id = parseInt(productId, 10);
+                if (!id || !serverProductBranches?.length) return null;
+                const pb = serverProductBranches.find(p => Number(p.product_id) === id);
+                const n = pb && pb.qz_printer_name ? String(pb.qz_printer_name).trim() : '';
+                return n || null;
+            }
+
+            /** Nombres de impresora QZ asignadas por pivote product_branch_printer (puede ser varias). */
+            function resolveQzPrinterNames(productId) {
+                const id = parseInt(productId, 10);
+                if (!id || !serverProductBranches?.length) return [];
+                const pb = serverProductBranches.find(p => Number(p.product_id) === id);
+                const list = Array.isArray(pb?.qz_printer_names) ? pb.qz_printer_names : [];
+                const cleaned = list
+                    .map(n => String(n || '').trim())
+                    .filter(n => !!n);
+                if (cleaned.length) return cleaned;
+                const single = resolveQzPrinterName(id);
+                return single ? [single] : [];
+            }
+
+            /** Devuelve metadatos de impresoras QZ para un producto (name, width). */
+            function resolveQzPrinters(productId) {
+                const id = parseInt(productId, 10);
+                if (!id || !serverProductBranches?.length) return [];
+                const pb = serverProductBranches.find(p => Number(p.product_id) === id);
+                const list = Array.isArray(pb?.qz_printers) ? pb.qz_printers : [];
+                return list
+                    .map((it) => ({
+                        name: String(it?.name || '').trim(),
+                        width: String(it?.width || '').trim(),
+                    }))
+                    .filter((it) => it.name);
+            }
+
+            /** Ancho de ticket por impresora (sale de printers_branch.width). */
+            function resolvePrinterWidthByName(printerName) {
+                const target = String(printerName || '').trim().toLowerCase();
+                if (!target) return 58;
+                for (let i = 0; i < serverProductBranches.length; i++) {
+                    const pb = serverProductBranches[i];
+                    const plist = Array.isArray(pb?.qz_printers) ? pb.qz_printers : [];
+                    for (let j = 0; j < plist.length; j++) {
+                        const p = plist[j];
+                        const n = String(p?.name || '').trim().toLowerCase();
+                        if (n && n === target) {
+                            const w = parseInt(String(p?.width || '').replace(/[^\d]/g, ''), 10);
+                            if (!isNaN(w) && (w === 58 || w === 80)) return w;
+                        }
+                    }
+                }
+                return 58; // default seguro
+            }
+
+            /** Escapa texto para HTML (comanda impresa como pixel/HTML en Epson u otras no-RAW). */
+            function escapeHtmlForQzPrint(text) {
+                return String(text)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/\"/g, '&quot;');
+            }
+
+            /**
+             * RAW para térmicas; si falla (p. ej. Epson tinta), reintenta como HTML/pixel.
+             * Esto permite "imprimir en todos" aunque no todos acepten RAW.
+             */
+            async function printTicketWithQz(qzApi, printerName, plainText) {
+                const paperWidth = resolvePrinterWidthByName(printerName);
+                const paperMm = paperWidth === 80 ? 80 : 58;
+                const config = qzApi.configs.create(printerName, {
+                    units: 'mm',
+                    size: { width: paperMm, height: 200 },
+                    margins: 0,
+                });
+                try {
+                    // Reemplaza caracteres especiales del español a equivalentes ASCII
+                    // para que la ticketera térmica los imprima correctamente (PC437/PC850).
+                    function toEscPos(text) {
+                        return String(text || '')
+                            .replace(/á/g, 'a').replace(/Á/g, 'A')
+                            .replace(/é/g, 'e').replace(/É/g, 'E')
+                            .replace(/í/g, 'i').replace(/Í/g, 'I')
+                            .replace(/ó/g, 'o').replace(/Ó/g, 'O')
+                            .replace(/ú/g, 'u').replace(/Ú/g, 'U')
+                            .replace(/ü/g, 'u').replace(/Ü/g, 'U')
+                            .replace(/ñ/g, 'n').replace(/Ñ/g, 'N')
+                            .replace(/¿/g, '?').replace(/¡/g, '!');
+                    }
+                    // ESC/POS: init + código de página PC850 (español) + contenido + feeds + corte
+                    // Separa líneas para aplicar tamaños distintos:
+                    //   - primera línea (COMANDA / ANULADO / PRECUENTA): doble alto + doble ancho (título)
+                    //   - separadores (===...): tamaño normal
+                    //   - cabecera (Mesa, Mozo, Fecha, Area, Salon, Hora): tamaño normal
+                    //   - líneas de producto (Producto + cantidad al final): negrita + doble alto
+                    //   - resto (Nota, Estado, Motivo): normal
+                    const rawContent = toEscPos(plainText);
+                    const rawLines = rawContent.split('\n');
+                    let formattedContent = '';
+                    for (let li = 0; li < rawLines.length; li++) {
+                        const line = rawLines[li];
+                        const trimmed = line.trim();
+                        const isSep = /^=+$/.test(trimmed);
+                        const isHeader = /^(Mesa|Mozo|Fecha\/Hora|Fecha|Area|Salon|Hora|Producto|Cant|Total|Subtotal)/.test(trimmed)
+                            || /^(Mesa |COMANDA|COCINA|PRECUENTA|ANULADO)/.test(trimmed);
+                        const isMeta = /^(Nota|Estado|Motivo|DETALLE|S\/\.)/.test(trimmed) || trimmed === '';
+                        if (li === 0) {
+                            // Título principal: solo negrita
+                            formattedContent += '\x1B\x45\x01' + line + '\x1B\x45\x00\n';
+                        } else if (isSep || isHeader || isMeta) {
+                            // Separadores, cabecera y metadatos: tamaño normal
+                            formattedContent += '\x1B\x21\x00' + line + '\n';
+                        } else {
+                            // Líneas de producto: negrita + doble alto
+                            formattedContent += '\x1B\x45\x01' +  // ESC E 1 → negrita ON
+                                '\x1B\x21\x10' +                  // ESC ! 0x10 → doble alto
+                                line +
+                                '\x1B\x45\x00' +                  // ESC E 0 → negrita OFF
+                                '\x1B\x21\x00\n';                 // tamaño normal
+                        }
+                    }
+                    const ticketCommands =
+                        '\x1B\x40' +               // ESC @ (init/reset)
+                        '\x1B\x74\x02' +           // ESC t 2 → code page PC850 (Latin-1, incluye español)
+                        formattedContent +
+                        '\n\n' +
+                        '\x1D\x56\x42\x10';        // GS V B 16 → avance + corte parcial
+
+                    await qzApi.print(config, [{
+                        type: 'raw',
+                        format: 'command',
+                        flavor: 'plain',
+                        data: ticketCommands,
+                    }]);
+                    return;
+                } catch (rawErr) {
+                    console.warn('QZ Tray: RAW no disponible en "' + printerName + '", usando HTML.', rawErr);
+                }
+
+                const htmlLines = String(plainText || '')
+                    .split('\n')
+                    .map((line) => {
+                        const t = String(line || '');
+                        const trimmed = t.trimStart();
+                        if (trimmed.startsWith('Hora:') || trimmed.startsWith('Nota:')) {
+                            return '<span class="meta">' + escapeHtmlForQzPrint(t) + '</span>';
+                        }
+                        return escapeHtmlForQzPrint(t);
+                    })
+                    .join('\n');
+
+                const html = '<!DOCTYPE html><html><head><meta charset="utf-8" style="font-size:15pt;">' +
+                    '<style>@page{size:' + paperMm + 'mm auto;margin:0;}html,body{width:' + paperMm + 'mm;margin:0;padding:0;}' +
+                    'body{font-family:Segoe UI,Arial,sans-serif;}' +
+                    'pre{white-space:pre-wrap;word-wrap:break-word;margin:0;padding:0;font-family:inherit;line-height:1.2;}' +
+                    '.meta{font-size:8pt;color:#555;}</style></head><body><pre>' +
+                    htmlLines + '</pre></body></html>';
+
+                await qzApi.print(config, [{
+                    type: 'pixel',
+                    format: 'html',
+                    flavor: 'plain',
+                    data: html,
+                }]);
+            }
+
+            function formatDateTimeForTicket(dt) {
+                const d = dt instanceof Date ? dt : new Date();
+                const dd = String(d.getDate()).padStart(2, '0');
+                const mm = String(d.getMonth() + 1).padStart(2, '0');
+                const yy = d.getFullYear();
+                const hh = String(d.getHours()).padStart(2, '0');
+                const mi = String(d.getMinutes()).padStart(2, '0');
+                return `${dd}/${mm}/${yy} ${hh}:${mi}`;
+            }
+
+            function buildPreAccountTicketText(table, groupedItems, canceledItems, paperWidth = 58) {
+                const lineWidth = paperWidth === 80 ? 48 : 24;
+                const colQty = 4;
+                const colPrice = 10;
+                const colName = lineWidth - colQty - colPrice;
+                const sep = '='.repeat(lineWidth) + '\n';
+                const hasCanceled = Array.isArray(canceledItems) && canceledItems.length > 0;
+
+                function padEndSafe(str, length) {
+                    const s = String(str ?? '').trim();
+                    if (s.length >= length) return s.slice(0, length);
+                    return s + ' '.repeat(length - s.length);
+                }   
+                function padCenterSafe(str, length) {
+                    const s = String(str ?? '').trim();
+                    if (s.length >= length) return s.slice(0, length);
+                    return ' '.repeat(Math.floor((length - s.length) / 2)) + s + ' '.repeat(length - s.length - Math.floor((length - s.length) / 2));
+                }
+
+                function padStartSafe(str, length) {
+                    const s = String(str ?? '').trim();
+                    if (s.length >= length) return s.slice(-length);
+                    return ' '.repeat(length - s.length) + s;
+                }
+
+                const area = String(table?.original_area_name || 'Sin area').trim();
+                const salon = String(table?.original_location_name || table?.location_name || 'Salon').trim();
+                const mesaLabel = String(table?.name ?? table?.table_id ?? '-');
+                const mozo = String(table?.waiter || 'Sin asignar').trim();
+                const fechaHora = formatDateTimeForTicket(new Date());
+
+                let txt = '';
+                if (hasCanceled) txt += 'ANULADO\n';
+                txt += padCenterSafe('PRECUENTA', lineWidth) + '\n';
+                txt += `Salon: ${salon}\n`;
+                txt += `Area: ${area} (Mesa: ${mesaLabel})\n`;
+                txt += `Mozo: ${mozo}\n`;
+                txt += `Fecha/Hora: ${fechaHora}\n`;
+                txt += sep;
+                txt += padEndSafe('Producto', colName) + padCenterSafe('Cant', colQty) + padStartSafe('P. unitario', colPrice) + '\n';
+                txt += sep;
+
+                (groupedItems || []).forEach((it) => {
+                    const name = String(it?.name || 'Producto').trim();
+                    const qty = parseFloat(it?.qty ?? 1) || 1;
+                    const price = parseFloat(it?.price ?? 0) || 0;
+                    txt += padEndSafe(name, colName) + padCenterSafe(String(qty), colQty) + padStartSafe('S/.' + price.toFixed(2), colPrice) + '\n';
+                });
+
+                if (hasCanceled) {
+                    txt += sep;
+                    txt += 'DETALLE ANULADO\n';
+                    txt += sep;
+                    canceledItems.forEach((c) => {
+                        const cName = String(c?.name || c?.description || 'Producto').trim();
+                        const cQty = parseFloat(c?.qtyCanceled ?? c?.quantity ?? 1) || 1;
+                        txt += padEndSafe(cName, colName) + padStartSafe(String(cQty) + ' S/', colQty) + '\n';
+                        if (c?.cancel_reason && String(c.cancel_reason).trim()) {
+                            txt += 'Motivo: ' + String(c.cancel_reason).trim() + '\n';
+                        }
+                    });
+                }
+
+                // Total
+                const totalAmount = (groupedItems || []).reduce((sum, it) => {
+                    return sum + (parseFloat(it?.price ?? 0) * (parseFloat(it?.qty ?? 1) || 1));
+                }, 0);
+                txt += sep;
+                txt += padEndSafe('TOTAL', lineWidth - 10) + padStartSafe('S/. ' + totalAmount.toFixed(2), 10) + '\n';
+                txt += sep;
+
+                txt += '\n';
+                return txt;
+            }
+
+            async function printPreAccountTicket() {
+                const qzApi = window.qz;
+                if (!qzApi) {
+                    if (typeof showNotification === 'function') {
+                        showNotification('Impresion', 'QZ Tray no esta disponible.', 'warning');
+                    }
+                    return;
+                }
+                const groupedItems = getItemsGroupedByProduct();
+                const canceledItems = Array.isArray(currentTable?.cancellations) ? currentTable.cancellations : [];
+                if (!groupedItems.length && !canceledItems.length) {
+                    if (typeof showNotification === 'function') {
+                        showNotification('Precuenta', 'No hay productos para imprimir.', 'warning');
+                    }
+                    return;
+                }
+
+                const resolvePreAccountPrinterName = () => {
+                    const productIds = new Set();
+                    (groupedItems || []).forEach((it) => {
+                        const pid = parseInt(it?.pId ?? it?.product_id, 10) || 0;
+                        if (pid) productIds.add(pid);
+                    });
+                    (canceledItems || []).forEach((c) => {
+                        const pid = parseInt(c?.pId ?? c?.product_id, 10) || 0;
+                        if (pid) productIds.add(pid);
+                    });
+
+                    for (const pid of productIds) {
+                        const defs = resolveQzPrinters(pid);
+                        if (defs.length && defs[0]?.name) return String(defs[0].name).trim();
+                        const names = resolveQzPrinterNames(pid);
+                        if (names.length) return String(names[0]).trim();
+                        const single = resolveQzPrinterName(pid);
+                        if (single) return String(single).trim();
+                    }
+
+                    return (window.__qzConfig && window.__qzConfig.printerName)
+                        ? String(window.__qzConfig.printerName).trim()
+                        : '';
+                };
+
+                const printerName = resolvePreAccountPrinterName();
+                if (!printerName) {
+                    if (typeof showNotification === 'function') {
+                        showNotification('Impresion', 'No hay ticketera asignada (qz_printer_name) para esta precuenta.', 'warning');
+                    }
+                    return;
+                }
+
+                const paperWidth = resolvePrinterWidthByName(printerName);
+                const ticketText = buildPreAccountTicketText(currentTable, groupedItems, canceledItems, paperWidth);
+                try {
+                    if (!qzApi.websocket.isActive()) await qzApi.websocket.connect();
+                    await qzApi.printers.find(printerName);
+                    await printTicketWithQz(qzApi, printerName, ticketText);
+                    if (typeof showNotification === 'function') {
+                        showNotification('Precuenta', 'Ticket enviado a impresion.', 'success');
+                    }
+                } catch (e) {
+                    console.error('Precuenta: error de impresion', e);
+                    if (typeof showNotification === 'function') {
+                        showNotification('Impresion', 'No se pudo imprimir la precuenta en "' + printerName + '".', 'error');
+                    }
+                }
+            }
+
+            /**
+             * Imprime comandas agrupadas por ticketera (nombre exacto como en Windows / QZ).
+             * Requiere window.qz (bundle qz-tray-init) y productos con ticketera en catálogo.
+             */
+            async function printKitchenTickets(items, table) {
+                const activeItems = Array.isArray(items) ? items : [];
+                const hasSavedOrder = !!(table?.order_movement_id);
+                const isCurrentPendingOrder = hasSavedOrder && (table?.order_movement_id === serverOrderMovementId);
+                const serverCancelled = (isCurrentPendingOrder && Array.isArray(serverPendingCancelledDetails))
+                    ? serverPendingCancelledDetails
+                    : [];
+                const clientCancelled = Array.isArray(table?.cancellations) ? table.cancellations : [];
+                const mergedCancellations = [
+                    ...serverCancelled.map((d) => ({
+                        pId: d?.product_id ?? null,
+                        name: d?.description ?? 'Producto',
+                        qtyCanceled: d?.quantity ?? 0,
+                        cancel_reason: d?.comment ?? '',
+                    })),
+                    ...clientCancelled,
+                ];
+                if (!activeItems.length && !mergedCancellations.length) return;
+                const qzApi = window.qz;
+                if (!qzApi) {
+                    console.warn('QZ Tray: script no cargado. Ejecuta npm run dev o npm run build.');
+                    return;
+                }
+                const byPrinter = {};
+                activeItems.forEach((it) => {
+                    const pId = parseInt(it.pId, 10) || 0;
+                    if (!pId) return;
+                    const pdefs = resolveQzPrinters(pId);
+                    const pnames = pdefs.length ? pdefs.map(p => p.name) : resolveQzPrinterNames(pId);
+                    if (!pnames.length) return;
+                    // Si un producto está asignado a varias impresoras (pivote), se imprime en todas.
+                    pnames.forEach((pname) => {
+                        if (!byPrinter[pname]) byPrinter[pname] = [];
+                        byPrinter[pname].push(it);
+                    });
+                });
+                const canceledByPrinter = {};
+                mergedCancellations.forEach((c) => {
+                    const pId = parseInt(c?.pId ?? c?.product_id, 10) || 0;
+                    const qty = parseFloat(c?.qtyCanceled ?? c?.quantity ?? 0) || 0;
+                    if (!pId || qty <= 0) return;
+                    const pdefs = resolveQzPrinters(pId);
+                    const pnames = pdefs.length ? pdefs.map(p => p.name) : resolveQzPrinterNames(pId);
+                    if (!pnames.length) return;
+                    pnames.forEach((pname) => {
+                        if (!canceledByPrinter[pname]) canceledByPrinter[pname] = [];
+                        canceledByPrinter[pname].push({
+                            pId,
+                            name: String(c?.name ?? c?.description ?? 'Producto').trim(),
+                            qty,
+                            reason: String(c?.cancel_reason ?? c?.comment ?? '').trim(),
+                        });
+                    });
+                });
+                const names = Array.from(new Set([
+                    ...Object.keys(byPrinter),
+                    ...Object.keys(canceledByPrinter),
+                ]));
+                if (!names.length) {
+                    if (typeof showNotification === 'function') {
+                        showNotification('Impresión', 'No hay impresoras asignadas a los productos (product_branch_printer).', 'warning');
+                    }
+                    return;
+                }
+
+                try {
+                    if (!qzApi.websocket.isActive()) {
+                        await qzApi.websocket.connect();
+                    }
+                } catch (e) {
+                    console.error('QZ Tray: no se pudo conectar.', e);
+                    if (typeof showNotification === 'function') {
+                        showNotification('Impresión', 'No se pudo conectar con QZ Tray. ¿Está instalado y en ejecución?', 'warning');
+                    }
+                    return;
+                }
+                function padEnd(str, length) {
+                    const s = String(str ?? '');
+                    if (s.length >= length) return s.slice(0, length);
+                    return s + ' '.repeat(length - s.length);
+                }
+
+                function padCenter(str, length) {
+                    const s = String(str ?? '');
+                    if (s.length >= length) return s.slice(0, length);
+                    return ' '.repeat(Math.floor((length - s.length) / 2)) + s + ' '.repeat(length - s.length - Math.floor((length - s.length) / 2));
+                }
+
+                function padStart(str, length) {
+                    const s = String(str ?? '');
+                    if (s.length >= length) return s.slice(-length);
+                    return ' '.repeat(length - s.length) + s;
+                }
+
+                const tableLabel = table?.name ?? table?.table_id ?? 'Mesa';
+                const areaLabel = (table?.original_area_name || '').trim();
+
+                for (let i = 0; i < names.length; i++) {
+                    const pname = names[i];
+                    const lines = byPrinter[pname] || [];
+                    let body = '';
+                    const paperWidth = resolvePrinterWidthByName(pname);
+                    const LINE_WIDTH = paperWidth === 80 ? 48 : 24;
+                    const COL_QTY = 4; // x99
+                    const COL_TIME = 6; // "09:54"
+                    const COL_NAME = LINE_WIDTH - COL_TIME - COL_QTY;
+                    const separator = '='.repeat(LINE_WIDTH) + '\n';
+                    const orderNumber = String(table?.order_movement_number ?? '').trim();
+                    const orderDate = String(table?.order_movement_date ?? '').trim();
+                    const comandaLabel = [`COMANDA: ${table?.order_movement_id}`, orderNumber].filter(Boolean).join(': ');
+                    const comandaSub = orderDate ? orderDate : 'COCINA';
+                    const header = padCenter(comandaLabel, LINE_WIDTH) + '\n' +
+                        padCenter(comandaSub, LINE_WIDTH) + '\n' +
+                        (areaLabel ? areaLabel + '\n' : '') +
+                        'Mesa ' + tableLabel + '\n' +
+                        'Mozo: ' + (table?.waiter || '-') + '\n' +
+                        'Fecha: ' + new Date().toLocaleString() + '\n' +
+                        separator +
+                        padEnd('Producto', COL_NAME) + padCenter('Hora', COL_TIME) + padStart('Cant', COL_QTY) + '\n' +
+                        separator;
+                    const canceledByProduct = {};
+                    (canceledByPrinter[pname] || []).forEach((c) => {
+                        const pid = parseInt(c?.pId, 10) || 0;
+                        const qty = parseFloat(c?.qty ?? 0) || 0;
+                        if (!pid || qty <= 0) return;
+                        canceledByProduct[pid] = (canceledByProduct[pid] || 0) + qty;
+                    });
+
+                    lines.forEach((it) => {
+                        const qty = it.qty ?? 1;
+                        const nm = (it.name || 'Producto').trim();
+                        const qtyCol = 'x' + qty;
+                        const timeCol = (it.commandTime ? String(it.commandTime).trim() : '');
+                        body += padEnd(nm, COL_NAME) + padCenter(timeCol, COL_TIME) + padStart(qtyCol, COL_QTY) + '\n';
+                        if (it.note && String(it.note).trim()) {
+                            body += 'Nota: ' + String(it.note).trim() + '\n';
+                        }
+                        const status = String(it?.status || '').toUpperCase();
+                        const isDelivered = !!it?.delivered || status === 'ENTREGADO' || status === 'E';
+                        // Cancelado: desde el item (si existe) o desde la lista de cancelaciones de la mesa.
+                        const pId = parseInt(it?.pId ?? it?.product_id, 10) || 0;
+                        const canceledQty = canceledByProduct[pId] || 0;
+                        const isCanceled = status === 'CANCELADO' || status === 'C' || canceledQty > 0;
+                        const statusLabel = isCanceled
+                            ? ('CANCELADO' + (canceledQty > 0 ? ' x' + canceledQty : ''))
+                            : (isDelivered ? 'ENTREGADO' : 'PENDIENTE');
+                        body += 'Estado: ' + statusLabel + '\n';
+                        body += '\n';
+                    });
+                    const canceledItems = canceledByPrinter[pname] || [];
+                    if (canceledItems.length) {
+                        body += separator;
+                        body += padCenter('ANULADO', LINE_WIDTH) + '\n';
+                        body += separator;
+                        canceledItems.forEach((c) => {
+                            const qtyCol = 'x' + (c.qty ?? 1);
+                            body += padEnd('ANULADO ' + (c.name || 'Producto'), COL_NAME) + padCenter('', COL_TIME) + padStart(qtyCol, COL_QTY) + '\n';
+                            if (c.reason) {
+                                body += 'Motivo: ' + c.reason + '\n';
+                            }
+                            body += '\n';
+                        });
+                    }
+                    const data = header + body + '\n\n';
+                    try {
+                        // Validar que la impresora exista en QZ (por nombre exacto del sistema).
+                        try {
+                            await qzApi.printers.find(pname);
+                        } catch (notFoundErr) {
+                            const msg = 'QZ no encontró la impresora "' + pname + '". Verifica el nombre exacto en Windows/QZ.';
+                            console.error(msg, notFoundErr);
+                            if (typeof showNotification === 'function') {
+                                showNotification('Impresión', msg, 'error');
+                            }
+                            continue;
+                        }
+
+                        await printTicketWithQz(qzApi, pname, data);
+                    } catch (e) {
+                        console.error('QZ Tray: error al imprimir en ' + pname, e);
+                        if (typeof showNotification === 'function') {
+                            showNotification('Impresión', 'No se pudo imprimir en "' + pname + '". ' + (e?.message || ''), 'error');
+                        }
+                    }
+                }
+            }
 
             function getItemTaxRatePercent(item) {
                 const rate = parseFloat(item?.tax_rate);
@@ -2088,6 +2616,11 @@
                     })
                     .then(async data => {
                         if (data && data.success) {
+                            // try {
+                            //     await printKitchenTickets(items, currentTable);
+                            // } catch (pzErr) {
+                            //     console.error('QZ Tray:', pzErr);
+                            // }
                             // Limpiar cancelaciones ya persistidas
                             currentTable.cancellations = [];
                             saveDB();
@@ -2387,15 +2920,12 @@
             }
 
             function goBack() {
-                const items = currentTable?.items || [];
-                const cancels = currentTable?.cancellations || [];
-                // Si no hay productos en la mesa, liberar la mesa y volver sin guardar nada
-                if (!items.length && !cancels.length) {
-                    releaseTableAndGoBack();
-                    return;
-                }
-                // Si hay productos, guardar el pedido y volver al listado
-                processOrder();
+                //Solo regresar a ordenes, con turbo
+                if (window.Turbo && typeof window.Turbo.visit === 'function') {
+                    window.Turbo.visit("{{ route('orders.index') }}", {
+                        action: 'replace'
+                    });
+                } 
             }
 
             // Inicializar cuando el DOM esté listo
@@ -2807,6 +3337,9 @@
             window.updateDeliveryInfo = updateDeliveryInfo;
             window.updateTakeAwayInfo = updateTakeAwayInfo;
             window.updateTakeawayDisposableInfo = updateTakeawayDisposableInfo;
+            window.printPreAccountTicket = printPreAccountTicket;
         })();
     </script>
+
+    @vite(['resources/js/qz-tray-init.js'])
 @endsection

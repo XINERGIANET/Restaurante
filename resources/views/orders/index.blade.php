@@ -593,7 +593,12 @@
                         });
                         this.tickElapsed();
                         const elapsedInterval = setInterval(() => this.tickElapsed(), 1000);
-                        this.$cleanup(() => clearInterval(elapsedInterval));
+                        // Alpine $cleanup no está disponible en todas las builds; con Turbo, limpiamos al cachear/navegar.
+                        const cleanup = () => {
+                            try { clearInterval(elapsedInterval); } catch (e) {}
+                        };
+                        window.addEventListener('beforeunload', cleanup, { once: true });
+                        document.addEventListener('turbo:before-cache', cleanup, { once: true });
                         const self = this;
                         window.__posRefreshTables = function() {
                             self.refreshTables();
@@ -712,6 +717,21 @@
                         }
                     },
 
+                    async preAccountTicket(table) {
+                        const ok = await this.ensureWaiterPin();
+                        if (!ok) return;
+                        const target = new URL(this.createUrl, window.location.origin);
+                        target.searchParams.set('table_id', table.id);
+                        target.searchParams.set('pre_account', '1');
+                        target.searchParams.set('_t', Date.now());
+                        if (window.Turbo && typeof window.Turbo.visit === 'function') {
+                            window.Turbo.visit(target.toString(), {
+                                action: 'advance'
+                            });
+                        } else {
+                            window.location.href = target.toString();
+                        }
+                    },
                     async chargeTable(table) {
                         const ok = await this.ensureWaiterPin();
                         if (!ok) return;
@@ -837,7 +857,7 @@
             });
 
         };
-
+        
 
         registerPosSystem();
         document.addEventListener('alpine:init', registerPosSystem);

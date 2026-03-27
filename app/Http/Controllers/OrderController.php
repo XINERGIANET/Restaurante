@@ -722,7 +722,7 @@ class OrderController extends Controller
         // Solo product_branches de esta sucursal cuyo producto es vendible (mismo criterio que Ventas).
         $productBranches = $branchId
             ? ProductBranch::where('branch_id', $branchId)
-            ->with(['product.productType', 'taxRate'])
+            ->with(['product.productType', 'taxRate', 'printers'])
             ->get()
             ->filter(function ($productBranch) {
                 if ($productBranch->product === null) return false;
@@ -731,6 +731,26 @@ class OrderController extends Controller
             })
             ->map(function ($productBranch) {
                 $taxRatePct = $productBranch->taxRate ? (float) $productBranch->taxRate->tax_rate : null;
+                $printerNames = $productBranch->printers
+                    ->pluck('name')
+                    ->map(fn ($n) => trim((string) $n))
+                    ->filter(fn ($n) => $n !== '')
+                    ->values()
+                    ->all();
+                $printers = $productBranch->printers
+                    ->map(function ($p) {
+                        $name = trim((string) ($p->name ?? ''));
+                        $widthRaw = trim((string) ($p->width ?? ''));
+                        if ($name === '') return null;
+                        return [
+                            'name' => $name,
+                            'width' => $widthRaw !== '' ? $widthRaw : null,
+                        ];
+                    })
+                    ->filter()
+                    ->values()
+                    ->all();
+
                 return [
                     'id' => $productBranch->id,
                     'product_id' => $productBranch->product_id,
@@ -738,6 +758,12 @@ class OrderController extends Controller
                     'stock' => (float) ($productBranch->stock ?? 0),
                     'tax_rate' => $taxRatePct,
                     'favorite' => ($productBranch->favorite ?? 'N'),
+                    // compat (1 impresora)
+                    'qz_printer_name' => $printerNames[0] ?? null,
+                    // recomendado (varias impresoras por pivote)
+                    'qz_printer_names' => $printerNames,
+                    // recomendado: info completa para formateo por ticketera
+                    'qz_printers' => $printers,
                 ];
             })
             ->values()

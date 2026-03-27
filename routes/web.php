@@ -42,6 +42,7 @@ use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\BranchParameterController;
 use App\Http\Controllers\ProductTypeController;
 use App\Http\Controllers\PrinterBranchController;
+use App\Http\Controllers\QzTrayController;
 
 Route::prefix('restaurante')->name('restaurant.')->group(function () {
     Route::view('/', 'restaurant.home', ['title' => 'Xinergia Restaurante'])->name('home');
@@ -458,4 +459,10 @@ Route::middleware('auth')->group(function () {
         ->names('printers_branch')
         ->parameters(['impresoras-sucursal' => 'printerBranch'])
         ->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
+
+    Route::prefix('qz-tray')->name('qz.')->group(function () {
+        Route::get('/certificate', [QzTrayController::class, 'certificate'])->name('certificate');
+        Route::match(['GET', 'POST'], '/sign', [QzTrayController::class, 'sign'])->name('sign');
+        Route::get('/prueba', [QzTrayController::class, 'test'])->name('test');
+    });
 });
