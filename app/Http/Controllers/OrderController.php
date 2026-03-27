@@ -1833,39 +1833,29 @@ class OrderController extends Controller
     {
         $driver = DB::connection()->getDriverName();
 
-        // Advisory lock por driver para serializar la generación del número
-        // evitando duplicados cuando dos pedidos se crean al mismo tiempo.
+        // Advisory lock por driver para serializar la generación del número.
         if ($driver === 'pgsql') {
             DB::statement('SELECT pg_advisory_xact_lock(?)', [7000000 + $branchId]);
         } elseif ($driver === 'mysql' || $driver === 'mariadb') {
-            $lockName = "order_num_{$branchId}_{$movementTypeId}_{$documentTypeId}";
-            DB::statement('SELECT GET_LOCK(?, 10)', [$lockName]);
+            DB::statement('SELECT GET_LOCK(?, 10)', ["order_num_{$branchId}"]);
         }
 
         try {
-            $last = Movement::query()
-                ->where('branch_id', $branchId)
-                ->where('movement_type_id', $movementTypeId)
-                ->where('document_type_id', $documentTypeId)
-                ->orderByDesc('id')
+            // Buscar el máximo número usado en order_movements para esta sucursal,
+            // sin depender de movement_type_id / document_type_id (que pueden variar
+            // por fallback y reiniciarían la secuencia incorrectamente).
+            $maxNumber = DB::table('order_movements')
+                ->join('movements', 'movements.id', '=', 'order_movements.movement_id')
+                ->where('movements.branch_id', $branchId)
                 ->lockForUpdate()
-                ->first();
+                ->max(DB::raw("CAST(movements.number AS UNSIGNED)"));
 
-            $lastCorrelative = 0;
-            if ($last) {
-                $raw = trim((string) $last->number);
-                if (preg_match('/^\d+$/', $raw) === 1) {
-                    $lastCorrelative = (int) $raw;
-                } elseif (preg_match('/(\d+)-\d{4}$/', $raw, $matches) === 1) {
-                    $lastCorrelative = (int) $matches[1];
-                }
-            }
+            $next = (int) ($maxNumber ?? 0) + 1;
 
-            return str_pad((string) ($lastCorrelative + 1), 8, '0', STR_PAD_LEFT);
+            return str_pad((string) $next, 8, '0', STR_PAD_LEFT);
         } finally {
             if ($driver === 'mysql' || $driver === 'mariadb') {
-                $lockName = "order_num_{$branchId}_{$movementTypeId}_{$documentTypeId}";
-                DB::statement('SELECT RELEASE_LOCK(?)', [$lockName]);
+                DB::statement('SELECT RELEASE_LOCK(?)', ["order_num_{$branchId}"]);
             }
         }
     }
