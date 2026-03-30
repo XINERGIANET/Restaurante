@@ -1480,7 +1480,7 @@ class SalesController extends Controller
         if (! LocalNetworkClient::isOnLocalNetwork($request)) {
             return response()->json([
                 'success' => false,
-                'message' => 'La impresión en ticketera por red solo está permitida desde la WiFi o red local del establecimiento.',
+                'message' => 'La impresión por red desde el servidor solo está permitida dentro de la red del local. Si el sistema está en un VPS, usa QZ Tray en el equipo del establecimiento o conecta el VPS a la LAN/VPN del local.',
             ], 403);
         }
 

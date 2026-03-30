@@ -1,3 +1,9 @@
+import * as qz from 'qz-tray';
+
+if (!window.qz) {
+    window.qz = qz;
+}
+
 function getQz() {
     return window.qz || null;
 }
