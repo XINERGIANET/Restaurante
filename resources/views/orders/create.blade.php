@@ -1385,12 +1385,6 @@
 
             async function printPreAccountTicket() {
                 const qzApi = window.qz;
-                if (!qzApi) {
-                    if (typeof showNotification === 'function') {
-                        showNotification('Impresion', 'QZ Tray no esta disponible.', 'warning');
-                    }
-                    return;
-                }
                 const groupedItems = getItemsGroupedByProduct();
                 const canceledItems = Array.isArray(currentTable?.cancellations) ? currentTable.cancellations : [];
                 if (!groupedItems.length && !canceledItems.length) {
@@ -1401,16 +1395,12 @@
                 }
 
                 const resolvePreAccountPrinterName = () => {
+                    // 1. Buscar por producto
                     const productIds = new Set();
                     (groupedItems || []).forEach((it) => {
                         const pid = parseInt(it?.pId ?? it?.product_id, 10) || 0;
                         if (pid) productIds.add(pid);
                     });
-                    (canceledItems || []).forEach((c) => {
-                        const pid = parseInt(c?.pId ?? c?.product_id, 10) || 0;
-                        if (pid) productIds.add(pid);
-                    });
-
                     for (const pid of productIds) {
                         const defs = resolveQzPrinters(pid);
                         if (defs.length && defs[0]?.name) return String(defs[0].name).trim();
@@ -1419,34 +1409,67 @@
                         const single = resolveQzPrinterName(pid);
                         if (single) return String(single).trim();
                     }
-
-                    return (window.__qzConfig && window.__qzConfig.printerName)
-                        ? String(window.__qzConfig.printerName).trim()
-                        : '';
+                    // 2. Fallback: config global QZ
+                    if (window.__qzConfig && window.__qzConfig.printerName)
+                        return String(window.__qzConfig.printerName).trim();
+                    return '';
                 };
 
-                const printerName = resolvePreAccountPrinterName();
-                if (!printerName) {
-                    if (typeof showNotification === 'function') {
-                        showNotification('Impresion', 'No hay ticketera asignada (qz_printer_name) para esta precuenta.', 'warning');
+                // Si QZ está disponible, imprimir por QZ
+                if (qzApi) {
+                    let printerName = resolvePreAccountPrinterName();
+                    const paperWidth = resolvePrinterWidthByName(printerName) || 58;
+                    const ticketText = buildPreAccountTicketText(currentTable, groupedItems, canceledItems, paperWidth);
+                    try {
+                        if (!qzApi.websocket.isActive()) await qzApi.websocket.connect();
+                        // Si no hay impresora asignada en productos, usar la impresora por defecto de QZ
+                        if (!printerName) {
+                            printerName = await qzApi.printers.getDefault();
+                        }
+                        if (!printerName) {
+                            if (typeof showNotification === 'function') {
+                                showNotification('Impresión', 'No se encontró ninguna impresora disponible en QZ Tray.', 'error');
+                            }
+                            return;
+                        }
+                        await printTicketWithQz(qzApi, printerName, ticketText);
+                        if (typeof showNotification === 'function') {
+                            showNotification('Precuenta', 'Ticket enviado a "' + printerName + '".', 'success');
+                        }
+                    } catch (e) {
+                        console.error('Precuenta QZ:', e);
+                        if (typeof showNotification === 'function') {
+                            showNotification('Impresión', 'Error al imprimir precuenta: ' + (e?.message || e), 'error');
+                        }
                     }
                     return;
                 }
 
-                const paperWidth = resolvePrinterWidthByName(printerName);
-                const ticketText = buildPreAccountTicketText(currentTable, groupedItems, canceledItems, paperWidth);
-                try {
-                    if (!qzApi.websocket.isActive()) await qzApi.websocket.connect();
-                    await qzApi.printers.find(printerName);
-                    await printTicketWithQz(qzApi, printerName, ticketText);
+                // Fallback: ticketera por red (server-side ESC/POS)
+                const movementId = currentTable?.movement_id;
+                if (!movementId) {
                     if (typeof showNotification === 'function') {
-                        showNotification('Precuenta', 'Ticket enviado a impresion.', 'success');
+                        showNotification('Precuenta', 'Guarda el pedido antes de imprimir la precuenta.', 'warning');
+                    }
+                    return;
+                }
+                try {
+                    const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                    const tr = await fetch(salesThermalPrintUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+                        credentials: 'same-origin',
+                        body: JSON.stringify({ movement_id: movementId }),
+                    });
+                    const td = tr.headers.get('content-type')?.includes('application/json') ? await tr.json() : null;
+                    if (tr.ok && td?.success) {
+                        if (typeof showNotification === 'function') showNotification('Precuenta', td.message || 'Ticket enviado.', 'success');
+                    } else {
+                        const msg = td?.message || 'No se pudo enviar el ticket.';
+                        if (typeof showNotification === 'function') showNotification('Impresión', msg, 'error');
                     }
                 } catch (e) {
-                    console.error('Precuenta: error de impresion', e);
-                    if (typeof showNotification === 'function') {
-                        showNotification('Impresion', 'No se pudo imprimir la precuenta en "' + printerName + '".', 'error');
-                    }
+                    if (typeof showNotification === 'function') showNotification('Impresión', 'Error de red al imprimir precuenta.', 'error');
                 }
             }
 
@@ -2895,9 +2918,7 @@
             }
 
             async function sendThermalTicketAfterSale(movementId, saleResponse) {
-                if (!movementId || !saleResponse?.thermal_printer_available) {
-                    return;
-                }
+                if (!movementId) return;
                 const sel = document.getElementById('cobro-thermal-printer');
                 const printerId = sel && sel.value ? parseInt(sel.value, 10) : null;
                 const body = { movement_id: movementId };
@@ -2907,23 +2928,29 @@
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute(
-                                'content') || '',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
                             'Accept': 'application/json'
                         },
                         credentials: 'same-origin',
                         body: JSON.stringify(body)
                     });
-                    const td = tr.headers.get('content-type')?.includes('application/json') ? await tr.json() :
-                        null;
-                    if (!tr.ok && td?.message) {
-                        console.warn('Ticketera red:', td.message);
+                    const td = tr.headers.get('content-type')?.includes('application/json') ? await tr.json() : null;
+                    if (tr.ok && td?.success) {
                         if (typeof showNotification === 'function') {
-                            showNotification('Impresión', td.message, 'error');
+                            showNotification('Impresión', td.message || 'Ticket enviado a la ticketera.', 'success');
+                        }
+                    } else {
+                        const msg = td?.message || 'No se pudo enviar el ticket a la ticketera.';
+                        console.warn('Ticketera red:', msg);
+                        if (typeof showNotification === 'function') {
+                            showNotification('Impresión', msg, 'error');
                         }
                     }
                 } catch (e) {
                     console.warn('Ticketera red:', e);
+                    if (typeof showNotification === 'function') {
+                        showNotification('Impresión', 'Error de red al conectar con la ticketera.', 'error');
+                    }
                 }
             }
 

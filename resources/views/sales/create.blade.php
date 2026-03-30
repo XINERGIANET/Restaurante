@@ -1468,37 +1468,33 @@
             }
 
             async function sendThermalTicketAfterSale(movementId, saleResponse) {
-                if (!movementId || !saleResponse?.thermal_printer_available) {
-                    return;
-                }
+                if (!movementId) return;
                 const sel = document.getElementById('cobro-thermal-printer');
                 const printerId = sel && sel.value ? parseInt(sel.value, 10) : null;
-                const body = {
-                    movement_id: movementId
-                };
-                if (printerId) {
-                    body.printer_id = printerId;
-                }
+                const body = { movement_id: movementId };
+                if (printerId) body.printer_id = printerId;
                 try {
                     const tr = await fetch(salesThermalPrintUrl, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute(
-                                'content') || '',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
                             'Accept': 'application/json'
                         },
                         credentials: 'same-origin',
                         body: JSON.stringify(body)
                     });
-                    const td = tr.headers.get('content-type')?.includes('application/json') ? await tr.json() :
-                        null;
-                    if (!tr.ok && td?.message) {
-                        console.warn('Ticketera red:', td.message);
-                        showCobroNotification('Impresión', td.message, 'error');
+                    const td = tr.headers.get('content-type')?.includes('application/json') ? await tr.json() : null;
+                    if (tr.ok && td?.success) {
+                        showCobroNotification('Impresión', td.message || 'Ticket enviado a la ticketera.', 'success');
+                    } else {
+                        const msg = td?.message || 'No se pudo enviar el ticket a la ticketera.';
+                        console.warn('Ticketera red:', msg);
+                        showCobroNotification('Impresión', msg, 'error');
                     }
                 } catch (e) {
                     console.warn('Ticketera red:', e);
+                    showCobroNotification('Impresión', 'Error de red al conectar con la ticketera.', 'error');
                 }
             }
 
