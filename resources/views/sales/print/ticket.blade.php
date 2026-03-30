@@ -170,7 +170,11 @@
 <body>
 @php
     $docName = strtoupper($sale->documentType?->name ?? 'TICKET DE VENTA');
-    $docCode = strtoupper(substr($sale->documentType?->name ?? 'T', 0, 1)) . ($sale->salesMovement?->series ?? '001') . '-' . $sale->number;
+    $ticketSeries = $sale->salesMovement?->series ?? '001';
+    $docCode = strtoupper(substr($sale->documentType?->name ?? 'T', 0, 1)) . $ticketSeries . '-' . $sale->number;
+    $ticketSubtotal = (float) ($sale->salesMovement?->subtotal ?? $sale->orderMovement?->subtotal ?? 0);
+    $ticketTax = (float) ($sale->salesMovement?->tax ?? $sale->orderMovement?->tax ?? 0);
+    $ticketTotal = (float) ($sale->salesMovement?->total ?? $sale->orderMovement?->total ?? 0);
 @endphp
 
 <div class="ticket-wrapper">
@@ -222,9 +226,9 @@
 
     <div class="separator"></div>
 
-    <div class="totals-row"><span class="bold">Op. gravada:</span><span>S/ {{ number_format((float) ($sale->salesMovement?->subtotal ?? 0), 2) }}</span></div>
-    <div class="totals-row"><span class="bold">IGV:</span><span>S/ {{ number_format((float) ($sale->salesMovement?->tax ?? 0), 2) }}</span></div>
-    <div class="grand-total"><span class="label">TOTAL:</span><span class="value">S/ {{ number_format((float) ($sale->salesMovement?->total ?? 0), 2) }}</span></div>
+    <div class="totals-row"><span class="bold">Op. gravada:</span><span>S/ {{ number_format($ticketSubtotal, 2) }}</span></div>
+    <div class="totals-row"><span class="bold">IGV:</span><span>S/ {{ number_format($ticketTax, 2) }}</span></div>
+    <div class="grand-total"><span class="label">TOTAL:</span><span class="value">S/ {{ number_format($ticketTotal, 2) }}</span></div>
 
     @if($sale->comment)
         <div class="separator"></div>

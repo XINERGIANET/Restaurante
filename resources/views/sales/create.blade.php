@@ -218,6 +218,27 @@
                                     </select>
                                 </div>
                             </div>
+                            @if (!empty($clientOnLocalNetwork) && ($thermalPrinters ?? collect())->isNotEmpty())
+                                <div
+                                    class="rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50/90 dark:bg-emerald-900/20 px-3 py-2.5">
+                                    <p class="text-[11px] font-semibold text-emerald-900 dark:text-emerald-100 mb-1.5">
+                                        <i class="ri-wifi-line align-middle"></i> WiFi del local: al cobrar se envía
+                                        copia a la ticketera en red.
+                                    </p>
+                                    @if (($thermalPrinters ?? collect())->count() > 1)
+                                        <label
+                                            class="block text-[10px] font-bold uppercase tracking-wider text-emerald-800/80 dark:text-emerald-200/90 mb-1">Ticketera</label>
+                                        <select id="cobro-thermal-printer"
+                                            class="w-full py-2 px-3 rounded-lg border border-emerald-200 dark:border-emerald-700 bg-white dark:bg-gray-800 text-slate-700 dark:text-slate-200 text-xs">
+                                            <option value="">Predeterminada (primera en lista)</option>
+                                            @foreach ($thermalPrinters as $tp)
+                                                <option value="{{ $tp->id }}">{{ $tp->name }} — {{ $tp->ip }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    @endif
+                                </div>
+                            @endif
                             <div>
                                 <div class="flex items-center justify-between mb-2">
                                     <label
@@ -443,6 +464,8 @@
             const cobroBanks = @json($banks ?? []);
             const salesProcessUrl = @json(route('sales.process'));
             const salesIndexUrl = @json($salesIndexUrl ?? route('sales.index'));
+            const salesPrintTicketTemplate = @json(route('admin.sales.print.ticket', ['sale' => '__SALE_ID__']));
+            const salesThermalPrintUrl = @json(route('sales.print.ticket.thermal'));
 
             function escapeHtml(text) {
                 if (!text) return '';
@@ -1445,6 +1468,41 @@
                 setTimeout(() => notification.classList.add('opacity-0', 'pointer-events-none'), 3500);
             }
 
+            async function sendThermalTicketAfterSale(movementId, saleResponse) {
+                if (!movementId || !saleResponse?.client_on_local_network || !saleResponse
+                    ?.thermal_printer_available) {
+                    return;
+                }
+                const sel = document.getElementById('cobro-thermal-printer');
+                const printerId = sel && sel.value ? parseInt(sel.value, 10) : null;
+                const body = {
+                    movement_id: movementId
+                };
+                if (printerId) {
+                    body.printer_id = printerId;
+                }
+                try {
+                    const tr = await fetch(salesThermalPrintUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute(
+                                'content') || '',
+                            'Accept': 'application/json'
+                        },
+                        credentials: 'same-origin',
+                        body: JSON.stringify(body)
+                    });
+                    const td = tr.headers.get('content-type')?.includes('application/json') ? await tr.json() :
+                        null;
+                    if (!tr.ok && td?.message) {
+                        console.warn('Ticketera red:', td.message);
+                    }
+                } catch (e) {
+                    console.warn('Ticketera red:', e);
+                }
+            }
+
             async function processSale() {
                 const items = currentSale?.items || [];
                 if (items.length === 0) {
@@ -1535,7 +1593,11 @@
                     }
                     localStorage.removeItem(ACTIVE_SALE_KEY_STORAGE);
                     sessionStorage.setItem('flash_success_message', data.message || 'Venta cobrada correctamente');
-                    window.location.href = salesIndexUrl;
+                    const movementId = data?.data?.movement_id;
+                    await sendThermalTicketAfterSale(movementId, data);
+                    setTimeout(() => {
+                        window.location.href = salesIndexUrl;
+                    }, 600);
                 } catch (err) {
                     showCobroNotification('Error', err.message || 'Error al procesar la venta.', 'error');
                 } finally {

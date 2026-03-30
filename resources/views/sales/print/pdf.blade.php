@@ -36,7 +36,12 @@
 <body>
 @php
     $docName = strtoupper($sale->documentType?->name ?? 'COMPROBANTE');
-    $docCode = strtoupper(substr($sale->documentType?->name ?? 'X', 0, 1)) . ($sale->salesMovement?->series ?? '001') . '-' . $sale->number;
+    $ticketSeries = $sale->salesMovement?->series ?? '001';
+    $docCode = strtoupper(substr($sale->documentType?->name ?? 'X', 0, 1)) . $ticketSeries . '-' . $sale->number;
+    $ticketSubtotal = (float) ($sale->salesMovement?->subtotal ?? $sale->orderMovement?->subtotal ?? 0);
+    $ticketTax = (float) ($sale->salesMovement?->tax ?? $sale->orderMovement?->tax ?? 0);
+    $ticketTotal = (float) ($sale->salesMovement?->total ?? $sale->orderMovement?->total ?? 0);
+    $ticketCurrency = $sale->salesMovement?->currency ?? 'PEN';
 @endphp
 
 <div class="head">
@@ -72,7 +77,7 @@
     </tr>
     <tr>
         <td class="label">Moneda:</td>
-        <td>{{ $sale->salesMovement?->currency ?? 'PEN' }}</td>
+        <td>{{ $ticketCurrency }}</td>
     </tr>
     <tr>
         <td class="label">Forma de pago:</td>
@@ -113,9 +118,9 @@
 </table>
 
 <div class="totals">
-    <div><span>Op. gravada:</span><span>S/ {{ number_format((float) ($sale->salesMovement?->subtotal ?? 0), 2) }}</span></div>
-    <div><span>I.G.V.:</span><span>S/ {{ number_format((float) ($sale->salesMovement?->tax ?? 0), 2) }}</span></div>
-    <div class="final"><span>Importe total:</span><span>S/ {{ number_format((float) ($sale->salesMovement?->total ?? 0), 2) }}</span></div>
+    <div><span>Op. gravada:</span><span>S/ {{ number_format($ticketSubtotal, 2) }}</span></div>
+    <div><span>I.G.V.:</span><span>S/ {{ number_format($ticketTax, 2) }}</span></div>
+    <div class="final"><span>Importe total:</span><span>S/ {{ number_format($ticketTotal, 2) }}</span></div>
 </div>
 
 <div class="notes">

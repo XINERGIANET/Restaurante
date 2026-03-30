@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\MenuHelper;
 use App\Models\Branch;
 use App\Models\Operation;
 use App\Models\Profile;
+use App\Models\View as ViewModel;
 use App\Support\InsensitiveSearch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -18,7 +20,7 @@ class ProfileController extends Controller
         $allowedPerPage = [10, 20, 50, 100];
         $viewId = $request->input('view_id');
         $branchId = $request->session()->get('branch_id');
-        $profileId = $request->session()->get('profile_id') ?? $request->user()?->profile_id;  
+        $profileId = $request->session()->get('profile_id') ?? $request->user()?->profile_id;
         $operaciones = collect();
 
         if ($viewId && $branchId && $profileId) {
@@ -61,13 +63,14 @@ class ProfileController extends Controller
             'search' => $search,
             'perPage' => $perPage,
             'operaciones' => $operaciones,
+            'viewOptions' => $this->viewOptionsForCombobox(),
             'title' => 'Perfiles',
         ]);
     }
 
     public function store(Request $request)
     {
-        $data = $this->validateProfile($request);
+        $data = $this->validateProfile($request, null);
 
         DB::transaction(function () use ($data) {
             $profile = Profile::create($data);
@@ -97,13 +100,14 @@ class ProfileController extends Controller
     {
         return view('profiles.edit', [
             'profile' => $profile,
+            'viewOptions' => $this->viewOptionsForCombobox(),
             'title' => 'Perfiles',
         ]);
     }
 
     public function update(Request $request, Profile $profile)
     {
-        $data = $this->validateProfile($request);
+        $data = $this->validateProfile($request, $profile);
         $profile->update($data);
 
         $viewId = $request->input('view_id');
@@ -124,17 +128,69 @@ class ProfileController extends Controller
             ->with('status', 'Perfil eliminado correctamente.');
     }
 
-    private function validateProfile(Request $request): array
+    private function validateProfile(Request $request, ?Profile $existingProfile): array
     {
+        if ($request->has('default_view_id') && $request->input('default_view_id') === '') {
+            $request->merge(['default_view_id' => null]);
+        }
+
         return $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'status' => ['required', 'boolean'],
+            'default_view_id' => [
+                'nullable',
+                'integer',
+                'exists:views,id',
+                function (string $attribute, mixed $value, \Closure $fail) use ($existingProfile) {
+                    if ($value === null || $value === '' || $existingProfile === null) {
+                        return;
+                    }
+                    $allowed = MenuHelper::allowedViewIdsForProfileAnyBranch((int) $existingProfile->id);
+                    if ($allowed === []) {
+                        return;
+                    }
+                    if (! in_array((int) $value, $allowed, true)) {
+                        $fail('La vista por defecto debe coincidir con una opción de menú asignada a este perfil en alguna sucursal.');
+                    }
+                },
+            ],
         ]);
     }
 
-    private function assignProfileToBranch(Profile $profile, Branch $branch){
+    /**
+     * Vistas activas para selector "vista por defecto" al iniciar sesión.
+     */
+    private function activeViewsList()
+    {
+        return ViewModel::query()
+            ->where('status', 1)
+            ->whereNull('deleted_at')
+            ->orderBy('name')
+            ->get(['id', 'name', 'abbreviation']);
+    }
+
+    /**
+     * Opciones para <x-form.select.combobox> (requiere id + description).
+     */
+    private function viewOptionsForCombobox(): array
+    {
+        return $this->activeViewsList()
+            ->map(function ($v) {
+                $desc = $v->name;
+                if (! empty($v->abbreviation)) {
+                    $desc .= ' — '.$v->abbreviation;
+                }
+
+                return ['id' => (int) $v->id, 'description' => $desc];
+            })
+            ->values()
+            ->all();
+    }
+
+    private function assignProfileToBranch(Profile $profile, Branch $branch)
+    {
         $now = now();
-        
+
         $rows = Branch::query()->pluck('id')->map(fn ($branchId) => [
             'profile_id' => $profile->id,
             'branch_id' => $branchId,

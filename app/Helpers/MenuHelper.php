@@ -36,16 +36,17 @@ class MenuHelper
             if (str_starts_with($action, '/') || str_starts_with($action, 'http')) {
                 return $action;
             }
-            
+
             if (Route::has($action)) {
                 try {
-                    return route($action);
+                    // URL relativa al host actual (evita enlaces a APP_URL si no coincide con el dominio real)
+                    return route($action, [], false);
                 } catch (\Exception $e) {
                     // Si la ruta requiere parámetros, devolver #
                     return '#';
                 }
             }
-            
+
             return '#';
         };
 
@@ -89,6 +90,72 @@ class MenuHelper
         }
 
         return $menuStructure;
+    }
+
+    /**
+     * view_id para los que el perfil tiene al menos una opción de menú permitida en la sucursal.
+     */
+    public static function allowedViewIdsForProfileBranch(?int $profileId, ?int $branchId): array
+    {
+        if (!$profileId || !$branchId) {
+            return [];
+        }
+
+        return DB::table('user_permission as up')
+            ->join('menu_option as mo', function ($join) {
+                $join->on('mo.id', '=', 'up.menu_option_id')
+                    ->whereNull('mo.deleted_at')
+                    ->where('mo.status', 1);
+            })
+            ->where('up.profile_id', $profileId)
+            ->where('up.branch_id', $branchId)
+            ->where('up.status', 1)
+            ->whereNull('up.deleted_at')
+            ->distinct()
+            ->pluck('mo.view_id')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Unión de view_id con menú permitido en cualquier sucursal (validar formularios de perfil / personal).
+     */
+    public static function allowedViewIdsForProfileAnyBranch(int $profileId): array
+    {
+        return DB::table('user_permission as up')
+            ->join('menu_option as mo', function ($join) {
+                $join->on('mo.id', '=', 'up.menu_option_id')
+                    ->whereNull('mo.deleted_at')
+                    ->where('mo.status', 1);
+            })
+            ->where('up.profile_id', $profileId)
+            ->where('up.status', 1)
+            ->whereNull('up.deleted_at')
+            ->distinct()
+            ->pluck('mo.view_id')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Conserva la vista por defecto del perfil solo si el usuario tiene menú con esa vista en su sucursal.
+     */
+    public static function sanitizeProfileDefaultViewForLogin(?int $profileId, ?int $branchId, mixed $profileDefaultViewId): ?int
+    {
+        if ($profileDefaultViewId === null || $profileDefaultViewId === '') {
+            return null;
+        }
+        $viewId = (int) $profileDefaultViewId;
+        $allowed = self::allowedViewIdsForProfileBranch($profileId, $branchId);
+        if (! in_array($viewId, $allowed, true)) {
+            return null;
+        }
+
+        return $viewId;
     }
 
     public static function getOthersItems()

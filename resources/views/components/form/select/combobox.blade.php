@@ -106,7 +106,7 @@
         <input 
             type="text" 
             x-model="query"
-            @focus="clear(); open = true"
+            @focus="open = true"
             @input="open = true"
             @dblclick="$el.select()" 
             @keydown.escape="closeDropdown()"

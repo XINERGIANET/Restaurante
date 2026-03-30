@@ -27,6 +27,7 @@ use App\Http\Controllers\PaymentGatewaysController;
 use App\Http\Controllers\PaymentMethodController;
 use App\Http\Controllers\ProductBranchController;
 use App\Http\Controllers\TableController;
+use App\Http\Controllers\UserProfileController;
 use App\Http\Controllers\ViewsController;
 use App\Http\Controllers\ShiftController;
 use App\Http\Controllers\TaxRateController;
@@ -128,6 +129,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/admin/ventas/pdf', [SalesController::class, 'exportPdf'])->name('admin.sales.pdf');
     Route::get('/admin/ventas/pdf/{sale}', [SalesController::class, 'printPdf'])->name('admin.sales.print.pdf');
     Route::get('/admin/ventas/ticket/{sale}', [SalesController::class, 'printTicket'])->name('admin.sales.print.ticket');
+    Route::post('/admin/ventas/ticket-termica', [SalesController::class, 'printTicketThermalNetwork'])
+        ->name('sales.print.ticket.thermal');
 
     // POS: vista de cobro (antes era modal)
     Route::get('/ventas/cobrar', [SalesController::class, 'charge'])
@@ -234,10 +237,10 @@ Route::middleware('auth')->group(function () {
         return view('pages.calender', ['title' => 'Calendar']);
     })->name('calendar');
 
-    // profile pages
-    Route::get('/profile', function () {
-        return view('pages.profile', ['title' => 'Profile']);
-    })->name('profile');
+    // perfil del usuario autenticado
+    Route::get('/profile', [UserProfileController::class, 'show'])->name('profile');
+    Route::put('/profile', [UserProfileController::class, 'update'])->name('profile.update');
+    Route::put('/profile/password', [UserProfileController::class, 'updatePassword'])->name('profile.password');
 
     // form pages
     Route::get('/form-elements', function () {

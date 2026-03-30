@@ -14,24 +14,25 @@ use App\Models\DigitalWallet;
 use App\Models\DocumentType;
 use App\Models\Movement;
 use App\Models\MovementType;
+use App\Models\Operation;
 use App\Models\OrderMovement;
 use App\Models\OrderMovementDetail;
 use App\Models\PaymentConcept;
 use App\Models\PaymentGateways;
 use App\Models\PaymentMethod;
 use App\Models\Person;
+use App\Models\PrinterBranch;
 use App\Models\Product;
 use App\Models\ProductBranch;
 use App\Models\ProductType;
 use App\Models\Profile;
 use App\Models\SalesMovement;
-use App\Models\SalesMovementDetail;
 use App\Models\Shift;
 use App\Models\Table;
 use App\Models\Unit;
 use App\Models\User;
-use App\Models\Operation;
 use App\Support\InsensitiveSearch;
+use App\Support\LocalNetworkClient;
 use Barryvdh\Snappy\Facades\SnappyPdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -41,7 +42,7 @@ class OrderController extends Controller
 {
     private function waiterPinEnabled(?int $branchId): bool
     {
-        if (!$branchId) {
+        if (! $branchId) {
             return false;
         }
         $value = DB::table('branch_parameters as bp')
@@ -53,6 +54,7 @@ class OrderController extends Controller
             ->value('bp.value');
 
         $v = strtolower(trim((string) ($value ?? '0')));
+
         return in_array($v, ['1', 'true', 'si', 'sí', 'yes', 'y', 'on'], true);
     }
 
@@ -63,13 +65,14 @@ class OrderController extends Controller
             ->whereNull('deleted_at')
             ->whereRaw('LOWER(TRIM(name)) = ?', ['mozo'])
             ->value('id');
+
         return $id ? (int) $id : null;
     }
 
     /** Solo pedir PIN cuando la sucursal lo tiene activo Y el usuario tiene perfil Mozo. */
     private function shouldRequireWaiterPin(?int $branchId, $profileId): bool
     {
-        if (!$this->waiterPinEnabled($branchId)) {
+        if (! $this->waiterPinEnabled($branchId)) {
             return false;
         }
         $mozoId = $this->mozoProfileId();
@@ -77,6 +80,7 @@ class OrderController extends Controller
             return false;
         }
         $currentProfileId = $profileId !== null && $profileId !== '' ? (int) $profileId : null;
+
         return $currentProfileId === $mozoId;
     }
 
@@ -88,6 +92,7 @@ class OrderController extends Controller
             return true;
         }
         $currentProfileId = $profileId !== null && $profileId !== '' ? (int) $profileId : null;
+
         return $currentProfileId !== $mozoId;
     }
 
@@ -96,7 +101,7 @@ class OrderController extends Controller
      */
     private function orderMovementDisplayTotal(?OrderMovement $orderMovement): float
     {
-        if (!$orderMovement) {
+        if (! $orderMovement) {
             return 0.0;
         }
         $base = round((float) ($orderMovement->subtotal ?? 0) + (float) ($orderMovement->tax ?? 0), 2);
@@ -125,14 +130,14 @@ class OrderController extends Controller
             ->where('pin', $pin)
             ->first();
 
-        if (!$person) {
+        if (! $person) {
             return response()->json([
                 'success' => false,
                 'message' => 'PIN inválido.',
             ], 422);
         }
 
-        $name = trim(($person->first_name ?? '') . ' ' . ($person->last_name ?? ''));
+        $name = trim(($person->first_name ?? '').' '.($person->last_name ?? ''));
         if ($name === '') {
             $name = 'Mozo';
         }
@@ -148,6 +153,7 @@ class OrderController extends Controller
             ],
         ]);
     }
+
     public function list(Request $request)
     {
         $search = $request->input('search');
@@ -157,7 +163,7 @@ class OrderController extends Controller
         $dateFrom = $request->input('date_from');
         $dateTo = $request->input('date_to');
         $allowedPerPage = [10, 20, 50, 100];
-        if (!in_array($perPage, $allowedPerPage, true)) {
+        if (! in_array($perPage, $allowedPerPage, true)) {
             $perPage = 10;
         }
 
@@ -215,12 +221,12 @@ class OrderController extends Controller
             })
             ->when($dateFrom, function ($query) use ($dateFrom) {
                 $query->whereHas('movement', function ($movementQuery) use ($dateFrom) {
-                    $movementQuery->where('moved_at', '>=', $dateFrom . ' 00:00:00');
+                    $movementQuery->where('moved_at', '>=', $dateFrom.' 00:00:00');
                 });
             })
             ->when($dateTo, function ($query) use ($dateTo) {
                 $query->whereHas('movement', function ($movementQuery) use ($dateTo) {
-                    $movementQuery->where('moved_at', '<=', $dateTo . ' 23:59:59');
+                    $movementQuery->where('moved_at', '<=', $dateTo.' 23:59:59');
                 });
             })
 
@@ -296,14 +302,14 @@ class OrderController extends Controller
         $waiterPinEnabled = $this->shouldRequireWaiterPin($branchId ? (int) $branchId : null, $profileId);
 
         $areas = Area::query()
-            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
             ->orderBy('id')
             ->get(['id', 'name']);
 
         // Cargar todas las mesas de la sucursal primero
         $tables = Table::query()
-            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
-            ->when(!$branchId, fn($q) => $q->whereRaw('1 = 0'))
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->when(! $branchId, fn ($q) => $q->whereRaw('1 = 0'))
             ->orderBy('name')
             ->get(['id', 'name', 'area_id', 'capacity', 'situation', 'opened_at']);
 
@@ -313,16 +319,17 @@ class OrderController extends Controller
         } else {
             // Preferir la primera área que tenga mesas; si ninguna, usar la primera área
             $areaIdsWithTables = $tables->pluck('area_id')->unique()->filter()->values();
-            $firstAreaWithTables = $areas->firstWhere(fn($a) => $areaIdsWithTables->contains($a->id));
+            $firstAreaWithTables = $areas->firstWhere(fn ($a) => $areaIdsWithTables->contains($a->id));
             $selectedAreaId = $firstAreaWithTables?->id ?? $areas->first()?->id ?? null;
         }
 
         // Redirigir para fijar area_id en la URL si no venía en el request
-        if ($areas->isNotEmpty() && !$request->has('area_id') && $selectedAreaId) {
+        if ($areas->isNotEmpty() && ! $request->has('area_id') && $selectedAreaId) {
             $params = array_merge(
                 $request->except('area_id'),
                 ['area_id' => $selectedAreaId]
             );
+
             return redirect()->route('orders.index', $params);
         }
 
@@ -334,7 +341,7 @@ class OrderController extends Controller
 
         $tablesPayload = $tables->map(function (Table $table) use ($activeOrderMovements, $branchId) {
             $elapsed = '--:--';
-            if (!empty($table->opened_at)) {
+            if (! empty($table->opened_at)) {
                 try {
                     $opened = \Carbon\Carbon::parse($table->opened_at);
                     if ($opened->gt(now())) {
@@ -342,11 +349,11 @@ class OrderController extends Controller
                     }
                     $minutes = (int) $opened->diffInMinutes(now());
                     if ($minutes < 60) {
-                        $elapsed = $minutes . ' min';
+                        $elapsed = $minutes.' min';
                     } else {
                         $h = (int) floor($minutes / 60);
                         $m = $minutes % 60;
-                        $elapsed = $h . 'h ' . $m . 'm';
+                        $elapsed = $h.'h '.$m.'m';
                     }
                 } catch (\Throwable $e) {
                     $elapsed = '--:--';
@@ -366,7 +373,7 @@ class OrderController extends Controller
             $totalWithTax = $this->orderMovementDisplayTotal($orderMovement);
 
             // Si no hay pedido pendiente o el total es 0, la mesa debe considerarse libre
-            if (!$orderMovement || $totalWithTax <= 0) {
+            if (! $orderMovement || $totalWithTax <= 0) {
                 $situation = 'libre';
                 $totalWithTax = 0;
                 $elapsed = '--:--';
@@ -376,12 +383,13 @@ class OrderController extends Controller
             if ($orderMovement && $orderMovement->details && $orderMovement->details->isNotEmpty()) {
                 $productsText = $orderMovement->details
                     ->map(function ($d) {
-                        if (!empty($d->description)) {
+                        if (! empty($d->description)) {
                             return $d->description;
                         }
                         if (is_array($d->product_snapshot)) {
                             return $d->product_snapshot['description'] ?? $d->product_snapshot['name'] ?? '';
                         }
+
                         return '';
                     })
                     ->filter()
@@ -390,7 +398,7 @@ class OrderController extends Controller
             }
 
             $openedAtForJs = null;
-            if (!empty($table->opened_at)) {
+            if (! empty($table->opened_at)) {
                 try {
                     $openedAtForJs = \Carbon\Carbon::parse($table->opened_at)->format('H:i:s');
                 } catch (\Throwable $e) {
@@ -468,9 +476,9 @@ class OrderController extends Controller
 
         $orders = OrderMovement::query()
             ->with(['movement.documentType', 'movement.movementType', 'table', 'area'])
-            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
-            ->when($dateFrom, fn($q) => $q->whereHas('movement', fn($m) => $m->where('moved_at', '>=', $dateFrom . ' 00:00:00')))
-            ->when($dateTo, fn($q) => $q->whereHas('movement', fn($m) => $m->where('moved_at', '<=', $dateTo . ' 23:59:59')))
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->when($dateFrom, fn ($q) => $q->whereHas('movement', fn ($m) => $m->where('moved_at', '>=', $dateFrom.' 00:00:00')))
+            ->when($dateTo, fn ($q) => $q->whereHas('movement', fn ($m) => $m->where('moved_at', '<=', $dateTo.' 23:59:59')))
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
                     $inner->whereHas('movement', function ($movementQuery) use ($search) {
@@ -486,7 +494,7 @@ class OrderController extends Controller
                 });
             })
             ->when($documentTypeId, function ($query) use ($documentTypeId) {
-                $query->whereHas('movement', fn($m) => $m->where('document_type_id', $documentTypeId));
+                $query->whereHas('movement', fn ($m) => $m->where('document_type_id', $documentTypeId));
             })
             ->when($cashRegisterId, function ($query) use ($cashRegisterId) {
                 $query->whereExists(function ($sub) use ($cashRegisterId) {
@@ -539,13 +547,14 @@ class OrderController extends Controller
         }
 
         $pdf = SnappyPdf::loadView('orders.pdfs.pdf_report', [
-            'orders'      => $orders,
-            'dateFrom'    => $dateFrom,
-            'dateTo'      => $dateTo,
-            'filters'     => $filters,
+            'orders' => $orders,
+            'dateFrom' => $dateFrom,
+            'dateTo' => $dateTo,
+            'filters' => $filters,
             'companyName' => $companyName,
-            'branchName'  => $branchName,
+            'branchName' => $branchName,
         ]);
+
         return $pdf->download('reporte_pedidos.pdf');
     }
 
@@ -553,17 +562,17 @@ class OrderController extends Controller
     {
         $branchId = session('branch_id');
         $areas = Area::query()
-            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
             ->orderBy('id')
             ->get(['id', 'name']);
         $tables = Table::query()
-            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
-            ->when(!$branchId, fn($q) => $q->whereRaw('1 = 0'))
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->when(! $branchId, fn ($q) => $q->whereRaw('1 = 0'))
             ->orderBy('name')
             ->get(['id', 'name', 'area_id', 'capacity', 'situation', 'opened_at']);
         $tablesPayload = $tables->map(function (Table $table) use ($branchId) {
             $elapsed = '--:--';
-            if (!empty($table->opened_at)) {
+            if (! empty($table->opened_at)) {
                 try {
                     $opened = \Carbon\Carbon::parse($table->opened_at);
                     if ($opened->gt(now())) {
@@ -571,11 +580,11 @@ class OrderController extends Controller
                     }
                     $minutes = (int) $opened->diffInMinutes(now());
                     if ($minutes < 60) {
-                        $elapsed = $minutes . ' min';
+                        $elapsed = $minutes.' min';
                     } else {
                         $h = (int) floor($minutes / 60);
                         $m = $minutes % 60;
-                        $elapsed = $h . 'h ' . $m . 'm';
+                        $elapsed = $h.'h '.$m.'m';
                     }
                 } catch (\Throwable $e) {
                     $elapsed = '--:--';
@@ -596,7 +605,7 @@ class OrderController extends Controller
             $totalWithTax = $this->orderMovementDisplayTotal($orderMovement);
 
             // Si no hay pedido pendiente o el total es 0, la mesa debe considerarse libre
-            if (!$orderMovement || $totalWithTax <= 0) {
+            if (! $orderMovement || $totalWithTax <= 0) {
                 $situation = 'libre';
                 $totalWithTax = 0;
                 $elapsed = '--:--';
@@ -604,13 +613,13 @@ class OrderController extends Controller
             $productsText = '';
             if ($orderMovement && $orderMovement->relationLoaded('details') && $orderMovement->details->isNotEmpty()) {
                 $productsText = $orderMovement->details
-                    ->map(fn($d) => $d->description ?? ($d->product_snapshot['description'] ?? $d->product_snapshot['name'] ?? ''))
+                    ->map(fn ($d) => $d->description ?? ($d->product_snapshot['description'] ?? $d->product_snapshot['name'] ?? ''))
                     ->filter()
                     ->unique()
                     ->implode(' ');
             }
             $openedAtForJs = null;
-            if (!empty($table->opened_at)) {
+            if (! empty($table->opened_at)) {
                 try {
                     $openedAtForJs = \Carbon\Carbon::parse($table->opened_at)->format('H:i:s');
                 } catch (\Throwable $e) {
@@ -647,7 +656,8 @@ class OrderController extends Controller
                 'orders_count' => $ordersCount,
             ];
         })->values();
-        $areasArray = $areas->map(fn($area) => ['id' => (int) $area->id, 'name' => $area->name])->values();
+        $areasArray = $areas->map(fn ($area) => ['id' => (int) $area->id, 'name' => $area->name])->values();
+
         return response()
             ->json(['tables' => $tablesPayload, 'areas' => $areasArray])
             ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
@@ -666,12 +676,12 @@ class OrderController extends Controller
         $profile = Profile::find($profileId);
         $table = Table::with('area')->find($tableId);
 
-        if (!$table) {
+        if (! $table) {
             abort(404, 'Mesa no encontrada');
         }
 
         $area = $table->area;
-        if (!$area && $request->has('area_id')) {
+        if (! $area && $request->has('area_id')) {
             $area = Area::find($request->query('area_id'));
         }
         // Sucursal: mesa > área > sesión (garantiza productos de la sucursal correcta).
@@ -685,7 +695,7 @@ class OrderController extends Controller
         $products = Product::where('type', 'PRODUCT')
             ->where(function ($q) {
                 $q->whereNull('product_type_id')
-                    ->orWhereHas('productType', fn($q2) => $q2->whereIn('behavior', [
+                    ->orWhereHas('productType', fn ($q2) => $q2->whereIn('behavior', [
                         ProductType::BEHAVIOR_SELLABLE,
                         ProductType::BEHAVIOR_BOTH,
                     ]));
@@ -708,10 +718,11 @@ class OrderController extends Controller
             ->with('category')
             ->orderBy('description')
             ->get()
-            ->map(function ($product) use ($table, $tableId, $branchId) {
-                $imageUrl = ($product->image && !empty($product->image))
-                    ? asset('storage/' . $product->image)
+            ->map(function ($product) use ($tableId, $branchId) {
+                $imageUrl = ($product->image && ! empty($product->image))
+                    ? asset('storage/'.$product->image)
                     : null;
+
                 return [
                     'id' => $product->id,
                     'name' => $product->description,
@@ -719,63 +730,69 @@ class OrderController extends Controller
                     'category' => $product->category ? $product->category->description : 'Sin categoría',
                     'category_id' => $product->category_id,
                     'table_id' => $tableId,
-                    'branch_id' => $branchId
+                    'branch_id' => $branchId,
                 ];
             });
 
         // Solo product_branches de esta sucursal cuyo producto es vendible (mismo criterio que Ventas).
         $productBranches = $branchId
             ? ProductBranch::where('branch_id', $branchId)
-            ->with(['product.productType', 'taxRate', 'printers'])
-            ->get()
-            ->filter(function ($productBranch) {
-                if ($productBranch->product === null) return false;
-                $pt = $productBranch->product->productType;
-                return $pt === null || $pt->isSellable();
-            })
-            ->map(function ($productBranch) {
-                $taxRatePct = $productBranch->taxRate ? (float) $productBranch->taxRate->tax_rate : null;
-                $printerNames = $productBranch->printers
-                    ->pluck('name')
-                    ->map(fn ($n) => trim((string) $n))
-                    ->filter(fn ($n) => $n !== '')
-                    ->values()
-                    ->all();
-                $printers = $productBranch->printers
-                    ->map(function ($p) {
-                        $name = trim((string) ($p->name ?? ''));
-                        $widthRaw = trim((string) ($p->width ?? ''));
-                        if ($name === '') return null;
-                        return [
-                            'name' => $name,
-                            'width' => $widthRaw !== '' ? $widthRaw : null,
-                        ];
-                    })
-                    ->filter()
-                    ->values()
-                    ->all();
+                ->with(['product.productType', 'taxRate', 'printers'])
+                ->get()
+                ->filter(function ($productBranch) {
+                    if ($productBranch->product === null) {
+                        return false;
+                    }
+                    $pt = $productBranch->product->productType;
 
-                return [
-                    'id' => $productBranch->id,
-                    'product_id' => $productBranch->product_id,
-                    'price' => (float) $productBranch->price,
-                    'stock' => (float) ($productBranch->stock ?? 0),
-                    'tax_rate' => $taxRatePct,
-                    'favorite' => ($productBranch->favorite ?? 'N'),
-                    // compat (1 impresora)
-                    'qz_printer_name' => $printerNames[0] ?? null,
-                    // recomendado (varias impresoras por pivote)
-                    'qz_printer_names' => $printerNames,
-                    // recomendado: info completa para formateo por ticketera
-                    'qz_printers' => $printers,
-                ];
-            })
-            ->values()
+                    return $pt === null || $pt->isSellable();
+                })
+                ->map(function ($productBranch) {
+                    $taxRatePct = $productBranch->taxRate ? (float) $productBranch->taxRate->tax_rate : null;
+                    $printerNames = $productBranch->printers
+                        ->pluck('name')
+                        ->map(fn ($n) => trim((string) $n))
+                        ->filter(fn ($n) => $n !== '')
+                        ->values()
+                        ->all();
+                    $printers = $productBranch->printers
+                        ->map(function ($p) {
+                            $name = trim((string) ($p->name ?? ''));
+                            $widthRaw = trim((string) ($p->width ?? ''));
+                            if ($name === '') {
+                                return null;
+                            }
+
+                            return [
+                                'name' => $name,
+                                'width' => $widthRaw !== '' ? $widthRaw : null,
+                            ];
+                        })
+                        ->filter()
+                        ->values()
+                        ->all();
+
+                    return [
+                        'id' => $productBranch->id,
+                        'product_id' => $productBranch->product_id,
+                        'price' => (float) $productBranch->price,
+                        'stock' => (float) ($productBranch->stock ?? 0),
+                        'tax_rate' => $taxRatePct,
+                        'favorite' => ($productBranch->favorite ?? 'N'),
+                        // compat (1 impresora)
+                        'qz_printer_name' => $printerNames[0] ?? null,
+                        // recomendado (varias impresoras por pivote)
+                        'qz_printer_names' => $printerNames,
+                        // recomendado: info completa para formateo por ticketera
+                        'qz_printers' => $printers,
+                    ];
+                })
+                ->values()
             : collect();
 
         // Categorías asignadas a esta sucursal (category_branch).
         $categories = Category::query()
-            ->when($branchId, fn($q) => $q->forBranchMenu($branchId, 'VENTAS_PEDIDOS'), function ($query) {
+            ->when($branchId, fn ($q) => $q->forBranchMenu($branchId, 'VENTAS_PEDIDOS'), function ($query) {
                 $query->whereRaw('1 = 0'); // sin sucursal = no categorías
             })
             ->orderBy('description')
@@ -789,7 +806,7 @@ class OrderController extends Controller
             ->whereIn('status', ['PENDIENTE', 'P'])
             ->orderByDesc('id')
             ->first();
-        $startFresh = !$pendingOrder;
+        $startFresh = ! $pendingOrder;
 
         // Cliente actual del pedido pendiente (si existe)
         $pendingClientId = $pendingOrder?->movement?->person_id;
@@ -798,42 +815,42 @@ class OrderController extends Controller
         // Solo detalles activos (no cancelados). Mismo producto se agrupa (x5, etc.). Entregado = estado 'E'.
         $pendingItemsRaw = $pendingOrder
             ? ($pendingOrder->details ?? collect())
-            ->filter(fn($d) => ($d->status ?? 'A') !== 'C')
-            ->map(function ($d) {
-                $qty   = (float) ($d->quantity ?? 0);
-                $courtesyQty = (float) ($d->courtesy_quantity ?? 0);
-                $amount = (float) ($d->amount ?? 0);
-                // Precio efectivo por unidad pagada (opcional, solo para mostrar)
-                $paidQty = max(0, $qty - $courtesyQty);
-                $price = ($paidQty > 0)
-                    ? ($amount / $paidQty)
-                    : 0;
-                $rawComment = trim((string) ($d->comment ?? ''));
-                $note = $rawComment;
-                if ($note !== '' && preg_match('/^\d{2}:\d{2}\s*-\s*/', $note) === 1) {
-                    $note = preg_replace('/^\d{2}:\d{2}(?:\s*[ap]\.?m\.?)?\s*-\s*/i', '', $note);
-                    $note = trim($note);
-                }
-                $commandTime = $d->commanded_at
-                    ? $d->commanded_at->format('H:i')
-                    : ($d->created_at ? $d->created_at->format('H:i') : null);
-                $status = $d->status ?? 'A';
-                $takeawayQty = (float) ($d->takeaway_quantity ?? 0);
-                $takeawayQty = max(0, min($takeawayQty, $qty));
+                ->filter(fn ($d) => ($d->status ?? 'A') !== 'C')
+                ->map(function ($d) {
+                    $qty = (float) ($d->quantity ?? 0);
+                    $courtesyQty = (float) ($d->courtesy_quantity ?? 0);
+                    $amount = (float) ($d->amount ?? 0);
+                    // Precio efectivo por unidad pagada (opcional, solo para mostrar)
+                    $paidQty = max(0, $qty - $courtesyQty);
+                    $price = ($paidQty > 0)
+                        ? ($amount / $paidQty)
+                        : 0;
+                    $rawComment = trim((string) ($d->comment ?? ''));
+                    $note = $rawComment;
+                    if ($note !== '' && preg_match('/^\d{2}:\d{2}\s*-\s*/', $note) === 1) {
+                        $note = preg_replace('/^\d{2}:\d{2}(?:\s*[ap]\.?m\.?)?\s*-\s*/i', '', $note);
+                        $note = trim($note);
+                    }
+                    $commandTime = $d->commanded_at
+                        ? $d->commanded_at->format('H:i')
+                        : ($d->created_at ? $d->created_at->format('H:i') : null);
+                    $status = $d->status ?? 'A';
+                    $takeawayQty = (float) ($d->takeaway_quantity ?? 0);
+                    $takeawayQty = max(0, min($takeawayQty, $qty));
 
-                return [
-                    'pId'         => (int) ($d->product_id ?? 0),
-                    'name'        => $d->description ?? '',
-                    'qty'         => $qty,
-                    'price'       => round($price, 6),
-                    'tax_rate'    => 10,
-                    'note'        => $note,
-                    'commandTime' => $commandTime,
-                    'delivered'   => $status === 'E',
-                    'courtesyQty' => $courtesyQty,
-                    'takeawayQty' => $takeawayQty,
-                ];
-            })->values()->all()
+                    return [
+                        'pId' => (int) ($d->product_id ?? 0),
+                        'name' => $d->description ?? '',
+                        'qty' => $qty,
+                        'price' => round($price, 6),
+                        'tax_rate' => 10,
+                        'note' => $note,
+                        'commandTime' => $commandTime,
+                        'delivered' => $status === 'E',
+                        'courtesyQty' => $courtesyQty,
+                        'takeawayQty' => $takeawayQty,
+                    ];
+                })->values()->all()
             : [];
 
         // Agrupar mismo producto en un solo ítem (ej. PB x5 + PB x1 → PB x6)
@@ -859,20 +876,20 @@ class OrderController extends Controller
 
         // Detalles cancelados: agrupar mismo producto en uno solo (ej. PB x5 + PB x1 → PB x6)
         $pendingCancelledDetails = $pendingOrder
-            ? collect($pendingOrder->details->where('status', 'C')->map(fn($d) => [
+            ? collect($pendingOrder->details->where('status', 'C')->map(fn ($d) => [
                 'product_id' => (int) ($d->product_id ?? 0),
                 'description' => $d->description ?? 'Producto',
                 'quantity' => (float) $d->quantity,
                 'comment' => $d->comment ?? '',
             ]))
-            ->groupBy('product_id')
-            ->map(fn($group) => [
-                'description' => $group->first()['description'],
-                'quantity' => $group->sum('quantity'),
-                'comment' => $group->first()['comment'],
-            ])
-            ->values()
-            ->all()
+                ->groupBy('product_id')
+                ->map(fn ($group) => [
+                    'description' => $group->first()['description'],
+                    'quantity' => $group->sum('quantity'),
+                    'comment' => $group->first()['comment'],
+                ])
+                ->values()
+                ->all()
             : [];
 
         $saleOrOrderTypeIds = MovementType::query()
@@ -888,7 +905,7 @@ class OrderController extends Controller
             ->all();
         $documentTypes = DocumentType::query()
             ->orderBy('name')
-            ->whereIn('movement_type_id', !empty($saleOrOrderTypeIds) ? $saleOrOrderTypeIds : [2])
+            ->whereIn('movement_type_id', ! empty($saleOrOrderTypeIds) ? $saleOrOrderTypeIds : [2])
             ->get(['id', 'name']);
         $paymentMethods = PaymentMethod::query()
             ->where('status', true)
@@ -940,7 +957,7 @@ class OrderController extends Controller
             'pendingPeopleCount' => (int) ($pendingOrder?->people_count ?: ($table->capacity ?? 1)),
             'pendingCancelledDetails' => $pendingCancelledDetails,
             'pendingItems' => $pendingItems,
-            'pendingServiceType' => $pendingOrder?->service_type ?? ( (strpos(strtolower($area->name ?? ''), 'delivery') !== false) ? 'DELIVERY' : 'IN_SITU' ),
+            'pendingServiceType' => $pendingOrder?->service_type ?? ((strpos(strtolower($area->name ?? ''), 'delivery') !== false) ? 'DELIVERY' : 'IN_SITU'),
             'pendingDeliveryAddress' => $pendingOrder?->delivery_address,
             'pendingContactPhone' => $pendingOrder?->contact_phone,
             'pendingDeliveryAmount' => $pendingOrder?->delivery_amount ?? 0,
@@ -955,18 +972,19 @@ class OrderController extends Controller
             'waiterPinEnabled' => $this->shouldRequireWaiterPin((int) $branchId, $profileId),
             'deliveryAreaId' => $deliveryAreaId,
             'canCharge' => $this->canCharge($profileId),
-            'isMozo' => !$this->canCharge($profileId),
+            'isMozo' => ! $this->canCharge($profileId),
             'turboCacheControl' => 'no-cache',
         ]);
         $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
         $response->headers->set('Pragma', 'no-cache');
+
         return $response;
     }
 
     public function charge(Request $request)
     {
         $profileId = session('profile_id') ?? $request->user()?->profile_id;
-        if (!$this->canCharge($profileId)) {
+        if (! $this->canCharge($profileId)) {
             return redirect()
                 ->route('orders.index')
                 ->with('error', 'Tu perfil (Mozo) no tiene permiso para cobrar. Solo puedes guardar pedidos.');
@@ -985,7 +1003,7 @@ class OrderController extends Controller
             ->all();
         $documentTypes = DocumentType::query()
             ->orderBy('name')
-            ->whereIn('movement_type_id', !empty($saleOrOrderTypeIds) ? $saleOrOrderTypeIds : [2])
+            ->whereIn('movement_type_id', ! empty($saleOrOrderTypeIds) ? $saleOrOrderTypeIds : [2])
             ->get(['id', 'name']);
 
         $branchIdForPm = (int) session('branch_id');
@@ -1031,7 +1049,7 @@ class OrderController extends Controller
             if ($movement && $movement->orderMovement) {
                 $table = $movement->orderMovement->table;
             }
-            if (!$table && $request->filled('table_id')) {
+            if (! $table && $request->filled('table_id')) {
                 $table = Table::find($request->table_id);
             }
 
@@ -1048,7 +1066,7 @@ class OrderController extends Controller
                     'items' => $details->map(function ($detail) {
                         return [
                             'pId' => $detail->product_id,
-                            'name' => $detail->description ?? 'Producto #' . $detail->product_id,
+                            'name' => $detail->description ?? 'Producto #'.$detail->product_id,
                             'qty' => (float) $detail->quantity,
                             'price' => $detail->quantity > 0 ? (float) $detail->amount / (float) $detail->quantity : 0,
                             'note' => $detail->comment ?? '',
@@ -1063,7 +1081,7 @@ class OrderController extends Controller
                 ];
             }
             // Venta: SalesMovement + detalles
-            if (!$draftOrder && $movement && $movement->salesMovement) {
+            if (! $draftOrder && $movement && $movement->salesMovement) {
                 if ($movement->cashMovement) {
                     $debt = DB::table('cash_movement_details')
                         ->where('cash_movement_id', $movement->cashMovement->id)
@@ -1078,7 +1096,7 @@ class OrderController extends Controller
                     'items' => $movement->salesMovement->details->map(function ($detail) {
                         return [
                             'pId' => $detail->product_id,
-                            'name' => $detail->product->description ?? 'Producto #' . $detail->product_id,
+                            'name' => $detail->product->description ?? 'Producto #'.$detail->product_id,
                             'qty' => (float) $detail->quantity,
                             'price' => (float) $detail->original_amount / (float) $detail->quantity,
                             'note' => $detail->comment ?? '',
@@ -1119,10 +1137,10 @@ class OrderController extends Controller
 
     public function moveTable(Request $request)
     {
-        $sourceTableId  = $request->input('table_id');       // mesa origen (ocupada)
-        $destTableId    = $request->input('new_table_id');   // mesa destino (libre)
+        $sourceTableId = $request->input('table_id');       // mesa origen (ocupada)
+        $destTableId = $request->input('new_table_id');   // mesa destino (libre)
 
-        if (!$sourceTableId || !$destTableId) {
+        if (! $sourceTableId || ! $destTableId) {
             return response()->json([
                 'success' => false,
                 'message' => 'Debes seleccionar una mesa destino.',
@@ -1137,12 +1155,12 @@ class OrderController extends Controller
         }
 
         $sourceTable = Table::find($sourceTableId);
-        $destTable   = Table::find($destTableId);
+        $destTable = Table::find($destTableId);
 
-        if (!$sourceTable) {
+        if (! $sourceTable) {
             return response()->json(['success' => false, 'message' => 'Mesa origen no encontrada.'], 404);
         }
-        if (!$destTable) {
+        if (! $destTable) {
             return response()->json(['success' => false, 'message' => 'Mesa destino no encontrada.'], 404);
         }
 
@@ -1162,7 +1180,7 @@ class OrderController extends Controller
                 ->whereIn('status', ['PENDIENTE', 'P'])
                 ->update([
                     'table_id' => $destTableId,
-                    'area_id'  => $destTable->area_id,
+                    'area_id' => $destTable->area_id,
                 ]);
 
             // Liberar mesa origen
@@ -1181,12 +1199,13 @@ class OrderController extends Controller
             DB::commit();
 
             return response()->json([
-                'success'       => true,
-                'message'       => 'Pedido movido a la mesa ' . ($destTable->name ?? $destTableId),
-                'new_table_id'  => $destTableId,
+                'success' => true,
+                'message' => 'Pedido movido a la mesa '.($destTable->name ?? $destTableId),
+                'new_table_id' => $destTableId,
             ]);
         } catch (\Throwable $e) {
             DB::rollBack();
+
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
@@ -1203,29 +1222,30 @@ class OrderController extends Controller
         $profileId = session('profile_id') ?? $user?->profile_id;
         $waiterPinEnabled = $this->shouldRequireWaiterPin($branchId ? (int) $branchId : null, $profileId);
         $waiterPersonId = $waiterPinEnabled ? (int) $request->session()->get('waiter_person_id') : (int) ($user?->person?->id ?? 0);
-        $waiterName = $waiterPinEnabled ? (string) $request->session()->get('waiter_name') : trim(($user?->person?->first_name ?? '') . ' ' . ($user?->person?->last_name ?? ''));
+        $waiterName = $waiterPinEnabled ? (string) $request->session()->get('waiter_name') : trim(($user?->person?->first_name ?? '').' '.($user?->person?->last_name ?? ''));
         // responsible_name = empleado que insertó el PIN (Person), nunca el usuario (User)
         if ($waiterPersonId) {
             $waiterPerson = Person::find($waiterPersonId);
-            $resolvedName = $waiterPerson ? trim(($waiterPerson->first_name ?? '') . ' ' . ($waiterPerson->last_name ?? '')) : '';
+            $resolvedName = $waiterPerson ? trim(($waiterPerson->first_name ?? '').' '.($waiterPerson->last_name ?? '')) : '';
             $waiterName = $resolvedName !== '' ? $resolvedName : ($waiterPerson ? 'Mozo' : $waiterName);
         }
-        if (trim((string) $waiterName) === '' && !$waiterPinEnabled) {
+        if (trim((string) $waiterName) === '' && ! $waiterPinEnabled) {
             $waiterName = $user?->name ?? 'Sistema';
         }
-        if ($waiterPinEnabled && !$waiterPersonId) {
+        if ($waiterPinEnabled && ! $waiterPersonId) {
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Debe ingresar el PIN del mozo.',
                 ], 422);
             }
+
             return redirect()->back()->with('error', 'Debe ingresar el PIN del mozo.');
         }
 
         // Subtotal: usar el enviado por el front o recalcular desde items
         $subtotal = $request->has('subtotal') ? (float) $request->subtotal : 0;
-        if ($subtotal == 0 && !empty($items)) {
+        if ($subtotal == 0 && ! empty($items)) {
             foreach ($items as $rawItem) {
                 $qty = (float) ($rawItem['quantity'] ?? $rawItem['qty'] ?? 1);
                 $price = (float) ($rawItem['price'] ?? 0);
@@ -1259,7 +1279,7 @@ class OrderController extends Controller
         }
 
         $hasTakeawayContext = $serviceType === 'TAKE_AWAY';
-        if (!$hasTakeawayContext && !empty($items)) {
+        if (! $hasTakeawayContext && ! empty($items)) {
             foreach ($items as $rawItem) {
                 $qty = (float) ($rawItem['quantity'] ?? $rawItem['qty'] ?? 1);
                 $tw = (float) ($rawItem['takeawayQty'] ?? $rawItem['takeaway_quantity'] ?? 0);
@@ -1271,7 +1291,7 @@ class OrderController extends Controller
         }
 
         $takeawayDisposableStored = 0;
-        if ($serviceType === 'DELIVERY' || !$chargeDisposable || !$hasTakeawayContext) {
+        if ($serviceType === 'DELIVERY' || ! $chargeDisposable || ! $hasTakeawayContext) {
             $takeawayDisposableAmount = 0;
         } else {
             $takeawayDisposableStored = $takeawayDisposableAmount;
@@ -1285,7 +1305,7 @@ class OrderController extends Controller
         // Si hay persona encontrada, usar siempre su nombre (ignora lo que mande el front en client_name)
         $clientNameFromRequest = $request->filled('client_name') ? trim((string) $request->client_name) : null;
         $clientName = $clientPerson
-            ? trim(($clientPerson->first_name ?? '') . ' ' . ($clientPerson->last_name ?? ''))
+            ? trim(($clientPerson->first_name ?? '').' '.($clientPerson->last_name ?? ''))
             : ($clientNameFromRequest ?: 'Público General');
 
         DB::beginTransaction();
@@ -1330,7 +1350,7 @@ class OrderController extends Controller
             }
 
             // Prioridad 2: si no, buscar por mesa
-            if (!$existingOrderMovement && $tableId) {
+            if (! $existingOrderMovement && $tableId) {
                 $existingOrderMovement = OrderMovement::where('table_id', $tableId)
                     ->whereIn('status', ['PENDIENTE', 'P'])
                     ->orderByDesc('id')
@@ -1348,6 +1368,7 @@ class OrderController extends Controller
                         'order_movement_id' => $existingOrderMovement->id,
                     ]);
                 }
+
                 return redirect()->route('orders.index')->with('status', 'Pedido pendiente en la mesa.');
             }
 
@@ -1360,6 +1381,7 @@ class OrderController extends Controller
                         'message' => 'Agregue productos al pedido.',
                     ], 422);
                 }
+
                 return redirect()->back()->with('error', 'Agregue productos al pedido.');
             }
 
@@ -1387,7 +1409,7 @@ class OrderController extends Controller
                     'person_name' => $clientName,
                     'responsible_id' => $user?->id,
 
-                    'responsible_name' => $waiterName ?: (($user?->person?->first_name ?? '') . ' ' . ($user?->person?->last_name ?? '-')),
+                    'responsible_name' => $waiterName ?: (($user?->person?->first_name ?? '').' '.($user?->person?->last_name ?? '-')),
                 ]);
 
                 // Eliminar detalles antiguos ACTIVOS y crear los nuevos (mantener histórico de cancelaciones status='C')
@@ -1407,7 +1429,7 @@ class OrderController extends Controller
 
                 $documentType = DocumentType::where('movement_type_id', $movementType->id)->first() ?? DocumentType::first();
 
-                if (!$movementType || !$documentType) {
+                if (! $movementType || ! $documentType) {
                     throw new \Exception('No hay tipo de movimiento o tipo de documento configurado para pedidos.');
                 }
 
@@ -1425,7 +1447,7 @@ class OrderController extends Controller
                     'person_id' => $clientPerson?->id,
                     'person_name' => $clientName,
                     'responsible_id' => $user?->id,
-                    'responsible_name' => $waiterName ?: (($user?->person?->first_name ?? '') . ' ' . ($user?->person?->last_name ?? '-')),
+                    'responsible_name' => $waiterName ?: (($user?->person?->first_name ?? '').' '.($user?->person?->last_name ?? '-')),
                     'comment' => 'Pedido desde punto de venta',
                     'status' => 'A',
                     'movement_type_id' => $movementType->id,
@@ -1480,7 +1502,7 @@ class OrderController extends Controller
                 $takeawayQty = max(0, min($takeawayQty, $qty));
 
                 $unitId = $rawItem['unit_id'] ?? ($product?->unit_id ?? null);
-                if (!$unitId) {
+                if (! $unitId) {
                     $unitId = Unit::query()->value('id'); // unidad por defecto
                 }
 
@@ -1492,13 +1514,13 @@ class OrderController extends Controller
                 $commandTime = $rawItem['commandTime'] ?? null;
                 $commandedAt = null;
                 if ($commandTime && preg_match('/^\\d{1,2}:\\d{2}(?::\\d{2})?/', $commandTime)) {
-                    $commandedAt = \Carbon\Carbon::parse('today ' . $commandTime);
+                    $commandedAt = \Carbon\Carbon::parse('today '.$commandTime);
                 }
-                if (!$commandedAt) {
+                if (! $commandedAt) {
                     $commandedAt = now();
                 }
 
-                $delivered = !empty($rawItem['delivered']);
+                $delivered = ! empty($rawItem['delivered']);
                 OrderMovementDetail::create([
                     'order_movement_id' => $orderMovement->id,
                     'product_id' => $productId,
@@ -1533,7 +1555,7 @@ class OrderController extends Controller
                 $amount = $qty * $price;
 
                 $unitId = $rawCancel['unit_id'] ?? ($product?->unit_id ?? null);
-                if (!$unitId) {
+                if (! $unitId) {
                     $unitId = Unit::query()->value('id'); // unidad por defecto
                 }
 
@@ -1541,7 +1563,7 @@ class OrderController extends Controller
                 $description = $rawCancel['description'] ?? ($product?->description ?? ($rawCancel['name'] ?? 'Producto'));
 
                 $productSnapshot = $rawCancel['product_snapshot'] ?? null;
-                if (!is_array($productSnapshot) && $product) {
+                if (! is_array($productSnapshot) && $product) {
                     $productSnapshot = $product->toArray();
                 }
 
@@ -1594,7 +1616,7 @@ class OrderController extends Controller
     public function processOrderPayment(Request $request)
     {
         $profileId = session('profile_id') ?? $request->user()?->profile_id;
-        if (!$this->canCharge($profileId)) {
+        if (! $this->canCharge($profileId)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Tu perfil (Mozo) no tiene permiso para cobrar. Solo puedes guardar pedidos.',
@@ -1610,7 +1632,7 @@ class OrderController extends Controller
         $clientNameFromRequest = $request->filled('client_name') ? trim((string) $request->client_name) : null;
         $clientName = $clientNameFromRequest
             ?: ($clientPerson
-                ? trim(($clientPerson->first_name ?? '') . ' ' . ($clientPerson->last_name ?? ''))
+                ? trim(($clientPerson->first_name ?? '').' '.($clientPerson->last_name ?? ''))
                 : null);
         $paymentMethods = collect($request->input('payment_methods', []));
 
@@ -1644,7 +1666,7 @@ class OrderController extends Controller
         if ($movementId) {
             $orderMovement = OrderMovement::where('movement_id', $movementId)->first();
         }
-        if (!$orderMovement && $tableId) {
+        if (! $orderMovement && $tableId) {
             $orderMovement = OrderMovement::where('table_id', $tableId)
                 ->whereIn('status', ['PENDIENTE', 'P'])
                 ->first();
@@ -1680,13 +1702,13 @@ class OrderController extends Controller
                 $cashDocumentTypeId = $this->resolveCashIncomeDocumentTypeId($cashMovementTypeId);
                 $cashRegister = CashRegister::find($cashRegisterId);
                 $shift = Shift::where('branch_id', $branchId)->first() ?? Shift::first();
-                if (!$shift) {
+                if (! $shift) {
                     throw new \Exception('No hay turno disponible para registrar el cobro.');
                 }
 
                 // Movimiento de caja hijo del movimiento de pedido
                 $cashEntryMovement = $this->resolveCashEntryMovementByParentMovement((int) $orderMovement->movement_id);
-                if (!$cashEntryMovement) {
+                if (! $cashEntryMovement) {
                     $cashEntryMovement = Movement::create([
                         'number' => $this->generateCashMovementNumber($branchId, (int) $cashRegisterId, (int) $paymentConcept->id),
                         'moved_at' => now(),
@@ -1695,8 +1717,8 @@ class OrderController extends Controller
                         'person_id' => $orderBaseMovement?->person_id,
                         'person_name' => $orderBaseMovement?->person_name ?? 'Publico General',
                         'responsible_id' => $user?->id,
-                        'responsible_name' => $user?->person ? trim(($user->person->first_name ?? '') . ' ' . ($user->person->last_name ?? '')) : ($user?->name ?? 'Sistema'),
-                        'comment' => 'Cobro de pedido ' . ($orderBaseMovement?->number ?? ''),
+                        'responsible_name' => $user?->person ? trim(($user->person->first_name ?? '').' '.($user->person->last_name ?? '')) : ($user?->name ?? 'Sistema'),
+                        'comment' => 'Cobro de pedido '.($orderBaseMovement?->number ?? ''),
                         'status' => '1',
                         'movement_type_id' => $cashMovementTypeId,
                         'document_type_id' => $cashDocumentTypeId,
@@ -1706,7 +1728,7 @@ class OrderController extends Controller
                 } else {
                     $cashEntryMovement->update([
                         'moved_at' => now(),
-                        'comment' => 'Cobro de pedido ' . ($orderBaseMovement?->number ?? ''),
+                        'comment' => 'Cobro de pedido '.($orderBaseMovement?->number ?? ''),
                         'status' => '1',
                     ]);
                 }
@@ -1754,16 +1776,16 @@ class OrderController extends Controller
                 if ($paymentMethods->isNotEmpty()) {
                     foreach ($paymentMethods as $paymentMethodData) {
                         $paymentMethod = PaymentMethod::findOrFail((int) ($paymentMethodData['payment_method_id'] ?? 0));
-                        $paymentGateway = !empty($paymentMethodData['payment_gateway_id'])
+                        $paymentGateway = ! empty($paymentMethodData['payment_gateway_id'])
                             ? PaymentGateways::find((int) $paymentMethodData['payment_gateway_id'])
                             : null;
-                        $card = !empty($paymentMethodData['card_id'])
+                        $card = ! empty($paymentMethodData['card_id'])
                             ? Card::find((int) $paymentMethodData['card_id'])
                             : null;
-                        $digitalWallet = !empty($paymentMethodData['digital_wallet_id'])
+                        $digitalWallet = ! empty($paymentMethodData['digital_wallet_id'])
                             ? DigitalWallet::find((int) $paymentMethodData['digital_wallet_id'])
                             : null;
-                        $bank = !empty($paymentMethodData['bank_id'])
+                        $bank = ! empty($paymentMethodData['bank_id'])
                             ? Bank::find((int) $paymentMethodData['bank_id'])
                             : null;
 
@@ -1783,7 +1805,7 @@ class OrderController extends Controller
                             'payment_gateway_id' => $paymentGateway?->id,
                             'payment_gateway' => $paymentGateway?->description,
                             'amount' => (float) ($paymentMethodData['amount'] ?? 0),
-                            'comment' => $request->input('notes') ?: 'Cobro de pedido ' . ($orderBaseMovement?->number ?? ''),
+                            'comment' => $request->input('notes') ?: 'Cobro de pedido '.($orderBaseMovement?->number ?? ''),
                             'status' => 'A',
                             'branch_id' => $branchId,
                             'created_at' => now(),
@@ -1803,12 +1825,21 @@ class OrderController extends Controller
 
                 DB::commit();
 
+                $thermalPrinterAvailable = PrinterBranch::query()
+                    ->where('branch_id', $branchId)
+                    ->where('status', 'E')
+                    ->whereNotNull('ip')
+                    ->where('ip', '!=', '')
+                    ->exists();
+
                 return response()->json([
                     'success' => true,
                     'message' => 'Cobro de pedido procesado correctamente',
                     'movement_id' => $orderMovement?->movement_id,
                     'order_movement_id' => $orderMovement?->id,
                     'cash_movement_id' => $cashEntryMovement?->id,
+                    'client_on_local_network' => LocalNetworkClient::isOnLocalNetwork($request),
+                    'thermal_printer_available' => $thermalPrinterAvailable,
                 ]);
             } catch (\Throwable $e) {
                 DB::rollBack();
@@ -1852,9 +1883,9 @@ class OrderController extends Controller
             // por fallback y reiniciarían la secuencia incorrectamente).
             // El CAST varía por driver: UNSIGNED en MySQL, BIGINT en PostgreSQL/SQLite.
             $castExpr = match ($driver) {
-                'pgsql'           => 'CAST(movements.number AS BIGINT)',
-                'sqlite'          => 'CAST(movements.number AS INTEGER)',
-                default           => 'CAST(movements.number AS UNSIGNED)',
+                'pgsql' => 'CAST(movements.number AS BIGINT)',
+                'sqlite' => 'CAST(movements.number AS INTEGER)',
+                default => 'CAST(movements.number AS UNSIGNED)',
             };
 
             // lockForUpdate() no es compatible con MAX() en PostgreSQL.
@@ -1884,13 +1915,13 @@ class OrderController extends Controller
             ->orderBy('id')
             ->value('id');
 
-        if (!$movementTypeId) {
+        if (! $movementTypeId) {
             $movementTypeId = MovementType::find(4)?->id;
         }
-        if (!$movementTypeId) {
+        if (! $movementTypeId) {
             $movementTypeId = MovementType::query()->orderBy('id')->value('id');
         }
-        if (!$movementTypeId) {
+        if (! $movementTypeId) {
             throw new \Exception('No se encontro tipo de movimiento para caja.');
         }
 
@@ -1905,14 +1936,14 @@ class OrderController extends Controller
             ->orderBy('id')
             ->value('id');
 
-        if (!$documentTypeId) {
+        if (! $documentTypeId) {
             $documentTypeId = DocumentType::query()
                 ->where('movement_type_id', $cashMovementTypeId)
                 ->orderBy('id')
                 ->value('id');
         }
 
-        if (!$documentTypeId) {
+        if (! $documentTypeId) {
             throw new \Exception('No se encontro tipo de documento para movimiento de caja.');
         }
 
@@ -1930,7 +1961,7 @@ class OrderController extends Controller
             ->latest('id')
             ->value(DB::raw('(SELECT cash_register_id FROM cash_movements WHERE cash_movements.id = cash_shift_relations.cash_movement_start_id LIMIT 1)'));
 
-        if (!$cashRegisterId) {
+        if (! $cashRegisterId) {
             // Fallback: primera caja habilitada (status booleano true=1)
             $cashRegisterId = CashRegister::query()
                 ->where('status', true)
@@ -1938,13 +1969,13 @@ class OrderController extends Controller
                 ->value('id');
         }
 
-        if (!$cashRegisterId) {
+        if (! $cashRegisterId) {
             $cashRegisterId = CashRegister::query()
                 ->orderBy('id')
                 ->value('id');
         }
 
-        if (!$cashRegisterId) {
+        if (! $cashRegisterId) {
             throw new \Exception('No hay caja activa/disponible para registrar cobro.');
         }
 
@@ -1959,7 +1990,7 @@ class OrderController extends Controller
             ->where('status', true)
             ->first();
 
-        if (!$cashRegister) {
+        if (! $cashRegister) {
             throw new \Exception('La caja seleccionada no está habilitada.');
         }
 
@@ -1976,8 +2007,8 @@ class OrderController extends Controller
             ->latest('id')
             ->first();
 
-        if (!$activeShift) {
-            throw new \Exception('La caja "' . $cashRegister->number . '" no tiene un turno abierto. Realice una Apertura de Caja primero.');
+        if (! $activeShift) {
+            throw new \Exception('La caja "'.$cashRegister->number.'" no tiene un turno abierto. Realice una Apertura de Caja primero.');
         }
     }
 
@@ -1993,14 +2024,14 @@ class OrderController extends Controller
             ->orderBy('id')
             ->first();
 
-        if (!$paymentConcept) {
+        if (! $paymentConcept) {
             $paymentConcept = PaymentConcept::query()
                 ->where('type', 'I')
                 ->orderBy('id')
                 ->first();
         }
 
-        if (!$paymentConcept) {
+        if (! $paymentConcept) {
             throw new \Exception('No se encontro concepto de pago de ingreso para el cobro.');
         }
 
@@ -2055,14 +2086,14 @@ class OrderController extends Controller
         $cancelReason = trim((string) $request->input('cancel_reason'));
         $tableId = $request->input('table_id');
 
-        if (!$tableId) {
+        if (! $tableId) {
             return response()->json([
                 'success' => false,
                 'message' => 'Mesa no encontrada',
             ], 404);
         }
         $table = Table::find($tableId);
-        if (!$table) {
+        if (! $table) {
             return response()->json([
                 'success' => false,
                 'message' => 'Mesa no encontrada',
@@ -2072,7 +2103,7 @@ class OrderController extends Controller
         $orderMovement = OrderMovement::where('table_id', $tableId)
             ->whereIn('status', ['PENDIENTE', 'P'])
             ->first();
-        if (!$orderMovement) {
+        if (! $orderMovement) {
             return response()->json([
                 'success' => false,
                 'message' => 'No se encontró un pedido pendiente para esta mesa.',
@@ -2104,14 +2135,14 @@ class OrderController extends Controller
     public function openTable(Request $request)
     {
         $tableId = $request->input('table_id');
-        if (!$tableId) {
+        if (! $tableId) {
             return response()->json([
                 'success' => false,
                 'message' => 'Mesa no encontrada',
             ], 404);
         }
         $table = Table::find($tableId);
-        if (!$table) {
+        if (! $table) {
             return response()->json([
                 'success' => false,
                 'message' => 'Mesa no encontrada',

@@ -273,8 +273,11 @@
 
                 <form method="POST" action="{{ route('admin.profiles.store') }}" class="space-y-6">
                     @csrf
+                    @if ($viewId)
+                        <input type="hidden" name="view_id" value="{{ $viewId }}">
+                    @endif
 
-                    @include('profiles._form', ['profile' => null])
+                    @include('profiles._form', ['profile' => null, 'viewOptions' => $viewOptions ?? []])
 
                     <div class="flex flex-wrap gap-3">
                         <x-ui.button type="submit" size="md" variant="primary">

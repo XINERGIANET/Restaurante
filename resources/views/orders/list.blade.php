@@ -208,6 +208,7 @@
                     <th class="w-24 px-2 py-2 text-center last:rounded-tr-xl font-bold uppercase tracking-wider">
                         Estado
                     </th>
+                    <th class="w-24 px-2 py-2 text-center font-bold uppercase tracking-wider">Acciones</th>
                 </tr>
             </thead>
             <tbody>
@@ -300,12 +301,28 @@
                                 {{ $rowStatusText }}
                             </x-ui.badge>
                         </td>
+                        <td class="px-2 py-2 text-center">
+                            <div class="flex flex-wrap items-center justify-center gap-2">
+                                @if ($order->movement_id)
+                                    <x-ui.button size="icon" variant="primary" type="button"
+                                        onclick="printThermalTicket({{ (int) $order->movement_id }})"
+                                        title="Imprimir ticket / comprobante"
+                                        class="flex-1 sm:flex-none h-11 px-6 shadow-sm hover:shadow-md transition-all duration-200 active:scale-95">
+                                        <i class="ri-printer-line"></i>
+                                    </x-ui.button>
+                                @else
+                                    <x-ui.button size="icon" variant="outline" title="Sin movimiento">
+                                        <i class="ri-printer-line"></i>
+                                    </x-ui.button>
+                                @endif
+                            </div>
+                        </td>
                     </tr>
 
                     {{-- Acordeón: Detalle del pedido --}}
                     <tr x-show="openRow === {{ $order->id }}" x-cloak x-transition
                         class="bg-slate-50 dark:bg-slate-800/40 border-b border-gray-200 dark:border-gray-800">
-                        <td colspan="7" class="px-6 py-5">
+                        <td colspan="8" class="px-6 py-5">
                             <div
                                 class="rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900 overflow-hidden shadow-sm">
                                 <div
@@ -393,7 +410,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7" class="px-6 py-12">
+                        <td colspan="8" class="px-6 py-12">
                             <div class="flex flex-col items-center gap-3 text-center text-xs text-gray-500">
                                 <div
                                     class="rounded-full bg-gray-100 p-3 text-gray-400 dark:bg-gray-800 dark:text-gray-300">
@@ -430,4 +447,45 @@
         </div>
         </x-common.component-card>
     </div>
+
+    <script>
+        async function printThermalTicket(movementId) {
+            if (!movementId) return;
+            const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+            try {
+                const r = await fetch(@json(route('sales.print.ticket.thermal')), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrf,
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ movement_id: movementId }),
+                });
+                const data = r.headers.get('content-type')?.includes('application/json') ? await r.json() : null;
+                if (!r.ok || !data?.success) {
+                    const msg = data?.message || 'No se pudo enviar el ticket a la ticketera.';
+                    if (typeof showNotification === 'function') {
+                        showNotification('Impresión', msg, 'error');
+                    } else {
+                        alert(msg);
+                    }
+                    return;
+                }
+                const okMsg = data?.message || 'Ticket enviado a la ticketera.';
+                if (typeof showNotification === 'function') {
+                    showNotification('Impresión', okMsg, 'success');
+                }
+            } catch (e) {
+                const msg = (e && e.message) ? e.message : 'Error de red al imprimir.';
+                if (typeof showNotification === 'function') {
+                    showNotification('Impresión', msg, 'error');
+                } else {
+                    alert(msg);
+                }
+            }
+        }
+    </script>
 @endsection

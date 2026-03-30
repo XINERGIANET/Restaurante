@@ -667,6 +667,8 @@
             const cobroCards = @json($cards ?? []);
             const cobroDigitalWallets = @json($digitalWallets ?? []);
             const cobroBanks = @json($banks ?? []);
+            const salesPrintTicketTemplate = @json(route('admin.sales.print.ticket', ['sale' => '__SALE_ID__']));
+            const salesThermalPrintUrl = @json(route('sales.print.ticket.thermal'));
 
             let autoSaveTimer = null;
 
@@ -2900,6 +2902,37 @@
                 return total;
             }
 
+            async function sendThermalTicketAfterSale(movementId, saleResponse) {
+                if (!movementId || !saleResponse?.client_on_local_network || !saleResponse
+                    ?.thermal_printer_available) {
+                    return;
+                }
+                const sel = document.getElementById('cobro-thermal-printer');
+                const printerId = sel && sel.value ? parseInt(sel.value, 10) : null;
+                const body = { movement_id: movementId };
+                if (printerId) body.printer_id = printerId;
+                try {
+                    const tr = await fetch(salesThermalPrintUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute(
+                                'content') || '',
+                            'Accept': 'application/json'
+                        },
+                        credentials: 'same-origin',
+                        body: JSON.stringify(body)
+                    });
+                    const td = tr.headers.get('content-type')?.includes('application/json') ? await tr.json() :
+                        null;
+                    if (!tr.ok && td?.message) {
+                        console.warn('Ticketera red:', td.message);
+                    }
+                } catch (e) {
+                    console.warn('Ticketera red:', e);
+                }
+            }
+
             async function processOrderPayment() {
                 if (waiterPinEnabled) {
                     const ok = await ensureWaiterPin();
@@ -3040,17 +3073,22 @@
                         throw new Error(payData?.message || payData?.error || 'Error al procesar el cobro.');
                     }
 
+                    const payMovementId = payData?.movement_id;
+                    await sendThermalTicketAfterSale(payMovementId, payData);
+
                     if (db && activeKey && db[activeKey]) {
                         delete db[activeKey];
                         localStorage.setItem('restaurantDB', JSON.stringify(db));
                     }
                     sessionStorage.setItem('flash_success_message', payData.message || 'Cobro de pedido procesado correctamente');
                     const indexUrl = "{{ route('orders.index') }}";
-                    if (window.Turbo && typeof window.Turbo.visit === 'function') {
-                        window.Turbo.visit(indexUrl, { action: 'replace' });
-                    } else {
-                        window.location.href = indexUrl;
-                    }
+                    setTimeout(() => {
+                        if (window.Turbo && typeof window.Turbo.visit === 'function') {
+                            window.Turbo.visit(indexUrl, { action: 'replace' });
+                        } else {
+                            window.location.href = indexUrl;
+                        }
+                    }, 600);
                 } catch (error) {
                     console.error('Error:', error);
                     if (String(error?.message || '').indexOf('PIN') !== -1) {

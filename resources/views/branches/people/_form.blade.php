@@ -1,10 +1,16 @@
 @php
     $selectedDepartmentId = old('department_id', $selectedDepartmentId ?? null);
     $selectedProvinceId = old('province_id', $selectedProvinceId ?? null);
-    $selectedDistrictId = old('location_id', $selectedDistrictId ?? ($person->location_id ?? null));
+    $selectedDistrictId = old('location_id', $selectedDistrictId ?? (($person ?? null)?->location_id));
     $selectedRoleIds = old('roles', $selectedRoleIds ?? []);
     $selectedProfileId = old('profile_id', $selectedProfileId ?? null);
     $userName = old('user_name', $userName ?? null);
+    $initialDefaultViewId = old(
+        'default_view_id',
+        isset($person) ? $person->user?->profile?->default_view_id : null
+    );
+    $initialDefaultViewId = $initialDefaultViewId !== '' && $initialDefaultViewId !== null ? (int) $initialDefaultViewId : null;
+    $viewOptionsList = collect($viewOptions ?? [])->values()->all();
     // Permite ocultar campos de PIN/Roles y relajar requeridos cuando se usa solo para clientes (por ejemplo, en POS).
     $hidePinAndRoles = $hidePinAndRoles ?? false;
 @endphp
@@ -17,7 +23,7 @@
     data-districts='@json($districts ?? [], JSON_HEX_APOS | JSON_HEX_QUOT)'
     data-department-id='@json(old('department_id', $selectedDepartmentId ?? null), JSON_HEX_APOS | JSON_HEX_QUOT)'
     data-province-id='@json(old('province_id', $selectedProvinceId ?? null), JSON_HEX_APOS | JSON_HEX_QUOT)'
-    data-district-id='@json(old('location_id', $selectedDistrictId ?? ($person->location_id ?? null)), JSON_HEX_APOS | JSON_HEX_QUOT)'
+    data-district-id='@json(old('location_id', $selectedDistrictId ?? (($person ?? null)?->location_id)), JSON_HEX_APOS | JSON_HEX_QUOT)'
     data-roles='@json($roles ?? [], JSON_HEX_APOS | JSON_HEX_QUOT)'
     data-selected-roles='@json($selectedRoleIds ?? [], JSON_HEX_APOS | JSON_HEX_QUOT)'
     data-profiles='@json($profiles ?? [], JSON_HEX_APOS | JSON_HEX_QUOT)'
@@ -33,6 +39,7 @@
         profiles: JSON.parse($el.dataset.profiles || '[]'),
         selectedRoleIds: JSON.parse($el.dataset.selectedRoles || '[]'),
         selectedProfileId: JSON.parse($el.dataset.selectedProfile || 'null') || '',
+        selectedDefaultViewId: @js($initialDefaultViewId),
         roleToAdd: '',
         userRoleId: 1,
         init() {
@@ -48,6 +55,13 @@
                     this.departmentId = province.parent_location_id ?? '';
                 }
             }
+            this.$watch('selectedProfileId', (val) => {
+                if (val === '' || val === null || val === undefined) return;
+                const p = this.profiles.find(pr => String(pr.id) === String(val));
+                if (!p) return;
+                this.selectedDefaultViewId = p.default_view_id != null && p.default_view_id !== ''
+                    ? parseInt(p.default_view_id, 10) : null;
+            });
         },
         addRole() {
             const roleId = parseInt(this.roleToAdd || 0, 10);
@@ -451,6 +465,22 @@
                                 </template>
                             </select>
                             @error('profile_id')
+                                <p class="mt-1 text-xs text-error-500">{{ $message }}</p>
+                            @enderror
+                        </div>
+                        <div class="sm:col-span-2 lg:col-span-2">
+                            <x-form.select.combobox
+                                label="Vista por defecto"
+                                name="default_view_id"
+                                x-model="selectedDefaultViewId"
+                                :options="$viewOptionsList"
+                                placeholder="Seleccione vista por defecto"
+                                icon="ri-layout-grid-line"
+                            />
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                Se guarda en el <strong>perfil</strong> elegido (todos los usuarios con ese perfil la comparten al iniciar sesión).
+                            </p>
+                            @error('default_view_id')
                                 <p class="mt-1 text-xs text-error-500">{{ $message }}</p>
                             @enderror
                         </div>

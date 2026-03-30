@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Helpers\MenuHelper;
 use App\Http\Controllers\Controller;
+use App\Models\Profile;
 use App\Models\Shift;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -59,10 +61,10 @@ class AuthenticatedSessionController extends Controller
             }
 
             // Redirección según perfil:
-            // - Mozo: SIEMPRE a Salones de Pedidos (ignorar URL "intended")
-            // - Otros perfiles: dashboard (respetando intended si existe)
+            // - Mozo: SIEMPRE a Salones de Pedidos (ignorar URL "intended" y vista por defecto)
+            // - Otros: dashboard; si el perfil tiene default_view_id, se añade ?view_id= al destino por defecto
             if ($profileId) {
-                $mozoProfileId = \App\Models\Profile::query()
+                $mozoProfileId = Profile::query()
                     ->whereNull('deleted_at')
                     ->whereRaw('LOWER(TRIM(name)) = ?', ['mozo'])
                     ->value('id');
@@ -71,7 +73,23 @@ class AuthenticatedSessionController extends Controller
                 }
             }
 
-            return redirect()->intended(route('dashboard'));
+            $defaultViewId = null;
+            if ($profileId && $branchId) {
+                $rawViewId = Profile::query()
+                    ->whereNull('deleted_at')
+                    ->whereKey($profileId)
+                    ->value('default_view_id');
+                $defaultViewId = MenuHelper::sanitizeProfileDefaultViewForLogin(
+                    (int) $profileId,
+                    (int) $branchId,
+                    $rawViewId
+                );
+            }
+
+            $dashboardPath = route('dashboard', array_filter(['view_id' => $defaultViewId]), false);
+            $defaultUrl = $request->root().(str_starts_with($dashboardPath, '/') ? $dashboardPath : '/'.$dashboardPath);
+
+            return redirect()->intended($defaultUrl);
         }
 
         return back()->withErrors([

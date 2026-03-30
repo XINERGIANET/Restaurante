@@ -7,17 +7,18 @@ use App\Models\Branch;
 use App\Models\Card;
 use App\Models\CashMovements;
 use App\Models\CashRegister;
+use App\Models\CashShiftRelation;
+use App\Models\Category;
 use App\Models\DigitalWallet;
 use App\Models\DocumentType;
 use App\Models\Movement;
 use App\Models\MovementType;
+use App\Models\Operation;
 use App\Models\PaymentConcept;
 use App\Models\PaymentGateways;
 use App\Models\PaymentMethod;
 use App\Models\Person;
-use App\Models\CashShiftRelation;
-use App\Models\Category;
-use App\Models\User;
+use App\Models\PrinterBranch;
 use App\Models\Product;
 use App\Models\ProductBranch;
 use App\Models\ProductType;
@@ -25,21 +26,22 @@ use App\Models\SalesMovement;
 use App\Models\SalesMovementDetail;
 use App\Models\Shift;
 use App\Models\TaxRate;
-use App\Models\Unit;
-use App\Models\Operation;
+use App\Models\User;
+use App\Services\ThermalNetworkPrintService;
 use App\Support\InsensitiveSearch;
+use App\Support\LocalNetworkClient;
+use Barryvdh\Snappy\Facades\SnappyPdf as PDF;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Carbon\Carbon;
-use Barryvdh\Snappy\Facades\SnappyPdf as PDF;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Symfony\Component\Process\Process;
 
 class SalesController extends Controller
 {
-
     public function index(Request $request)
     {
         $branchId = session('branch_id');
@@ -55,7 +57,7 @@ class SalesController extends Controller
         $saleType = $request->input('sale_type');
         $perPage = (int) $request->input('per_page', 10);
         $allowedPerPage = [10, 20, 50, 100];
-        if (!in_array($perPage, $allowedPerPage, true)) {
+        if (! in_array($perPage, $allowedPerPage, true)) {
             $perPage = 10;
         }
 
@@ -122,10 +124,10 @@ class SalesController extends Controller
             $query->where('person_id', $personId);
         }
         if ($dateFrom !== null && $dateFrom !== '') {
-            $query->where('moved_at', '>=', $dateFrom . ' 00:00:00');
+            $query->where('moved_at', '>=', $dateFrom.' 00:00:00');
         }
         if ($dateTo !== null && $dateTo !== '') {
-            $query->where('moved_at', '<=', $dateTo . ' 23:59:59');
+            $query->where('moved_at', '<=', $dateTo.' 23:59:59');
         }
         if ($paymentMethodId) {
             $query->whereExists(function ($sub) use ($paymentMethodId) {
@@ -168,7 +170,7 @@ class SalesController extends Controller
                     'last_page' => $sales->lastPage(),
                     'per_page' => $sales->perPage(),
                     'total' => $sales->total(),
-                ]
+                ],
             ]);
         }
 
@@ -207,13 +209,14 @@ class SalesController extends Controller
     public function getSessionCashRegister(Request $request)
     {
         $cashRegisterId = session('cash_register_id');
+
         return response()->json([
             'success' => true,
-            'cash_register_id' => $cashRegisterId
+            'cash_register_id' => $cashRegisterId,
         ]);
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $branchId = (int) (session('branch_id') ?? 0) ?: null;
 
@@ -227,7 +230,7 @@ class SalesController extends Controller
 
         // Categorías asignadas a esta sucursal (category_branch)
         $categories = Category::query()
-            ->when($branchId, fn($q) => $q->forBranchMenu($branchId, 'VENTAS_PEDIDOS'), function ($query) {
+            ->when($branchId, fn ($q) => $q->forBranchMenu($branchId, 'VENTAS_PEDIDOS'), function ($query) {
                 $query->whereRaw('1 = 0');
             })
             ->orderBy('description')
@@ -235,12 +238,13 @@ class SalesController extends Controller
             ->map(function ($cat) use ($defaultImage) {
                 $img = $defaultImage;
                 if ($cat->image && Storage::disk('public')->exists($cat->image)) {
-                    $img = asset('storage/' . $cat->image);
+                    $img = asset('storage/'.$cat->image);
                 }
+
                 return [
                     'id' => $cat->id,
                     'name' => $cat->description,
-                    'img' => $img
+                    'img' => $img,
                 ];
             })->values();
 
@@ -249,13 +253,13 @@ class SalesController extends Controller
             ->where('type', 'PRODUCT')
             ->where(function ($q) {
                 $q->whereNull('product_type_id')
-                    ->orWhereHas('productType', fn($q2) => $q2->whereIn('behavior', [
+                    ->orWhereHas('productType', fn ($q2) => $q2->whereIn('behavior', [
                         ProductType::BEHAVIOR_SELLABLE,
                         ProductType::BEHAVIOR_BOTH,
                     ]));
             })
             ->when($branchId, function ($query) use ($branchId) {
-                $query->whereHas('productBranches', fn($q) => $q->where('branch_id', $branchId))
+                $query->whereHas('productBranches', fn ($q) => $q->where('branch_id', $branchId))
                     ->whereExists(function ($sub) use ($branchId) {
                         $sub->select(DB::raw(1))
                             ->from('category_branch')
@@ -272,12 +276,13 @@ class SalesController extends Controller
             ->get()
             ->map(function (Product $product) use ($defaultImage) {
                 $imageUrl = $defaultImage;
-                if (!empty($product->image)) {
+                if (! empty($product->image)) {
                     $path = ltrim($product->image, '/');
                     if (Storage::disk('public')->exists($path)) {
-                        $imageUrl = asset('storage/' . $path);
+                        $imageUrl = asset('storage/'.$path);
                     }
                 }
+
                 return [
                     'id' => (int) $product->id,
                     'name' => $product->description,
@@ -291,27 +296,31 @@ class SalesController extends Controller
 
         $productBranches = $branchId
             ? ProductBranch::query()
-            ->where('branch_id', $branchId)
-            ->with(['product.productType', 'taxRate'])
-            ->get()
-            ->filter(function ($productBranch) {
-                if ($productBranch->product === null) return false;
-                $pt = $productBranch->product->productType;
-                return $pt === null || $pt->isSellable();
-            })
-            ->map(function ($productBranch) {
-                $taxRate = $productBranch->taxRate;
-                $taxRatePct = $taxRate ? (float) $taxRate->tax_rate : null;
-                return [
-                    'id' => (int) $productBranch->id,
-                    'product_id' => (int) $productBranch->product_id,
-                    'price' => (float) $productBranch->price,
-                    'tax_rate' => $taxRatePct,
-                    'stock' => (float) ($productBranch->stock ?? 0),
-                    'favorite' => ($productBranch->favorite ?? 'N'),
-                ];
-            })
-            ->values()
+                ->where('branch_id', $branchId)
+                ->with(['product.productType', 'taxRate'])
+                ->get()
+                ->filter(function ($productBranch) {
+                    if ($productBranch->product === null) {
+                        return false;
+                    }
+                    $pt = $productBranch->product->productType;
+
+                    return $pt === null || $pt->isSellable();
+                })
+                ->map(function ($productBranch) {
+                    $taxRate = $productBranch->taxRate;
+                    $taxRatePct = $taxRate ? (float) $taxRate->tax_rate : null;
+
+                    return [
+                        'id' => (int) $productBranch->id,
+                        'product_id' => (int) $productBranch->product_id,
+                        'price' => (float) $productBranch->price,
+                        'tax_rate' => $taxRatePct,
+                        'stock' => (float) ($productBranch->stock ?? 0),
+                        'favorite' => ($productBranch->favorite ?? 'N'),
+                    ];
+                })
+                ->values()
             : collect();
 
         $saleType = 'IN_SITU';
@@ -356,6 +365,16 @@ class SalesController extends Controller
 
         $branch = $branchId ? Branch::find($branchId) : null;
 
+        $thermalPrinters = $branchId
+            ? PrinterBranch::query()
+                ->where('branch_id', $branchId)
+                ->where('status', 'E')
+                ->whereNotNull('ip')
+                ->where('ip', '!=', '')
+                ->orderBy('id')
+                ->get(['id', 'name', 'ip', 'width'])
+            : collect();
+
         return view('sales.create', [
             'products' => $products,
             'productBranches' => $productBranches,
@@ -373,6 +392,8 @@ class SalesController extends Controller
             'cashRegisters' => $cashRegisters,
             'saleType' => $saleType,
             'branch' => $branch,
+            'clientOnLocalNetwork' => LocalNetworkClient::isOnLocalNetwork($request),
+            'thermalPrinters' => $thermalPrinters,
         ]);
     }
 
@@ -415,7 +436,6 @@ class SalesController extends Controller
             ->orderBy('order_num')
             ->get(['id', 'description', 'order_num']);
 
-
         $cashRegisters = CashRegister::query()
             ->orderByRaw("CASE WHEN status = 'A' THEN 0 ELSE 1 END")
             ->orderBy('number')
@@ -423,12 +443,12 @@ class SalesController extends Controller
         $people = $this->branchClientsForBranch($branchId);
 
         $defaultClientId = Person::query()
-            ->when($branchId, fn($query) => $query->where('branch_id', $branchId))
+            ->when($branchId, fn ($query) => $query->where('branch_id', $branchId))
             ->whereRaw('UPPER(first_name) = ?', ['CLIENTES'])
             ->whereRaw('UPPER(last_name) = ?', ['VARIOS'])
             ->value('id');
 
-        if (!$defaultClientId) {
+        if (! $defaultClientId) {
             $defaultClientId = 4;
         }
 
@@ -467,9 +487,10 @@ class SalesController extends Controller
                         $amountWithTax = (float) $detail->amount;
                         $quantity = (float) $detail->quantity ?: 1;
                         $priceWithTax = $quantity > 0 ? $amountWithTax / $quantity : 0;
+
                         return [
                             'pId' => $detail->product_id,
-                            'name' => $detail->product->description ?? 'Producto #' . $detail->product_id,
+                            'name' => $detail->product->description ?? 'Producto #'.$detail->product_id,
                             'qty' => $quantity,
                             'price' => $priceWithTax,
                             'tax_rate' => $taxRatePct,
@@ -494,9 +515,10 @@ class SalesController extends Controller
             ->get()
             ->filter(function ($pb) {
                 $pt = $pb->product?->productType;
+
                 return $pt === null || $pt->isSellable();
             })
-            ->map(fn($pb) => [
+            ->map(fn ($pb) => [
                 'product_id' => (int) $pb->product_id,
                 'price' => (float) $pb->price,
                 'tax_rate' => $pb->taxRate ? (float) $pb->taxRate->tax_rate : null,
@@ -525,6 +547,7 @@ class SalesController extends Controller
             'company' => $company,
         ]);
     }
+
     // POS: procesar venta
     public function processSale(Request $request)
     {
@@ -565,20 +588,20 @@ class SalesController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error de validación',
-                'errors' => $e->errors()
+                'errors' => $e->errors(),
             ], 422);
         }
 
         // ── Validar caja ANTES de iniciar la transacción ──────────────────────
         $branchIdForCheck = (int) session('branch_id');
-        $cashRegisterId   = $request->input('cash_register_id') ?: session('cash_register_id');
+        $cashRegisterId = $request->input('cash_register_id') ?: session('cash_register_id');
 
-        if (!$cashRegisterId) {
+        if (! $cashRegisterId) {
             return response()->json(['success' => false, 'message' => 'Selecciona una caja antes de registrar la venta.'], 422);
         }
 
         $cashRegisterCheck = CashRegister::where('id', $cashRegisterId)->where('status', true)->first();
-        if (!$cashRegisterCheck) {
+        if (! $cashRegisterCheck) {
             return response()->json(['success' => false, 'message' => 'La caja seleccionada no está habilitada.'], 422);
         }
 
@@ -593,10 +616,10 @@ class SalesController extends Controller
             ->latest('id')
             ->first();
 
-        if (!$activeShiftCheck) {
+        if (! $activeShiftCheck) {
             return response()->json([
                 'success' => false,
-                'message' => 'La caja "' . $cashRegisterCheck->number . '" no tiene un turno abierto. Realice una Apertura de Caja primero.',
+                'message' => 'La caja "'.$cashRegisterCheck->number.'" no tiene un turno abierto. Realice una Apertura de Caja primero.',
             ], 422);
         }
         // ──────────────────────────────────────────────────────────────────────
@@ -612,11 +635,11 @@ class SalesController extends Controller
             $shift = Shift::where('branch_id', $branchId)->first();
 
             // Si no hay turno de la sucursal, usar el primero disponible
-            if (!$shift) {
+            if (! $shift) {
                 $shift = Shift::first();
             }
 
-            if (!$shift) {
+            if (! $shift) {
                 throw new \Exception('No hay turno disponible. Por favor, crea un turno primero.');
             }
 
@@ -626,18 +649,18 @@ class SalesController extends Controller
                 ->orWhere('description', 'like', '%Venta%')
                 ->first();
 
-            if (!$movementType) {
+            if (! $movementType) {
                 $movementType = MovementType::first();
             }
 
-            if (!$movementType) {
+            if (! $movementType) {
                 throw new \Exception('No se encontró un tipo de movimiento válido. Por favor, crea un tipo de movimiento primero.');
             }
 
             $documentType = DocumentType::findOrFail($request->document_type_id);
 
             $selectedPerson = null;
-            if (!empty($validated['person_id'])) {
+            if (! empty($validated['person_id'])) {
                 $selectedPerson = Person::query()
                     ->where('id', $validated['person_id'])
                     ->where('branch_id', $branchId)
@@ -648,14 +671,14 @@ class SalesController extends Controller
             $paymentConcept = PaymentConcept::find(3); // Pago de cliente
 
             // Si no existe el ID 5, buscar por descripción
-            if (!$paymentConcept) {
+            if (! $paymentConcept) {
                 $paymentConcept = PaymentConcept::where('description', 'like', '%pago de cliente%')
                     ->orWhere('description', 'like', '%Pago de cliente%')
                     ->first();
             }
 
             // Si aún no se encuentra, buscar cualquier concepto de ingreso relacionado con venta
-            if (!$paymentConcept) {
+            if (! $paymentConcept) {
                 $paymentConcept = PaymentConcept::where('description', 'like', '%venta%')
                     ->orWhere('description', 'like', '%cliente%')
                     ->where('type', 'I')
@@ -663,11 +686,11 @@ class SalesController extends Controller
             }
 
             // Si aún no se encuentra, buscar cualquier concepto de ingreso
-            if (!$paymentConcept) {
+            if (! $paymentConcept) {
                 $paymentConcept = PaymentConcept::where('type', 'I')->first();
             }
 
-            if (!$paymentConcept) {
+            if (! $paymentConcept) {
                 throw new \Exception('No se encontró un concepto de pago válido. Por favor, crea un concepto de pago primero.');
             }
 
@@ -706,7 +729,7 @@ class SalesController extends Controller
                     ->where('branch_id', $branchId)
                     ->first();
 
-                if (!$movement) {
+                if (! $movement) {
                     throw new \Exception('No se encontró el movimiento de venta');
                 }
 
@@ -719,7 +742,7 @@ class SalesController extends Controller
                     'document_type_id' => $documentType->id,
                     'person_id' => $selectedPerson?->id,
                     'person_name' => $selectedPerson
-                        ? trim(($selectedPerson->first_name ?? '') . ' ' . ($selectedPerson->last_name ?? ''))
+                        ? trim(($selectedPerson->first_name ?? '').' '.($selectedPerson->last_name ?? ''))
                         : 'Publico General',
                 ]);
 
@@ -742,10 +765,10 @@ class SalesController extends Controller
                     'user_name' => $user?->name ?? 'Sistema',
                     'person_id' => $selectedPerson?->id,
                     'person_name' => $selectedPerson
-                        ? trim(($selectedPerson->first_name ?? '') . ' ' . ($selectedPerson->last_name ?? ''))
+                        ? trim(($selectedPerson->first_name ?? '').' '.($selectedPerson->last_name ?? ''))
                         : 'Publico General',
                     'responsible_id' => $user?->id,
-                    'responsible_name' => $user?->person ? trim(($user->person->first_name ?? '') . ' ' . ($user->person->last_name ?? '')) : ($user?->name ?? 'Sistema'),
+                    'responsible_name' => $user?->person ? trim(($user->person->first_name ?? '').' '.($user->person->last_name ?? '')) : ($user?->name ?? 'Sistema'),
                     'comment' => $request->notes ?? '',
                     'status' => 'A', // Siempre Activo (pago completo)
                     'movement_type_id' => $movementType->id,
@@ -756,7 +779,7 @@ class SalesController extends Controller
                     'shift_snapshot' => [
                         'name' => $shift->name,
                         'start_time' => $shift->start_time,
-                        'end_time' => $shift->end_time
+                        'end_time' => $shift->end_time,
                     ],
                 ]);
             }
@@ -806,7 +829,7 @@ class SalesController extends Controller
                     ->lockForUpdate()
                     ->first();
 
-                if (!$productBranch) {
+                if (! $productBranch) {
                     throw new \Exception("Producto {$product->description} no disponible en esta sucursal");
                 }
 
@@ -822,7 +845,7 @@ class SalesController extends Controller
                 // }
 
                 $unit = $product->baseUnit;
-                if (!$unit) {
+                if (! $unit) {
                     throw new \Exception("El producto {$product->description} no tiene una unidad base configurada");
                 }
 
@@ -875,15 +898,14 @@ class SalesController extends Controller
                 // Restar el stock del producto en la sucursal
                 $newStock = $currentStock - $quantityToSell;
                 $productBranch->update([
-                    'stock' => max(0, $newStock) // Asegurar que no sea negativo
+                    'stock' => max(0, $newStock), // Asegurar que no sea negativo
                 ]);
             }
 
             // Crear/actualizar movimiento de caja separado del movimiento de venta
             $cashEntryMovement = $this->resolveCashEntryMovementBySaleMovement($movement->id);
 
-
-            if (!$cashEntryMovement) {
+            if (! $cashEntryMovement) {
                 $cashEntryMovement = Movement::create([
                     'number' => $this->generateCashMovementNumber(
                         (int) $branchId,
@@ -895,11 +917,11 @@ class SalesController extends Controller
                     'user_name' => $user?->name ?? 'Sistema',
                     'person_id' => $selectedPerson?->id,
                     'person_name' => $selectedPerson
-                        ? trim(($selectedPerson->first_name ?? '') . ' ' . ($selectedPerson->last_name ?? ''))
+                        ? trim(($selectedPerson->first_name ?? '').' '.($selectedPerson->last_name ?? ''))
                         : 'Publico General',
                     'responsible_id' => $user?->id,
-                    'responsible_name' => $user?->person ? trim(($user->person->first_name ?? '') . ' ' . ($user->person->last_name ?? '')) : ($user?->name ?? 'Sistema'),
-                    'comment' => 'Cobro de venta ' . $movement->number,
+                    'responsible_name' => $user?->person ? trim(($user->person->first_name ?? '').' '.($user->person->last_name ?? '')) : ($user?->name ?? 'Sistema'),
+                    'comment' => 'Cobro de venta '.$movement->number,
                     'status' => '1',
                     'movement_type_id' => 4,
                     'document_type_id' => 9,
@@ -911,9 +933,9 @@ class SalesController extends Controller
                     'moved_at' => now(),
                     'person_id' => $selectedPerson?->id,
                     'person_name' => $selectedPerson
-                        ? trim(($selectedPerson->first_name ?? '') . ' ' . ($selectedPerson->last_name ?? ''))
+                        ? trim(($selectedPerson->first_name ?? '').' '.($selectedPerson->last_name ?? ''))
                         : 'Publico General',
-                    'comment' => 'Cobro de venta ' . $movement->number,
+                    'comment' => 'Cobro de venta '.$movement->number,
                     'status' => '1',
                     'movement_type_id' => 4,
                     'document_type_id' => 9,
@@ -935,7 +957,7 @@ class SalesController extends Controller
                     'shift_snapshot' => [
                         'name' => $shift->name,
                         'start_time' => $shift->start_time,
-                        'end_time' => $shift->end_time
+                        'end_time' => $shift->end_time,
                     ],
                     'branch_id' => $branchId,
                 ]);
@@ -954,7 +976,7 @@ class SalesController extends Controller
                     'shift_snapshot' => [
                         'name' => $shift->name,
                         'start_time' => $shift->start_time,
-                        'end_time' => $shift->end_time
+                        'end_time' => $shift->end_time,
                     ],
                     'movement_id' => $cashEntryMovement->id,
                     'branch_id' => $branchId,
@@ -968,16 +990,16 @@ class SalesController extends Controller
                 $card = null;
                 $digitalWallet = null;
 
-                if (!empty($paymentMethodData['payment_gateway_id'])) {
+                if (! empty($paymentMethodData['payment_gateway_id'])) {
                     $paymentGateway = PaymentGateways::find($paymentMethodData['payment_gateway_id']);
                 }
-                if (!empty($paymentMethodData['card_id'])) {
+                if (! empty($paymentMethodData['card_id'])) {
                     $card = Card::find($paymentMethodData['card_id']);
                 }
-                if (!empty($paymentMethodData['digital_wallet_id'])) {
+                if (! empty($paymentMethodData['digital_wallet_id'])) {
                     $digitalWallet = DigitalWallet::find($paymentMethodData['digital_wallet_id']);
                 }
-                $bank = !empty($paymentMethodData['bank_id'])
+                $bank = ! empty($paymentMethodData['bank_id'])
                     ? Bank::find($paymentMethodData['bank_id'])
                     : null;
 
@@ -997,7 +1019,7 @@ class SalesController extends Controller
                     'payment_gateway_id' => $paymentGateway?->id,
                     'payment_gateway' => $paymentGateway?->description ?? '',
                     'amount' => $paymentMethodData['amount'],
-                    'comment' => $request->notes ?? 'Venta desde punto de venta - ' . $documentType->name,
+                    'comment' => $request->notes ?? 'Venta desde punto de venta - '.$documentType->name,
                     'status' => 'A',
                     'branch_id' => $branchId,
                     'created_at' => now(),
@@ -1007,6 +1029,13 @@ class SalesController extends Controller
 
             DB::commit();
 
+            $thermalPrinterAvailable = PrinterBranch::query()
+                ->where('branch_id', $branchId)
+                ->where('status', 'E')
+                ->whereNotNull('ip')
+                ->where('ip', '!=', '')
+                ->exists();
+
             return response()->json([
                 'success' => true,
                 'message' => 'Venta procesada correctamente',
@@ -1015,13 +1044,15 @@ class SalesController extends Controller
                     'cash_movement_id' => $cashEntryMovement->id,
                     'number' => $number,
                     'total' => $total,
-                ]
+                ],
+                'client_on_local_network' => LocalNetworkClient::isOnLocalNetwork($request),
+                'thermal_printer_available' => $thermalPrinterAvailable,
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error al procesar la venta: ' . $e->getMessage(), [
+            Log::error('Error al procesar la venta: '.$e->getMessage(), [
                 'exception' => $e,
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
 
             $message = config('app.debug')
@@ -1034,8 +1065,8 @@ class SalesController extends Controller
                 'error' => config('app.debug') ? [
                     'message' => $e->getMessage(),
                     'file' => $e->getFile(),
-                    'line' => $e->getLine()
-                ] : null
+                    'line' => $e->getLine(),
+                ] : null,
             ], 500);
         }
     }
@@ -1060,7 +1091,7 @@ class SalesController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error de validación',
-                'errors' => $e->errors()
+                'errors' => $e->errors(),
             ], 422);
         }
 
@@ -1073,10 +1104,10 @@ class SalesController extends Controller
 
             // Obtener turno de la sucursal
             $shift = Shift::where('branch_id', $branchId)->first();
-            if (!$shift) {
+            if (! $shift) {
                 $shift = Shift::first();
             }
-            if (!$shift) {
+            if (! $shift) {
                 throw new \Exception('No hay turno disponible. Por favor, crea un turno primero.');
             }
 
@@ -1086,11 +1117,11 @@ class SalesController extends Controller
                 ->orWhere('description', 'like', '%Venta%')
                 ->first();
 
-            if (!$movementType) {
+            if (! $movementType) {
                 $movementType = MovementType::first();
             }
 
-            if (!$movementType) {
+            if (! $movementType) {
                 throw new \Exception('No se encontró un tipo de movimiento válido.');
             }
 
@@ -1100,15 +1131,15 @@ class SalesController extends Controller
                 $documentType = DocumentType::find($request->document_type_id);
             }
 
-            if (!$documentType) {
+            if (! $documentType) {
                 $documentType = DocumentType::where('movement_type_id', $movementType->id)->first();
             }
 
-            if (!$documentType) {
+            if (! $documentType) {
                 $documentType = DocumentType::first();
             }
 
-            if (!$documentType) {
+            if (! $documentType) {
                 throw new \Exception('No se encontró un tipo de documento válido.');
             }
 
@@ -1136,7 +1167,7 @@ class SalesController extends Controller
                 'person_name' => 'Público General',
                 'responsible_id' => $user?->id,
                 'responsible_name' => $user?->name ?? 'Sistema',
-                'comment' => ($request->notes ?? 'Venta pendiente de pago') . ' [BORRADOR]',
+                'comment' => ($request->notes ?? 'Venta pendiente de pago').' [BORRADOR]',
                 'status' => 'P', // P = Pendiente
                 'movement_type_id' => $movementType->id,
                 'document_type_id' => $documentType->id,
@@ -1146,7 +1177,7 @@ class SalesController extends Controller
                 'shift_snapshot' => [
                     'name' => $shift->name,
                     'start_time' => $shift->start_time,
-                    'end_time' => $shift->end_time
+                    'end_time' => $shift->end_time,
                 ],
             ]);
 
@@ -1180,12 +1211,12 @@ class SalesController extends Controller
                     ->where('branch_id', $branchId)
                     ->first();
 
-                if (!$productBranch) {
+                if (! $productBranch) {
                     throw new \Exception("Producto {$product->description} no disponible en esta sucursal");
                 }
 
                 $unit = $product->baseUnit;
-                if (!$unit) {
+                if (! $unit) {
                     throw new \Exception("El producto {$product->description} no tiene una unidad base configurada");
                 }
 
@@ -1246,14 +1277,15 @@ class SalesController extends Controller
                     'movement_id' => $movement->id,
                     'number' => $number,
                     'total' => $total,
-                ]
+                ],
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error al guardar borrador de venta: ' . $e->getMessage());
+            Log::error('Error al guardar borrador de venta: '.$e->getMessage());
+
             return response()->json([
                 'success' => false,
-                'message' => 'Error al guardar borrador: ' . $e->getMessage()
+                'message' => 'Error al guardar borrador: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -1264,9 +1296,9 @@ class SalesController extends Controller
 
         $user = $request->user();
         $personName = null;
-        if (!empty($data['person_id'])) {
+        if (! empty($data['person_id'])) {
             $person = Person::find($data['person_id']);
-            $personName = $person ? ($person->first_name . ' ' . $person->last_name) : null;
+            $personName = $person ? ($person->first_name.' '.$person->last_name) : null;
         }
 
         Movement::create([
@@ -1303,9 +1335,9 @@ class SalesController extends Controller
         $data = $this->validateSale($request);
 
         $personName = null;
-        if (!empty($data['person_id'])) {
+        if (! empty($data['person_id'])) {
             $person = Person::find($data['person_id']);
-            $personName = $person ? ($person->first_name . ' ' . $person->last_name) : null;
+            $personName = $person ? ($person->first_name.' '.$person->last_name) : null;
         }
 
         $sale->update([
@@ -1365,14 +1397,14 @@ class SalesController extends Controller
         ];
     }
 
-
-
     /** Obtiene la tasa de impuesto por defecto del sistema (valor 0-1, ej: 0.18 para 18%). */
     private function getDefaultTaxRateValue(): float
     {
         $taxRate = TaxRate::where('status', true)->orderBy('order_num')->first();
+
         return $taxRate ? ((float) $taxRate->tax_rate) / 100 : 0.18;
     }
+
     private function resolveSalePaymentLabel(Movement $sale): string
     {
         if (($sale->salesMovement?->payment_type ?? null) === 'CREDIT') {
@@ -1380,7 +1412,7 @@ class SalesController extends Controller
         }
 
         $cashMovement = $sale->cashMovement ?: $this->resolveCashMovementBySaleMovement($sale->id);
-        if (!$cashMovement) {
+        if (! $cashMovement) {
             return 'No especificado';
         }
 
@@ -1394,9 +1426,10 @@ class SalesController extends Controller
 
         return $methodName ?: 'Mixto';
     }
+
     public function printTicket(Request $request, Movement $sale)
     {
-        $sale = $this->resolvePrintableSale($sale);
+        $sale = $this->resolvePrintableForTicket($sale);
         $printData = $this->buildSalePrintData($sale, $request);
         $printData['autoPrint'] = false;
 
@@ -1422,15 +1455,107 @@ class SalesController extends Controller
 
         if ($pdfBinary === null) {
             $printData['autoPrint'] = true;
+
             return view('sales.print.ticket', $printData);
         }
 
-        $docName = strtoupper(substr($sale->documentType?->name ?? 'T', 0, 1)) . ($sale->salesMovement?->series ?? '001') . '-' . $sale->number;
+        $docName = strtoupper(substr($sale->documentType?->name ?? 'T', 0, 1)).$this->ticketSeriesForMovement($sale).'-'.$sale->number;
+
         return response($pdfBinary, 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="' . $docName . '-ticket.pdf"',
+            'Content-Disposition' => 'inline; filename="'.$docName.'-ticket.pdf"',
         ]);
     }
+
+    /**
+     * Envía ticket en texto plano a ticketera en red (puerto típico 9100).
+     * Solo permite clientes cuya IP esté en LAN privada (WiFi del local).
+     */
+    public function printTicketThermalNetwork(Request $request)
+    {
+        if (! config('local_network.thermal_print_enabled', true)) {
+            abort(404);
+        }
+
+        if (! LocalNetworkClient::isOnLocalNetwork($request)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'La impresión en ticketera por red solo está permitida desde la WiFi o red local del establecimiento.',
+            ], 403);
+        }
+
+        try {
+            $validated = $request->validate([
+                'movement_id' => ['required', 'integer', 'exists:movements,id'],
+                'printer_id' => ['nullable', 'integer', 'exists:printers_branch,id'],
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Datos no válidos',
+                'errors' => $e->errors(),
+            ], 422);
+        }
+
+        $branchId = (int) session('branch_id');
+        if (! $branchId) {
+            return response()->json(['success' => false, 'message' => 'Sin sucursal en sesión.'], 422);
+        }
+
+        $movement = Movement::query()
+            ->where('id', $validated['movement_id'])
+            ->where('branch_id', $branchId)
+            ->first();
+
+        if (! $movement) {
+            return response()->json(['success' => false, 'message' => 'Venta no encontrada en esta sucursal.'], 404);
+        }
+
+        $movement = $this->resolvePrintableForTicket($movement);
+
+        $printerQuery = PrinterBranch::query()
+            ->where('branch_id', $branchId)
+            ->where('status', 'E')
+            ->whereNotNull('ip')
+            ->where('ip', '!=', '');
+
+        if (! empty($validated['printer_id'])) {
+            $printer = (clone $printerQuery)->where('id', $validated['printer_id'])->first();
+        } else {
+            $printer = $printerQuery->orderBy('id')->first();
+        }
+
+        if (! $printer) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No hay ticketera con IP configurada para esta sucursal.',
+            ], 422);
+        }
+
+        $plain = $this->buildThermalTicketPlainText($movement, $request);
+        $payload = $this->wrapEscPosPlainPayload($plain);
+
+        try {
+            app(ThermalNetworkPrintService::class)->sendRaw(
+                (string) $printer->ip,
+                (int) config('local_network.thermal_port', 9100),
+                $payload,
+                (int) config('local_network.thermal_timeout_seconds', 4)
+            );
+        } catch (\Throwable $e) {
+            Log::warning('Impresión térmica red: '.$e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => config('app.debug')
+                    ? $e->getMessage()
+                    : 'No se pudo enviar el ticket a la ticketera. Comprueba IP, cable/red y que el servidor alcance la impresora.',
+            ], 500);
+        }
+
+        return response()->json(['success' => true, 'message' => 'Ticket enviado a la ticketera.']);
+    }
+
     private function resolveWkhtmltopdfBinary(): ?string
     {
         $candidates = array_filter([
@@ -1445,15 +1570,16 @@ class SalesController extends Controller
 
         return null;
     }
+
     private function renderPdfWithWkhtmltopdf(string $html, ?string $pageSize = 'A4', array $extraArgs = []): ?string
     {
         $binary = $this->resolveWkhtmltopdfBinary();
-        if (!$binary) {
+        if (! $binary) {
             return null;
         }
 
         $tmpDir = storage_path('app/tmp');
-        if (!is_dir($tmpDir)) {
+        if (! is_dir($tmpDir)) {
             @mkdir($tmpDir, 0775, true);
         }
 
@@ -1464,8 +1590,8 @@ class SalesController extends Controller
             return null;
         }
 
-        $htmlPath = $htmlFile . '.html';
-        $pdfPath = $pdfFile . '.pdf';
+        $htmlPath = $htmlFile.'.html';
+        $pdfPath = $pdfFile.'.pdf';
         @rename($htmlFile, $htmlPath);
         @rename($pdfFile, $pdfPath);
 
@@ -1491,7 +1617,7 @@ class SalesController extends Controller
             '10',
         ], $extraArgs);
 
-        if (!empty($pageSize)) {
+        if (! empty($pageSize)) {
             $args[] = '--page-size';
             $args[] = $pageSize;
         }
@@ -1507,26 +1633,41 @@ class SalesController extends Controller
             $process->setTimeout(120);
             $process->run();
             $pdfExists = file_exists($pdfPath) && filesize($pdfPath) > 0;
-            if (!$pdfExists) {
+            if (! $pdfExists) {
                 Log::warning('wkhtmltopdf fallo al generar PDF', [
                     'error' => $process->getErrorOutput(),
                     'output' => $process->getOutput(),
                 ]);
+
                 return null;
             }
 
             $content = file_get_contents($pdfPath);
+
             return $content === false ? null : $content;
         } catch (\Throwable $e) {
-            Log::warning('Error ejecutando wkhtmltopdf: ' . $e->getMessage());
+            Log::warning('Error ejecutando wkhtmltopdf: '.$e->getMessage());
+
             return null;
         } finally {
             @unlink($htmlPath);
             @unlink($pdfPath);
         }
     }
+
     private function buildSalePrintData(Movement $sale, Request $request): array
     {
+        $sale->loadMissing([
+            'documentType',
+            'person',
+            'branch',
+            'salesMovement.details.unit',
+            'salesMovement.details.product',
+            'salesMovement.details.taxRate',
+            'orderMovement.details.unit',
+            'orderMovement.details.product',
+        ]);
+
         $sessionBranchId = (int) session('branch_id');
         $sessionBranch = $sessionBranchId ? Branch::find($sessionBranchId) : null;
         $branchForLogo = $sessionBranch ?: $sale->branch;
@@ -1536,20 +1677,21 @@ class SalesController extends Controller
         if ($branchForLogo?->logo) {
             $logoUrl = str_starts_with($branchForLogo->logo, 'http')
                 ? $branchForLogo->logo
-                : asset('storage/' . ltrim((string) $branchForLogo->logo, '/'));
+                : asset('storage/'.ltrim((string) $branchForLogo->logo, '/'));
 
-            if (!str_starts_with((string) $branchForLogo->logo, 'http')) {
-                $localLogoPath = storage_path('app/public/' . ltrim((string) $branchForLogo->logo, '/'));
+            if (! str_starts_with((string) $branchForLogo->logo, 'http')) {
+                $localLogoPath = storage_path('app/public/'.ltrim((string) $branchForLogo->logo, '/'));
                 if (file_exists($localLogoPath)) {
                     $normalized = str_replace('\\', '/', $localLogoPath);
-                    $logoFileUrl = 'file:///' . ltrim($normalized, '/');
+                    $logoFileUrl = 'file:///'.ltrim($normalized, '/');
                 }
             }
         }
 
-        $details = $sale->salesMovement->details
-            ->sortBy('id')
-            ->values();
+        $details = $this->ticketDetailsForMovement($sale);
+        if ($details->isEmpty()) {
+            abort(404, 'Comprobante sin detalle.');
+        }
 
         return [
             'sale' => $sale,
@@ -1562,7 +1704,11 @@ class SalesController extends Controller
             'viewId' => $request->input('view_id'),
         ];
     }
-    private function resolvePrintableSale(Movement $sale): Movement
+
+    /**
+     * Venta POS (salesMovement) o pedido cobrado (orderMovement).
+     */
+    private function resolvePrintableForTicket(Movement $sale): Movement
     {
         $sale->loadMissing([
             'documentType',
@@ -1571,18 +1717,51 @@ class SalesController extends Controller
             'salesMovement.details.unit',
             'salesMovement.details.product',
             'salesMovement.details.taxRate',
+            'orderMovement.details.unit',
+            'orderMovement.details.product',
         ]);
 
-        if ((int) $sale->movement_type_id !== 2 || !$sale->salesMovement) {
-            abort(404, 'Venta no encontrada.');
+        if (! $sale->salesMovement && ! $sale->orderMovement) {
+            abort(404, 'Comprobante no encontrado.');
+        }
+
+        $branchId = (int) session('branch_id');
+        if ($branchId && (int) $sale->branch_id !== $branchId) {
+            abort(403);
         }
 
         return $sale;
     }
 
+    private function ticketSeriesForMovement(Movement $sale): string
+    {
+        return $sale->salesMovement?->series ?? '001';
+    }
+
+    /**
+     * @return \Illuminate\Support\Collection<int, \Illuminate\Database\Eloquent\Model>
+     */
+    private function ticketDetailsForMovement(Movement $sale)
+    {
+        if ($sale->salesMovement) {
+            return $sale->salesMovement->details->sortBy('id')->values();
+        }
+
+        if ($sale->orderMovement) {
+            return $sale->orderMovement->details()
+                ->where(function ($q) {
+                    $q->whereNull('status')->orWhere('status', '!=', 'C');
+                })
+                ->orderBy('id')
+                ->get();
+        }
+
+        return collect();
+    }
+
     public function printPdf(Request $request, Movement $sale)
     {
-        $sale = $this->resolvePrintableSale($sale);
+        $sale = $this->resolvePrintableForTicket($sale);
         $printData = $this->buildSalePrintData($sale, $request);
         $printData['autoPrint'] = false;
 
@@ -1593,12 +1772,14 @@ class SalesController extends Controller
             return view('sales.print.pdf', $printData);
         }
 
-        $docName = strtoupper(substr($sale->documentType?->name ?? 'C', 0, 1)) . ($sale->salesMovement?->series ?? '001') . '-' . $sale->number;
+        $docName = strtoupper(substr($sale->documentType?->name ?? 'C', 0, 1)).$this->ticketSeriesForMovement($sale).'-'.$sale->number;
+
         return response($pdfBinary, 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="' . $docName . '.pdf"',
+            'Content-Disposition' => 'inline; filename="'.$docName.'.pdf"',
         ]);
     }
+
     /**
      * Calcula subtotal, IGV y total desde los ítems usando la tasa de impuesto de cada producto.
      * Usa la tasa configurada en ProductBranch->TaxRate; si no tiene, usa la tasa por defecto del sistema.
@@ -1672,8 +1853,12 @@ class SalesController extends Controller
                     ->orWhere('user_name', 'like', "%{$search}%");
             });
         }
-        if ($dateFrom) $query->where('moved_at', '>=', $dateFrom . ' 00:00:00');
-        if ($dateTo) $query->where('moved_at', '<=', $dateTo . ' 23:59:59');
+        if ($dateFrom) {
+            $query->where('moved_at', '>=', $dateFrom.' 00:00:00');
+        }
+        if ($dateTo) {
+            $query->where('moved_at', '<=', $dateTo.' 23:59:59');
+        }
         if ($paymentMethodId) {
             $query->whereExists(function ($sub) use ($paymentMethodId) {
                 $sub->select(DB::raw(1))
@@ -1706,7 +1891,7 @@ class SalesController extends Controller
 
         $filters = [];
         $filters['Desde'] = $dateFrom ? \Carbon\Carbon::parse($dateFrom)->format('d/m/Y') : null;
-        $filters['Hasta'] = $dateTo  ? \Carbon\Carbon::parse($dateTo)->format('d/m/Y')  : null;
+        $filters['Hasta'] = $dateTo ? \Carbon\Carbon::parse($dateTo)->format('d/m/Y') : null;
         if ($search) {
             $filters['Búsqueda'] = $search;
         }
@@ -1755,6 +1940,7 @@ class SalesController extends Controller
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
+
             return redirect()
                 ->back()
                 ->with('error', 'No se pudo generar el PDF de ventas.');
@@ -1768,17 +1954,17 @@ class SalesController extends Controller
     private function generateSaleNumber(int $documentTypeId, int $cashRegisterId, bool $reserve = true): string
     {
         $documentType = DocumentType::find($documentTypeId);
-        if (!$documentType) {
+        if (! $documentType) {
             throw new \Exception('Tipo de documento no encontrado.');
         }
 
         $cashRegister = CashRegister::find($cashRegisterId);
-        if (!$cashRegister) {
+        if (! $cashRegister) {
             throw new \Exception('Caja no encontrada.');
         }
 
         $branchId = (int) session('branch_id');
-        if (!$branchId) {
+        if (! $branchId) {
             throw new \Exception('No se encontro sucursal en sesion.');
         }
 
@@ -1807,6 +1993,7 @@ class SalesController extends Controller
                 if ($value > $lastCorrelative) {
                     $lastCorrelative = $value;
                 }
+
                 continue;
             }
 
@@ -1853,14 +2040,14 @@ class SalesController extends Controller
             ->orderBy('id')
             ->value('id');
 
-        if (!$cashRegisterId) {
+        if (! $cashRegisterId) {
             $cashRegisterId = CashRegister::query()
                 ->where('branch_id', $branchId)
                 ->orderBy('id')
                 ->value('id');
         }
 
-        if (!$cashRegisterId) {
+        if (! $cashRegisterId) {
             throw new \Exception('No hay caja activa/disponible para generar el numero de venta.');
         }
 
@@ -1902,21 +2089,119 @@ class SalesController extends Controller
             ->orderBy('id')
             ->value('id');
 
-        if (!$movementTypeId) {
+        if (! $movementTypeId) {
             $movementTypeId = MovementType::find(4)?->id;
         }
 
-        if (!$movementTypeId) {
+        if (! $movementTypeId) {
             $movementTypeId = MovementType::query()->orderBy('id')->value('id');
         }
 
-        if (!$movementTypeId) {
+        if (! $movementTypeId) {
             throw new \Exception('No se encontro tipo de movimiento para caja.');
         }
 
         return (int) $movementTypeId;
     }
 
+    private function buildThermalTicketPlainText(Movement $sale, Request $request): string
+    {
+        $printData = $this->buildSalePrintData($sale, $request);
+        $sale = $printData['sale'];
+        $details = $printData['details'];
+        $branch = $printData['branchForLogo'];
+        $paymentLabel = $printData['paymentLabel'];
+
+        $w = 32;
+        $sep = str_repeat('=', $w);
+        $lines = [];
+
+        $lines[] = $this->thermalPadCenter(strtoupper(Str::ascii($branch->legal_name ?? 'SUCURSAL')), $w);
+        $lines[] = $this->thermalPadCenter('RUC: '.Str::ascii($branch->ruc ?? '-'), $w);
+        $lines[] = $this->thermalPadCenter(strtoupper(Str::ascii($sale->documentType?->name ?? 'TICKET')), $w);
+        $docCode = strtoupper(substr($sale->documentType?->name ?? 'T', 0, 1))
+            .$this->ticketSeriesForMovement($sale).'-'.$sale->number;
+        $lines[] = $this->thermalPadCenter(Str::ascii($docCode), $w);
+        $lines[] = $sep;
+        $lines[] = 'Fecha: '.optional($sale->moved_at)->format('d/m/Y H:i');
+        $lines[] = 'Cliente: '.Str::ascii($sale->person_name ?? 'CLIENTES VARIOS');
+        $lines[] = 'Forma pago: '.Str::ascii($paymentLabel);
+        $lines[] = $sep;
+
+        foreach ($details as $detail) {
+            $qty = (float) $detail->quantity;
+            $lineTotal = (float) $detail->amount;
+            $unitPrice = $qty > 0 ? ($lineTotal / $qty) : 0.0;
+            $desc = Str::ascii(Str::limit($detail->description ?? $detail->product?->description ?? '-', 30));
+            $lines[] = $desc;
+            $lines[] = '  '
+                .$this->thermalPadStart(number_format($qty, 2, '.', ''), 6)
+                .' x '
+                .$this->thermalPadStart(number_format($unitPrice, 2, '.', ''), 7)
+                .' '
+                .$this->thermalPadStart(number_format($lineTotal, 2, '.', ''), 8);
+        }
+
+        $docSubtotal = (float) ($sale->salesMovement?->subtotal ?? $sale->orderMovement?->subtotal ?? 0);
+        $docTax = (float) ($sale->salesMovement?->tax ?? $sale->orderMovement?->tax ?? 0);
+        $docTotal = (float) ($sale->salesMovement?->total ?? $sale->orderMovement?->total ?? 0);
+
+        $lines[] = $sep;
+        $lines[] = $this->thermalPadEnd('Op. gravada:', 20)
+            .$this->thermalPadStart('S/'.number_format($docSubtotal, 2, '.', ''), 12);
+        $lines[] = $this->thermalPadEnd('IGV:', 20)
+            .$this->thermalPadStart('S/'.number_format($docTax, 2, '.', ''), 12);
+        $lines[] = $this->thermalPadEnd('TOTAL:', 20)
+            .$this->thermalPadStart('S/'.number_format($docTotal, 2, '.', ''), 12);
+
+        if ($sale->comment) {
+            $lines[] = $sep;
+            $lines[] = 'Notas: '.Str::ascii(Str::limit((string) $sale->comment, 120));
+        }
+
+        $lines[] = $sep;
+        $lines[] = $this->thermalPadCenter('Gracias por su preferencia', $w);
+        $lines[] = 'Impreso: '.now()->format('d/m/Y H:i:s');
+
+        return implode("\n", $lines);
+    }
+
+    private function wrapEscPosPlainPayload(string $text): string
+    {
+        $text = str_replace(["\r\n", "\r"], "\n", $text);
+
+        return "\x1B\x40".$text."\n\n\n\x1D\x56\x00";
+    }
+
+    private function thermalPadCenter(string $s, int $len): string
+    {
+        $s = Str::ascii($s);
+        $sl = strlen($s);
+        if ($sl >= $len) {
+            return substr($s, 0, $len);
+        }
+        $pad = $len - $sl;
+        $l = intdiv($pad, 2);
+        $r = $pad - $l;
+
+        return str_repeat(' ', $l).$s.str_repeat(' ', $r);
+    }
+
+    private function thermalPadEnd(string $s, int $len): string
+    {
+        $s = Str::ascii($s);
+        $sl = strlen($s);
+
+        return $sl >= $len ? substr($s, 0, $len) : $s.str_repeat(' ', $len - $sl);
+    }
+
+    private function thermalPadStart(string $s, int $len): string
+    {
+        $s = Str::ascii($s);
+        $sl = strlen($s);
+
+        return $sl >= $len ? substr($s, -$len) : str_repeat(' ', $len - $sl).$s;
+    }
 
     private function generateCashMovementNumber(int $branchId, int $cashRegisterId, ?int $paymentConceptId = null): string
     {

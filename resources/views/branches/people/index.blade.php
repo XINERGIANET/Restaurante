@@ -547,7 +547,7 @@
                         <input type="hidden" name="view_id" value="{{ $viewId }}">
                     @endif
 
-                    @include('branches.people._form', ['person' => null])
+                    @include('branches.people._form', ['person' => null, 'viewOptions' => $viewOptions ?? []])
 
                     <div class="flex flex-wrap gap-3">
                         <x-ui.button type="submit" size="md" variant="primary">

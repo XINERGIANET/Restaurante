@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\MenuHelper;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Models\Location;
@@ -10,6 +11,7 @@ use App\Models\Person;
 use App\Models\Profile;
 use App\Models\Role;
 use App\Models\User;
+use App\Models\View as ViewModel;
 use App\Support\InsensitiveSearch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -167,7 +169,7 @@ class PersonController extends Controller
                 ->get();
         }
         $roles = Role::query()->orderBy('name')->get(['id', 'name']);
-        $profiles = Profile::query()->orderBy('name')->get(['id', 'name']);
+        $profiles = Profile::query()->orderBy('name')->get(['id', 'name', 'default_view_id']);
 
         $perPage = (int) $request->input('per_page', 10);
         $allowedPerPage = [10, 20, 50, 100];
@@ -201,6 +203,7 @@ class PersonController extends Controller
             'selectedProfileId' => old('profile_id'),
             'userName' => old('user_name'),
             'operaciones' => $operaciones,
+            'viewOptions' => $this->viewOptionsForCombobox(),
         ] + $this->getLocationData(null, $branch->location_id));
     }
 
@@ -238,20 +241,19 @@ class PersonController extends Controller
                     'person_id' => $person->id,
                     'profile_id' => $userData['profile_id'],
                 ]);
+                $this->syncProfileDefaultView((int) $userData['profile_id'], $userData['default_view_id'] ?? null);
             }
         });
-
         if (($request->expectsJson() || $request->ajax()) && $request->boolean('from_pos')) {
-            $fullName = trim(($person->first_name ?? '') . ' ' . ($person->last_name ?? ''));
+            $fullName = trim(($person?->first_name ?? '').' '.($person?->last_name ?? ''));
             return response()->json([
                 'success' => true,
-                'id' => $person->id,
-                'name' => $fullName !== '' ? $fullName : ($person->document_number ?? 'Cliente'),
-                'document_number' => $person->document_number,
+                'id' => $person?->id,
+                'name' => $fullName !== '' ? $fullName : ($person?->document_number ?? 'Cliente'),
+                'document_number' => $person?->document_number,
                 'message' => 'Cliente creado correctamente.',
             ]);
         }
-
         // Si viene redirect_to (por ejemplo, desde POS), volver a esa URL
         if ($request->filled('redirect_to')) {
             return redirect($request->input('redirect_to'))
@@ -270,9 +272,9 @@ class PersonController extends Controller
         $branch = $this->resolveBranch($company, $branch);
         $person = $this->resolvePerson($branch, $person);
         $roles = Role::query()->orderBy('name')->get(['id', 'name']);
-        $profiles = Profile::query()->orderBy('name')->get(['id', 'name']);
+        $profiles = Profile::query()->orderBy('name')->get(['id', 'name', 'default_view_id']);
         $selectedRoleIds = old('roles', $person->roles()->pluck('roles.id')->all());
-        $user = $person->user;
+        $person->loadMissing(['user.profile']);
 
         return view('branches.people.edit', [
             'company' => $company,
@@ -281,8 +283,9 @@ class PersonController extends Controller
             'roles' => $roles,
             'profiles' => $profiles,
             'selectedRoleIds' => $selectedRoleIds,
-            'selectedProfileId' => old('profile_id', $user?->profile_id),
-            'userName' => old('user_name', $user?->name),
+            'selectedProfileId' => old('profile_id', $person->user?->profile_id),
+            'userName' => old('user_name', $person->user?->name),
+            'viewOptions' => $this->viewOptionsForCombobox(),
         ] + $this->getLocationData($person));
     }
 
@@ -324,6 +327,7 @@ class PersonController extends Controller
                         'profile_id' => $userData['profile_id'],
                     ]);
                 }
+                $this->syncProfileDefaultView((int) $userData['profile_id'], $userData['default_view_id'] ?? null);
             }
         });
 
@@ -415,9 +419,34 @@ class PersonController extends Controller
             return [];
         }
 
+        if ($request->has('default_view_id') && $request->input('default_view_id') === '') {
+            $request->merge(['default_view_id' => null]);
+        }
+
         $rules = [
             'user_name' => ['required', 'string', 'max:255'],
             'profile_id' => ['required', 'integer', 'exists:profiles,id'],
+            'default_view_id' => [
+                'nullable',
+                'integer',
+                'exists:views,id',
+                function (string $attribute, mixed $value, \Closure $fail) use ($request) {
+                    if ($value === null || $value === '') {
+                        return;
+                    }
+                    $profileId = (int) $request->input('profile_id');
+                    if ($profileId === 0) {
+                        return;
+                    }
+                    $allowed = MenuHelper::allowedViewIdsForProfileAnyBranch($profileId);
+                    if ($allowed === []) {
+                        return;
+                    }
+                    if (! in_array((int) $value, $allowed, true)) {
+                        $fail('La vista por defecto debe coincidir con una opción de menú asignada al perfil elegido.');
+                    }
+                },
+            ],
         ];
 
         if ($person && $person->user) {
@@ -432,6 +461,38 @@ class PersonController extends Controller
         ];
 
         return $request->validate($rules, $messages);
+    }
+
+    /**
+     * Opciones { id, description } para el combobox de vista por defecto (personal con rol Usuario).
+     */
+    private function viewOptionsForCombobox(): array
+    {
+        return ViewModel::query()
+            ->where('status', 1)
+            ->whereNull('deleted_at')
+            ->orderBy('name')
+            ->get(['id', 'name', 'abbreviation'])
+            ->map(function ($v) {
+                $desc = $v->name;
+                if (! empty($v->abbreviation)) {
+                    $desc .= ' — '.$v->abbreviation;
+                }
+
+                return ['id' => (int) $v->id, 'description' => $desc];
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Actualiza la vista por defecto del perfil (compartida por todos los usuarios con ese perfil).
+     */
+    private function syncProfileDefaultView(int $profileId, ?int $defaultViewId): void
+    {
+        Profile::query()->whereKey($profileId)->update([
+            'default_view_id' => $defaultViewId,
+        ]);
     }
 
     private function syncRoles(Person $person, array $roleIds, int $branchId): void
