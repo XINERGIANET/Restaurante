@@ -464,7 +464,6 @@
             const cobroBanks = @json($banks ?? []);
             const salesProcessUrl = @json(route('sales.process'));
             const salesIndexUrl = @json($salesIndexUrl ?? route('sales.index'));
-            const salesPrintTicketTemplate = @json(route('admin.sales.print.ticket', ['sale' => '__SALE_ID__']));
             const salesThermalPrintUrl = @json(route('sales.print.ticket.thermal'));
 
             function escapeHtml(text) {
@@ -1469,8 +1468,7 @@
             }
 
             async function sendThermalTicketAfterSale(movementId, saleResponse) {
-                if (!movementId || !saleResponse?.client_on_local_network || !saleResponse
-                    ?.thermal_printer_available) {
+                if (!movementId || !saleResponse?.thermal_printer_available) {
                     return;
                 }
                 const sel = document.getElementById('cobro-thermal-printer');
@@ -1497,6 +1495,7 @@
                         null;
                     if (!tr.ok && td?.message) {
                         console.warn('Ticketera red:', td.message);
+                        showCobroNotification('Impresión', td.message, 'error');
                     }
                 } catch (e) {
                     console.warn('Ticketera red:', e);

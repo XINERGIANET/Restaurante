@@ -667,7 +667,6 @@
             const cobroCards = @json($cards ?? []);
             const cobroDigitalWallets = @json($digitalWallets ?? []);
             const cobroBanks = @json($banks ?? []);
-            const salesPrintTicketTemplate = @json(route('admin.sales.print.ticket', ['sale' => '__SALE_ID__']));
             const salesThermalPrintUrl = @json(route('sales.print.ticket.thermal'));
 
             let autoSaveTimer = null;
@@ -2903,8 +2902,7 @@
             }
 
             async function sendThermalTicketAfterSale(movementId, saleResponse) {
-                if (!movementId || !saleResponse?.client_on_local_network || !saleResponse
-                    ?.thermal_printer_available) {
+                if (!movementId || !saleResponse?.thermal_printer_available) {
                     return;
                 }
                 const sel = document.getElementById('cobro-thermal-printer');
@@ -2927,6 +2925,9 @@
                         null;
                     if (!tr.ok && td?.message) {
                         console.warn('Ticketera red:', td.message);
+                        if (typeof showNotification === 'function') {
+                            showNotification('Impresión', td.message, 'error');
+                        }
                     }
                 } catch (e) {
                     console.warn('Ticketera red:', e);
