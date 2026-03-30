@@ -893,12 +893,12 @@
                 if (btnPrecuenta && !btnPrecuenta.dataset.boundPrecuenta) {
                     btnPrecuenta.dataset.boundPrecuenta = '1';
                     btnPrecuenta.addEventListener('click', () => {
-                        openPreAccountPdfTab();
+                        printPreAccountTicket();
                     });
                 }
                 if (new URLSearchParams(window.location.search).get('pre_account') === '1') {
                     setTimeout(() => {
-                        openPreAccountPdfTab();
+                        printPreAccountTicket();
                     }, 250);
                 }
             }
@@ -2806,18 +2806,11 @@
                     })
                     .then(async data => {
                         if (data && data.success) {
-                            // Capturar cancelaciones ANTES de limpiarlas para que aparezcan en el PDF
-                            const cancellationsSnapshot = (currentTable.cancellations || []).slice();
                             try {
-                                openKitchenCommandPdfTab(items, { ...currentTable, cancellations: cancellationsSnapshot });
-                            } catch (pdfErr) {
-                                console.error('Comanda PDF:', pdfErr);
+                                await printKitchenTickets(items, currentTable);
+                            } catch (pzErr) {
+                                console.error('QZ Tray:', pzErr);
                             }
-                            // try {
-                            //     await printKitchenTickets(items, currentTable);
-                            // } catch (pzErr) {
-                            //     console.error('QZ Tray:', pzErr);
-                            // }
                             // Limpiar cancelaciones ya persistidas
                             currentTable.cancellations = [];
                             saveDB();
