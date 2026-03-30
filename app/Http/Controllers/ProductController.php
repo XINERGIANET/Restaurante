@@ -270,7 +270,7 @@ class ProductController extends Controller
                 'supplier_id' => $pb->supplier_id,
                 'favorite' => $pb->favorite ?? 'N',
                 'duration_minutes' => (float) ($pb->duration_minutes ?? 0),
-                'printer_id' => $pb->printers->first()?->id,
+                'printer_ids' => $pb->printers->pluck('id')->map(fn($id) => (int) $id)->values()->all(),
             ]);
 
         $editBranchId = $request->session()->get('branch_id');
@@ -523,6 +523,8 @@ class ProductController extends Controller
             'favorite' => ['required', 'string', 'in:S,N'],
             'duration_minutes' => ['nullable', 'integer', 'min:0'],
             'supplier_id' => ['nullable', 'integer'],
+            'printer_ids' => ['nullable', 'array'],
+            'printer_ids.*' => ['integer', 'exists:printers_branch,id'],
         ], $branchRules));
 
         if ($isSupply) {

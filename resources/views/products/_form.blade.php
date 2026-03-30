@@ -10,11 +10,14 @@
     $selectedBranchInit = old('branch_id', $productBranch?->branch_id ?? session('branch_id') ?? null);
     $selectedBranchInit = is_numeric($selectedBranchInit) ? (int) $selectedBranchInit : null;
 
-    $printerIdInit = old(
-        'printer_id',
-        $productBranch?->printers?->first()?->id
-    );
-    $printerIdInit = is_numeric($printerIdInit) ? (int) $printerIdInit : null;
+    $printerIdsInit = old('printer_ids', $productBranch?->printers?->pluck('id')->all() ?? []);
+    if (! is_array($printerIdsInit)) {
+        $printerIdsInit = [$printerIdsInit];
+    }
+    $printerIdsInit = array_values(array_unique(array_filter(array_map(
+        fn($id) => is_numeric($id) ? (int) $id : null,
+        $printerIdsInit
+    ))));
 
     $categoriesSafe = $categories ?? collect();
     $unitsSafe = $units ?? collect();
@@ -45,6 +48,7 @@
             'supplier_id' => old('supplier_id', $current['supplier_id'] ?? null),
             'favorite' => old('favorite', $current['favorite'] ?? 'N'),
             'duration_minutes' => (float) old('duration_minutes', $current['duration_minutes'] ?? 0),
+            'printer_ids' => $printerIdsInit,
         ]));
     }
 @endphp
@@ -82,7 +86,7 @@
     isEdit: {{ !empty($product?->id) ? 'true' : 'false' }},
     branchStore: @js($productBranchesByBranchId ?? []),
     igvByBranchId: @js($igvByBranchId),
-    printerId: @js($printerIdInit),
+    printerIds: @js($printerIdsInit),
     branchDrafts: {},
     branchFields: {
         price: @js(old('price', $productBranch?->price ?? '')),
@@ -98,6 +102,7 @@
         supplier_id: @js(old('supplier_id', $productBranch?->supplier_id ?? null)),
         favorite: @js(old('favorite', $productBranch?->favorite ?? 'N')),
         duration_minutes: @js(old('duration_minutes', $productBranch?->duration_minutes ?? 0)),
+        printer_ids: @js($printerIdsInit),
     },
     // IDs resueltos por nombre en servidor (evita comparar strings en el frontend)
     platosCategoriaIds: @js($platosCategoriaIds),
@@ -117,6 +122,7 @@
             supplier_id: null,
             favorite: 'N',
             duration_minutes: 0,
+            printer_ids: [],
         });
 
         const applyIgvDefault = (id) => {
@@ -139,11 +145,13 @@
             }
             if (this.selectedBranchId != null) {
                 this.branchFields = this.branchDrafts[this.selectedBranchId];
+                this.printerIds = Array.isArray(this.branchFields.printer_ids) ? [...this.branchFields.printer_ids] : [];
             }
         } else {
             // Creación: guardamos borrador por sede mientras cambian el select
             if (this.selectedBranchId != null) {
                 this.branchDrafts[this.selectedBranchId] = this.branchFields;
+                this.printerIds = Array.isArray(this.branchFields.printer_ids) ? [...this.branchFields.printer_ids] : [];
             }
         }
 
@@ -158,6 +166,7 @@
             this.branchFields = this.branchDrafts[id];
             this.unitSaleId = this.branchFields.unit_sale;
             this.supplierId = this.branchFields.supplier_id;
+            this.printerIds = Array.isArray(this.branchFields.printer_ids) ? [...this.branchFields.printer_ids] : [];
 
             // IGV por defecto de parámetros por sede (solo si aún no eligieron uno)
             applyIgvDefault(id);
@@ -168,6 +177,9 @@
         });
         this.$watch('supplierId', (val) => {
             if (this.branchFields) this.branchFields.supplier_id = val;
+        });
+        this.$watch('printerIds', (val) => {
+            if (this.branchFields) this.branchFields.printer_ids = Array.isArray(val) ? [...val] : [];
         });
 
         this.$watch('productTypeId', (id) => {
@@ -332,15 +344,30 @@
 
             <!--Configuracion de ticketera (solo para productos vendibles, no para ingredientes)-->
             <div x-show="!showSupplyFields" x-cloak>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Ticketera</label>
-                <select name="printer_id" :disabled="showSupplyFields"
-                    class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90">
-                    <option value="">Seleccione ticketera</option>
-                    @foreach ($printersSafe as $printer)
-                        <option value="{{ $printer->id }}" @selected((int) $printer->id === (int) $printerIdInit)>{{ $printer->name }}</option>
-                    @endforeach
-                </select>
-                @error('printer_id')
+                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Ticketeras</label>
+                <div class="rounded-lg border border-gray-300 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
+                    <p class="mb-2 text-xs text-gray-500 dark:text-gray-400">Marca una o varias impresoras para este producto.</p>
+                    <div class="max-h-44 space-y-2 overflow-y-auto pr-1">
+                        @forelse ($printersSafe as $printer)
+                            <label class="flex items-center gap-3 rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-700 dark:border-gray-700 dark:text-gray-200">
+                                <input type="checkbox"
+                                    name="printer_ids[]"
+                                    value="{{ $printer->id }}"
+                                    x-model="printerIds"
+                                    :disabled="showSupplyFields"
+                                    class="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500">
+                                <span>{{ $printer->name }}</span>
+                                <span class="ml-auto text-xs text-gray-400">{{ $printer->ip ?? '-' }}</span>
+                            </label>
+                        @empty
+                            <p class="text-sm text-gray-500 dark:text-gray-400">No hay ticketeras registradas para esta sucursal.</p>
+                        @endforelse
+                    </div>
+                </div>
+                @error('printer_ids')
+                    <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
+                @enderror
+                @error('printer_ids.*')
                     <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
                 @enderror
             </div>
