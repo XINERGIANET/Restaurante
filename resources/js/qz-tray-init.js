@@ -1,5 +1,5 @@
-import qz from 'qz-tray';
-// Exponer globalmente para que todas las vistas puedan usar window.qz
+import * as qz from 'qz-tray';
+
 if (!window.qz) {
     window.qz = qz;
 }
