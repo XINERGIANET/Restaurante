@@ -2919,38 +2919,71 @@
 
             async function sendThermalTicketAfterSale(movementId, saleResponse) {
                 if (!movementId) return;
+                const qzApi = window.qz;
                 const sel = document.getElementById('cobro-thermal-printer');
                 const printerId = sel && sel.value ? parseInt(sel.value, 10) : null;
+                const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
                 const body = { movement_id: movementId };
                 if (printerId) body.printer_id = printerId;
+
+                // Si QZ Tray está activo, obtener el payload del servidor e imprimir por QZ (USB o red)
+                if (qzApi) {
+                    try {
+                        const tr = await fetch(salesThermalPrintUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+                            credentials: 'same-origin',
+                            body: JSON.stringify({ ...body, mode: 'qz' })
+                        });
+                        const td = tr.headers.get('content-type')?.includes('application/json') ? await tr.json() : null;
+                        if (!tr.ok || !td?.success || !td?.payload_b64) {
+                            if (typeof showNotification === 'function')
+                                showNotification('Impresión', td?.message || 'No se pudo obtener el ticket del servidor.', 'error');
+                            return;
+                        }
+                        if (!qzApi.websocket.isActive()) await qzApi.websocket.connect();
+                        let printerName = td.printer_name || '';
+                        if (!printerName) printerName = await qzApi.printers.getDefault();
+                        if (!printerName) {
+                            if (typeof showNotification === 'function')
+                                showNotification('Impresión', 'No se encontró ninguna impresora en QZ Tray.', 'error');
+                            return;
+                        }
+                        const paperMm = (parseInt(td.paper_width) || 58) === 80 ? 80 : 58;
+                        const config = qzApi.configs.create(printerName, { units: 'mm', size: { width: paperMm, height: 200 }, scaleContent: false });
+                        await qzApi.print(config, [{ type: 'raw', format: 'base64', data: td.payload_b64 }]);
+                        if (typeof showNotification === 'function')
+                            showNotification('Impresión', 'Ticket enviado a "' + printerName + '".', 'success');
+                    } catch (e) {
+                        console.warn('QZ Ticket:', e);
+                        if (typeof showNotification === 'function')
+                            showNotification('Impresión', 'Error al imprimir con QZ Tray: ' + (e?.message || e), 'error');
+                    }
+                    return;
+                }
+
+                // Fallback: impresión TCP por red (requiere red local e IP en impresora)
                 try {
                     const tr = await fetch(salesThermalPrintUrl, {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-                            'Accept': 'application/json'
-                        },
+                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
                         credentials: 'same-origin',
                         body: JSON.stringify(body)
                     });
                     const td = tr.headers.get('content-type')?.includes('application/json') ? await tr.json() : null;
                     if (tr.ok && td?.success) {
-                        if (typeof showNotification === 'function') {
+                        if (typeof showNotification === 'function')
                             showNotification('Impresión', td.message || 'Ticket enviado a la ticketera.', 'success');
-                        }
                     } else {
                         const msg = td?.message || 'No se pudo enviar el ticket a la ticketera.';
                         console.warn('Ticketera red:', msg);
-                        if (typeof showNotification === 'function') {
+                        if (typeof showNotification === 'function')
                             showNotification('Impresión', msg, 'error');
-                        }
                     }
                 } catch (e) {
                     console.warn('Ticketera red:', e);
-                    if (typeof showNotification === 'function') {
+                    if (typeof showNotification === 'function')
                         showNotification('Impresión', 'Error de red al conectar con la ticketera.', 'error');
-                    }
                 }
             }
 

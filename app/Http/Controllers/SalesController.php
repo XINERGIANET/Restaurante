@@ -1477,7 +1477,11 @@ class SalesController extends Controller
             abort(404);
         }
 
-        if (! LocalNetworkClient::isOnLocalNetwork($request)) {
+        // Modo QZ: el cliente (QZ Tray) imprime directamente; el servidor solo devuelve el payload.
+        // No requiere red local ni IP en la impresora (admite USB).
+        $qzMode = $request->input('mode') === 'qz' || $request->boolean('qz_mode');
+
+        if (! $qzMode && ! LocalNetworkClient::isOnLocalNetwork($request)) {
             return response()->json([
                 'success' => false,
                 'message' => 'La impresión por red desde el servidor solo está permitida dentro de la red del local. Si el sistema está en un VPS, usa QZ Tray en el equipo del establecimiento o conecta el VPS a la LAN/VPN del local.',
@@ -1515,14 +1519,30 @@ class SalesController extends Controller
 
         $printerQuery = PrinterBranch::query()
             ->where('branch_id', $branchId)
-            ->where('status', 'E')
-            ->whereNotNull('ip')
-            ->where('ip', '!=', '');
+            ->where('status', 'E');
+
+        // En modo TCP requerimos IP; en modo QZ no (puede ser USB identificado por nombre)
+        if (! $qzMode) {
+            $printerQuery->whereNotNull('ip')->where('ip', '!=', '');
+        }
 
         if (! empty($validated['printer_id'])) {
             $printer = (clone $printerQuery)->where('id', $validated['printer_id'])->first();
         } else {
             $printer = $printerQuery->orderBy('id')->first();
+        }
+
+        $plain = $this->buildThermalTicketPlainText($movement, $request);
+        $payload = $this->wrapEscPosPlainPayload($plain);
+
+        // Modo QZ: devolver payload en base64 para que QZ Tray lo envíe (USB o red)
+        if ($qzMode) {
+            return response()->json([
+                'success' => true,
+                'payload_b64' => base64_encode($payload),
+                'printer_name' => $printer?->name ?? null,
+                'paper_width' => (int) ($printer?->width ?? 58),
+            ]);
         }
 
         if (! $printer) {
@@ -1531,9 +1551,6 @@ class SalesController extends Controller
                 'message' => 'No hay ticketera con IP configurada para esta sucursal.',
             ], 422);
         }
-
-        $plain = $this->buildThermalTicketPlainText($movement, $request);
-        $payload = $this->wrapEscPosPlainPayload($plain);
 
         try {
             app(ThermalNetworkPrintService::class)->sendRaw(
