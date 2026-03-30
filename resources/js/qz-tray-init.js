@@ -1,3 +1,9 @@
+import qz from 'qz-tray';
+// Exponer globalmente para que todas las vistas puedan usar window.qz
+if (!window.qz) {
+    window.qz = qz;
+}
+
 function getQz() {
     return window.qz || null;
 }
