@@ -1491,6 +1491,12 @@ class SalesController extends Controller
     {
         $sale = $this->resolvePrintableForTicket($sale);
         $printData = $this->buildSalePrintData($sale, $request);
+        if ($request->boolean('direct_print')) {
+            $printData['autoPrint'] = true;
+
+            return view('sales.print.ticket', $printData);
+        }
+
         $printData['autoPrint'] = false;
 
         $html = view('sales.print.ticket', $printData)->render();

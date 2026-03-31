@@ -2925,6 +2925,7 @@
                 if (viewId) {
                     url.searchParams.set('view_id', viewId);
                 }
+                url.searchParams.set('direct_print', '1');
                 return url.toString();
             }
 
