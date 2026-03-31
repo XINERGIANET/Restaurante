@@ -24,7 +24,7 @@
             width: 100%;
             max-width: 100%;
             margin: 0;
-            padding: 1.5mm 1mm 1mm;
+            padding: .8mm .6mm .8mm;
         }
 
         table {
@@ -41,13 +41,13 @@
         thead tr td,
         thead tr th {
             font-weight: bold;
-            font-size: 13px;
+            font-size: 15px;
         }
 
         tbody tr td {
-            padding-left: 5px;
-            padding-right: 5px;
-            font-size: 13px;
+            padding-left: 2px;
+            padding-right: 2px;
+            font-size: 14px;
         }
 
         tfoot tr td {
@@ -122,54 +122,54 @@
 
         .center { text-align: center; }
         .separator { border-top: 1px dashed #8aa0bc; margin: 6px 0; }
-        .meta-row { display: grid; grid-template-columns: 12mm 1fr; gap: .8mm; align-items: start; margin-bottom: 1px; }
-        .meta-label { font-weight: bold; font-size: 11px; line-height: 1.2; }
-        .meta-value { font-size: 11px; line-height: 1.2; word-break: break-word; }
-        .totals-row { display: flex; justify-content: space-between; margin: 1px 0; font-size: 13px; }
+        .meta-row { display: grid; grid-template-columns: 10mm 1fr; gap: .6mm; align-items: start; margin-bottom: .5px; }
+        .meta-label { font-weight: bold; font-size: 13px; line-height: 1.15; }
+        .meta-value { font-size: 13px; line-height: 1.15; word-break: break-word; }
+        .totals-row { display: flex; justify-content: space-between; margin: 1px 0; font-size: 15px; }
         .grand-total {
             border-top: 1px solid #8aa0bc;
             margin-top: 2px;
             padding-top: 2px;
             display: flex;
             justify-content: space-between;
-            font-size: 17px;
+            font-size: 20px;
             font-weight: bold;
         }
         .grand-total .label { letter-spacing: .2px; }
         .grand-total .value { white-space: nowrap; }
         .logo {
             display: block;
-            max-width: 60mm;
-            max-height: 20mm;
-            margin: 0 auto 6px;
+            max-width: 72mm;
+            max-height: 18mm;
+            margin: 0 auto 3px;
             object-fit: contain;
         }
         .prod-col {
-            font-size: 11px;
-            line-height: 1.15;
+            font-size: 14px;
+            line-height: 1.1;
             padding-left: 0 !important;
         }
         .num-col {
             text-align: right;
-            font-size: 11px;
+            font-size: 14px;
             white-space: nowrap;
             padding-right: 0 !important;
         }
         .notes-wrap {
-            font-size: 11px;
-            line-height: 1.2;
+            font-size: 13px;
+            line-height: 1.15;
             word-break: break-word;
         }
         .footer {
-            font-size: 11px;
-            line-height: 1.25;
-            margin-top: 3px;
+            font-size: 12px;
+            line-height: 1.15;
+            margin-top: 2px;
         }
 
-        .col-prod { width: 50%; }
-        .col-qty { width: 12%; }
-        .col-unit { width: 18%; }
-        .col-subt { width: 20%; }
+        .col-prod { width: 47%; }
+        .col-qty { width: 13%; }
+        .col-unit { width: 19%; }
+        .col-subt { width: 21%; }
 
         @media print {
             @page { size: 80mm 220mm; margin: 0; }
@@ -192,10 +192,10 @@
         @if(!empty($logoFileUrl) || !empty($logoUrl))
             <img src="{{ $logoFileUrl ?: $logoUrl }}" alt="Logo sucursal" class="logo">
         @endif
-        <p class="without-tb bold large" style="font-size: 18px;">{{ strtoupper($branchForLogo->legal_name ?? 'SUCURSAL') }}</p>
-        <p class="without-tb medium" style="font-size: 12px;">RUC: {{ $branchForLogo->ruc ?? '-' }}</p>
-        <p class="without-tb medium" style="font-size: 12px;">{{ $docName }}</p>
-        <p class="without-tb bold large" style="font-size: 15px;">{{ $docCode }}</p>
+        <p class="without-tb bold large" style="font-size: 22px; line-height:1.05;">{{ strtoupper($branchForLogo->legal_name ?? 'SUCURSAL') }}</p>
+        <p class="without-tb medium" style="font-size: 15px; line-height:1.05;">RUC: {{ $branchForLogo->ruc ?? '-' }}</p>
+        <p class="without-tb medium" style="font-size: 15px; line-height:1.05;">{{ $docName }}</p>
+        <p class="without-tb bold large" style="font-size: 18px; line-height:1.05;">{{ $docCode }}</p>
     </div>
 
     <div class="separator"></div>
