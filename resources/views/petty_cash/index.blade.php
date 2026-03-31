@@ -280,7 +280,6 @@
                                     class="h-11 w-full md:flex-1 px-4 shadow-sm hover:shadow-md transition-all duration-200 active:scale-95"
                                     style="background-color: #244BB3; border-color: #244BB3;">
                                     <i class="ri-search-line text-gray-100"></i>
-                                    <span class="font-medium text-gray-100">Buscar</span>
                                 </x-ui.button>
                                 <x-ui.link-button size="md" variant="outline" href="{{ $pettyCashClearUrl }}"
                                     class="h-11 w-full md:flex-1 px-4 border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200">
