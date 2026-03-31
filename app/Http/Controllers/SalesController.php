@@ -15,6 +15,7 @@ use App\Models\DocumentType;
 use App\Models\Movement;
 use App\Models\MovementType;
 use App\Models\Operation;
+use App\Models\OrderMovement;
 use App\Models\PaymentConcept;
 use App\Models\PaymentGateways;
 use App\Models\PaymentMethod;
@@ -27,6 +28,7 @@ use App\Models\SalesMovement;
 use App\Models\SalesMovementDetail;
 use App\Models\Shift;
 use App\Models\TaxRate;
+use App\Models\Table;
 use App\Models\User;
 use App\Services\ThermalNetworkPrintService;
 use App\Support\InsensitiveSearch;
@@ -134,7 +136,7 @@ class SalesController extends Controller
         }
 
         $query = Movement::query()
-            ->with(['branch', 'person', 'movementType', 'documentType', 'salesMovement'])
+            ->with(['branch', 'person', 'movementType', 'documentType', 'salesMovement', 'orderMovement.table', 'movement.orderMovement.table'])
             ->where('movement_type_id', 2)
             ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
             ->when(! $branchId, fn ($q) => $q->whereRaw('1 = 0'))
@@ -1421,11 +1423,59 @@ class SalesController extends Controller
 
     public function destroy(Movement $sale)
     {
-        $sale->delete();
+        DB::transaction(function () use ($sale) {
+            $linkedOrderMovement = $this->resolveLinkedOrderMovementForSale($sale);
+
+            if ($linkedOrderMovement) {
+                $linkedOrderMovement->status = 'PENDIENTE';
+                $linkedOrderMovement->finished_at = null;
+                $linkedOrderMovement->save();
+
+                $orderBaseMovement = $linkedOrderMovement->movement;
+                if ($orderBaseMovement) {
+                    $orderBaseMovement->status = 'P';
+                    $orderBaseMovement->save();
+                }
+
+                $tableId = $linkedOrderMovement->table_id;
+                if ($tableId && ! $this->tableHasAnotherPendingOrder($tableId, $linkedOrderMovement->id)) {
+                    Table::where('id', $tableId)->update([
+                        'situation' => 'ocupada',
+                        'opened_at' => now(),
+                    ]);
+                }
+            }
+
+            $sale->delete();
+        });
 
         return redirect()
             ->route('sales.index', request()->filled('view_id') ? ['view_id' => request()->input('view_id')] : [])
             ->with('status', 'Venta eliminada correctamente.');
+    }
+
+    private function resolveLinkedOrderMovementForSale(Movement $sale): ?OrderMovement
+    {
+        $sale->loadMissing(['orderMovement.table', 'movement.orderMovement.table']);
+
+        if ($sale->orderMovement) {
+            return $sale->orderMovement;
+        }
+
+        if ($sale->movement?->orderMovement) {
+            return $sale->movement->orderMovement;
+        }
+
+        return null;
+    }
+
+    private function tableHasAnotherPendingOrder(int $tableId, int $excludedOrderMovementId): bool
+    {
+        return OrderMovement::query()
+            ->where('table_id', $tableId)
+            ->where('id', '!=', $excludedOrderMovementId)
+            ->whereIn('status', ['PENDIENTE', 'P'])
+            ->exists();
     }
 
     private function validateSale(Request $request): array
