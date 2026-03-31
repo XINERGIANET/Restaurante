@@ -1498,7 +1498,7 @@ class SalesController extends Controller
             '--page-width',
             '80mm',
             '--page-height',
-            '220mm',
+            '120mm',
             '--margin-top',
             '0',
             '--margin-right',
@@ -1509,6 +1509,8 @@ class SalesController extends Controller
             '0',
             '--print-media-type',
             '--disable-smart-shrinking',
+            '--zoom',
+            '1.18',
             '--dpi',
             '203',
         ]);

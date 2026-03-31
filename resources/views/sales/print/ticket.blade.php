@@ -17,13 +17,14 @@
             max-width: 80mm;
             background: #fff;
             overflow: hidden;
+            font-size: 13px;
         }
 
         .ticket-wrapper {
-            width: 80mm;
-            max-width: 80mm;
+            width: 100%;
+            max-width: 100%;
             margin: 0;
-            padding: 2mm 1.5mm 1.5mm;
+            padding: 1.5mm 1mm 1mm;
         }
 
         table {
@@ -121,7 +122,7 @@
 
         .center { text-align: center; }
         .separator { border-top: 1px dashed #8aa0bc; margin: 6px 0; }
-        .meta-row { display: grid; grid-template-columns: 15mm 1fr; gap: 1mm; align-items: start; margin-bottom: 1px; }
+        .meta-row { display: grid; grid-template-columns: 12mm 1fr; gap: .8mm; align-items: start; margin-bottom: 1px; }
         .meta-label { font-weight: bold; font-size: 11px; line-height: 1.2; }
         .meta-value { font-size: 11px; line-height: 1.2; word-break: break-word; }
         .totals-row { display: flex; justify-content: space-between; margin: 1px 0; font-size: 13px; }
@@ -165,10 +166,10 @@
             margin-top: 3px;
         }
 
-        .col-prod { width: 46%; }
-        .col-qty { width: 14%; }
+        .col-prod { width: 50%; }
+        .col-qty { width: 12%; }
         .col-unit { width: 18%; }
-        .col-subt { width: 22%; }
+        .col-subt { width: 20%; }
 
         @media print {
             @page { size: 80mm 220mm; margin: 0; }
