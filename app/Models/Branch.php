@@ -18,6 +18,11 @@ class Branch extends Model
         'logo',
         'address',
         'location_id',
+        'allow_zero_stock_sales',
+    ];
+
+    protected $casts = [
+        'allow_zero_stock_sales' => 'boolean',
     ];
 
     public function company()

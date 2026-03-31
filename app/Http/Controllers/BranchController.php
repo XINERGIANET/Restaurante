@@ -1126,13 +1126,19 @@ class BranchController extends Controller
 
     private function validateBranch(Request $request): array
     {
-        return $request->validate([
+        $data = $request->validate([
             'ruc' => ['required', 'string', 'max:255'],
             'legal_name' => ['required', 'string', 'max:255'],
             'logo' => ['nullable', 'image', 'max:2048'],
             'address' => ['nullable', 'string', 'max:255'],
             'location_id' => ['required', 'integer', 'exists:locations,id'],
+            'allow_zero_stock_sales' => ['nullable', 'boolean'],
         ]);
+
+        // Checkbox por sucursal: permitir vender/agregar productos sin stock (stock <= 0)
+        $data['allow_zero_stock_sales'] = $request->boolean('allow_zero_stock_sales');
+
+        return $data;
     }
 
     private function resolveBranch(Company $company, Branch $branch): Branch

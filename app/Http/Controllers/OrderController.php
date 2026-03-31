@@ -974,6 +974,7 @@ class OrderController extends Controller
             'canCharge' => $this->canCharge($profileId),
             'isMozo' => ! $this->canCharge($profileId),
             'turboCacheControl' => 'no-cache',
+            'allowZeroStockSales' => (bool) ($branch?->allow_zero_stock_sales ?? true),
         ]);
         $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
         $response->headers->set('Pragma', 'no-cache');

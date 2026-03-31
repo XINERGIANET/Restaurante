@@ -2021,6 +2021,7 @@
                 }
 
                 const stock = parseFloat(productBranch.stock ?? 0) || 0;
+                const allowZeroStockSales = @json($allowZeroStockSales ?? true);
 
                 // Asegurar que el ID del producto sea un número entero para la comparación
                 const productId = parseInt(prod.id, 10);
@@ -2043,7 +2044,7 @@
                 });
 
                 const qtyToAdd = existing ? existing.qty + 1 : 1;
-                if (qtyToAdd > stock) {
+                if (!allowZeroStockSales && qtyToAdd > stock) {
                     showNotification('Stock insuficiente', (prod.name || 'Producto') + ': solo hay ' + stock + ' disponible(s).', 'error');
                     return;
                 }

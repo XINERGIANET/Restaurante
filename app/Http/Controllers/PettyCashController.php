@@ -51,6 +51,18 @@ class PettyCashController extends Controller
         if (!in_array($perPage, $allowedPerPage, true)) {
             $perPage = 10;
         }
+        $filterTipo = $request->input('tipo', '');
+        if (!in_array($filterTipo, ['', 'ingreso', 'egreso'], true)) {
+            $filterTipo = '';
+        }
+        $selectedCashShiftRelationId = $request->filled('cash_shift_relation_id')
+            ? (int) $request->input('cash_shift_relation_id')
+            : null;
+        $selectedPaymentConceptFilterId = $request->filled('payment_concept_id')
+            ? (int) $request->input('payment_concept_id')
+            : null;
+        $dateFrom = $request->input('date_from');
+        $dateTo = $request->input('date_to');
         $viewId = $request->input('view_id');
         $branchId = $request->session()->get('branch_id');
         $profileId = $request->session()->get('profile_id') ?? $request->user()?->profile_id;
@@ -134,6 +146,28 @@ class PettyCashController extends Controller
             })
             ->get();
 
+        $paymentConceptFilterOptions = PaymentConcept::query()
+            ->where(function ($query) {
+                $query->where('restricted', false)
+                    ->orWhere('description', 'like', '%Apertura%')
+                    ->orWhere('description', 'like', '%Cierre%');
+            })
+            ->orderBy('description')
+            ->get();
+
+        $cashShiftSessions = collect();
+        if ($branchId && $selectedBoxId) {
+            $cashShiftSessions = CashShiftRelation::query()
+                ->where('branch_id', $branchId)
+                ->whereHas('cashMovementStart', function ($q) use ($selectedBoxId) {
+                    $q->where('cash_register_id', $selectedBoxId);
+                })
+                ->with(['cashMovementStart.shift', 'cashMovementEnd'])
+                ->orderByDesc('id')
+                ->limit(100)
+                ->get();
+        }
+
         $movementsQuery = Movement::query()
             ->select('movements.*')
             ->with([
@@ -148,15 +182,52 @@ class PettyCashController extends Controller
                 $query->where('cash_register_id', $selectedBoxId);
             });
 
-        // Mostrar movimientos desde la última apertura (activa o cerrada).
-        // Cuando se registre una nueva apertura, $lastOpeningMovement apuntará a la nueva
-        // y la lista se vacía sola mostrando solo los movimientos del nuevo turno.
-        if (!$hasOpening) {
-            $movementsQuery->whereRaw('1 = 0');
+        $csrApplied = null;
+        if ($selectedCashShiftRelationId && $branchId) {
+            $csrApplied = CashShiftRelation::query()
+                ->with(['cashMovementStart', 'cashMovementEnd'])
+                ->where('branch_id', $branchId)
+                ->where('id', $selectedCashShiftRelationId)
+                ->whereHas('cashMovementStart', function ($q) use ($selectedBoxId) {
+                    $q->where('cash_register_id', $selectedBoxId);
+                })
+                ->first();
+        }
+
+        // Ventana temporal: por sesión de caja (turno) elegida, o desde la última apertura si no hay filtro.
+        if ($selectedCashShiftRelationId) {
+            if ($csrApplied && $csrApplied->cashMovementStart) {
+                $startMid = $csrApplied->cashMovementStart->movement_id;
+                $movementsQuery->where('movements.id', '>=', $startMid);
+                if ($csrApplied->cashMovementEnd) {
+                    $movementsQuery->where('movements.id', '<=', $csrApplied->cashMovementEnd->movement_id);
+                }
+            } else {
+                $movementsQuery->whereRaw('1 = 0');
+            }
         } elseif ($lastOpeningMovement) {
             $movementsQuery->where('movements.id', '>=', $lastOpeningMovement->id);
         } else {
             $movementsQuery->whereRaw('1 = 0');
+        }
+
+        if ($filterTipo === 'ingreso' && $ingresoDocId) {
+            $movementsQuery->where('movements.document_type_id', $ingresoDocId);
+        } elseif ($filterTipo === 'egreso' && $egresoDocId) {
+            $movementsQuery->where('movements.document_type_id', $egresoDocId);
+        }
+
+        if ($selectedPaymentConceptFilterId) {
+            $movementsQuery->whereHas('cashMovement', function ($q) use ($selectedPaymentConceptFilterId) {
+                $q->where('payment_concept_id', $selectedPaymentConceptFilterId);
+            });
+        }
+
+        if ($dateFrom && preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $dateFrom)) {
+            $movementsQuery->whereDate('movements.moved_at', '>=', $dateFrom);
+        }
+        if ($dateTo && preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $dateTo)) {
+            $movementsQuery->whereDate('movements.moved_at', '<=', $dateTo);
         }
 
         $movements = $movementsQuery->when($search, function ($query) use ($search) {
@@ -331,6 +402,7 @@ class PettyCashController extends Controller
             'movements'       => $movements,
             'documentTypes'   => $documentTypes,
             'hasOpening'      => $hasOpening,
+            'lastOpeningMovement' => $lastOpeningMovement,
             'ingresoDocId'    => $ingresoDocId,
             'egresoDocId'     => $egresoDocId,
             'cashRegisters'   => $cashRegisters,

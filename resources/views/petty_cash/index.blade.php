@@ -178,54 +178,124 @@
 
         <x-common.component-card title="Gestión de Movimientos" desc="Control de ingresos, egresos y traslados de fondos.">
 
+            @php
+                $selectFilterClass = 'dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 cursor-pointer';
+                $inputFilterClass = 'dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90';
+                $labelFilterClass = 'mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400';
+                $pettyCashClearUrl = route('petty-cash.index', array_filter(['cash_register_id' => $selectedBoxId, 'view_id' => $viewId ?? null]));
+            @endphp
+
             <div class="flex flex-col gap-5">
-                <form method="GET" class="flex w-full flex-col gap-3 sm:flex-row sm:items-center">
+                <form method="GET" class="flex w-full flex-col gap-0">
                     @if ($viewId)
                         <input type="hidden" name="view_id" value="{{ $viewId }}">
                     @endif
-                    
-                    <x-ui.per-page-selector :per-page="$perPage" />
 
-                    <div class="w-full flex-1 relative">
-                        <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                            {!! $SearchIcon !!}
-                        </span>
-                        <input type="text" name="search" value="{{ request('search') }}"
-                            placeholder="Buscar movimiento..."
-                            class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 pl-10 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30" />
-                    </div>
-
-                    <div class="relative flex w-full sm:w-auto min-w-[200px]">
-                        <select 
-                            onchange="
-                                let baseUrl = '{{ url('/caja/caja-chica') }}/' + this.value;                                
-                                let params = new URLSearchParams(window.location.search);
-                                params.delete('cash_register_id'); 
-                                window.location.href = baseUrl + (params.toString() ? '?' + params.toString() : '');
-                            "
-                            class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90">
-                            @if (isset($cashRegisters))
+                    <div class="rounded-xl border border-gray-200/90 bg-gradient-to-b from-slate-50/90 to-white p-4 shadow-sm dark:border-gray-800 dark:from-gray-900/50 dark:to-gray-900/30 sm:p-5">
+                        {{-- Fila 1: 12 cols — per_page estrecho, búsqueda amplia, caja y turno --}}
+                        <div class="grid grid-cols-1 gap-4 md:grid-cols-12 md:items-end md:gap-x-4 md:gap-y-4">
+                        <div class="w-full min-w-0 md:col-span-2">
+                            <label class="{{ $labelFilterClass }}">Por página</label>
+                            <x-ui.per-page-selector :per-page="$perPage" :submit-form="true" class="!w-full max-w-[7rem]" />
+                        </div>
+                        <div class="w-full min-w-0 md:col-span-4">
+                            <label class="{{ $labelFilterClass }}">Buscar</label>
+                            <div class="relative">
+                                <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                                    <i class="ri-search-line"></i>
+                                </span>
+                                <input type="text" name="search" value="{{ request('search') }}"
+                                    placeholder="Buscar movimiento..."
+                                    class="{{ $inputFilterClass }} pl-10 placeholder:text-gray-400 dark:placeholder:text-white/30" />
+                            </div>
+                        </div>
+                        <div class="w-full min-w-0 md:col-span-3">
+                            <label class="{{ $labelFilterClass }}">Caja</label>
+                            <select name="cash_register_id" onchange="this.form.submit()"
+                                class="{{ $selectFilterClass }} min-w-0">
                                 @foreach ($cashRegisters as $register)
-                                    <option value="{{ $register->id }}"
-                                        {{ $selectedBoxId == $register->id ? 'selected' : '' }}>
-                                        {{ $register->number }}
+                                    <option value="{{ $register->id }}" @selected((int) $selectedBoxId === (int) $register->id)>
+                                        {{ $register->series ?: 'Caja ' . $register->number }}
                                     </option>
                                 @endforeach
-                            @endif
-                        </select>
-                    </div>
+                            </select>
+                        </div>
+                        <div class="w-full min-w-0 md:col-span-3">
+                            <label class="{{ $labelFilterClass }}">Turno</label>
+                            <select name="cash_shift_relation_id" class="{{ $selectFilterClass }} min-w-0">
+                                <option value="">Todos</option>
+                                @foreach ($cashShiftSessions ?? [] as $csr)
+                                    @php
+                                        $shiftName = $csr->cashMovementStart?->shift?->name ?? 'Turno';
+                                        $started = $csr->started_at ? \Illuminate\Support\Carbon::parse($csr->started_at)->format('Y-m-d H:i:s') : '';
+                                        $csrStatus = (string) ($csr->status ?? '');
+                                        $statusLabel = $csrStatus === '1' ? 'En curso' : 'Cerrado';
+                                        $csrLabel = $shiftName . ($started ? ' | ' . $started : '') . ' (' . $statusLabel . ')';
+                                    @endphp
+                                    <option value="{{ $csr->id }}" @selected((int) ($selectedCashShiftRelationId ?? 0) === (int) $csr->id)>
+                                        {{ $csrLabel }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        </div>
 
-                    <div class="flex shrink-0 items-center gap-2">
-                        <x-ui.button size="md" variant="primary" type="submit" class="flex-1 sm:flex-none h-11 px-4 shadow-sm hover:shadow-md transition-all duration-200 active:scale-95" style="background-color: #244BB3; border-color: #244BB3;">
-                            <i class="ri-search-line text-gray-100"></i>
-                            <span class="font-medium text-gray-100">Buscar</span>
-                        </x-ui.button>
-                        <x-ui.link-button size="md" variant="outline"
-                            href="{{ route('petty-cash.index', array_merge(['cash_register_id' => $selectedBoxId], $viewId ? ['view_id' => $viewId] : [])) }}"
-                            class="flex-1 sm:flex-none h-11 px-4 border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200">
-                            <i class="ri-refresh-line"></i>
-                            <span class="font-medium">Limpiar</span>
-                        </x-ui.link-button>
+                        {{-- Fila 2: tipo, concepto, fechas, botones (misma rejilla 12) --}}
+                        <div class="mt-4 grid grid-cols-1 gap-4 border-t border-gray-200/80 pt-4 sm:grid-cols-2 md:grid-cols-12 md:items-end md:gap-x-4 md:gap-y-4 dark:border-gray-700/80">
+                        <div class="w-full min-w-0 md:col-span-2">
+                            <label class="{{ $labelFilterClass }}">Tipo</label>
+                            <select name="tipo" class="{{ $selectFilterClass }}">
+                                <option value="" @selected(($filterTipo ?? '') === '')>Todos</option>
+                                <option value="ingreso" @selected(($filterTipo ?? '') === 'ingreso')>Ingreso</option>
+                                <option value="egreso" @selected(($filterTipo ?? '') === 'egreso')>Egreso</option>
+                            </select>
+                        </div>
+                        <div class="w-full min-w-0 md:col-span-4">
+                            <label class="{{ $labelFilterClass }}">Concepto</label>
+                            <select name="payment_concept_id" class="{{ $selectFilterClass }}">
+                                <option value="">Todos</option>
+                                @foreach ($paymentConceptFilterOptions ?? [] as $pc)
+                                    <option value="{{ $pc->id }}" @selected((int) ($selectedPaymentConceptFilterId ?? 0) === (int) $pc->id)>
+                                        {{ $pc->description }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="w-full min-w-0 md:col-span-2">
+                            <label class="{{ $labelFilterClass }}">Desde</label>
+                            <div class="relative">
+                                <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                                    <i class="ri-calendar-line"></i>
+                                </span>
+                                <input type="date" name="date_from" value="{{ old('date_from', $dateFrom ?? '') }}"
+                                    class="{{ $inputFilterClass }} pl-10" />
+                            </div>
+                        </div>
+                        <div class="w-full min-w-0 md:col-span-2">
+                            <label class="{{ $labelFilterClass }}">Hasta</label>
+                            <div class="relative">
+                                <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                                    <i class="ri-calendar-line"></i>
+                                </span>
+                                <input type="date" name="date_to" value="{{ old('date_to', $dateTo ?? '') }}"
+                                    class="{{ $inputFilterClass }} pl-10" />
+                            </div>
+                        </div>
+                        <div class="flex w-full min-w-0 flex-col justify-end md:col-span-2">
+                            <span class="{{ $labelFilterClass }} select-none opacity-0" aria-hidden="true">&nbsp;</span>
+                            <div class="flex flex-row flex-nowrap items-center justify-end gap-2">
+                                <x-ui.button size="md" variant="primary" type="submit" class="h-11 shrink-0 px-5 shadow-sm hover:shadow-md transition-all duration-200 active:scale-95" style="background-color: #244BB3; border-color: #244BB3;">
+                                    <i class="ri-search-line text-gray-100"></i>
+                                    <span class="font-medium text-gray-100">Buscar</span>
+                                </x-ui.button>
+                                <x-ui.link-button size="md" variant="outline" href="{{ $pettyCashClearUrl }}"
+                                    class="h-11 shrink-0 px-5 border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200">
+                                    <i class="ri-refresh-line"></i>
+                                    <span class="font-medium">Limpiar</span>
+                                </x-ui.link-button>
+                            </div>
+                        </div>
+                    </div>
                     </div>
                 </form>
 
@@ -518,8 +588,10 @@
                                                 <i class="ri-inbox-line text-xl"></i>
                                             </div>
                                             <p class="text-sm font-medium">
-                                                @if(!$hasOpening)
-                                                    La caja se encuentra cerrada. Realice una apertura para ver movimientos.
+                                                @if(!$lastOpeningMovement)
+                                                    Realice una apertura de caja para comenzar a registrar movimientos.
+                                                @elseif(request('search'))
+                                                    No hay movimientos que coincidan con la búsqueda.
                                                 @else
                                                     No hay movimientos en el turno actual.
                                                 @endif

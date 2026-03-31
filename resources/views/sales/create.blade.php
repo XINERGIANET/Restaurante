@@ -437,6 +437,7 @@
             const taxRateByProductId = new Map();
             const stockByProductId = new Map();
             const defaultTaxPct = 18;
+            const allowZeroStockSales = @json($allowZeroStockSales ?? true);
 
             // Mapeo de precios y stock
             productBranches.forEach((pb) => {
@@ -961,7 +962,7 @@
                 const existing = currentSale.items.find((i) => Number(i.pId) === productId);
                 const qtyToAdd = existing ? existing.qty + 1 : 1;
 
-                if (qtyToAdd > stock) {
+                if (!allowZeroStockSales && qtyToAdd > stock) {
                     showStockError(prod.name || 'Producto', stock);
                     return;
                 }
@@ -986,7 +987,7 @@
             function updateQty(index, delta) {
                 if (!currentSale.items[index]) return;
                 const item = currentSale.items[index];
-                if (delta > 0) {
+                if (!allowZeroStockSales && delta > 0) {
                     const productId = Number(item.pId);
                     const stock = stockByProductId.get(productId) ?? 0;
                     if (item.qty + delta > stock) {
@@ -1012,7 +1013,7 @@
                 const newQty = isNaN(raw) || raw < 1 ? 1 : raw;
                 const productId = Number(item.pId);
                 const stock = stockByProductId.get(productId) ?? 0;
-                if (newQty > stock) {
+                if (!allowZeroStockSales && newQty > stock) {
                     showStockError(item.name || 'Producto', stock);
                     inputEl.value = item.qty;
                     return;

@@ -364,6 +364,7 @@ class SalesController extends Controller
             ->get(['id', 'number', 'status']);
 
         $branch = $branchId ? Branch::find($branchId) : null;
+        $allowZeroStockSales = (bool) ($branch?->allow_zero_stock_sales ?? true);
 
         $thermalPrinters = $branchId
             ? PrinterBranch::query()
@@ -392,6 +393,7 @@ class SalesController extends Controller
             'cashRegisters' => $cashRegisters,
             'saleType' => $saleType,
             'branch' => $branch,
+            'allowZeroStockSales' => $allowZeroStockSales,
             'clientOnLocalNetwork' => LocalNetworkClient::isOnLocalNetwork($request),
             'thermalPrinters' => $thermalPrinters,
         ]);
