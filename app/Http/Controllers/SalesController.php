@@ -2059,6 +2059,99 @@ class SalesController extends Controller
         }
     }
 
+    public function exportExcel(Request $request)
+    {
+        $branchId = session('branch_id');
+        $search = $request->input('search');
+        $dateFrom = $request->input('date_from');
+        $dateTo = $request->input('date_to');
+        $documentTypeId = $request->input('document_type_id');
+        $paymentMethodId = $request->input('payment_method_id');
+        $cashRegisterId = $request->input('cash_register_id');
+        $saleType = $request->input('sale_type');
+        $cashShiftRelationId = $request->input('cash_shift_relation_id');
+
+        $query = Movement::query()
+            ->with(['branch', 'person', 'movementType', 'documentType', 'salesMovement'])
+            ->where('movement_type_id', 2)
+            ->where('branch_id', $branchId)
+            ->whereHas('salesMovement');
+
+        if ($documentTypeId && is_numeric($documentTypeId)) {
+            $query->where('document_type_id', (int) $documentTypeId);
+        }
+        if ($search) {
+            $query->where(function ($inner) use ($search) {
+                $inner->where('number', 'like', "%{$search}%")
+                    ->orWhere('person_name', 'like', "%{$search}%")
+                    ->orWhere('user_name', 'like', "%{$search}%");
+            });
+        }
+        if ($dateFrom) {
+            $query->where('moved_at', '>=', $dateFrom.' 00:00:00');
+        }
+        if ($dateTo) {
+            $query->where('moved_at', '<=', $dateTo.' 23:59:59');
+        }
+        if ($paymentMethodId) {
+            $query->whereExists(function ($sub) use ($paymentMethodId) {
+                $sub->select(DB::raw(1))
+                    ->from('movements as m')
+                    ->join('cash_movements as cm', 'cm.movement_id', '=', 'm.id')
+                    ->join('cash_movement_details as cmd', 'cmd.cash_movement_id', '=', 'cm.id')
+                    ->whereColumn('m.parent_movement_id', 'movements.id')
+                    ->where('cmd.payment_method_id', $paymentMethodId)
+                    ->whereNull('cm.deleted_at')
+                    ->whereNull('cmd.deleted_at');
+            });
+        }
+        if ($cashRegisterId) {
+            $query->whereExists(function ($sub) use ($cashRegisterId) {
+                $sub->select(DB::raw(1))
+                    ->from('movements as m')
+                    ->join('cash_movements as cm', 'cm.movement_id', '=', 'm.id')
+                    ->whereColumn('m.parent_movement_id', 'movements.id')
+                    ->where('cm.cash_register_id', $cashRegisterId)
+                    ->whereNull('cm.deleted_at');
+            });
+        }
+        if ($saleType) {
+            $query->whereHas('salesMovement', function ($sub) use ($saleType) {
+                $sub->where('detail_type', $saleType);
+            });
+        }
+
+        $effectiveCR = $cashRegisterId ?: session('cash_register_id');
+        if ($cashShiftRelationId !== null && $cashShiftRelationId !== '' && $branchId && $effectiveCR) {
+            $csrApplied = CashShiftRelation::query()
+                ->with(['cashMovementStart', 'cashMovementEnd'])
+                ->where('branch_id', $branchId)
+                ->where('id', (int) $cashShiftRelationId)
+                ->whereHas('cashMovementStart', function ($q) use ($effectiveCR) {
+                    $q->where('cash_register_id', $effectiveCR);
+                })
+                ->first();
+
+            if ($csrApplied && $csrApplied->cashMovementStart) {
+                $startMid = $csrApplied->cashMovementStart->movement_id;
+                $query->where('movements.id', '>=', $startMid);
+                if ($csrApplied->cashMovementEnd) {
+                    $query->where('movements.id', '<=', $csrApplied->cashMovementEnd->movement_id);
+                }
+            } else {
+                $query->whereRaw('1 = 0');
+            }
+        }
+
+        $sales = $query->orderBy('moved_at', 'desc')->get();
+        $timestamp = now()->format('Ymd_His');
+
+        return Excel::download(
+            new SalesExport($sales),
+            "reporte_ventas_{$timestamp}.xlsx"
+        );
+    }
+
     /**
      * Genera numero de venta en formato correlativo simple: 00000127.
      * Mantiene compatibilidad leyendo tambien numeros historicos con formato antiguo.

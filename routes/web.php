@@ -127,6 +127,7 @@ Route::middleware('auth')->group(function () {
         ->parameters(['ventas' => 'sale'])
         ->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
     Route::get('/admin/ventas/pdf', [SalesController::class, 'exportPdf'])->name('admin.sales.pdf');
+    Route::get('/admin/ventas/excel', [SalesController::class, 'exportExcel'])->name('admin.sales.excel');
     Route::get('/admin/ventas/pdf/{sale}', [SalesController::class, 'printPdf'])->name('admin.sales.print.pdf');
     Route::get('/admin/ventas/ticket/{sale}', [SalesController::class, 'printTicket'])->name('admin.sales.print.ticket');
     Route::post('/admin/ventas/ticket-termica', [SalesController::class, 'printTicketThermalNetwork'])
