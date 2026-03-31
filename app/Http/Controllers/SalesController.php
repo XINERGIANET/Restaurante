@@ -2208,8 +2208,11 @@ class SalesController extends Controller
         $lines[] = $sep;
         $lines[] = 'Fecha: '.optional($sale->moved_at)->format('d/m/Y H:i');
         $lines[] = 'Cliente: '.Str::ascii($sale->person_name ?? 'CLIENTES VARIOS');
+        $lines[] = 'Dir.: '.Str::ascii($sale->person?->address ?? '-');
+        $lines[] = 'RUC/DNI: '.Str::ascii($sale->person?->document_number ?? '-');
         $lines[] = 'Forma pago: '.Str::ascii($paymentLabel);
         $lines[] = $sep;
+        $lines[] = 'Prod.         Cant P.Unit  Subt';
 
         foreach ($details as $detail) {
             $qty = (float) $detail->quantity;
