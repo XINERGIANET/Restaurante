@@ -25,13 +25,13 @@
         }
 
         body {
-            font-size: 10px;
-            line-height: 1.15;
+            font-size: 11px;
+            line-height: 1.2;
         }
 
         .ticket {
             width: 80mm;
-            padding: 2.5mm 3mm 3mm;
+            padding: 10px 12px 12px;
         }
 
         .center {
@@ -39,40 +39,40 @@
         }
 
         .logo-wrap {
-            margin-bottom: 1.5mm;
+            margin-bottom: 6px;
         }
 
         .logo {
             display: block;
-            max-width: 34mm;
-            max-height: 14mm;
+            max-width: 140px;
+            max-height: 54px;
             margin: 0 auto;
             object-fit: contain;
         }
 
         .company {
             margin: 0;
-            font-size: 6.2mm;
+            font-size: 30px;
             font-weight: 800;
-            line-height: 1;
+            line-height: 1.02;
         }
 
         .subhead {
-            margin: 0.4mm 0 0;
-            font-size: 3.8mm;
-            line-height: 1.05;
+            margin: 2px 0 0;
+            font-size: 17px;
+            line-height: 1.04;
         }
 
         .doc-code {
-            margin: 1.2mm 0 0;
-            font-size: 4.9mm;
+            margin: 6px 0 0;
+            font-size: 24px;
             font-weight: 800;
-            line-height: 1.05;
+            line-height: 1.04;
         }
 
         .separator {
-            border-top: 0.25mm dashed #8ea9cf;
-            margin: 2mm 0;
+            border-top: 1px dashed #8ea9cf;
+            margin: 9px 0;
         }
 
         table {
@@ -82,16 +82,16 @@
         }
 
         .info-table td {
-            padding: 0.15mm 0;
+            padding: 1px 0;
             vertical-align: top;
-            font-size: 2.95mm;
-            line-height: 1.08;
+            font-size: 17px;
+            line-height: 1.04;
         }
 
         .info-label {
-            width: 21mm;
+            width: 110px;
             font-weight: 800;
-            padding-right: 1mm;
+            padding-right: 6px;
             white-space: nowrap;
         }
 
@@ -102,8 +102,8 @@
 
         .items-table th,
         .items-table td {
-            padding: 0.5mm 0;
-            font-size: 2.8mm;
+            padding: 3px 0;
+            font-size: 16px;
         }
 
         .items-table th {
@@ -118,7 +118,7 @@
         .col-product {
             width: 42%;
             text-align: left;
-            padding-right: 1mm;
+            padding-right: 8px;
             word-break: break-word;
             overflow-wrap: anywhere;
         }
@@ -139,8 +139,8 @@
         }
 
         .totals-table td {
-            padding: 0.4mm 0;
-            font-size: 3.1mm;
+            padding: 2px 0;
+            font-size: 17px;
         }
 
         .totals-label {
@@ -153,15 +153,15 @@
         }
 
         .grand-total td {
-            border-top: 0.2mm solid #8ea9cf;
-            padding-top: 1mm;
-            font-size: 4.3mm;
+            border-top: 1px solid #8ea9cf;
+            padding-top: 6px;
+            font-size: 22px;
             font-weight: 800;
         }
 
         .notes {
-            font-size: 3mm;
-            line-height: 1.15;
+            font-size: 15px;
+            line-height: 1.2;
         }
 
         .notes strong {
@@ -170,13 +170,13 @@
 
         .footer {
             text-align: center;
-            font-size: 2.6mm;
+            font-size: 14px;
             line-height: 1.15;
         }
 
         .thanks {
-            margin-top: 0.6mm;
-            font-size: 3mm;
+            margin-top: 4px;
+            font-size: 16px;
         }
     </style>
 </head>
