@@ -12,7 +12,7 @@
         }
 
         @page {
-            size: 80mm auto;
+            size: 80mm 140mm;
             margin: 0;
         }
 
@@ -20,7 +20,7 @@
         body {
             margin: 0;
             padding: 0;
-            width: 80mm;
+            width: 100%;
             background: #fff;
         }
 
@@ -30,7 +30,7 @@
         }
 
         .ticket {
-            width: 80mm;
+            width: 100%;
             padding: 2.5mm 3mm 3mm;
         }
 
