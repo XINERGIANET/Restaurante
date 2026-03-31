@@ -52,20 +52,20 @@
 
         .company {
             margin: 0;
-            font-size: 7mm;
+            font-size: 6.2mm;
             font-weight: 800;
             line-height: 1;
         }
 
         .subhead {
             margin: 0.4mm 0 0;
-            font-size: 4.2mm;
+            font-size: 3.8mm;
             line-height: 1.05;
         }
 
         .doc-code {
             margin: 1.2mm 0 0;
-            font-size: 5.4mm;
+            font-size: 4.9mm;
             font-weight: 800;
             line-height: 1.05;
         }
@@ -84,12 +84,12 @@
         .info-table td {
             padding: 0.15mm 0;
             vertical-align: top;
-            font-size: 3.2mm;
-            line-height: 1.05;
+            font-size: 2.95mm;
+            line-height: 1.08;
         }
 
         .info-label {
-            width: 18mm;
+            width: 21mm;
             font-weight: 800;
             padding-right: 1mm;
             white-space: nowrap;
@@ -97,12 +97,13 @@
 
         .info-value {
             word-break: break-word;
+            overflow-wrap: anywhere;
         }
 
         .items-table th,
         .items-table td {
             padding: 0.5mm 0;
-            font-size: 3.05mm;
+            font-size: 2.8mm;
         }
 
         .items-table th {
@@ -115,14 +116,15 @@
         }
 
         .col-product {
-            width: 43%;
+            width: 42%;
             text-align: left;
             padding-right: 1mm;
             word-break: break-word;
+            overflow-wrap: anywhere;
         }
 
         .col-qty {
-            width: 14%;
+            width: 15%;
             text-align: right;
         }
 
@@ -138,7 +140,7 @@
 
         .totals-table td {
             padding: 0.4mm 0;
-            font-size: 3.4mm;
+            font-size: 3.1mm;
         }
 
         .totals-label {
@@ -153,7 +155,7 @@
         .grand-total td {
             border-top: 0.2mm solid #8ea9cf;
             padding-top: 1mm;
-            font-size: 4.8mm;
+            font-size: 4.3mm;
             font-weight: 800;
         }
 
@@ -168,13 +170,13 @@
 
         .footer {
             text-align: center;
-            font-size: 2.8mm;
+            font-size: 2.6mm;
             line-height: 1.15;
         }
 
         .thanks {
             margin-top: 0.6mm;
-            font-size: 3.2mm;
+            font-size: 3mm;
         }
     </style>
 </head>
