@@ -17,6 +17,7 @@ use App\Models\Bank;
 use App\Models\DigitalWallet;
 use App\Models\Card;
 use App\Models\CashMovementDetail;
+use App\Models\MovementType;
 use App\Models\Operation;
 use App\Support\InsensitiveSearch;
 
@@ -61,13 +62,19 @@ class PettyCashController extends Controller
         $selectedPaymentConceptFilterId = $request->filled('payment_concept_id')
             ? (int) $request->input('payment_concept_id')
             : null;
+        $selectedMovementTypeId = $request->filled('movement_type_id')
+            ? (int) $request->input('movement_type_id')
+            : null;
+        $selectedDocumentTypeId = $request->filled('document_type_id')
+            ? (int) $request->input('document_type_id')
+            : null;
         $dateFrom = $request->input('date_from');
         $dateTo = $request->input('date_to');
         $viewId = $request->input('view_id');
         $branchId = $request->session()->get('branch_id');
         $profileId = $request->session()->get('profile_id') ?? $request->user()?->profile_id;
         $operaciones = collect();
-        
+
         if ($viewId && $branchId && $profileId) {
             $operaciones = Operation::query()
                 ->select('operations.*')
@@ -113,7 +120,7 @@ class PettyCashController extends Controller
             ->first();
 
         $hasOpening = $lastShiftRelation && $lastShiftRelation->status == '1';
-        
+
         // Obtenemos directamente la última apertura de esta caja basándonos en los movimientos
         $lastOpeningMovement = Movement::query()
             ->whereHas('cashMovement', function ($query) use ($selectedBoxId) {
@@ -153,6 +160,11 @@ class PettyCashController extends Controller
                     ->orWhere('description', 'like', '%Cierre%');
             })
             ->orderBy('description')
+            ->get();
+
+        $documentTypeFilterOptions = DocumentType::query()
+            ->whereIn('movement_type_id', [1, 2, 4, 5])
+            ->orderBy('name')
             ->get();
 
         $cashShiftSessions = collect();
@@ -211,16 +223,19 @@ class PettyCashController extends Controller
             $movementsQuery->whereRaw('1 = 0');
         }
 
-        if ($filterTipo === 'ingreso' && $ingresoDocId) {
-            $movementsQuery->where('movements.document_type_id', $ingresoDocId);
-        } elseif ($filterTipo === 'egreso' && $egresoDocId) {
-            $movementsQuery->where('movements.document_type_id', $egresoDocId);
+        if ($selectedDocumentTypeId) {
+            $movementsQuery->where('movements.document_type_id', $selectedDocumentTypeId);
         }
+
 
         if ($selectedPaymentConceptFilterId) {
             $movementsQuery->whereHas('cashMovement', function ($q) use ($selectedPaymentConceptFilterId) {
                 $q->where('payment_concept_id', $selectedPaymentConceptFilterId);
             });
+        }
+
+        if ($selectedMovementTypeId) {
+            $movementsQuery->where('movements.movement_type_id', $selectedMovementTypeId);
         }
 
         if ($dateFrom && preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $dateFrom)) {
@@ -231,13 +246,13 @@ class PettyCashController extends Controller
         }
 
         $movements = $movementsQuery->when($search, function ($query) use ($search) {
-                $query->where(function ($q) use ($search) {
-                    InsensitiveSearch::whereInsensitiveLike($q, 'person_name', $search);
-                    InsensitiveSearch::whereInsensitiveLike($q, 'user_name', $search, 'or');
-                    InsensitiveSearch::whereInsensitiveLike($q, 'responsible_name', $search, 'or');
-                    InsensitiveSearch::whereInsensitiveLike($q, 'number', $search, 'or');
-                });
-            })
+            $query->where(function ($q) use ($search) {
+                InsensitiveSearch::whereInsensitiveLike($q, 'person_name', $search);
+                InsensitiveSearch::whereInsensitiveLike($q, 'user_name', $search, 'or');
+                InsensitiveSearch::whereInsensitiveLike($q, 'responsible_name', $search, 'or');
+                InsensitiveSearch::whereInsensitiveLike($q, 'number', $search, 'or');
+            });
+        })
             ->orderBy('movements.id', 'desc')
             ->paginate($perPage)
             ->withQueryString();
@@ -261,8 +276,8 @@ class PettyCashController extends Controller
                 ->whereIn('cash_movement_id', $currentTurnCashMovementIds)
                 ->where('payment_method', 'Efectivo')
                 ->get();
-            $efectivoIngresos = $detailsEfectivo->filter(fn ($d) => ($d->cashMovement?->paymentConcept?->type ?? '') === 'I')->sum('amount');
-            $efectivoEgresos = $detailsEfectivo->filter(fn ($d) => ($d->cashMovement?->paymentConcept?->type ?? '') === 'E')->sum('amount');
+            $efectivoIngresos = $detailsEfectivo->filter(fn($d) => ($d->cashMovement?->paymentConcept?->type ?? '') === 'I')->sum('amount');
+            $efectivoEgresos = $detailsEfectivo->filter(fn($d) => ($d->cashMovement?->paymentConcept?->type ?? '') === 'E')->sum('amount');
             $currentBalance = round((float) $efectivoIngresos - (float) $efectivoEgresos, 2);
 
             // Desglose por método de pago: especificar Yape, Plin, etc. en billetera; tarjeta y banco cuando aplique
@@ -287,15 +302,15 @@ class PettyCashController extends Controller
             };
             $byLabel = $allDetailsForBreakdown->groupBy($labelForDetail);
             $currentTurnBreakdown = $byLabel->map(function ($items, $label) {
-                $ingresos = round($items->filter(fn ($d) => ($d->cashMovement?->paymentConcept?->type ?? '') === 'I')->sum('amount'), 2);
-                $egresos = round($items->filter(fn ($d) => ($d->cashMovement?->paymentConcept?->type ?? '') === 'E')->sum('amount'), 2);
+                $ingresos = round($items->filter(fn($d) => ($d->cashMovement?->paymentConcept?->type ?? '') === 'I')->sum('amount'), 2);
+                $egresos = round($items->filter(fn($d) => ($d->cashMovement?->paymentConcept?->type ?? '') === 'E')->sum('amount'), 2);
                 return [
                     'method'   => $label,
                     'ingresos' => $ingresos,
                     'egresos'  => $egresos,
                     'saldo'    => round($ingresos - $egresos, 2),
                 ];
-            })->filter(fn ($row) => $row['ingresos'] > 0 || $row['egresos'] > 0)->values()->all();
+            })->filter(fn($row) => $row['ingresos'] > 0 || $row['egresos'] > 0)->values()->all();
 
             // Resumen del turno: solo lo que entró/salió en efectivo (ventas, ingresos, egresos)
             $currentTurnMovements = CashMovements::with(['movement.movementType', 'paymentConcept', 'details'])
@@ -350,8 +365,8 @@ class PettyCashController extends Controller
             $lastClosingTotal = round((float) $lastCierreMovement->cashMovement->total, 2);
             $lastClosingBreakdown = $lastCierreMovement->cashMovement->details
                 ->groupBy('payment_method')
-                ->map(fn ($items) => round($items->sum('amount'), 2))
-                ->map(fn ($amount, $method) => ['method' => $method ?: 'Otro', 'amount' => $amount])
+                ->map(fn($items) => round($items->sum('amount'), 2))
+                ->map(fn($amount, $method) => ['method' => $method ?: 'Otro', 'amount' => $amount])
                 ->values()
                 ->all();
         }
@@ -397,6 +412,7 @@ class PettyCashController extends Controller
         $digitalWallets = DigitalWallet::where('status', true)->orderBy('order_num', 'asc')->get();
         $cards = Card::where('status', true)->orderBy('order_num', 'asc')->get();
 
+
         return view('petty_cash.index', [
             'title'           => 'Caja Chica',
             'movements'       => $movements,
@@ -415,6 +431,8 @@ class PettyCashController extends Controller
             'banks'           => $banks,
             'digitalWallets'  => $digitalWallets,
             'cards'           => $cards,
+            'paymentConceptFilterOptions' => $paymentConceptFilterOptions,
+            'documentTypeFilterOptions' => $documentTypeFilterOptions,
             'operaciones'     => $operaciones,
             'perPage'               => $perPage,
             'currentBalance'        => $currentBalance,
@@ -423,6 +441,10 @@ class PettyCashController extends Controller
             'lastClosingTotal'      => $lastClosingTotal,
             'lastClosingBreakdown'  => $lastClosingBreakdown,
             'turnSummary'           => $turnSummary,
+            'selectedPaymentConceptFilterId' => $selectedPaymentConceptFilterId,
+            'selectedMovementTypeId' => $selectedMovementTypeId,
+            'selectedDocumentTypeId' => $selectedDocumentTypeId,
+            'filterTipo' => $filterTipo,
         ]);
     }
 

@@ -185,198 +185,173 @@
                 $pettyCashClearUrl = route('petty-cash.index', array_filter(['cash_register_id' => $selectedBoxId, 'view_id' => $viewId ?? null]));
             @endphp
 
-            <div class="flex flex-col gap-5">
-                <form method="GET" class="flex w-full flex-col gap-0">
+            <div class="flex flex-row gap-5">
+                <form method="GET" class="w-full">
                     @if ($viewId)
                         <input type="hidden" name="view_id" value="{{ $viewId }}">
                     @endif
-
-                    <div class="rounded-xl border border-gray-200/90 bg-gradient-to-b from-slate-50/90 to-white p-4 shadow-sm dark:border-gray-800 dark:from-gray-900/50 dark:to-gray-900/30 sm:p-5">
-                        {{-- Fila 1: 12 cols — per_page estrecho, búsqueda amplia, caja y turno --}}
-                        <div class="grid grid-cols-1 gap-4 md:grid-cols-12 md:items-end md:gap-x-4 md:gap-y-4">
-                        <div class="w-full min-w-0 md:col-span-2">
-                            <label class="{{ $labelFilterClass }}">Por página</label>
-                            <x-ui.per-page-selector :per-page="$perPage" :submit-form="true" class="!w-full max-w-[7rem]" />
-                        </div>
-                        <div class="w-full min-w-0 md:col-span-4">
-                            <label class="{{ $labelFilterClass }}">Buscar</label>
-                            <div class="relative">
-                                <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                                    <i class="ri-search-line"></i>
-                                </span>
-                                <input type="text" name="search" value="{{ request('search') }}"
-                                    placeholder="Buscar movimiento..."
-                                    class="{{ $inputFilterClass }} pl-10 placeholder:text-gray-400 dark:placeholder:text-white/30" />
+                
+                    <div class="rounded-x from-slate-50/90 to-white p-4 shadow-sm dark:border-gray-800 dark:from-gray-900/50 dark:to-gray-900/30 sm:p-5 space-y-4">
+                
+                        {{-- Fila 1: Per page + Buscar + Caja + Turno --}}
+                        <div class="grid grid-cols-2 gap-3 md:grid-cols-12 md:items-end md:gap-4">
+                            <div class="col-span-1 md:col-span-2">
+                                <label class="{{ $labelFilterClass }}">Por página</label>
+                                <x-ui.per-page-selector :per-page="$perPage" :submit-form="true" class="!w-full" />
+                            </div>
+                            <div class="col-span-1 md:col-span-4">
+                                <label class="{{ $labelFilterClass }}">Buscar</label>
+                                <div class="relative">
+                                    <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                                        <i class="ri-search-line"></i>
+                                    </span>
+                                    <input type="text" name="search" value="{{ request('search') }}"
+                                        placeholder="Buscar movimiento..."
+                                        class="{{ $inputFilterClass }} pl-10 placeholder:text-gray-400 dark:placeholder:text-white/30" />
+                                </div>
+                            </div>
+                            <div class="col-span-1 md:col-span-3">
+                                <label class="{{ $labelFilterClass }}">Caja</label>
+                                <select name="cash_register_id" onchange="this.form.submit()" class="{{ $selectFilterClass }}">
+                                    @foreach ($cashRegisters as $register)
+                                        <option value="{{ $register->id }}" @selected((int) $selectedBoxId === (int) $register->id)>
+                                            {{ 'Caja ' . $register->number }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-span-1 md:col-span-3">
+                                <label class="{{ $labelFilterClass }}">Turno</label>
+                                <select name="cash_shift_relation_id" class="{{ $selectFilterClass }}">
+                                    <option value="">Todos</option>
+                                    @foreach ($cashShiftSessions ?? [] as $csr)
+                                        @php
+                                            $shiftName = $csr->cashMovementStart?->shift?->name ?? 'Turno';
+                                            $started = $csr->started_at ? \Illuminate\Support\Carbon::parse($csr->started_at)->format('Y-m-d H:i:s') : '';
+                                            $csrStatus = (string) ($csr->status ?? '');
+                                            $statusLabel = $csrStatus === '1' ? 'En curso' : 'Cerrado';
+                                            $csrLabel = $shiftName . ($started ? ' | ' . $started : '') . ' (' . $statusLabel . ')';
+                                        @endphp
+                                        <option value="{{ $csr->id }}" @selected((int) ($selectedCashShiftRelationId ?? 0) === (int) $csr->id)>
+                                            {{ $csrLabel }}
+                                        </option>
+                                    @endforeach
+                                </select>
                             </div>
                         </div>
-                        <div class="w-full min-w-0 md:col-span-3">
-                            <label class="{{ $labelFilterClass }}">Caja</label>
-                            <select name="cash_register_id" onchange="this.form.submit()"
-                                class="{{ $selectFilterClass }} min-w-0">
-                                @foreach ($cashRegisters as $register)
-                                    <option value="{{ $register->id }}" @selected((int) $selectedBoxId === (int) $register->id)>
-                                        {{ $register->series ?: 'Caja ' . $register->number }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="w-full min-w-0 md:col-span-3">
-                            <label class="{{ $labelFilterClass }}">Turno</label>
-                            <select name="cash_shift_relation_id" class="{{ $selectFilterClass }} min-w-0">
-                                <option value="">Todos</option>
-                                @foreach ($cashShiftSessions ?? [] as $csr)
-                                    @php
-                                        $shiftName = $csr->cashMovementStart?->shift?->name ?? 'Turno';
-                                        $started = $csr->started_at ? \Illuminate\Support\Carbon::parse($csr->started_at)->format('Y-m-d H:i:s') : '';
-                                        $csrStatus = (string) ($csr->status ?? '');
-                                        $statusLabel = $csrStatus === '1' ? 'En curso' : 'Cerrado';
-                                        $csrLabel = $shiftName . ($started ? ' | ' . $started : '') . ' (' . $statusLabel . ')';
-                                    @endphp
-                                    <option value="{{ $csr->id }}" @selected((int) ($selectedCashShiftRelationId ?? 0) === (int) $csr->id)>
-                                        {{ $csrLabel }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                        </div>
-
-                        {{-- Fila 2: tipo, concepto, fechas, botones (misma rejilla 12) --}}
-                        <div class="mt-4 grid grid-cols-1 gap-4 border-t border-gray-200/80 pt-4 sm:grid-cols-2 md:grid-cols-12 md:items-end md:gap-x-4 md:gap-y-4 dark:border-gray-700/80">
-                        <div class="w-full min-w-0 md:col-span-2">
-                            <label class="{{ $labelFilterClass }}">Tipo</label>
-                            <select name="tipo" class="{{ $selectFilterClass }}">
-                                <option value="" @selected(($filterTipo ?? '') === '')>Todos</option>
-                                <option value="ingreso" @selected(($filterTipo ?? '') === 'ingreso')>Ingreso</option>
-                                <option value="egreso" @selected(($filterTipo ?? '') === 'egreso')>Egreso</option>
-                            </select>
-                        </div>
-                        <div class="w-full min-w-0 md:col-span-4">
-                            <label class="{{ $labelFilterClass }}">Concepto</label>
-                            <select name="payment_concept_id" class="{{ $selectFilterClass }}">
-                                <option value="">Todos</option>
-                                @foreach ($paymentConceptFilterOptions ?? [] as $pc)
-                                    <option value="{{ $pc->id }}" @selected((int) ($selectedPaymentConceptFilterId ?? 0) === (int) $pc->id)>
-                                        {{ $pc->description }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="w-full min-w-0 md:col-span-2">
-                            <label class="{{ $labelFilterClass }}">Desde</label>
-                            <div class="relative">
-                                <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                                    <i class="ri-calendar-line"></i>
-                                </span>
-                                <input type="date" name="date_from" value="{{ old('date_from', $dateFrom ?? '') }}"
-                                    class="{{ $inputFilterClass }} pl-10" />
+                
+                        {{-- Fila 2: Concepto + Tipo movimiento + Desde + Hasta + Botones --}}
+                        <div class="grid grid-cols-2 gap-3 md:grid-cols-12 md:items-end md:gap-4 border-t border-gray-100 pt-4 dark:border-gray-700/80">
+                            <div class="col-span-1 md:col-span-3">
+                                <x-form.select.combobox :options="$paymentConceptFilterOptions" label="Concepto de pago"
+                                    name="payment_concept_id" x-on:click="clear()"
+                                    :value="$selectedPaymentConceptFilterId" displayField="description"
+                                    placeholder="Seleccione concepto" />
                             </div>
-                        </div>
-                        <div class="w-full min-w-0 md:col-span-2">
-                            <label class="{{ $labelFilterClass }}">Hasta</label>
-                            <div class="relative">
-                                <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                                    <i class="ri-calendar-line"></i>
-                                </span>
-                                <input type="date" name="date_to" value="{{ old('date_to', $dateTo ?? '') }}"
-                                    class="{{ $inputFilterClass }} pl-10" />
+                            <div class="col-span-1 md:col-span-3">
+                                <x-form.select.combobox :options="$documentTypeFilterOptions" label="Tipo de movimiento"
+                                    name="document_type_id" x-on:click="clear()"
+                                    :value="$selectedDocumentTypeId" displayField="name"
+                                    placeholder="Seleccione tipo" />
                             </div>
-                        </div>
-                        <div class="flex w-full min-w-0 flex-col justify-end md:col-span-2">
-                            <span class="{{ $labelFilterClass }} select-none opacity-0" aria-hidden="true">&nbsp;</span>
-                            <div class="flex flex-row flex-nowrap items-center justify-end gap-2">
-                                <x-ui.button size="md" variant="primary" type="submit" class="h-11 shrink-0 px-5 shadow-sm hover:shadow-md transition-all duration-200 active:scale-95" style="background-color: #244BB3; border-color: #244BB3;">
+                            <div class="col-span-1 md:col-span-2">
+                                <label class="{{ $labelFilterClass }}">Desde</label>
+                                <div class="relative">
+                                    <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                                        <i class="ri-calendar-line"></i>
+                                    </span>
+                                    <input type="date" name="date_from" value="{{ old('date_from', $dateFrom ?? '') }}"
+                                        class="{{ $inputFilterClass }} pl-10" />
+                                </div>
+                            </div>
+                            <div class="col-span-1 md:col-span-2">
+                                <label class="{{ $labelFilterClass }}">Hasta</label>
+                                <div class="relative">
+                                    <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                                        <i class="ri-calendar-line"></i>
+                                    </span>
+                                    <input type="date" name="date_to" value="{{ old('date_to', $dateTo ?? '') }}"
+                                        class="{{ $inputFilterClass }} pl-10" />
+                                </div>
+                            </div>
+                            <div class="col-span-2 flex items-end gap-2 md:col-span-2">
+                                <x-ui.button size="md" variant="primary" type="submit"
+                                    class="h-11 flex-1 px-4 shadow-sm hover:shadow-md transition-all duration-200 active:scale-95"
+                                    style="background-color: #244BB3; border-color: #244BB3;">
                                     <i class="ri-search-line text-gray-100"></i>
                                     <span class="font-medium text-gray-100">Buscar</span>
                                 </x-ui.button>
                                 <x-ui.link-button size="md" variant="outline" href="{{ $pettyCashClearUrl }}"
-                                    class="h-11 shrink-0 px-5 border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200">
+                                    class="h-11 flex-1 px-4 border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200">
                                     <i class="ri-refresh-line"></i>
                                     <span class="font-medium">Limpiar</span>
                                 </x-ui.link-button>
                             </div>
                         </div>
-                    </div>
+                
+                        {{-- Fila 3: Botones de acción --}}
+                        <div class="flex flex-wrap items-center gap-2 border-t border-gray-100 pt-4 dark:border-gray-700/80">
+                            @if ($topOperations->isNotEmpty())
+                                @foreach ($topOperations as $operation)
+                                    @php
+                                        $topTextColor = $resolveTextColor($operation);
+                                        $topColor = $operation->color ?: '#3B82F6';
+                                        $topStyle = "background-color: {$topColor}; color: {$topTextColor};";
+                                        $topAction = $operation->action ?? '';
+                                        $topNameLower = mb_strtolower($operation->name ?? '');
+                                        $topActionLower = mb_strtolower($topAction);
+                                        $isIncomeOp  = Str::contains($topNameLower, ['ingreso', 'income'])  || Str::contains($topActionLower, ['ingreso', 'income']);
+                                        $isExpenseOp = Str::contains($topNameLower, ['egreso', 'gasto', 'expense']) || Str::contains($topActionLower, ['egreso', 'gasto', 'expense']);
+                                        $isOpenOp    = Str::contains($topNameLower, ['apertura', 'open', 'abrir']) || Str::contains($topActionLower, ['apertura', 'open', 'abrir']);
+                                        $isCloseOp   = Str::contains($topNameLower, ['cierre', 'cerrar', 'close'])  || Str::contains($topActionLower, ['cierre', 'cerrar', 'close']);
+                                        $isCreateLike = Str::contains($topActionLower, ['create', 'store']);
+                                        $isPettyCashModalOp = $isCreateLike || $isIncomeOp || $isExpenseOp || $isOpenOp || $isCloseOp;
+                                        $modalDocId  = ($isExpenseOp || $isCloseOp) ? $egresoDocId : $ingresoDocId;
+                                        $modalConcept = $isOpenOp ? 'Apertura de caja' : ($isCloseOp ? 'Cierre de caja' : '');
+                                        $topActionUrl = $isPettyCashModalOp ? '#' : $resolveActionUrl($topAction, null, $operation);
+                                    @endphp
+                                    @if ($isPettyCashModalOp)
+                                        <x-ui.button size="md" variant="primary" type="button" style="{{ $topStyle }}"
+                                            @click="$dispatch('open-movement-modal', { concept: '{{ $modalConcept }}', docId: '{{ $modalDocId }}' })">
+                                            <i class="{{ $operation->icon }}"></i>
+                                            <span>{{ $operation->name }}</span>
+                                        </x-ui.button>
+                                    @else
+                                        <x-ui.link-button size="md" variant="primary" style="{{ $topStyle }}" href="{{ $topActionUrl }}">
+                                            <i class="{{ $operation->icon }}"></i>
+                                            <span>{{ $operation->name }}</span>
+                                        </x-ui.link-button>
+                                    @endif
+                                @endforeach
+                            @else
+                                @if (!$hasOpening)
+                                    <x-ui.button size="md" variant="primary" style="background-color: #3B82F6; color: #FFFFFF;"
+                                        @click="$dispatch('open-movement-modal', { concept: 'Apertura de caja', docId: '{{ $ingresoDocId }}' })">
+                                        <i class="ri-key-2-line"></i>
+                                        <span>Aperturar Caja</span>
+                                    </x-ui.button>
+                                @else
+                                    <x-ui.button size="md" variant="primary" style="background-color: #00A389; color: #FFFFFF;"
+                                        @click="$dispatch('open-movement-modal', { concept: '', docId: '{{ $ingresoDocId }}' })">
+                                        <i class="ri-add-line"></i>
+                                        <span>Ingreso</span>
+                                    </x-ui.button>
+                                    <x-ui.button size="md" variant="primary" style="background-color: #EF4444; color: #FFFFFF; border: none;"
+                                        @click="$dispatch('open-movement-modal', { concept: '', docId: '{{ $egresoDocId }}' })">
+                                        <i class="ri-subtract-line"></i>
+                                        <span>Egreso</span>
+                                    </x-ui.button>
+                                    <x-ui.button size="md" style="background-color: #FACC15; color: #111827;"
+                                        @click="$dispatch('open-movement-modal', { concept: 'Cierre de caja', docId: '{{ $egresoDocId }}' })">
+                                        <i class="ri-lock-2-line"></i>
+                                        <span>Cerrar</span>
+                                    </x-ui.button>
+                                @endif
+                            @endif
+                        </div>
+                
                     </div>
                 </form>
-
-                {{-- BOTONERA DINÁMICA (CORREGIDA) --}}
-                <div class="flex flex-wrap gap-3 border-t border-gray-100 pt-4 dark:border-gray-800">
-                    {{-- Si hay botones (filtrados), los mostramos --}}
-                    @if ($topOperations->isNotEmpty())
-                        @foreach ($topOperations as $operation)
-                            @php
-                                $topTextColor = $resolveTextColor($operation);
-                                $topColor = $operation->color ?: '#3B82F6';
-                                $topStyle = "background-color: {$topColor}; color: {$topTextColor};";
-                                $topAction = $operation->action ?? '';
-                                
-                                // Detección de tipos
-                                $topNameLower = mb_strtolower($operation->name ?? '');
-                                $topActionLower = mb_strtolower($topAction);
-                                
-                                $isIncomeOp = Str::contains($topNameLower, ['ingreso', 'income']) || 
-                                            Str::contains($topActionLower, ['ingreso', 'income']);
-                                            
-                                $isExpenseOp = Str::contains($topNameLower, ['egreso', 'gasto', 'expense']) || 
-                                            Str::contains($topActionLower, ['egreso', 'gasto', 'expense']);
-                                            
-                                $isOpenOp = Str::contains($topNameLower, ['apertura', 'open', 'abrir']) || 
-                                            Str::contains($topActionLower, ['apertura', 'open', 'abrir']);
-                                            
-                                $isCloseOp = Str::contains($topNameLower, ['cierre', 'cerrar', 'close']) || 
-                                            Str::contains($topActionLower, ['cierre', 'cerrar', 'close']);
-
-                                $isCreateLike = Str::contains($topActionLower, ['create', 'store']);
-
-                                $isPettyCashModalOp = $isCreateLike || $isIncomeOp || $isExpenseOp || $isOpenOp || $isCloseOp;
-                                
-                                // Datos para el modal
-                                $modalDocId = ($isExpenseOp || $isCloseOp) ? $egresoDocId : $ingresoDocId;
-                                $modalConcept = $isOpenOp ? 'Apertura de caja' : ($isCloseOp ? 'Cierre de caja' : '');
-                                
-                                // URL (si no es modal)
-                                $topActionUrl = $isPettyCashModalOp ? '#' : $resolveActionUrl($topAction, null, $operation);
-                            @endphp
-
-                            @if ($isPettyCashModalOp)
-                                <x-ui.button size="md" variant="primary" type="button" style="{{ $topStyle }}"
-                                    @click="$dispatch('open-movement-modal', { concept: '{{ $modalConcept }}', docId: '{{ $modalDocId }}' })">
-                                    <i class="{{ $operation->icon }}"></i>
-                                    <span>{{ $operation->name }}</span>
-                                </x-ui.button>
-                            @else
-                                <x-ui.link-button size="md" variant="primary" style="{{ $topStyle }}" href="{{ $topActionUrl }}">
-                                    <i class="{{ $operation->icon }}"></i>
-                                    <span>{{ $operation->name }}</span>
-                                </x-ui.link-button>
-                            @endif
-                        @endforeach
-
-                    @else
-                        @if (!$hasOpening)
-                            <x-ui.button size="md" variant="primary" style="background-color: #3B82F6; color: #FFFFFF;"
-                                @click="$dispatch('open-movement-modal', { concept: 'Apertura de caja', docId: '{{ $ingresoDocId }}' })">
-                                <i class="ri-key-2-line"></i><span>Aperturar Caja</span>
-                            </x-ui.button>
-                        @else
-                            <x-ui.button size="md" variant="primary" style="background-color: #00A389; color: #FFFFFF;"
-                                @click="$dispatch('open-movement-modal', { concept: '', docId: '{{ $ingresoDocId }}' })">
-                                <i class="ri-add-line"></i><span>Ingreso</span>
-                            </x-ui.button>
-
-                            <x-ui.button size="md" variant="primary"
-                                style="background-color: #EF4444; color: #FFFFFF; border: none;"
-                                @click="$dispatch('open-movement-modal', { concept: '', docId: '{{ $egresoDocId }}' })">
-                                <i class="ri-subtract-line mr-1"></i><span>Egreso</span>
-                            </x-ui.button>
-
-                            <x-ui.button size="md" style="background-color: #FACC15; color: #111827;"
-                                @click="$dispatch('open-movement-modal', { concept: 'Cierre de caja', docId: '{{ $egresoDocId }}' })">
-                                <i class="ri-lock-2-line"></i> Cerrar
-                            </x-ui.button>
-                        @endif
-                    @endif
-                </div>
             </div>
 
             {{-- TABLA --}}

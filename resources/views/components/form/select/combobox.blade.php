@@ -5,15 +5,18 @@
     'required' => false,
     'icon' => 'ri-price-tag-3-line',
     'name' => '',
-    'iconClickEvent' => null, // NUEVA PROPIEDAD: Si se envía, el ícono izquierdo se vuelve un botón
+    'iconClickEvent' => null, 
+    'displayField' => 'description',
+    'value' => null,
 ])
 
 <div x-data="{
         allOptions: {{ \Illuminate\Support\Js::from($options) }},
-        value: null,
+        displayField: '{{ $displayField }}',
+        value: @js($value),
         query: '',
         open: false,
-
+ 
         init() {
             this.syncQueryFromId();
             this.$watch('value', () => this.syncQueryFromId());
@@ -27,7 +30,7 @@
         syncQueryFromId() {
             if (this.value && this.allOptions.length > 0) {
                 const found = this.allOptions.find(c => c.id == this.value);
-                this.query = found ? found.description : '';
+                this.query = found ? found[this.displayField] : '';
             } else {
                 this.query = '';
             }
@@ -36,13 +39,13 @@
         get filteredOptions() {
             if (this.query === '') return this.allOptions;
             return this.allOptions.filter(item => 
-                (item.description || '').toLowerCase().includes(this.query.toLowerCase())
+                (item[this.displayField] || '').toLowerCase().includes(this.query.toLowerCase())
             );
         },
 
         selectOption(item) {
             this.value = item.id;
-            this.query = item.description;
+            this.query = item[this.displayField];
             this.open = false;
         },
 
@@ -133,7 +136,7 @@
                 <template x-for="item in filteredOptions" :key="item.id">
                     <li @click="selectOption(item)"
                         class="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-[#244BB3]/5 hover:text-[#244BB3] font-medium transition-colors">
-                        <span x-text="item.description"></span>
+                        <span x-text="item[displayField]"></span>
                     </li>
                 </template>
                 

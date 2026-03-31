@@ -138,12 +138,33 @@
                             </div>
                             <div class="w-[100px] shrink-0 flex-1">
                                 <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Caja</label>
+                            <div class="w-[100px] shrink-0 flex-1">
+                                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Caja</label>
                                 <select name="cash_register_id"
                                     class="h-11 w-full rounded-lg border border-gray-300 bg-white px-5 py-2 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-2 focus:ring-brand-500/10 dark:border-gray-600 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800">
                                     <option value="">Todas</option>
                                     @foreach ($cashRegisters ?? [] as $cr)
                                         <option value="{{ $cr->id }}" @selected(($cashRegisterId ?? '') == $cr->id)>
                                             {{ $cr->number ?? $cr->id }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="w-[150px] shrink-0 flex-1">
+                                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Turno</label>
+                                <select name="cash_shift_relation_id"
+                                    class="h-11 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-2 focus:ring-brand-500/10 dark:border-gray-600 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800">
+                                    <option value="">Todos</option>
+                                    @foreach ($cashShiftSessions ?? [] as $csr)
+                                        @php
+                                            $shiftName = $csr->cashMovementStart?->shift?->name ?? 'Turno';
+                                            $started = $csr->started_at ? \Illuminate\Support\Carbon::parse($csr->started_at)->format('Y-m-d H:i:s') : '';
+                                            $csrStatus = (string) ($csr->status ?? '');
+                                            $statusLabel = $csrStatus === '1' ? 'En curso' : 'Cerrado';
+                                            $csrLabel = $shiftName . ($started ? ' | ' . $started : '') . ' (' . $statusLabel . ')';
+                                        @endphp
+                                        <option value="{{ $csr->id }}" @selected(($cashShiftRelationId ?? '') == $csr->id)>
+                                            {{ $csrLabel }}
+                                        </option>
                                     @endforeach
                                 </select>
                             </div>
@@ -171,6 +192,7 @@
                                         'document_type_id' => $documentTypeId ?? null,
                                         'payment_method_id' => $paymentMethodId ?? null,
                                         'cash_register_id' => $cashRegisterId ?? null,
+                                        'cash_shift_relation_id' => $cashShiftRelationId ?? null,
                                         'status' => $status ?? null,
                                     ]),
                                 ) }}'">

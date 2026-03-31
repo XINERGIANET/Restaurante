@@ -34,6 +34,8 @@ class ProductController extends Controller
         $printers = PrinterBranch::query()->with('branch')->where('branch_id', $branchId)->orderBy('name')->get();
         $profileId = $request->session()->get('profile_id') ?? $request->user()?->profile_id;
         $operaciones = collect();
+        $productTypeId = $request->input('product_type_id');
+        $categoryId = $request->input('category_id');
         if ($viewId && $branchId && $profileId) {
             $operaciones = Operation::query()
                 ->select('operations.*')
@@ -65,6 +67,12 @@ class ProductController extends Controller
             ->with(['category', 'baseUnit', 'productBranches.branch', 'productBranches.taxRate'])
             ->when($branchId, function ($query) use ($branchId) {
                 $query->whereHas('productBranches', fn($q) => $q->where('branch_id', $branchId));
+            })
+            ->when($productTypeId, function ($query) use ($productTypeId) {
+                $query->where('product_type_id', $productTypeId);
+            })
+            ->when($categoryId, function ($query) use ($categoryId) {
+                $query->where('category_id', $categoryId);
             })
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
@@ -137,6 +145,8 @@ class ProductController extends Controller
             'perPage' => $perPage,
             'operaciones' => $operaciones,
             'suppliers' => $suppliers,
+            'productTypeId' => $productTypeId,
+            'categoryId' => $categoryId,
         ]);
     }
 

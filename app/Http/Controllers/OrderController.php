@@ -181,6 +181,9 @@ class OrderController extends Controller
             ->restrictedToBranch($branchId ? (int) $branchId : null)
             ->orderBy('order_num')
             ->get(['id', 'description']);
+        $effectiveCashRegisterId = $cashRegisterId ?: session('cash_register_id');
+        $cashShiftRelationId = $request->input('cash_shift_relation_id');
+
         $cashRegisters = CashRegister::query()->orderBy('number')->get(['id', 'number']);
         $operaciones = collect();
         if ($viewId && $branchId && $profileId) {
@@ -207,7 +210,36 @@ class OrderController extends Controller
                 ->get();
         }
 
-        $orders = OrderMovement::query()
+        // Sesiones (turnos) por caja para filtrar el listado y "limpiar" al abrir una nueva
+        $cashShiftSessions = collect();
+        if ($branchId && $effectiveCashRegisterId) {
+            $cashShiftSessions = \App\Models\CashShiftRelation::query()
+                ->where('branch_id', $branchId)
+                ->whereHas('cashMovementStart', function ($q) use ($effectiveCashRegisterId) {
+                    $q->where('cash_register_id', $effectiveCashRegisterId);
+                })
+                ->with(['cashMovementStart.shift', 'cashMovementEnd'])
+                ->orderByDesc('id')
+                ->limit(50)
+                ->get();
+        }
+
+        // Por defecto: filtrar por el turno actual (o último) de la caja seleccionada/en sesión
+        if (($cashShiftRelationId === null || $cashShiftRelationId === '') && $branchId && $effectiveCashRegisterId) {
+            $lastShift = \App\Models\CashShiftRelation::query()
+                ->where('branch_id', $branchId)
+                ->whereHas('cashMovementStart', function ($q) use ($effectiveCashRegisterId) {
+                    $q->where('cash_register_id', $effectiveCashRegisterId);
+                })
+                ->latest('id')
+                ->first();
+
+            if ($lastShift) {
+                $cashShiftRelationId = (string) $lastShift->id;
+            }
+        }
+
+        $ordersQuery = OrderMovement::query()
             ->with([
                 'movement.branch',
                 'movement.person',
@@ -273,8 +305,33 @@ class OrderController extends Controller
                         ->whereNull('cm.deleted_at')
                         ->whereNull('cmd.deleted_at');
                 });
-            })
-            ->orderByDesc('id')
+            });
+
+        // Filtro por turno (CashShiftRelation): ventana temporal por movimientos
+        if ($cashShiftRelationId !== null && $cashShiftRelationId !== '' && $branchId && $effectiveCashRegisterId) {
+            $csrApplied = \App\Models\CashShiftRelation::query()
+                ->with(['cashMovementStart', 'cashMovementEnd'])
+                ->where('branch_id', $branchId)
+                ->where('id', (int) $cashShiftRelationId)
+                ->whereHas('cashMovementStart', function ($q) use ($effectiveCashRegisterId) {
+                    $q->where('cash_register_id', $effectiveCashRegisterId);
+                })
+                ->first();
+
+            if ($csrApplied && $csrApplied->cashMovementStart) {
+                $startMid = $csrApplied->cashMovementStart->movement_id;
+                $ordersQuery->whereHas('movement', function ($q) use ($startMid, $csrApplied) {
+                    $q->where('movements.id', '>=', $startMid);
+                    if ($csrApplied->cashMovementEnd) {
+                        $q->where('movements.id', '<=', $csrApplied->cashMovementEnd->movement_id);
+                    }
+                });
+            } else {
+                $ordersQuery->whereRaw('1 = 0');
+            }
+        }
+
+        $orders = $ordersQuery->orderByDesc('id')
             ->paginate($perPage)
             ->withQueryString();
 
@@ -287,11 +344,13 @@ class OrderController extends Controller
             'dateTo' => $dateTo,
             'documentTypes' => $documentTypes,
             'paymentMethods' => $paymentMethods,
+            'documentTypeId' => $documentTypeId,
+            'paymentMethodId' => $paymentMethodId,
+            'cashRegisterId' => $effectiveCashRegisterId,
             'cashRegisters' => $cashRegisters,
-            'documentTypeId' => $request->input('document_type_id'),
-            'paymentMethodId' => $request->input('payment_method_id'),
-            'cashRegisterId' => $request->input('cash_register_id'),
-            'status' => $request->input('status'),
+            'cashShiftRelationId' => $cashShiftRelationId,
+            'cashShiftSessions' => $cashShiftSessions,
+            'status' => $status,
         ]);
     }
 
@@ -468,6 +527,7 @@ class OrderController extends Controller
         $paymentMethodId = $request->input('payment_method_id');
         $cashRegisterId = $request->input('cash_register_id');
         $status = $request->input('status');
+        $cashShiftRelationId = $request->input('cash_shift_relation_id');
         $branchId = $request->session()->get('branch_id');
 
         $branch = $branchId ? Branch::with('company')->find($branchId) : null;
@@ -520,9 +580,34 @@ class OrderController extends Controller
             })
             ->when($status, function ($query) use ($status) {
                 $query->where('status', $status);
-            })
-            ->orderByDesc('id')
-            ->get();
+            });
+
+        // Filtro por turno (CashShiftRelation): ventana temporal por movimientos
+        $effectiveCR = $cashRegisterId ?: session('cash_register_id');
+        if ($cashShiftRelationId !== null && $cashShiftRelationId !== '' && $branchId && $effectiveCR) {
+            $csrApplied = \App\Models\CashShiftRelation::query()
+                ->with(['cashMovementStart', 'cashMovementEnd'])
+                ->where('branch_id', $branchId)
+                ->where('id', (int) $cashShiftRelationId)
+                ->whereHas('cashMovementStart', function ($q) use ($effectiveCR) {
+                    $q->where('cash_register_id', $effectiveCR);
+                })
+                ->first();
+
+            if ($csrApplied && $csrApplied->cashMovementStart) {
+                $startMid = $csrApplied->cashMovementStart->movement_id;
+                $orders->whereHas('movement', function ($q) use ($startMid, $csrApplied) {
+                    $q->where('movements.id', '>=', $startMid);
+                    if ($csrApplied->cashMovementEnd) {
+                        $q->where('movements.id', '<=', $csrApplied->cashMovementEnd->movement_id);
+                    }
+                });
+            } else {
+                $orders->whereRaw('1 = 0');
+            }
+        }
+
+        $orders = $orders->orderByDesc('id')->get();
 
         $filters = [];
         $filters['Desde'] = $dateFrom ? \Carbon\Carbon::parse($dateFrom)->format('d/m/Y') : null;
@@ -541,6 +626,10 @@ class OrderController extends Controller
         if ($cashRegisterId) {
             $cr = CashRegister::find($cashRegisterId);
             $filters['Caja'] = $cr ? ($cr->number ?? $cr->id) : "ID {$cashRegisterId}";
+        }
+        if ($cashShiftRelationId && isset($csrApplied) && $csrApplied) {
+            $shiftLabel = ($csrApplied->cashMovementStart?->shift?->name ?? 'Turno') . ' (' . $csrApplied->id . ')';
+            $filters['Turno'] = $shiftLabel;
         }
         if ($status) {
             $filters['Estado'] = $status;
@@ -1219,6 +1308,8 @@ class OrderController extends Controller
         $items = $request->input('items', []);
         $cancellations = (array) $request->input('cancellations', []);
         $branchId = session('branch_id');
+        $branch = Branch::findOrFail($branchId);
+
         $user = $request->user();
         $profileId = session('profile_id') ?? $user?->profile_id;
         $waiterPinEnabled = $this->shouldRequireWaiterPin($branchId ? (int) $branchId : null, $profileId);
@@ -1509,6 +1600,18 @@ class OrderController extends Controller
 
                 $code = $rawItem['code'] ?? ($product?->code ?? (string) $productId);
                 $description = $rawItem['description'] ?? ($product?->description ?? ($rawItem['name'] ?? 'Producto'));
+
+                // Validar stock disponible si no se permite vender sin stock
+                $productBranch = ProductBranch::where('product_id', $productId)
+                    ->where('branch_id', $branchId)
+                    ->first();
+                $currentStock = (float) ($productBranch->stock ?? 0);
+                if (!$branch->allow_zero_stock_sales && $currentStock < $qty) {
+                    throw new \Exception(
+                        "Stock insuficiente para el producto \"{$description}\". " .
+                        "Stock disponible: {$currentStock}, Cantidad solicitada: {$qty}"
+                    );
+                }
 
                 $rawNote = trim((string) ($rawItem['note'] ?? ''));
                 $comment = $rawNote !== '' ? $rawNote : null;

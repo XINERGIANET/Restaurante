@@ -339,8 +339,8 @@
                     </div>
 
                     <div id="cart-container"
-                        class="flex-1 overflow-y-auto p-3 sm:p-5 space-y-2 sm:space-y-3 bg-white dark:bg-gray-900 min-h-0 overscroll-contain"
-                        style="-webkit-overflow-scrolling: touch;"></div>
+                        class="flex-1 overflow-y-auto p-3 sm:p-5 space-y-2 sm:space-y-3 bg-white dark:bg-gray-900 min-h-0"
+                        ></div>
                     <div id="cancelled-platos-container"
                         class="shrink-0 hidden border-t border-gray-200 dark:border-gray-700 bg-amber-50 dark:bg-amber-900/20 p-3 sm:p-4 max-h-40 overflow-y-auto">
                         <p class="text-xs font-semibold text-amber-800 dark:text-amber-200 mb-2 flex items-center gap-1"><i
@@ -2086,6 +2086,16 @@
 
                 // Aumentar cantidad: no requiere razón
                 if (change > 0) {
+                    const allowZeroStockSales = @json($allowZeroStockSales ?? true);
+                    const prodId = parseInt(item.pId || item.product_id, 10);
+                    const pb = serverProductBranches.find(p => parseInt(p.product_id, 10) === prodId);
+                    const stock = parseFloat(pb?.stock ?? 0) || 0;
+
+                    if (!allowZeroStockSales && newQty > stock) {
+                        showNotification('Stock insuficiente', (item.name || 'Producto') + ': solo hay ' + stock + ' disponible(s).', 'error');
+                        return;
+                    }
+
                     item.qty = newQty;
                     if ((currentTable.service_type || '') === 'TAKE_AWAY') {
                         item.takeawayQty = (parseFloat(item.takeawayQty) || 0) + change;
@@ -2121,6 +2131,17 @@
                     return;
                 }
                 if (newQty > oldQty) {
+                    const allowZeroStockSales = @json($allowZeroStockSales ?? true);
+                    const prodId = parseInt(item.pId || item.product_id, 10);
+                    const pb = serverProductBranches.find(p => parseInt(p.product_id, 10) === prodId);
+                    const stock = parseFloat(pb?.stock ?? 0) || 0;
+
+                    if (!allowZeroStockSales && newQty > stock) {
+                        showNotification('Stock insuficiente', (item.name || 'Producto') + ': solo hay ' + stock + ' disponible(s).', 'error');
+                        inputEl.value = oldQty;
+                        return;
+                    }
+
                     item.qty = newQty;
                     if ((currentTable.service_type || '') === 'TAKE_AWAY') {
                         item.takeawayQty = (parseFloat(item.takeawayQty) || 0) + (newQty - oldQty);

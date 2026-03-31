@@ -117,20 +117,17 @@ class SalesController extends Controller
                 ->get();
         }
 
-        // Por defecto: filtrar por el turno actual (abierto) de la caja seleccionada/en sesión
+        // Por defecto: filtrar por el turno actual (o último) de la caja seleccionada/en sesión
         if (($cashShiftRelationId === null || $cashShiftRelationId === '') && $branchId && $effectiveCashRegisterId) {
-            $activeShift = CashShiftRelation::query()
+            $lastShift = CashShiftRelation::query()
                 ->where('branch_id', $branchId)
-                ->where('status', '1')
-                ->whereNull('ended_at')
-                ->whereNull('cash_movement_end_id')
                 ->whereHas('cashMovementStart', function ($q) use ($effectiveCashRegisterId) {
                     $q->where('cash_register_id', $effectiveCashRegisterId);
                 })
                 ->latest('id')
                 ->first();
-            if ($activeShift) {
-                $cashShiftRelationId = (string) $activeShift->id;
+            if ($lastShift) {
+                $cashShiftRelationId = (string) $lastShift->id;
             }
         }
 
@@ -186,7 +183,7 @@ class SalesController extends Controller
             });
         }
 
-        // Filtro por turno (CashShiftRelation): ventana temporal por started_at/ended_at
+        // Filtro por turno (CashShiftRelation): ventana temporal por movimientos
         if ($cashShiftRelationId !== null && $cashShiftRelationId !== '' && $branchId && $effectiveCashRegisterId) {
             $csrApplied = CashShiftRelation::query()
                 ->with(['cashMovementStart', 'cashMovementEnd'])
@@ -197,12 +194,12 @@ class SalesController extends Controller
                 })
                 ->first();
 
-            if ($csrApplied && $csrApplied->started_at) {
-                $from = \Illuminate\Support\Carbon::parse($csrApplied->started_at)->startOfSecond();
-                $to = $csrApplied->ended_at
-                    ? \Illuminate\Support\Carbon::parse($csrApplied->ended_at)->endOfSecond()
-                    : now()->endOfSecond();
-                $query->whereBetween('moved_at', [$from, $to]);
+            if ($csrApplied && $csrApplied->cashMovementStart) {
+                $startMid = $csrApplied->cashMovementStart->movement_id;
+                $query->where('movements.id', '>=', $startMid);
+                if ($csrApplied->cashMovementEnd) {
+                    $query->where('movements.id', '<=', $csrApplied->cashMovementEnd->movement_id);
+                }
             } else {
                 $query->whereRaw('1 = 0');
             }
@@ -897,12 +894,14 @@ class SalesController extends Controller
                 $quantityToSell = (int) $item['qty'];
                 $currentStock = (int) ($productBranch->stock ?? 0);
 
-                // if ($currentStock < $quantityToSell) {
-                //     throw new \Exception(
-                //         "Stock insuficiente para el producto {$product->description}. " .
-                //         "Stock disponible: {$currentStock}, Cantidad solicitada: {$quantityToSell}"
-                //     );
-                // }
+                // Validar stock disponible si no se permite vender sin stock
+                if (!$branch->allow_zero_stock_sales && $currentStock < $quantityToSell) {
+                    throw new \Exception(
+                        "Stock insuficiente para el producto \"{$product->description}\". " .
+                        "Stock disponible: {$currentStock}, Cantidad solicitada: {$quantityToSell}"
+                    );
+                }
+
 
                 $unit = $product->baseUnit;
                 if (! $unit) {
@@ -1908,6 +1907,7 @@ class SalesController extends Controller
         $cashRegisterId = $request->input('cash_register_id');
         $personId = $request->input('person_id');
         $saleType = $request->input('sale_type');
+        $cashShiftRelationId = $request->input('cash_shift_relation_id');
 
         $branch = $branchId ? Branch::with('company')->find($branchId) : null;
         $companyName = $branch?->company?->legal_name;
@@ -1964,6 +1964,29 @@ class SalesController extends Controller
             });
         }
 
+        // Filtro por turno (CashShiftRelation): ventana temporal por movimientos
+        $effectiveCR = $cashRegisterId ?: session('cash_register_id');
+        if ($cashShiftRelationId !== null && $cashShiftRelationId !== '' && $branchId && $effectiveCR) {
+            $csrApplied = CashShiftRelation::query()
+                ->with(['cashMovementStart', 'cashMovementEnd'])
+                ->where('branch_id', $branchId)
+                ->where('id', (int) $cashShiftRelationId)
+                ->whereHas('cashMovementStart', function ($q) use ($effectiveCR) {
+                    $q->where('cash_register_id', $effectiveCR);
+                })
+                ->first();
+
+            if ($csrApplied && $csrApplied->cashMovementStart) {
+                $startMid = $csrApplied->cashMovementStart->movement_id;
+                $query->where('movements.id', '>=', $startMid);
+                if ($csrApplied->cashMovementEnd) {
+                    $query->where('movements.id', '<=', $csrApplied->cashMovementEnd->movement_id);
+                }
+            } else {
+                $query->whereRaw('1 = 0');
+            }
+        }
+
         $sales = $query->orderBy('moved_at', 'desc')->get();
 
         $filters = [];
@@ -1980,12 +2003,16 @@ class SalesController extends Controller
             $pm = PaymentMethod::find($paymentMethodId);
             $filters['Método de pago'] = $pm ? ($pm->description ?? $pm->id) : "ID {$paymentMethodId}";
         }
+        if ($saleType) {
+            $filters['Tipo de venta'] = $saleType;
+        }
+        if ($cashShiftRelationId && isset($csrApplied) && $csrApplied) {
+            $shiftLabel = ($csrApplied->cashMovementStart?->shift?->name ?? 'Turno') . ' (' . $csrApplied->id . ')';
+            $filters['Turno'] = $shiftLabel;
+        }
         if ($cashRegisterId) {
             $cr = CashRegister::find($cashRegisterId);
             $filters['Caja'] = $cr ? ($cr->number ?? $cr->id) : "ID {$cashRegisterId}";
-        }
-        if ($saleType) {
-            $filters['Tipo de venta'] = $saleType;
         }
 
         try {
