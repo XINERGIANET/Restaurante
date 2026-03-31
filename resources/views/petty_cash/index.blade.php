@@ -191,7 +191,7 @@
                         <input type="hidden" name="view_id" value="{{ $viewId }}">
                     @endif
                 
-                    <div class="rounded-x from-slate-50/90 to-white p-4 shadow-sm dark:border-gray-800 dark:from-gray-900/50 dark:to-gray-900/30 sm:p-5 space-y-4">
+                    <div class="rounded-x from-slate-50/90 to-white p-4 dark:border-gray-800 dark:from-gray-900/50 dark:to-gray-900/30 sm:p-5 space-y-4">
                 
                         {{-- Fila 1: Per page + Buscar + Caja + Turno --}}
                         <div class="grid grid-cols-2 gap-3 md:grid-cols-12 md:items-end md:gap-4">

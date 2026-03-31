@@ -46,6 +46,7 @@
                         <p class="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate"><i
                                 class="ri-circle-fill" style="color: #00C950;"></i> Punto de venta</p>
                     </div>
+                    
                 </div>
 
             </header>
