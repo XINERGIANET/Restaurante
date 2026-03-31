@@ -14,19 +14,23 @@
             margin: 0;
             padding: 0;
             width: 80mm;
+            max-width: 80mm;
             background: #fff;
+            overflow: hidden;
         }
 
         .ticket-wrapper {
-            width: 76mm;
-            margin: 0 auto;
-            padding: 3mm 2mm 2mm;
+            width: 80mm;
+            max-width: 80mm;
+            margin: 0;
+            padding: 2mm 1.5mm 1.5mm;
         }
 
         table {
             width: 100%;
             font-size: small;
             border-collapse: collapse;
+            table-layout: fixed;
         }
 
         tr {
@@ -117,7 +121,7 @@
 
         .center { text-align: center; }
         .separator { border-top: 1px dashed #8aa0bc; margin: 6px 0; }
-        .meta-row { display: grid; grid-template-columns: 18mm 1fr; gap: 1.5mm; align-items: start; margin-bottom: 1px; }
+        .meta-row { display: grid; grid-template-columns: 15mm 1fr; gap: 1mm; align-items: start; margin-bottom: 1px; }
         .meta-label { font-weight: bold; font-size: 11px; line-height: 1.2; }
         .meta-value { font-size: 11px; line-height: 1.2; word-break: break-word; }
         .totals-row { display: flex; justify-content: space-between; margin: 1px 0; font-size: 13px; }
@@ -134,7 +138,7 @@
         .grand-total .value { white-space: nowrap; }
         .logo {
             display: block;
-            max-width: 48mm;
+            max-width: 60mm;
             max-height: 20mm;
             margin: 0 auto 6px;
             object-fit: contain;
@@ -161,9 +165,14 @@
             margin-top: 3px;
         }
 
+        .col-prod { width: 46%; }
+        .col-qty { width: 14%; }
+        .col-unit { width: 18%; }
+        .col-subt { width: 22%; }
+
         @media print {
             @page { size: 80mm 220mm; margin: 0; }
-            html, body { width: 80mm; margin: 0; }
+            html, body { width: 80mm; max-width: 80mm; margin: 0; }
         }
     </style>
 </head>
@@ -201,10 +210,10 @@
     <table>
         <thead>
         <tr>
-            <th>Prod.</th>
-            <th style="text-align:right;">Cant</th>
-            <th style="text-align:right;">P.Unit.</th>
-            <th style="text-align:right;">Subt.</th>
+            <th class="col-prod">Prod.</th>
+            <th class="col-qty" style="text-align:right;">Cant</th>
+            <th class="col-unit" style="text-align:right;">P.Unit.</th>
+            <th class="col-subt" style="text-align:right;">Subt.</th>
         </tr>
         </thead>
         <tbody>
