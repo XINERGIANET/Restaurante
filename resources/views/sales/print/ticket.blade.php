@@ -31,7 +31,7 @@
         }
 
         .ticket {
-            width: 75.5mm;
+            width: 68mm;
             margin: 0 auto;
             padding: 2mm 0 2mm;
         }
@@ -86,9 +86,9 @@
         }
 
         .info-label {
-            width: 16mm;
+            width: 18mm;
             font-weight: 800;
-            padding-right: .8mm;
+            padding-right: 1.2mm;
             white-space: nowrap;
         }
 
@@ -112,22 +112,22 @@
         }
 
         .col-product {
-            width: 45%;
+            width: 41%;
             text-align: left;
         }
 
         .col-qty {
-            width: 12%;
+            width: 13%;
             text-align: right;
         }
 
         .col-unit {
-            width: 20%;
+            width: 22%;
             text-align: right;
         }
 
         .col-subtotal {
-            width: 23%;
+            width: 24%;
             text-align: right;
         }
 
