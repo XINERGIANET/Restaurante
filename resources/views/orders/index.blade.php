@@ -3,8 +3,10 @@
 @section('title', 'Punto de Venta')
 
 @section('content')
-    <div class="flex flex-col gap-4 rounded-2xl border border-gray-200 bg-white dark:bg-gray-900 p-5">
+    <div class="px-4 md:px-6 pt-4 pb-2">
         <x-common.page-breadcrumb pageTitle="Salones de Pedidos" />
+    </div>
+    <div class="mx-4 md:mx-6 flex flex-col gap-4 rounded-2xl border border-gray-200 bg-white dark:bg-gray-900 p-5">
         <div x-data="posSystem()" x-cloak
             class="flex flex-col min-h-[calc(100vh-9rem)] w-full font-sans text-slate-800 dark:text-white"
             style="--brand:#3B82F6; --brand-soft:rgba(59,130,246,0.14);">
