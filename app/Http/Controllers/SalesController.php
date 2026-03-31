@@ -54,6 +54,7 @@ class SalesController extends Controller
         $documentTypeId = $request->input('document_type_id');
         $paymentMethodId = $request->input('payment_method_id');
         $cashRegisterId = $request->input('cash_register_id');
+        $cashShiftRelationId = $request->input('cash_shift_relation_id');
         $saleType = $request->input('sale_type');
         $perPage = (int) $request->input('per_page', 10);
         $allowedPerPage = [10, 20, 50, 100];
@@ -100,6 +101,39 @@ class SalesController extends Controller
             ? CashRegister::query()->where('branch_id', $branchId)->orderBy('number')->get(['id', 'number'])
             : CashRegister::query()->whereRaw('1 = 0')->get(['id', 'number']);
 
+        $effectiveCashRegisterId = $cashRegisterId ?: session('cash_register_id');
+
+        // Sesiones (turnos) por caja para filtrar el listado y "limpiar" al abrir una nueva
+        $cashShiftSessions = collect();
+        if ($branchId && $effectiveCashRegisterId) {
+            $cashShiftSessions = CashShiftRelation::query()
+                ->where('branch_id', $branchId)
+                ->whereHas('cashMovementStart', function ($q) use ($effectiveCashRegisterId) {
+                    $q->where('cash_register_id', $effectiveCashRegisterId);
+                })
+                ->with(['cashMovementStart.shift', 'cashMovementEnd'])
+                ->orderByDesc('id')
+                ->limit(100)
+                ->get();
+        }
+
+        // Por defecto: filtrar por el turno actual (abierto) de la caja seleccionada/en sesión
+        if (($cashShiftRelationId === null || $cashShiftRelationId === '') && $branchId && $effectiveCashRegisterId) {
+            $activeShift = CashShiftRelation::query()
+                ->where('branch_id', $branchId)
+                ->where('status', '1')
+                ->whereNull('ended_at')
+                ->whereNull('cash_movement_end_id')
+                ->whereHas('cashMovementStart', function ($q) use ($effectiveCashRegisterId) {
+                    $q->where('cash_register_id', $effectiveCashRegisterId);
+                })
+                ->latest('id')
+                ->first();
+            if ($activeShift) {
+                $cashShiftRelationId = (string) $activeShift->id;
+            }
+        }
+
         $query = Movement::query()
             ->with(['branch', 'person', 'movementType', 'documentType', 'salesMovement'])
             ->where('movement_type_id', 2)
@@ -141,15 +175,37 @@ class SalesController extends Controller
                     ->whereNull('cmd.deleted_at');
             });
         }
-        if ($cashRegisterId) {
-            $query->whereExists(function ($sub) use ($cashRegisterId) {
+        if ($effectiveCashRegisterId) {
+            $query->whereExists(function ($sub) use ($effectiveCashRegisterId) {
                 $sub->select(DB::raw(1))
                     ->from('movements as m')
                     ->join('cash_movements as cm', 'cm.movement_id', '=', 'm.id')
                     ->whereColumn('m.parent_movement_id', 'movements.id')
-                    ->where('cm.cash_register_id', $cashRegisterId)
+                    ->where('cm.cash_register_id', $effectiveCashRegisterId)
                     ->whereNull('cm.deleted_at');
             });
+        }
+
+        // Filtro por turno (CashShiftRelation): ventana temporal por started_at/ended_at
+        if ($cashShiftRelationId !== null && $cashShiftRelationId !== '' && $branchId && $effectiveCashRegisterId) {
+            $csrApplied = CashShiftRelation::query()
+                ->with(['cashMovementStart', 'cashMovementEnd'])
+                ->where('branch_id', $branchId)
+                ->where('id', (int) $cashShiftRelationId)
+                ->whereHas('cashMovementStart', function ($q) use ($effectiveCashRegisterId) {
+                    $q->where('cash_register_id', $effectiveCashRegisterId);
+                })
+                ->first();
+
+            if ($csrApplied && $csrApplied->started_at) {
+                $from = \Illuminate\Support\Carbon::parse($csrApplied->started_at)->startOfSecond();
+                $to = $csrApplied->ended_at
+                    ? \Illuminate\Support\Carbon::parse($csrApplied->ended_at)->endOfSecond()
+                    : now()->endOfSecond();
+                $query->whereBetween('moved_at', [$from, $to]);
+            } else {
+                $query->whereRaw('1 = 0');
+            }
         }
         if ($saleType !== null && $saleType !== '') {
             $query->whereHas('salesMovement', function ($sub) use ($saleType) {
@@ -188,10 +244,12 @@ class SalesController extends Controller
             'documentTypes' => $documentTypes,
             'paymentMethodId' => $paymentMethodId,
             'paymentMethods' => $paymentMethods,
-            'cashRegisterId' => $cashRegisterId,
+            'cashRegisterId' => $effectiveCashRegisterId,
             'cashRegisters' => $cashRegisters,
             'personId' => $personId,
             'saleType' => $saleType,
+            'cashShiftRelationId' => $cashShiftRelationId,
+            'cashShiftSessions' => $cashShiftSessions,
         ];
 
         return view('sales.index', $viewData);

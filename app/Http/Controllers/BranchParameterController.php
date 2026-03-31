@@ -5,11 +5,13 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\BranchParameter;
+use App\Models\Branch;
 use App\Models\ParameterCategories;
 use App\Models\Operation;
 use App\Models\DocumentType;
 use App\Models\TaxRate;
 use App\Models\PaymentMethod;
+use App\Models\Parameters;
 
 class BranchParameterController extends Controller
 {
@@ -186,6 +188,7 @@ class BranchParameterController extends Controller
 
                 foreach ($parameters as $paramKey => $value) {
                     $valorSeguro = $value ?? '';
+                    $parameterIdForHook = null;
 
                     // Clave puede ser branch_parameter_id (numérico) o "p{parameter_id}" para nuevos
                     if (is_numeric($paramKey)) {
@@ -194,9 +197,11 @@ class BranchParameterController extends Controller
                             ->first();
                         if ($branchParam) {
                             $branchParam->update(['value' => $valorSeguro]);
+                            $parameterIdForHook = (int) $branchParam->parameter_id;
                         }
                     } elseif (str_starts_with((string) $paramKey, 'p') && is_numeric(substr($paramKey, 1))) {
                         $parameterId = (int) substr($paramKey, 1);
+                        $parameterIdForHook = $parameterId;
                         $branchParam = BranchParameter::where('parameter_id', $parameterId)
                             ->where('branch_id', $branchId)
                             ->whereNull('deleted_at')
@@ -209,6 +214,24 @@ class BranchParameterController extends Controller
                                 'branch_id' => $branchId,
                                 'value' => $valorSeguro,
                             ]);
+                        }
+                    }
+
+                    // Hook: si el parámetro corresponde a "Permitir vender con stock 0",
+                    // sincronizar también el flag real en branches.allow_zero_stock_sales.
+                    if ($parameterIdForHook) {
+                        $param = Parameters::query()->where('id', (int) $parameterIdForHook)->first(['id', 'description']);
+                        $desc = mb_strtolower(trim((string) ($param?->description ?? '')), 'UTF-8');
+                        $isAllowZeroStockSalesParam =
+                            str_contains($desc, 'permitir') &&
+                            str_contains($desc, 'stock') &&
+                            (str_contains($desc, '0') || str_contains($desc, 'cero'));
+                        if ($isAllowZeroStockSalesParam) {
+                            $raw = mb_strtolower(trim((string) $valorSeguro), 'UTF-8');
+                            $bool = in_array($raw, ['1', 'si', 'sí', 'true', 'on'], true);
+                            Branch::query()
+                                ->where('id', (int) $branchId)
+                                ->update(['allow_zero_stock_sales' => $bool]);
                         }
                     }
                 }

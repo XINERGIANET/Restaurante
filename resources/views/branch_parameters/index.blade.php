@@ -140,7 +140,12 @@
                                             $isIgvDefecto = strcasecmp($desc, 'igv_defecto') === 0;
                                             // Por descripción (evita confundir con ids 4/8/11/12 de contraseñas si "METODOS DE PAGO" tiene mal el id)
                                             $isMetodosPagoParam = str_contains($descLower, 'metodo') && str_contains($descLower, 'pago');
-                                            $showMetodosPagoUi = $isMetodosPagoParam || (int) $parameter->id === 6;
+                                            // Solo por descripción para evitar confundir parámetros mal rotulados en producción.
+                                            $showMetodosPagoUi = $isMetodosPagoParam;
+                                            $isAllowZeroStockSalesParam =
+                                                str_contains($descLower, 'permitir') &&
+                                                str_contains($descLower, 'stock') &&
+                                                (str_contains($descLower, '0') || str_contains($descLower, 'cero'));
                                         @endphp
                                         @if($isRequerirPinMozo)
                                             {{-- REQUERIR PIN A MOZO: 0 o 1 --}}
@@ -178,6 +183,13 @@
                                                     </label>
                                                 @endforeach
                                             </div>
+                                        @elseif($isAllowZeroStockSalesParam)
+                                            {{-- Permitir vender con stock 0 (o insuficiente): 0/1 --}}
+                                            <select name="parameters[{{ $paramKey }}]"
+                                                    class="w-full border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 px-3 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors shadow-sm">
+                                                <option value="0" {{ (string) ($parameter->branch_value ?? '') === '0' ? 'selected' : '' }}>No (0)</option>
+                                                <option value="1" {{ (string) ($parameter->branch_value ?? '') === '1' ? 'selected' : '' }}>Sí (1)</option>
+                                            </select>
                                         @else
                                         @switch($parameter->id)
                                             

@@ -174,6 +174,24 @@
                                 </select>
                             </div>
                             <div class="{{ $filterClass }}">
+                                <label class="{{ $labelClass }}">Turno</label>
+                                <select name="cash_shift_relation_id" class="{{ $inputClass }}">
+                                    <option value="">Todos</option>
+                                    @foreach ($cashShiftSessions ?? [] as $csr)
+                                        @php
+                                            $shiftName = $csr->cashMovementStart?->shift?->name ?? 'Turno';
+                                            $started = $csr->started_at ? \Illuminate\Support\Carbon::parse($csr->started_at)->format('Y-m-d H:i:s') : '';
+                                            $csrStatus = (string) ($csr->status ?? '');
+                                            $statusLabel = $csrStatus === '1' ? 'En curso' : 'Cerrado';
+                                            $csrLabel = $shiftName . ($started ? ' | ' . $started : '') . ' (' . $statusLabel . ')';
+                                        @endphp
+                                        <option value="{{ $csr->id }}" @selected(($cashShiftRelationId ?? '') == $csr->id)>
+                                            {{ $csrLabel }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="{{ $filterClass }}">
                                 <label class="{{ $labelClass }}">Tipo de venta</label>
                                 <select name="sale_type" class="{{ $inputClass }}">
                                     <option value="">Todos</option>
@@ -195,6 +213,7 @@
                                         'document_type_id' => $documentTypeId ?? null,
                                         'payment_method_id' => $paymentMethodId ?? null,
                                         'cash_register_id' => $cashRegisterId ?? null,
+                                        'cash_shift_relation_id' => $cashShiftRelationId ?? null,
                                         'sale_type' => $saleType ?? null,
                                     ]),
                                 ) }}"
