@@ -6,174 +6,172 @@
     <title>Ticket {{ $sale->number }}</title>
     <style>
         * {
-            font-family: Verdana, sans-serif;
             box-sizing: border-box;
+            font-family: Arial, Helvetica, sans-serif;
+            color: #000;
+        }
+
+        @page {
+            size: 80mm auto;
+            margin: 0;
         }
 
         html, body {
             margin: 0;
             padding: 0;
             width: 80mm;
-            max-width: 80mm;
             background: #fff;
-            overflow: hidden;
-            font-size: 13px;
         }
 
-        .ticket-wrapper {
-            width: 100%;
-            max-width: 100%;
-            margin: 0;
-            padding: .8mm .6mm .8mm;
-        }
-
-        table {
-            width: 100%;
-            font-size: small;
-            border-collapse: collapse;
-            table-layout: fixed;
-        }
-
-        tr {
-            page-break-inside: avoid;
-        }
-
-        thead tr td,
-        thead tr th {
-            font-weight: bold;
-            font-size: 15px;
-        }
-
-        tbody tr td {
-            padding-left: 2px;
-            padding-right: 2px;
+        body {
             font-size: 14px;
+            line-height: 1.08;
         }
 
-        tfoot tr td {
-            font-weight: bold;
+        .ticket {
+            width: 76mm;
+            margin: 0 auto;
+            padding: 1.8mm 1.2mm 2mm;
         }
 
-        .bold { font-weight: bold; }
-        .without-top { margin-top: 0; }
-        .without-bottom { margin-bottom: 10px; font-size: 13.2px; margin-top: 15px; }
-        .without-tb, .without-bt { margin-top: 0; margin-bottom: 0; }
-        .xx-small { font-size: xx-small; }
-        .x-small { font-size: x-small; }
-        .small { font-size: small; }
-        .medium { font-size: medium; }
-        .large { font-size: large; }
-        .table-bordered { border: 1px solid black; }
-        .table-full-bordered tr td { border: 1px solid black; }
-        .gray { background-color: lightgray; }
-        .teal { background-color: #000000; }
-        .bg-primary { background-color: #000000; }
-        .primary-text { color: #000000; }
-        .white-text { color: white; }
-        .page-break { page-break-after: always; }
-
-        header {
-            position: fixed;
-            top: -50px;
-            left: 0px;
-            right: 0px;
-            height: 50px;
+        .center {
             text-align: center;
-            line-height: 35px;
         }
 
-        header.left { text-align: left !important; }
-        header.right { text-align: right !important; }
-
-        footer {
-            position: fixed;
-            bottom: -50px;
-            left: 0px;
-            right: 0px;
-            height: 50px;
-            text-align: center;
-            line-height: 35px;
-        }
-
-        footer.left { text-align: left !important; }
-        footer.right { text-align: right !important; }
-
-        .table-soft-bordered {
-            border: 1px solid rgba(0, 0, 0, .48);
-        }
-
-        .table-full-soft-bordered thead tr td,
-        .table-full-soft-bordered thead tr th {
-            padding-left: 12px;
-            padding-right: 12px;
-            border-left: 1px solid rgba(255, 255, 255, .24);
-            border-right: 1px solid rgba(255, 255, 255, .24);
-            border-bottom: 1px solid rgba(255, 255, 255, .24);
-        }
-
-        .table-full-soft-bordered tr td {
-            padding-top: 4px;
-            padding-bottom: 4px;
-        }
-
-        .table-full-soft-bordered tbody tr td {
-            border-bottom: 1px solid rgba(0, 0, 0, .24);
-        }
-
-        .center { text-align: center; }
-        .separator { border-top: 1px dashed #8aa0bc; margin: 6px 0; }
-        .meta-row { display: grid; grid-template-columns: 10mm 1fr; gap: .6mm; align-items: start; margin-bottom: .5px; }
-        .meta-label { font-weight: bold; font-size: 13px; line-height: 1.15; }
-        .meta-value { font-size: 13px; line-height: 1.15; word-break: break-word; }
-        .totals-row { display: flex; justify-content: space-between; margin: 1px 0; font-size: 15px; }
-        .grand-total {
-            border-top: 1px solid #8aa0bc;
-            margin-top: 2px;
-            padding-top: 2px;
-            display: flex;
-            justify-content: space-between;
-            font-size: 20px;
-            font-weight: bold;
-        }
-        .grand-total .label { letter-spacing: .2px; }
-        .grand-total .value { white-space: nowrap; }
         .logo {
             display: block;
-            max-width: 72mm;
+            max-width: 44mm;
             max-height: 18mm;
-            margin: 0 auto 3px;
+            margin: 0 auto 2mm;
             object-fit: contain;
         }
-        .prod-col {
-            font-size: 14px;
-            line-height: 1.1;
-            padding-left: 0 !important;
+
+        .company {
+            margin: 0;
+            font-size: 17px;
+            font-weight: 800;
+            letter-spacing: .3px;
         }
-        .num-col {
-            text-align: right;
-            font-size: 14px;
+
+        .subhead {
+            margin: 0;
+            font-size: 12px;
+        }
+
+        .doc-code {
+            margin: 1mm 0 1.2mm;
+            font-size: 16px;
+            font-weight: 800;
+            letter-spacing: .2px;
+        }
+
+        .separator {
+            border-top: 1px dashed #9fb5d4;
+            margin: 1.6mm 0;
+        }
+
+        .info-table,
+        .items-table,
+        .totals-table,
+        .footer-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .info-table td {
+            vertical-align: top;
+            padding: 0;
+        }
+
+        .info-label {
+            width: 21mm;
+            font-weight: 800;
+            padding-right: 1.2mm;
             white-space: nowrap;
-            padding-right: 0 !important;
         }
-        .notes-wrap {
-            font-size: 13px;
-            line-height: 1.15;
+
+        .info-value {
             word-break: break-word;
         }
-        .footer {
-            font-size: 12px;
-            line-height: 1.15;
-            margin-top: 2px;
+
+        .items-table th,
+        .items-table td {
+            padding: .45mm 0;
         }
 
-        .col-prod { width: 47%; }
-        .col-qty { width: 13%; }
-        .col-unit { width: 19%; }
-        .col-subt { width: 21%; }
+        .items-table thead th {
+            font-size: 12px;
+            font-weight: 800;
+            border-bottom: 1px solid #b7b7b7;
+        }
 
-        @media print {
-            @page { size: 80mm 220mm; margin: 0; }
-            html, body { width: 80mm; max-width: 80mm; margin: 0; }
+        .items-table tbody tr:last-child td {
+            padding-bottom: .8mm;
+        }
+
+        .col-product {
+            width: 43%;
+            text-align: left;
+        }
+
+        .col-qty {
+            width: 14%;
+            text-align: right;
+        }
+
+        .col-unit {
+            width: 21%;
+            text-align: right;
+        }
+
+        .col-subtotal {
+            width: 22%;
+            text-align: right;
+        }
+
+        .product-text {
+            word-break: break-word;
+        }
+
+        .totals-table td {
+            padding: .4mm 0;
+            font-size: 13px;
+        }
+
+        .totals-label {
+            font-weight: 800;
+        }
+
+        .totals-value {
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        .grand-total td {
+            border-top: 1px solid #9fb5d4;
+            padding-top: 1mm;
+            font-size: 15px;
+            font-weight: 800;
+        }
+
+        .notes {
+            margin-top: 1mm;
+            font-size: 12px;
+        }
+
+        .notes strong {
+            font-weight: 800;
+        }
+
+        .footer {
+            margin-top: 1.2mm;
+            font-size: 11px;
+            text-align: center;
+        }
+
+        .footer .thanks {
+            margin-top: .8mm;
+            font-size: 12px;
         }
     </style>
 </head>
@@ -187,35 +185,52 @@
     $ticketTotal = (float) ($sale->salesMovement?->total ?? $sale->orderMovement?->total ?? 0);
 @endphp
 
-<div class="ticket-wrapper">
+<div class="ticket">
     <div class="center">
         @if(!empty($logoFileUrl) || !empty($logoUrl))
             <img src="{{ $logoFileUrl ?: $logoUrl }}" alt="Logo sucursal" class="logo">
         @endif
-        <p class="without-tb bold large" style="font-size: 22px; line-height:1.05;">{{ strtoupper($branchForLogo->legal_name ?? 'SUCURSAL') }}</p>
-        <p class="without-tb medium" style="font-size: 15px; line-height:1.05;">RUC: {{ $branchForLogo->ruc ?? '-' }}</p>
-        <p class="without-tb medium" style="font-size: 15px; line-height:1.05;">{{ $docName }}</p>
-        <p class="without-tb bold large" style="font-size: 18px; line-height:1.05;">{{ $docCode }}</p>
+        <p class="company">{{ strtoupper($branchForLogo->legal_name ?? 'SUCURSAL') }}</p>
+        <p class="subhead">RUC: {{ $branchForLogo->ruc ?? '-' }}</p>
+        <p class="subhead">{{ $docName }}</p>
+        <p class="doc-code">{{ $docCode }}</p>
     </div>
 
     <div class="separator"></div>
 
-    <div class="meta-row"><div class="meta-label">Fecha:</div><div class="meta-value">{{ optional($sale->moved_at)->format('d/m/Y H:i') ?? '-' }}</div></div>
-    <div class="meta-row"><div class="meta-label">Cliente:</div><div class="meta-value">{{ $sale->person_name ?? 'CLIENTES VARIOS' }}</div></div>
-    <div class="meta-row"><div class="meta-label">Dir.:</div><div class="meta-value">{{ $sale->person?->address ?? '-' }}</div></div>
-    <div class="meta-row"><div class="meta-label">RUC/DNI:</div><div class="meta-value">{{ $sale->person?->document_number ?? '-' }}</div></div>
-    <div class="meta-row"><div class="meta-label">Forma pago:</div><div class="meta-value">{{ $paymentLabel }}</div></div>
+    <table class="info-table">
+        <tr>
+            <td class="info-label">Fecha:</td>
+            <td class="info-value">{{ optional($sale->moved_at)->format('d/m/Y H:i') ?? '-' }}</td>
+        </tr>
+        <tr>
+            <td class="info-label">Cliente:</td>
+            <td class="info-value">{{ $sale->person_name ?? 'CLIENTES VARIOS' }}</td>
+        </tr>
+        <tr>
+            <td class="info-label">Dir.:</td>
+            <td class="info-value">{{ $sale->person?->address ?? '-' }}</td>
+        </tr>
+        <tr>
+            <td class="info-label">RUC/DNI:</td>
+            <td class="info-value">{{ $sale->person?->document_number ?? '-' }}</td>
+        </tr>
+        <tr>
+            <td class="info-label">Forma pago:</td>
+            <td class="info-value">{{ $paymentLabel }}</td>
+        </tr>
+    </table>
 
     <div class="separator"></div>
 
-    <table>
+    <table class="items-table">
         <thead>
-        <tr>
-            <th class="col-prod">Prod.</th>
-            <th class="col-qty" style="text-align:right;">Cant</th>
-            <th class="col-unit" style="text-align:right;">P.Unit.</th>
-            <th class="col-subt" style="text-align:right;">Subt.</th>
-        </tr>
+            <tr>
+                <th class="col-product">Prod.</th>
+                <th class="col-qty">Cant</th>
+                <th class="col-unit">P.Unit.</th>
+                <th class="col-subtotal">Subt.</th>
+            </tr>
         </thead>
         <tbody>
         @foreach($details as $detail)
@@ -225,10 +240,10 @@
                 $unitPrice = $qty > 0 ? ($lineTotal / $qty) : 0;
             @endphp
             <tr>
-                <td class="prod-col">{{ \Illuminate\Support\Str::limit($detail->description ?? $detail->product?->description ?? '-', 30) }}</td>
-                <td class="num-col">{{ number_format($qty, 2) }}</td>
-                <td class="num-col">{{ number_format($unitPrice, 2) }}</td>
-                <td class="num-col">{{ number_format($lineTotal, 2) }}</td>
+                <td class="col-product product-text">{{ \Illuminate\Support\Str::limit($detail->description ?? $detail->product?->description ?? '-', 40) }}</td>
+                <td class="col-qty">{{ number_format($qty, 2) }}</td>
+                <td class="col-unit">{{ number_format($unitPrice, 2) }}</td>
+                <td class="col-subtotal">{{ number_format($lineTotal, 2) }}</td>
             </tr>
         @endforeach
         </tbody>
@@ -236,19 +251,31 @@
 
     <div class="separator"></div>
 
-    <div class="totals-row"><span class="bold">Op. gravada:</span><span>S/ {{ number_format($ticketSubtotal, 2) }}</span></div>
-    <div class="totals-row"><span class="bold">IGV:</span><span>S/ {{ number_format($ticketTax, 2) }}</span></div>
-    <div class="grand-total"><span class="label">TOTAL:</span><span class="value">S/ {{ number_format($ticketTotal, 2) }}</span></div>
+    <table class="totals-table">
+        <tr>
+            <td class="totals-label">Op. gravada:</td>
+            <td class="totals-value">S/ {{ number_format($ticketSubtotal, 2) }}</td>
+        </tr>
+        <tr>
+            <td class="totals-label">IGV:</td>
+            <td class="totals-value">S/ {{ number_format($ticketTax, 2) }}</td>
+        </tr>
+        <tr class="grand-total">
+            <td>TOTAL:</td>
+            <td class="totals-value">S/ {{ number_format($ticketTotal, 2) }}</td>
+        </tr>
+    </table>
 
     @if($sale->comment)
         <div class="separator"></div>
-        <div class="notes-wrap"><span class="bold">Notas:</span> {{ $sale->comment }}</div>
+        <div class="notes"><strong>Notas:</strong> {{ $sale->comment }}</div>
     @endif
 
     <div class="separator"></div>
-    <div class="center footer">
+
+    <div class="footer">
         Impreso: {{ $printedAt->format('d/m/Y H:i:s') }}<br>
-        Gracias por su preferencia
+        <div class="thanks">Gracias por su preferencia</div>
     </div>
 </div>
 
