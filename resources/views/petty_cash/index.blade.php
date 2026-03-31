@@ -241,7 +241,7 @@
                         </div>
                 
                         {{-- Fila 2: Concepto + Tipo movimiento + Desde + Hasta + Botones --}}
-                        <div class="grid grid-cols-2 gap-3 md:grid-cols-12 md:items-end md:gap-4 border-t border-gray-100 pt-4 dark:border-gray-700/80">
+                        <div class="grid grid-cols-1 gap-3 md:grid-cols-12 md:items-end md:gap-4">
                             <div class="col-span-1 md:col-span-3">
                                 <x-form.select.combobox :options="$paymentConceptFilterOptions" label="Concepto de pago"
                                     name="payment_concept_id" x-on:click="clear()"
@@ -274,18 +274,20 @@
                                         class="{{ $inputFilterClass }} pl-10" />
                                 </div>
                             </div>
-                            <div class="col-span-2 flex items-end gap-2 md:col-span-2">
+                            <div class="col-span-1 md:col-span-2">
+                                <div class="flex flex-col gap-2 md:flex-row md:items-end">
                                 <x-ui.button size="md" variant="primary" type="submit"
-                                    class="h-11 flex-1 px-4 shadow-sm hover:shadow-md transition-all duration-200 active:scale-95"
+                                    class="h-11 w-full md:flex-1 px-4 shadow-sm hover:shadow-md transition-all duration-200 active:scale-95"
                                     style="background-color: #244BB3; border-color: #244BB3;">
                                     <i class="ri-search-line text-gray-100"></i>
                                     <span class="font-medium text-gray-100">Buscar</span>
                                 </x-ui.button>
                                 <x-ui.link-button size="md" variant="outline" href="{{ $pettyCashClearUrl }}"
-                                    class="h-11 flex-1 px-4 border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200">
+                                    class="h-11 w-full md:flex-1 px-4 border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200">
                                     <i class="ri-refresh-line"></i>
                                     <span class="font-medium">Limpiar</span>
                                 </x-ui.link-button>
+                                </div>
                             </div>
                         </div>
                 
