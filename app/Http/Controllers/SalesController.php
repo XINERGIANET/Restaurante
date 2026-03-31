@@ -1490,6 +1490,12 @@ class SalesController extends Controller
     {
         $sale = $this->resolvePrintableForTicket($sale);
         $printData = $this->buildSalePrintData($sale, $request);
+        if ($request->boolean('direct_print')) {
+            $printData['autoPrint'] = true;
+
+            return view('sales.print.ticket', $printData);
+        }
+
         $printData['autoPrint'] = false;
 
         $html = view('sales.print.ticket', $printData)->render();
@@ -1497,7 +1503,7 @@ class SalesController extends Controller
             '--page-width',
             '80mm',
             '--page-height',
-            '220mm',
+            '140mm',
             '--margin-top',
             '0',
             '--margin-right',
@@ -2229,8 +2235,11 @@ class SalesController extends Controller
         $lines[] = $sep;
         $lines[] = 'Fecha: '.optional($sale->moved_at)->format('d/m/Y H:i');
         $lines[] = 'Cliente: '.Str::ascii($sale->person_name ?? 'CLIENTES VARIOS');
+        $lines[] = 'Dir.: '.Str::ascii($sale->person?->address ?? '-');
+        $lines[] = 'RUC/DNI: '.Str::ascii($sale->person?->document_number ?? '-');
         $lines[] = 'Forma pago: '.Str::ascii($paymentLabel);
         $lines[] = $sep;
+        $lines[] = 'Prod.         Cant P.Unit  Subt';
 
         foreach ($details as $detail) {
             $qty = (float) $detail->quantity;
