@@ -201,7 +201,7 @@
                                 </select>
                             </div>
                         </div>
-                        <div class="shrink-0">
+                        <div class="shrink-0 flex flex-wrap items-center gap-2">
                             <button type="button" onclick="descargarPdf()"
                                 data-pdf-url="{{ route(
                                     'admin.sales.pdf',
@@ -220,6 +220,25 @@
                                 class="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-orange-600 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2">
                                 <i class="ri-file-pdf-line text-base"></i>
                                 <span>Descargar PDF</span>
+                            </button>
+                            <button type="button" onclick="descargarExcel()"
+                                data-excel-url="{{ route(
+                                    'admin.sales.excel',
+                                    array_filter([
+                                        'view_id' => $viewId ?? null,
+                                        'date_from' => $dateFrom,
+                                        'date_to' => $dateTo,
+                                        'search' => $search,
+                                        'document_type_id' => $documentTypeId ?? null,
+                                        'payment_method_id' => $paymentMethodId ?? null,
+                                        'cash_register_id' => $cashRegisterId ?? null,
+                                        'cash_shift_relation_id' => $cashShiftRelationId ?? null,
+                                        'sale_type' => $saleType ?? null,
+                                    ]),
+                                ) }}"
+                                class="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2">
+                                <i class="ri-file-excel-2-line text-base"></i>
+                                <span>Descargar Excel</span>
                             </button>
                         </div>
                     </div>
@@ -582,6 +601,19 @@
                 const url = new URL(baseUrl, window.location.origin);
                 const dfVal = document.querySelector('[name="date_from"]')?.value;
                 const dtVal = document.querySelector('[name="date_to"]')?.value;
+                if (dfVal) url.searchParams.set('date_from', dfVal);
+                if (dtVal) url.searchParams.set('date_to', dtVal);
+
+                window.open(url.toString(), '_blank');
+            }
+
+            function descargarExcel() {
+                const btn = document.querySelector('[data-excel-url]');
+                const baseUrl = btn ? btn.dataset.excelUrl : "{{ route('admin.sales.excel') }}";
+
+                const url = new URL(baseUrl, window.location.origin);
+                const dfVal = document.querySelector('[name=\"date_from\"]')?.value;
+                const dtVal = document.querySelector('[name=\"date_to\"]')?.value;
                 if (dfVal) url.searchParams.set('date_from', dfVal);
                 if (dtVal) url.searchParams.set('date_to', dtVal);
 
