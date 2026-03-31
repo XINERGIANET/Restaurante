@@ -32,27 +32,10 @@
     <div class="flex flex-col h-full bg-gray-50 dark:bg-gray-950">
         {{-- Misma estructura visual que orders/create (sin mesa, mozo, personas, delivery/llevar) --}}
         <div data-turbo-cache="false" class="flex flex-col flex-1 min-h-0">
-            <header
-                class="relative flex-none min-h-[4rem] sm:h-18 flex flex-wrap items-center gap-2 sm:gap-3 px-3 sm:px-6 py-2 z-50 sticky top-0 overflow-visible">
-                <div class="order-1 flex shrink-0 items-center gap-2 sm:gap-3 sm:mr-2">
-                    <a href="{{ $salesIndexUrl }}" id="back-to-sales-link" title="Volver atrás"
-                        class="h-9 w-9 sm:h-10 sm:w-10 rounded-full bg-white border border-gray-200 text-gray-500 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 transition-all flex items-center justify-center shadow-sm shrink-0">
-                        <i class="ri-arrow-left-line text-lg sm:text-xl"></i>
-                    </a>
-                    <div class="flex flex-col justify-center min-w-0 max-w-[40vw] sm:max-w-none">
-                        <h2 class="text-sm sm:text-base font-bold text-slate-800 dark:text-white leading-tight truncate">
-                            Nueva venta
-                        </h2>
-                        <p class="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate"><i
-                                class="ri-circle-fill" style="color: #00C950;"></i> Punto de venta</p>
-                    </div>
-                    
-                </div>
-
-            </header>
-
             {{-- lg:items-start: el aside NO se estira a toda la altura del panel productos (evita hueco enorme abajo) --}}
+            <x-common.page-breadcrumb pageTitle="Nueva venta" />
             <div
+            
                 class="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden bg-gray-50/50 dark:bg-gray-950/50 gap-3 p-3">
                 <div
                     class="flex-1 min-w-0 w-full min-h-[320px] lg:min-h-0 lg:overflow-hidden p-3 sm:p-4 bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 flex flex-col min-h-0">

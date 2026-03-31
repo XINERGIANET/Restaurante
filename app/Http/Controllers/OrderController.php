@@ -27,6 +27,7 @@ use App\Models\ProductBranch;
 use App\Models\ProductType;
 use App\Models\Profile;
 use App\Models\SalesMovement;
+use App\Models\SalesMovementDetail;
 use App\Models\Shift;
 use App\Models\Table;
 use App\Models\Unit;
@@ -1719,6 +1720,7 @@ class OrderController extends Controller
 
     public function processOrderPayment(Request $request)
     {
+        
         $profileId = session('profile_id') ?? $request->user()?->profile_id;
         if (! $this->canCharge($profileId)) {
             return response()->json([
@@ -1799,6 +1801,83 @@ class OrderController extends Controller
                         $updateData['document_type_id'] = (int) $requestDocumentTypeId;
                     }
                     $orderBaseMovement->update($updateData);
+
+                    // --- INTEGRACIÓN CON VENTAS: Cada pedido cobrado figura ahora en ventas ---
+                    if (!SalesMovement::where('movement_id', $orderBaseMovement->id)->exists()) {
+                        $branch = Branch::find($branchId);
+                        
+                        // Determinar el tipo de movimiento para Ventas (tipo 2 por defecto, pero resolvemos dinámicamente)
+                        $salesMovementType = MovementType::where('description', 'like', '%venta%')
+                            ->orWhere('description', 'like', '%sale%')
+                            ->orWhere('description', 'like', '%Venta%')
+                            ->first();
+                        
+                        if ($salesMovementType) {
+                            $orderBaseMovement->update(['movement_type_id' => $salesMovementType->id]);
+                        }
+
+                        // Crear el registro de SalesMovement
+                        $salesMovement = SalesMovement::create([
+                            'branch_snapshot' => [
+                                'id' => $branch->id,
+                                'legal_name' => $branch->legal_name,
+                            ],
+                            'series' => '001',
+                            'year' => now()->year,
+                            'detail_type' => 'DETALLADO',
+                            'consumption' => 'N',
+                            'payment_type' => 'CONTADO',
+                            'status' => 'N',
+                            'sale_type' => 'MINORISTA',
+                            'currency' => 'PEN',
+                            'exchange_rate' => 1.0,
+                            'subtotal' => $orderMovement->subtotal,
+                            'tax' => $orderMovement->tax,
+                            'total' => $orderMovement->total,
+                            'movement_id' => $orderBaseMovement->id,
+                            'branch_id' => $branchId,
+                        ]);
+
+                        // Crear detalles de venta a partir de los detalles del pedido
+                        foreach ($orderMovement->details as $orderDetail) {
+                            if (($orderDetail->status ?? 'A') === 'C') {
+                                continue;
+                            }
+
+                            // Calcular subtotal (original_amount) si es posible
+                            $qty = (float) $orderDetail->quantity;
+                            $totalDetail = (float) $orderDetail->amount;
+                            $taxRateVal = 0;
+                            if ($orderDetail->tax_rate_snapshot && isset($orderDetail->tax_rate_snapshot['tax_rate'])) {
+                                $taxRateVal = (float) $orderDetail->tax_rate_snapshot['tax_rate'] / 100;
+                            } else {
+                                $taxRateVal = 0.10; // Fallback al 10% según processOrder
+                            }
+                            
+                            $subtotalDetail = $taxRateVal > 0 ? ($totalDetail / (1 + $taxRateVal)) : $totalDetail;
+
+                            SalesMovementDetail::create([
+                                'detail_type' => 'DETAILED',
+                                'sales_movement_id' => $salesMovement->id,
+                                'code' => $orderDetail->code,
+                                'description' => $orderDetail->description,
+                                'product_id' => $orderDetail->product_id,
+                                'product_snapshot' => $orderDetail->product_snapshot,
+                                'unit_id' => $orderDetail->unit_id,
+                                'tax_rate_id' => $orderDetail->tax_rate_id,
+                                'tax_rate_snapshot' => $orderDetail->tax_rate_snapshot,
+                                'quantity' => $orderDetail->quantity,
+                                'courtesy_quantity' => (int) $orderDetail->courtesy_quantity,
+                                'amount' => $orderDetail->amount,
+                                'discount_percentage' => 0,
+                                'original_amount' => $subtotalDetail,
+                                'comment' => $orderDetail->comment,
+                                'status' => 'A',
+                                'branch_id' => $branchId,
+                            ]);
+                        }
+                    }
+                    // --------------------------------------------------------------------------
                 }
 
                 $paymentConcept = $this->resolveOrderPaymentConcept();
@@ -1992,11 +2071,18 @@ class OrderController extends Controller
                 default => 'CAST(movements.number AS UNSIGNED)',
             };
 
+            $regexNumericExpr = match ($driver) {
+                'pgsql' => "movements.number ~ '^[0-9]+$'",
+                'sqlite' => "movements.number GLOB '[0-9]*' AND movements.number NOT GLOB '*[^0-9]*'",
+                default => "movements.number REGEXP '^[0-9]+$'",
+            };
+
             // lockForUpdate() no es compatible con MAX() en PostgreSQL.
             // La serialización ya la garantiza el advisory lock de arriba.
             $maxNumber = DB::table('order_movements')
                 ->join('movements', 'movements.id', '=', 'order_movements.movement_id')
                 ->where('movements.branch_id', $branchId)
+                ->whereRaw($regexNumericExpr)
                 ->max(DB::raw($castExpr));
 
             $next = (int) ($maxNumber ?? 0) + 1;
