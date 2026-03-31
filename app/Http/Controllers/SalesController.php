@@ -1634,19 +1634,22 @@ class SalesController extends Controller
 
         $movement = $this->resolvePrintableForTicket($movement);
 
-        $printerQuery = PrinterBranch::query()
+        $printerBaseQuery = PrinterBranch::query()
             ->where('branch_id', $branchId)
             ->where('status', 'E');
 
-        // En modo TCP requerimos IP; en modo QZ no (puede ser USB identificado por nombre)
-        if (! $qzMode) {
-            $printerQuery->whereNotNull('ip')->where('ip', '!=', '');
-        }
-
         if (! empty($validated['printer_id'])) {
-            $printer = (clone $printerQuery)->where('id', $validated['printer_id'])->first();
+            $printer = (clone $printerBaseQuery)->where('id', $validated['printer_id'])->first();
         } else {
-            $printer = $printerQuery->orderBy('id')->first();
+            // Priorizamos ticketera en red (IP) y si no existe usamos ticketera local (USB por nombre).
+            $printer = (clone $printerBaseQuery)
+                ->whereNotNull('ip')
+                ->where('ip', '!=', '')
+                ->orderBy('id')
+                ->first();
+            if (! $printer) {
+                $printer = (clone $printerBaseQuery)->orderBy('id')->first();
+            }
         }
 
         $plain = $this->buildThermalTicketPlainText($movement, $request);
@@ -1665,29 +1668,69 @@ class SalesController extends Controller
         if (! $printer) {
             return response()->json([
                 'success' => false,
-                'message' => 'No hay ticketera con IP configurada para esta sucursal.',
+                'message' => 'No hay ticketera activa configurada para esta sucursal.',
             ], 422);
         }
 
+        $printerService = app(ThermalNetworkPrintService::class);
+        $hasNetworkIp = filled((string) $printer->ip);
+
         try {
-            app(ThermalNetworkPrintService::class)->sendRaw(
-                (string) $printer->ip,
-                (int) config('local_network.thermal_port', 9100),
+            if ($hasNetworkIp) {
+                $printerService->sendRaw(
+                    (string) $printer->ip,
+                    (int) config('local_network.thermal_port', 9100),
+                    $payload,
+                    (int) config('local_network.thermal_timeout_seconds', 4)
+                );
+
+                return response()->json(['success' => true, 'message' => 'Ticket enviado a la ticketera de red.']);
+            }
+
+            if (! config('local_network.thermal_windows_local_enabled', true)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'La ticketera seleccionada no tiene IP y la impresión USB local está deshabilitada.',
+                ], 422);
+            }
+
+            $printerService->sendRawToWindowsPrinter(
+                (string) $printer->name,
                 $payload,
-                (int) config('local_network.thermal_timeout_seconds', 4)
+                (int) config('local_network.thermal_timeout_seconds', 4) + 4
             );
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Ticket enviado a la ticketera USB local.',
+            ]);
         } catch (\Throwable $e) {
-            Log::warning('Impresión térmica red: '.$e->getMessage());
+            Log::warning('Impresión térmica: '.$e->getMessage());
+            $safeMessage = $this->normalizeUtf8ForJson((string) $e->getMessage());
 
             return response()->json([
                 'success' => false,
                 'message' => config('app.debug')
-                    ? $e->getMessage()
-                    : 'No se pudo enviar el ticket a la ticketera. Comprueba IP, cable/red y que el servidor alcance la impresora.',
+                    ? ($safeMessage !== '' ? $safeMessage : 'Error interno al imprimir ticket.')
+                    : 'No se pudo enviar el ticket a la ticketera. Verifica IP o nombre de impresora local en Windows.',
             ], 500);
         }
+    }
 
-        return response()->json(['success' => true, 'message' => 'Ticket enviado a la ticketera.']);
+    private function normalizeUtf8ForJson(string $text): string
+    {
+        $value = trim($text);
+        if ($value === '') {
+            return '';
+        }
+
+        $encoded = @mb_convert_encoding($value, 'UTF-8', 'UTF-8, Windows-1252, ISO-8859-1');
+        if (! is_string($encoded) || $encoded === '') {
+            $encoded = @iconv('Windows-1252', 'UTF-8//IGNORE', $value);
+        }
+
+        $normalized = is_string($encoded) && $encoded !== '' ? $encoded : $value;
+        return preg_replace('/[^\P{C}\r\n\t]/u', '', $normalized) ?? $normalized;
     }
 
     private function resolveWkhtmltopdfBinary(): ?string

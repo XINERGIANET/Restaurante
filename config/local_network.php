@@ -18,6 +18,17 @@ return [
 
     'thermal_timeout_seconds' => (int) env('LOCAL_NETWORK_THERMAL_TIMEOUT', 4),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Fallback USB local (Windows)
+    |--------------------------------------------------------------------------
+    |
+    | Si la ticketera no tiene IP en printers_branch, el servidor intentará
+    | imprimir RAW en la impresora local de Windows usando el campo "name".
+    |
+    */
+    'thermal_windows_local_enabled' => env('LOCAL_NETWORK_THERMAL_WINDOWS_LOCAL', true),
+
     /**
      * Rangos CIDR extra (coma separada), además de los privados por defecto.
      */
