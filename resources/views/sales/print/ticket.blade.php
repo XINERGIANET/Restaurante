@@ -7,7 +7,7 @@
     <style>
         * {
             box-sizing: border-box;
-            font-family: "Liberation Sans", "DejaVu Sans", Arial, Helvetica, sans-serif;
+            font-family: Arial, Helvetica, sans-serif;
             color: #000;
         }
 
@@ -25,13 +25,13 @@
         }
 
         body {
-            font-size: 11px;
-            line-height: 1.18;
+            font-size: 10px;
+            line-height: 1.15;
         }
 
         .ticket {
             width: 80mm;
-            padding: 10px 12px 12px;
+            padding: 2.5mm 3mm 3mm;
         }
 
         .center {
@@ -39,40 +39,40 @@
         }
 
         .logo-wrap {
-            margin-bottom: 6px;
+            margin-bottom: 1.5mm;
         }
 
         .logo {
             display: block;
-            max-width: 132px;
-            max-height: 52px;
+            max-width: 34mm;
+            max-height: 14mm;
             margin: 0 auto;
             object-fit: contain;
         }
 
         .company {
             margin: 0;
-            font-size: 28px;
+            font-size: 6.2mm;
             font-weight: 800;
-            line-height: 1.02;
+            line-height: 1;
         }
 
         .subhead {
-            margin: 2px 0 0;
-            font-size: 16px;
-            line-height: 1.04;
+            margin: 0.4mm 0 0;
+            font-size: 3.8mm;
+            line-height: 1.05;
         }
 
         .doc-code {
-            margin: 6px 0 0;
-            font-size: 22px;
+            margin: 1.2mm 0 0;
+            font-size: 4.9mm;
             font-weight: 800;
-            line-height: 1.04;
+            line-height: 1.05;
         }
 
         .separator {
-            border-top: 1px dashed #8ea9cf;
-            margin: 10px 0;
+            border-top: 0.25mm dashed #8ea9cf;
+            margin: 2mm 0;
         }
 
         table {
@@ -82,16 +82,16 @@
         }
 
         .info-table td {
-            padding: 1px 0;
+            padding: 0.15mm 0;
             vertical-align: top;
-            font-size: 15px;
-            line-height: 1.04;
+            font-size: 2.95mm;
+            line-height: 1.08;
         }
 
         .info-label {
-            width: 104px;
+            width: 21mm;
             font-weight: 800;
-            padding-right: 6px;
+            padding-right: 1mm;
             white-space: nowrap;
         }
 
@@ -102,8 +102,8 @@
 
         .items-table th,
         .items-table td {
-            padding: 3px 0;
-            font-size: 15px;
+            padding: 0.5mm 0;
+            font-size: 2.8mm;
         }
 
         .items-table th {
@@ -118,7 +118,7 @@
         .col-product {
             width: 42%;
             text-align: left;
-            padding-right: 8px;
+            padding-right: 1mm;
             word-break: break-word;
             overflow-wrap: anywhere;
         }
@@ -139,8 +139,8 @@
         }
 
         .totals-table td {
-            padding: 2px 0;
-            font-size: 16px;
+            padding: 0.4mm 0;
+            font-size: 3.1mm;
         }
 
         .totals-label {
@@ -153,15 +153,15 @@
         }
 
         .grand-total td {
-            border-top: 1px solid #8ea9cf;
-            padding-top: 6px;
-            font-size: 21px;
+            border-top: 0.2mm solid #8ea9cf;
+            padding-top: 1mm;
+            font-size: 4.3mm;
             font-weight: 800;
         }
 
         .notes {
-            font-size: 14px;
-            line-height: 1.18;
+            font-size: 3mm;
+            line-height: 1.15;
         }
 
         .notes strong {
@@ -170,13 +170,13 @@
 
         .footer {
             text-align: center;
-            font-size: 13px;
+            font-size: 2.6mm;
             line-height: 1.15;
         }
 
         .thanks {
-            margin-top: 4px;
-            font-size: 15px;
+            margin-top: 0.6mm;
+            font-size: 3mm;
         }
     </style>
 </head>
