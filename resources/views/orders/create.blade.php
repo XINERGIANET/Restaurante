@@ -578,6 +578,7 @@
             const cobroDigitalWallets = @json($digitalWallets ?? []);
             const cobroBanks = @json($banks ?? []);
             const salesThermalPrintUrl = @json(route('sales.print.ticket.thermal'));
+            const kitchenThermalPrintUrl = @json(route('orders.print.kitchen.thermal'));
 
                 let autoSaveTimer = null;
 
@@ -1325,7 +1326,8 @@
                         return '';
                     };
 
-                // Si QZ está disponible, imprimir por QZ
+                let qzFailed = false;
+                // Si QZ está disponible, intentar imprimir por QZ
                 if (qzApi) {
                     let printerName = resolvePreAccountPrinterName();
                     const paperWidth = resolvePrinterWidthByName(printerName) || 58;
@@ -1337,22 +1339,20 @@
                             printerName = await qzApi.printers.getDefault();
                         }
                         if (!printerName) {
-                            if (typeof showNotification === 'function') {
-                                showNotification('Impresión', 'No se encontró ninguna impresora disponible en QZ Tray.', 'error');
-                            }
-                            return;
+                            throw new Error('No se encontró ninguna impresora disponible en QZ Tray.');
                         }
                         await printTicketWithQz(qzApi, printerName, ticketText);
                         if (typeof showNotification === 'function') {
                             showNotification('Precuenta', 'Ticket enviado a "' + printerName + '".', 'success');
                         }
+                        return;
                     } catch (e) {
+                        qzFailed = true;
                         console.error('Precuenta QZ:', e);
                         if (typeof showNotification === 'function') {
-                            showNotification('Impresión', 'Error al imprimir precuenta: ' + (e?.message || e), 'error');
+                            showNotification('Impresión', 'QZ no disponible. Intentando impresora de red...', 'warning');
                         }
                     }
-                    return;
                 }
 
                 // Fallback: ticketera por red (server-side ESC/POS)
@@ -1379,7 +1379,10 @@
                         if (typeof showNotification === 'function') showNotification('Impresión', msg, 'error');
                     }
                 } catch (e) {
-                    if (typeof showNotification === 'function') showNotification('Impresión', 'Error de red al imprimir precuenta.', 'error');
+                    const networkMsg = qzFailed
+                        ? 'No se pudo imprimir por QZ ni por red.'
+                        : 'Error de red al imprimir precuenta.';
+                    if (typeof showNotification === 'function') showNotification('Impresión', networkMsg, 'error');
                 }
             }
 
@@ -1406,10 +1409,6 @@
                 ];
                 if (!activeItems.length && !mergedCancellations.length) return;
                 const qzApi = window.qz;
-                if (!qzApi) {
-                    console.warn('QZ Tray: script no cargado. Ejecuta npm run dev o npm run build.');
-                    return;
-                }
                 const byPrinter = {};
                 activeItems.forEach((it) => {
                     const pId = parseInt(it.pId, 10) || 0;
@@ -1452,16 +1451,45 @@
                     return;
                 }
 
-                try {
-                    if (!qzApi.websocket.isActive()) {
-                        await qzApi.websocket.connect();
+                async function sendKitchenTicketToServer(printerName, ticketText) {
+                    const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                    const tr = await fetch(kitchenThermalPrintUrl, {
+                        method: 'POST',
+                        cache: 'no-store',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrf,
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                        credentials: 'same-origin',
+                        body: JSON.stringify({
+                            printer_name: printerName || null,
+                            ticket_text: ticketText,
+                        }),
+                    });
+                    const td = tr.headers.get('content-type')?.includes('application/json') ? await tr.json() : null;
+                    if (tr.ok && td?.success) {
+                        return td;
                     }
-                } catch (e) {
-                    console.error('QZ Tray: no se pudo conectar.', e);
-                    if (typeof showNotification === 'function') {
-                        showNotification('Impresión', 'No se pudo conectar con QZ Tray. ¿Está instalado y en ejecución?', 'warning');
+                    throw new Error(td?.message || ('No se pudo imprimir comanda en "' + (printerName || 'Ticketera') + '".'));
+                }
+
+                let canUseQz = !!qzApi;
+                if (!qzApi) {
+                    console.warn('QZ Tray: script no cargado. Se usará impresión por servidor.');
+                } else {
+                    try {
+                        if (!qzApi.websocket.isActive()) {
+                            await qzApi.websocket.connect();
+                        }
+                    } catch (e) {
+                        canUseQz = false;
+                        console.error('QZ Tray: no se pudo conectar.', e);
+                        if (typeof showNotification === 'function') {
+                            showNotification('Impresión', 'QZ no disponible. Se usará impresión por servidor.', 'warning');
+                        }
                     }
-                    return;
                 }
                 function padEnd(str, length) {
                     const s = String(str ?? '');
@@ -1560,21 +1588,25 @@
                     }
                     const data = header + body + '\n\n';
                     try {
-                        // Validar que la impresora exista en QZ (por nombre exacto del sistema).
-                        try {
-                            await qzApi.printers.find(pname);
-                        } catch (notFoundErr) {
-                            const msg = 'QZ no encontró la impresora "' + pname + '". Verifica el nombre exacto en Windows/QZ.';
-                            console.error(msg, notFoundErr);
-                            if (typeof showNotification === 'function') {
-                                showNotification('Impresión', msg, 'error');
+                        if (canUseQz) {
+                            // Validar que la impresora exista en QZ (por nombre exacto del sistema).
+                            try {
+                                await qzApi.printers.find(pname);
+                            } catch (notFoundErr) {
+                                const msg = 'QZ no encontró la impresora "' + pname + '". Verifica el nombre exacto en Windows/QZ.';
+                                console.error(msg, notFoundErr);
+                                if (typeof showNotification === 'function') {
+                                    showNotification('Impresión', msg, 'error');
+                                }
+                                continue;
                             }
-                            continue;
-                        }
 
-                        await printTicketWithQz(qzApi, pname, data);
+                            await printTicketWithQz(qzApi, pname, data);
+                        } else {
+                            await sendKitchenTicketToServer(pname, data);
+                        }
                     } catch (e) {
-                        console.error('QZ Tray: error al imprimir en ' + pname, e);
+                        console.error('Impresión comanda: error al imprimir en ' + pname, e);
                         if (typeof showNotification === 'function') {
                             showNotification('Impresión', 'No se pudo imprimir en "' + pname + '". ' + (e?.message || ''), 'error');
                         }
