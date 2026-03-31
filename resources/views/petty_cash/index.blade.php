@@ -215,7 +215,7 @@
                                 <select name="cash_register_id" onchange="this.form.submit()" class="{{ $selectFilterClass }}">
                                     @foreach ($cashRegisters as $register)
                                         <option value="{{ $register->id }}" @selected((int) $selectedBoxId === (int) $register->id)>
-                                            {{ 'Caja ' . $register->number }}
+                                            {{  $register->number }}
                                         </option>
                                     @endforeach
                                 </select>
