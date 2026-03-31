@@ -37,7 +37,7 @@ class SalesMovementDetail extends Model
         'tax_rate_snapshot' => 'array',
         'complements' => 'array',
         'quantity' => 'decimal:6',
-        'courtesy_quantity' => 'decimal:6',
+        'courtesy_quantity' => 'integer',
         'amount' => 'decimal:6',
         'discount_percentage' => 'decimal:6',
         'original_amount' => 'decimal:6',
