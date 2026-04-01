@@ -112,25 +112,7 @@ class PettyCashController extends Controller
             $selectedBoxId = $cashRegisters->first()->id;
         }
 
-        $lastShiftRelation = CashShiftRelation::where('branch_id', session('branch_id'))
-            ->whereHas('cashMovementStart', function ($query) use ($selectedBoxId) {
-                $query->where('cash_register_id', $selectedBoxId);
-            })
-            ->latest('id')
-            ->first();
-
-        $hasOpening = $lastShiftRelation && $lastShiftRelation->status == '1';
-
-        // Obtenemos directamente la última apertura de esta caja basándonos en los movimientos
-        $lastOpeningMovement = Movement::query()
-            ->whereHas('cashMovement', function ($query) use ($selectedBoxId) {
-                $query->where('cash_register_id', $selectedBoxId);
-            })
-            ->whereHas('cashMovement.paymentConcept', function ($query) {
-                $query->where('description', 'like', '%Apertura%');
-            })
-            ->orderBy('id', 'desc')
-            ->first();
+        $summary = $this->getShiftSummary($selectedBoxId);
 
         $documentTypes = DocumentType::where('movement_type_id', 4)->get();
 
@@ -217,8 +199,8 @@ class PettyCashController extends Controller
             } else {
                 $movementsQuery->whereRaw('1 = 0');
             }
-        } elseif ($lastOpeningMovement) {
-            $movementsQuery->where('movements.id', '>=', $lastOpeningMovement->id);
+        } elseif ($summary['lastOpeningMovement']) {
+            $movementsQuery->where('movements.id', '>=', $summary['lastOpeningMovement']->id);
         } else {
             $movementsQuery->whereRaw('1 = 0');
         }
@@ -257,12 +239,143 @@ class PettyCashController extends Controller
             ->paginate($perPage)
             ->withQueryString();
 
-        // Balance real del turno activo: suma de ingresos menos suma de egresos
+        $shifts = Shift::where('branch_id', session('branch_id'))->get();
+        $paymentMethods = PaymentMethod::query()
+            ->where('status', true)
+            ->restrictedToBranch($branchId ? (int) $branchId : null)
+            ->orderBy('order_num', 'asc')
+            ->get();
+        $banks = Bank::where('status', true)->orderBy('order_num', 'asc')->get();
+        $paymentGateways = PaymentGateways::where('status', true)->orderBy('order_num', 'asc')->get();
+        $digitalWallets = DigitalWallet::where('status', true)->orderBy('order_num', 'asc')->get();
+        $cards = Card::where('status', true)->orderBy('order_num', 'asc')->get();
+
+
+        return view('petty_cash.index', [
+            'title' => 'Caja Chica',
+            'movements' => $movements,
+            'documentTypes' => $documentTypes,
+            'hasOpening' => $summary['hasOpening'],
+            'lastOpeningMovement' => $summary['lastOpeningMovement'],
+            'ingresoDocId' => $ingresoDocId,
+            'egresoDocId' => $egresoDocId,
+            'cashRegisters' => $cashRegisters,
+            'conceptsIngreso' => $conceptsIngreso,
+            'conceptsEgreso' => $conceptsEgreso,
+            'selectedBoxId' => $selectedBoxId,
+            'shifts' => $shifts,
+            'paymentMethods' => $paymentMethods,
+            'paymentGateways' => $paymentGateways,
+            'banks' => $banks,
+            'digitalWallets' => $digitalWallets,
+            'cards' => $cards,
+            'paymentConceptFilterOptions' => $paymentConceptFilterOptions,
+            'documentTypeFilterOptions' => $documentTypeFilterOptions,
+            'operaciones' => $operaciones,
+            'perPage' => $perPage,
+            'currentBalance' => $summary['currentBalance'],
+            'currentTurnBreakdown' => $summary['currentTurnBreakdown'],
+            'currentTurnSummary' => $summary['currentTurnSummary'],
+            'lastClosingTotal' => $summary['lastClosingTotal'],
+            'lastClosingBreakdown' => $summary['lastClosingBreakdown'],
+            'turnSummary' => $summary['turnSummary'],
+            'selectedPaymentConceptFilterId' => $selectedPaymentConceptFilterId,
+            'selectedMovementTypeId' => $selectedMovementTypeId,
+            'selectedDocumentTypeId' => $selectedDocumentTypeId,
+            'filterTipo' => $filterTipo,
+        ]);
+    }
+
+    public function cierre(Request $request, $cash_register_id)
+    {
+        $branchId = $request->session()->get('branch_id');
+        $viewId = $request->input('view_id');
+
+        $summary = $this->getShiftSummary($cash_register_id);
+
+        if (!$summary['hasOpening']) {
+            return redirect()->route('petty-cash.index', ['cash_register_id' => $cash_register_id, 'view_id' => $viewId])
+                ->with('error', 'No hay un turno activo para esta caja. Realice una Apertura de Caja primero.');
+        }
+
+        $documentTypes = DocumentType::where('movement_type_id', 4)->get();
+        $docEgreso = $documentTypes->firstWhere('name', 'Egreso');
+        $egresoDocId = $docEgreso ? $docEgreso->id : '';
+
+        $conceptsEgreso = PaymentConcept::where('type', 'E')
+            ->where(function ($query) {
+                $query->where('restricted', false)
+                    ->orWhere('description', 'like', '%Cierre%');
+            })
+            ->get();
+
+        $shifts = Shift::where('branch_id', session('branch_id'))->get();
+        $banks = Bank::where('status', true)->orderBy('order_num', 'asc')->get();
+        $paymentGateways = PaymentGateways::where('status', true)->orderBy('order_num', 'asc')->get();
+        $digitalWallets = DigitalWallet::where('status', true)->orderBy('order_num', 'asc')->get();
+        $cards = Card::where('status', true)->orderBy('order_num', 'asc')->get();
+
+        return view('petty_cash.cierre', [
+            'title' => 'Registrar Cierre de Caja',
+            'cash_register_id' => $cash_register_id,
+            'selectedBoxId' => $cash_register_id,
+            'viewId' => $viewId,
+            'egresoDocId' => $egresoDocId,
+            'conceptsEgreso' => $conceptsEgreso,
+            'shifts' => $shifts,
+            'banks' => $banks,
+            'paymentGateways' => $paymentGateways,
+            'digitalWallets' => $digitalWallets,
+            'cards' => $cards,
+            'currentBalance'       => $summary['currentBalance'],
+            'currentTurnBreakdown' => $summary['currentTurnBreakdown'],
+            'currentTurnSummary'   => $summary['currentTurnSummary'],
+            'shiftMovements'       => $summary['shiftMovements'],
+            'aperturaEfectivo'     => $summary['aperturaEfectivo'],
+            'turnSummary'          => $summary['turnSummary'],
+            'lastOpeningMovement'  => $summary['lastOpeningMovement'],
+        ]);
+    }
+
+    private function getShiftSummary($selectedBoxId)
+    {
+        $lastShiftRelation = CashShiftRelation::where('branch_id', session('branch_id'))
+            ->whereHas('cashMovementStart', function ($query) use ($selectedBoxId) {
+                $query->where('cash_register_id', $selectedBoxId);
+            })
+            ->latest('id')
+            ->first();
+
+        $hasOpening = $lastShiftRelation && $lastShiftRelation->status == '1';
+
+        $lastOpeningMovement = Movement::query()
+            ->whereHas('cashMovement', function ($query) use ($selectedBoxId) {
+                $query->where('cash_register_id', $selectedBoxId);
+            })
+            ->whereHas('cashMovement.paymentConcept', function ($query) {
+                $query->where('description', 'like', '%Apertura%');
+            })
+            ->orderBy('id', 'desc')
+            ->first();
+
         $currentBalance = 0;
         $currentTurnBreakdown = [];
         $currentTurnSummary = ['ventas' => 0, 'ingresos' => 0, 'egresos' => 0];
+        $shiftMovements = [];
+        $aperturaEfectivo = 0;
+        $turnSummary = ['ventas' => 0, 'ingresos' => 0, 'egresos' => 0];
 
         if ($hasOpening && $lastOpeningMovement) {
+            $shiftMovements = Movement::with(['movementType', 'cashMovement.paymentConcept', 'cashMovement.details', 'cashMovement.shift'])
+                ->whereHas('cashMovement', function ($q) use ($selectedBoxId) {
+                    $q->where('cash_register_id', $selectedBoxId);
+                })
+                ->where('id', '>=', $lastOpeningMovement->id)
+                ->orderBy('id', 'asc')
+                ->get();
+
+            $aperturaEfectivo = (float) $lastOpeningMovement->cashMovement?->details->where('payment_method', 'Efectivo')->sum('amount') ?? 0;
+
             $currentTurnMovementIds = Movement::query()
                 ->whereHas('cashMovement', function ($q) use ($selectedBoxId) {
                     $q->where('cash_register_id', $selectedBoxId);
@@ -271,7 +384,6 @@ class PettyCashController extends Controller
                 ->pluck('id');
             $currentTurnCashMovementIds = CashMovements::whereIn('movement_id', $currentTurnMovementIds)->pluck('id');
 
-            // Solo efectivo: balance = ingresos en efectivo - egresos en efectivo
             $detailsEfectivo = CashMovementDetail::with('cashMovement.paymentConcept')
                 ->whereIn('cash_movement_id', $currentTurnCashMovementIds)
                 ->where('payment_method', 'Efectivo')
@@ -280,24 +392,15 @@ class PettyCashController extends Controller
             $efectivoEgresos = $detailsEfectivo->filter(fn($d) => ($d->cashMovement?->paymentConcept?->type ?? '') === 'E')->sum('amount');
             $currentBalance = round((float) $efectivoIngresos - (float) $efectivoEgresos, 2);
 
-            // Desglose por método de pago: especificar Yape, Plin, etc. en billetera; tarjeta y banco cuando aplique
             $allDetailsForBreakdown = CashMovementDetail::with('cashMovement.paymentConcept')
                 ->whereIn('cash_movement_id', $currentTurnCashMovementIds)
                 ->get();
             $labelForDetail = function ($d) {
                 $pm = trim($d->payment_method ?? '');
-                if ($pm === 'Efectivo') {
-                    return 'Efectivo';
-                }
-                if (stripos($pm, 'Billetera') !== false && !empty(trim($d->digital_wallet ?? ''))) {
-                    return trim($d->digital_wallet);
-                }
-                if ((stripos($pm, 'Tarjeta') !== false || stripos($pm, 'Crédito') !== false) && !empty(trim($d->card ?? ''))) {
-                    return trim($d->card);
-                }
-                if (stripos($pm, 'Transferencia') !== false && !empty(trim($d->bank ?? ''))) {
-                    return trim($d->bank);
-                }
+                if ($pm === 'Efectivo') return 'Efectivo';
+                if (stripos($pm, 'Billetera') !== false && !empty(trim($d->digital_wallet ?? ''))) return trim($d->digital_wallet);
+                if ((stripos($pm, 'Tarjeta') !== false || stripos($pm, 'Crédito') !== false) && !empty(trim($d->card ?? ''))) return trim($d->card);
+                if (stripos($pm, 'Transferencia') !== false && !empty(trim($d->bank ?? ''))) return trim($d->bank);
                 return $pm ?: 'Otro';
             };
             $byLabel = $allDetailsForBreakdown->groupBy($labelForDetail);
@@ -312,7 +415,6 @@ class PettyCashController extends Controller
                 ];
             })->filter(fn($row) => $row['ingresos'] > 0 || $row['egresos'] > 0)->values()->all();
 
-            // Resumen del turno: solo lo que entró/salió en efectivo (ventas, ingresos, egresos)
             $currentTurnMovements = CashMovements::with(['movement.movementType', 'paymentConcept', 'details'])
                 ->where('cash_register_id', $selectedBoxId)
                 ->whereHas('movement', function ($q) use ($lastOpeningMovement) {
@@ -321,17 +423,11 @@ class PettyCashController extends Controller
                 ->get();
             foreach ($currentTurnMovements as $cm) {
                 $efectivoAmount = (float) $cm->details->where('payment_method', 'Efectivo')->sum('amount');
-                if ($efectivoAmount <= 0) {
-                    continue;
-                }
+                if ($efectivoAmount <= 0) continue;
                 $type = $cm->paymentConcept?->type ?? '';
                 $desc = strtolower($cm->paymentConcept?->description ?? '');
-                if (str_contains($desc, 'apertura')) {
-                    continue;
-                }
-                if (str_contains($desc, 'cierre')) {
-                    continue;
-                }
+                if (str_contains($desc, 'apertura')) continue;
+                if (str_contains($desc, 'cierre')) continue;
                 if (($cm->movement->movement_type_id ?? 0) == 2 || str_contains($desc, 'venta')) {
                     $currentTurnSummary['ventas'] += $efectivoAmount;
                 } elseif ($type === 'I') {
@@ -343,12 +439,28 @@ class PettyCashController extends Controller
             $currentTurnSummary['ventas'] = round($currentTurnSummary['ventas'], 2);
             $currentTurnSummary['ingresos'] = round($currentTurnSummary['ingresos'], 2);
             $currentTurnSummary['egresos'] = round($currentTurnSummary['egresos'], 2);
+            
+            foreach ($shiftMovements as $mov) {
+                $total = (float) $mov->cashMovement?->total ?? 0;
+                $type = $mov->cashMovement?->paymentConcept?->type ?? '';
+                $desc = strtolower($mov->cashMovement?->paymentConcept?->description ?? '');
+                if (str_contains($desc, 'apertura') || str_contains($desc, 'cierre')) continue;
+                
+                if (($mov->movement_type_id ?? 0) == 2 || str_contains($desc, 'venta')) {
+                    $turnSummary['ventas'] += $total;
+                } elseif ($type === 'I') {
+                    $turnSummary['ingresos'] += $total;
+                } elseif ($type === 'E') {
+                    $turnSummary['egresos'] += $total;
+                }
+            }
+            $turnSummary['ventas'] = round($turnSummary['ventas'], 2);
+            $turnSummary['ingresos'] = round($turnSummary['ingresos'], 2);
+            $turnSummary['egresos'] = round($turnSummary['egresos'], 2);
         }
 
-        // Total y desglose del último cierre (para prellenar y mostrar detalle al aperturar)
         $lastClosingTotal = 0;
         $lastClosingBreakdown = [];
-        $turnSummary = ['ventas' => 0, 'ingresos' => 0, 'egresos' => 0];
 
         $lastCierreMovement = Movement::query()
             ->whereHas('cashMovement', function ($query) use ($selectedBoxId) {
@@ -371,81 +483,18 @@ class PettyCashController extends Controller
                 ->all();
         }
 
-        if ($lastOpeningMovement && $lastCierreMovement && $lastCierreMovement->id >= $lastOpeningMovement->id) {
-            $movementsInTurn = CashMovements::with(['movement.movementType', 'paymentConcept'])
-                ->where('cash_register_id', $selectedBoxId)
-                ->whereHas('movement', function ($q) use ($lastOpeningMovement, $lastCierreMovement) {
-                    $q->whereBetween('id', [$lastOpeningMovement->id, $lastCierreMovement->id]);
-                })
-                ->get();
-            foreach ($movementsInTurn as $cm) {
-                $total = (float) $cm->total;
-                $type = $cm->paymentConcept?->type ?? '';
-                $desc = strtolower($cm->paymentConcept?->description ?? '');
-                if (str_contains($desc, 'apertura')) {
-                    continue;
-                }
-                if (str_contains($desc, 'cierre')) {
-                    continue;
-                }
-                if (($cm->movement->movement_type_id ?? 0) == 2 || str_contains($desc, 'venta')) {
-                    $turnSummary['ventas'] += $total;
-                } elseif ($type === 'I') {
-                    $turnSummary['ingresos'] += $total;
-                } elseif ($type === 'E') {
-                    $turnSummary['egresos'] += $total;
-                }
-            }
-            $turnSummary['ventas'] = round($turnSummary['ventas'], 2);
-            $turnSummary['ingresos'] = round($turnSummary['ingresos'], 2);
-            $turnSummary['egresos'] = round($turnSummary['egresos'], 2);
-        }
-
-        $shifts = Shift::where('branch_id', session('branch_id'))->get();
-        $paymentMethods = PaymentMethod::query()
-            ->where('status', true)
-            ->restrictedToBranch($branchId ? (int) $branchId : null)
-            ->orderBy('order_num', 'asc')
-            ->get();
-        $banks = Bank::where('status', true)->orderBy('order_num', 'asc')->get();
-        $paymentGateways = PaymentGateways::where('status', true)->orderBy('order_num', 'asc')->get();
-        $digitalWallets = DigitalWallet::where('status', true)->orderBy('order_num', 'asc')->get();
-        $cards = Card::where('status', true)->orderBy('order_num', 'asc')->get();
-
-
-        return view('petty_cash.index', [
-            'title'           => 'Caja Chica',
-            'movements'       => $movements,
-            'documentTypes'   => $documentTypes,
-            'hasOpening'      => $hasOpening,
-            'lastOpeningMovement' => $lastOpeningMovement,
-            'ingresoDocId'    => $ingresoDocId,
-            'egresoDocId'     => $egresoDocId,
-            'cashRegisters'   => $cashRegisters,
-            'conceptsIngreso' => $conceptsIngreso,
-            'conceptsEgreso'  => $conceptsEgreso,
-            'selectedBoxId'   => $selectedBoxId,
-            'shifts'          => $shifts,
-            'paymentMethods'  => $paymentMethods,
-            'paymentGateways' => $paymentGateways,
-            'banks'           => $banks,
-            'digitalWallets'  => $digitalWallets,
-            'cards'           => $cards,
-            'paymentConceptFilterOptions' => $paymentConceptFilterOptions,
-            'documentTypeFilterOptions' => $documentTypeFilterOptions,
-            'operaciones'     => $operaciones,
-            'perPage'               => $perPage,
-            'currentBalance'        => $currentBalance,
-            'currentTurnBreakdown'  => $currentTurnBreakdown,
-            'currentTurnSummary'    => $currentTurnSummary,
-            'lastClosingTotal'      => $lastClosingTotal,
-            'lastClosingBreakdown'  => $lastClosingBreakdown,
-            'turnSummary'           => $turnSummary,
-            'selectedPaymentConceptFilterId' => $selectedPaymentConceptFilterId,
-            'selectedMovementTypeId' => $selectedMovementTypeId,
-            'selectedDocumentTypeId' => $selectedDocumentTypeId,
-            'filterTipo' => $filterTipo,
-        ]);
+        return [
+            'hasOpening'           => $hasOpening,
+            'lastOpeningMovement'  => $lastOpeningMovement,
+            'currentBalance'       => $currentBalance,
+            'currentTurnBreakdown' => $currentTurnBreakdown,
+            'currentTurnSummary'   => $currentTurnSummary,
+            'lastClosingTotal'     => $lastClosingTotal,
+            'lastClosingBreakdown' => $lastClosingBreakdown,
+            'turnSummary'          => $turnSummary,
+            'shiftMovements'       => $shiftMovements,
+            'aperturaEfectivo'     => $aperturaEfectivo,
+        ];
     }
 
     public function show(Request $request, $cash_register_id, $movement_id)
@@ -464,23 +513,34 @@ class PettyCashController extends Controller
     {
         $request->merge(['cash_register_id' => $cash_register_id]);
 
-        $validated = $request->validate([
-            'comment'            => 'required|string|max:255',
-            'document_type_id'   => 'nullable|exists:document_types,id',
-            'payment_concept_id' => 'required|exists:payment_concepts,id',
-            'shift_id'           => 'required|exists:shifts,id',
+        $validatedData = $request->all();
+        if (empty($validatedData['shift_id'])) {
+            $lastOpening = CashShiftRelation::where('branch_id', session('branch_id'))
+                ->where('status', '1')
+                ->latest('id')
+                ->first()?->cashMovementStart?->shift_id;
+            if ($lastOpening) {
+                $request->merge(['shift_id' => $lastOpening]);
+            }
+        }
 
-            'payments'           => 'required|array|min:1',
-            'payments.*.amount'  => 'required|numeric|min:0.00',
+        $validated = $request->validate([
+            'comment' => 'required|string|max:255',
+            'document_type_id' => 'nullable|exists:document_types,id',
+            'payment_concept_id' => 'required|exists:payment_concepts,id',
+            'shift_id' => 'required|exists:shifts,id',
+
+            'payments' => 'required|array|min:1',
+            'payments.*.amount' => 'required|numeric|min:0.00',
             'payments.*.payment_method_id' => 'required|exists:payment_methods,id',
-            'payments.*.number'  => 'nullable|string|max:100',
+            'payments.*.number' => 'nullable|string|max:100',
         ]);
 
         $restrictedPm = PaymentMethod::paymentMethodIdsForBranchOrNull(session('branch_id') ? (int) session('branch_id') : null);
         if ($restrictedPm !== null) {
             foreach ($request->payments as $p) {
                 $pmId = (int) ($p['payment_method_id'] ?? 0);
-                if ($pmId > 0 && ! in_array($pmId, $restrictedPm, true)) {
+                if ($pmId > 0 && !in_array($pmId, $restrictedPm, true)) {
                     return back()
                         ->withErrors(['error' => 'Método de pago no permitido para esta sucursal.'])
                         ->withInput();
@@ -514,9 +574,9 @@ class PettyCashController extends Controller
             DB::transaction(function () use ($request, $validated, $cash_register_id) {
                 $selectedShift = Shift::findOrFail($request->shift_id);
                 $shiftSnapshotData = [
-                    'name'       => $selectedShift->name,
+                    'name' => $selectedShift->name,
                     'start_time' => $selectedShift->start_time,
-                    'end_time'   => $selectedShift->end_time
+                    'end_time' => $selectedShift->end_time
                 ];
                 $shiftSnapshotJson = json_encode($shiftSnapshotData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
@@ -535,21 +595,21 @@ class PettyCashController extends Controller
                 $totalAmount = collect($request->payments)->sum('amount');
 
                 $movement = Movement::create([
-                    'number'             => $generatedNumber,
-                    'moved_at'           => now(),
-                    'user_id'            => session('user_id'),
-                    'user_name'          => session('user_name'),
-                    'person_id'          => session('person_id'),
-                    'person_name'        => session('person_fullname'),
-                    'responsible_id'     => session('user_id'),
-                    'responsible_name'   => session('person_fullname') ?: session('user_name'),
-                    'comment'            => $validated['comment'],
-                    'status'             => '1',
-                    'movement_type_id'   => $typeId,
-                    'document_type_id'   => $request->document_type_id,
-                    'branch_id'          => session('branch_id'),
-                    'shift_id'           => $selectedShift->id,
-                    'shift_snapshot'     => $shiftSnapshotJson,
+                    'number' => $generatedNumber,
+                    'moved_at' => now(),
+                    'user_id' => session('user_id'),
+                    'user_name' => session('user_name'),
+                    'person_id' => session('person_id'),
+                    'person_name' => session('person_fullname'),
+                    'responsible_id' => session('user_id'),
+                    'responsible_name' => session('person_fullname') ?: session('user_name'),
+                    'comment' => $validated['comment'],
+                    'status' => '1',
+                    'movement_type_id' => $typeId,
+                    'document_type_id' => $request->document_type_id,
+                    'branch_id' => session('branch_id'),
+                    'shift_id' => $selectedShift->id,
+                    'shift_snapshot' => $shiftSnapshotJson,
                 ]);
 
                 $box = CashRegister::find($request->cash_register_id);
@@ -557,15 +617,15 @@ class PettyCashController extends Controller
 
                 $cashMovement = CashMovements::create([
                     'payment_concept_id' => $validated['payment_concept_id'],
-                    'currency'           => 'PEN',
-                    'exchange_rate'      => 3.71,
-                    'total'              => $totalAmount,
-                    'cash_register_id'   => $cash_register_id,
-                    'cash_register'      => $boxName,
-                    'shift_id'           => $selectedShift->id,
-                    'shift_snapshot'     => $shiftSnapshotJson,
-                    'movement_id'        => $movement->id,
-                    'branch_id'          => session('branch_id'),
+                    'currency' => 'PEN',
+                    'exchange_rate' => 3.71,
+                    'total' => $totalAmount,
+                    'cash_register_id' => $cash_register_id,
+                    'cash_register' => $boxName,
+                    'shift_id' => $selectedShift->id,
+                    'shift_snapshot' => $shiftSnapshotJson,
+                    'movement_id' => $movement->id,
+                    'branch_id' => session('branch_id'),
                 ]);
 
                 foreach ($request->payments as $paymentData) {
@@ -591,31 +651,31 @@ class PettyCashController extends Controller
                         : $validated['comment'];
 
                     CashMovementDetail::create([
-                        'cash_movement_id'   => $cashMovement->id,
-                        'branch_id'          => session('branch_id'),
+                        'cash_movement_id' => $cashMovement->id,
+                        'branch_id' => session('branch_id'),
 
-                        'type'               => 'PAGADO',
-                        'status'             => 'A',
-                        'paid_at'            => now(),
+                        'type' => 'PAGADO',
+                        'status' => 'A',
+                        'paid_at' => now(),
 
-                        'amount'             => $paymentData['amount'],
-                        'payment_method_id'  => $paymentData['payment_method_id'],
-                        'payment_method'     => $paymentData['payment_method'] ?? 'Desconocido',
-                        'comment'            => $individualComment,
+                        'amount' => $paymentData['amount'],
+                        'payment_method_id' => $paymentData['payment_method_id'],
+                        'payment_method' => $paymentData['payment_method'] ?? 'Desconocido',
+                        'comment' => $individualComment,
 
-                        'number'             => $paymentData['number'] ?? null,
+                        'number' => $paymentData['number'] ?? null,
 
-                        'card_id'            => $paymentData['card_id'] ?? null,
-                        'card'               => $cardName,
+                        'card_id' => $paymentData['card_id'] ?? null,
+                        'card' => $cardName,
 
-                        'bank_id'            => $paymentData['bank_id'] ?? null,
-                        'bank'               => $bankName,
+                        'bank_id' => $paymentData['bank_id'] ?? null,
+                        'bank' => $bankName,
 
-                        'digital_wallet_id'  => $paymentData['digital_wallet_id'] ?? null,
-                        'digital_wallet'     => $walletName,
+                        'digital_wallet_id' => $paymentData['digital_wallet_id'] ?? null,
+                        'digital_wallet' => $walletName,
 
                         'payment_gateway_id' => $paymentData['payment_gateway_id'] ?? null,
-                        'payment_gateway'    => $gatewayName,
+                        'payment_gateway' => $gatewayName,
                     ]);
                 }
 
@@ -625,10 +685,10 @@ class PettyCashController extends Controller
 
                 if (str_contains($conceptName, 'apertura')) {
                     CashShiftRelation::create([
-                        'started_at'             => now(),
-                        'status'                 => '1',
+                        'started_at' => now(),
+                        'status' => '1',
                         'cash_movement_start_id' => $cashMovement->id,
-                        'branch_id'              => session('branch_id'),
+                        'branch_id' => session('branch_id'),
                     ]);
                 } elseif (str_contains($conceptName, 'cierre')) {
                     $openRelation = CashShiftRelation::where('branch_id', session('branch_id'))
@@ -638,8 +698,8 @@ class PettyCashController extends Controller
 
                     if ($openRelation) {
                         $openRelation->update([
-                            'ended_at'             => now(),
-                            'status'               => '0',
+                            'ended_at' => now(),
+                            'status' => '0',
                             'cash_movement_end_id' => $cashMovement->id,
                         ]);
                     }
@@ -663,17 +723,17 @@ class PettyCashController extends Controller
         $movement = Movement::with(['cashMovement.details', 'cashMovement'])->findOrFail($id);
 
         $currentConceptId = $movement->cashMovement->payment_concept_id;
-        $currentConcept   = PaymentConcept::find($currentConceptId);
+        $currentConcept = PaymentConcept::find($currentConceptId);
         $desc = $currentConcept ? strtolower($currentConcept->description) : '';
         $isSpecialEvent = str_contains($desc, 'apertura') || str_contains($desc, 'cierre');
 
         if ($isSpecialEvent) {
             if ($currentConcept->type == 'I') {
                 $conceptsIngreso = collect([$currentConcept]);
-                $conceptsEgreso  = collect([]);
+                $conceptsEgreso = collect([]);
             } else {
                 $conceptsIngreso = collect([]);
-                $conceptsEgreso  = collect([$currentConcept]);
+                $conceptsEgreso = collect([$currentConcept]);
             }
         } else {
             $conceptsIngreso = PaymentConcept::where('type', 'I')
@@ -693,10 +753,10 @@ class PettyCashController extends Controller
             }
         }
 
-        $shifts          = Shift::all();
-        $cards           = Card::where('status', true)->orderBy('order_num', 'asc')->get();
-        $banks           = Bank::where('status', true)->orderBy('order_num', 'asc')->get();
-        $digitalWallets  = DigitalWallet::where('status', true)->orderBy('order_num', 'asc')->get();
+        $shifts = Shift::all();
+        $cards = Card::where('status', true)->orderBy('order_num', 'asc')->get();
+        $banks = Bank::where('status', true)->orderBy('order_num', 'asc')->get();
+        $digitalWallets = DigitalWallet::where('status', true)->orderBy('order_num', 'asc')->get();
         $paymentGateways = PaymentGateways::where('status', true)->orderBy('order_num', 'asc')->get();
 
         $viewId = $request->input('view_id');
@@ -718,20 +778,20 @@ class PettyCashController extends Controller
     public function update(Request $request, $cash_register_id, $id)
     {
         $validated = $request->validate([
-            'comment'            => 'required|string|max:255',
-            'shift_id'           => 'required|exists:shifts,id',
+            'comment' => 'required|string|max:255',
+            'shift_id' => 'required|exists:shifts,id',
             'payment_concept_id' => 'required|exists:payment_concepts,id',
-            'payments'           => 'required|array|min:1',
-            'payments.*.amount'  => 'required|numeric|min:0.01',
+            'payments' => 'required|array|min:1',
+            'payments.*.amount' => 'required|numeric|min:0.01',
             'payments.*.payment_method_id' => 'required|exists:payment_methods,id',
-            'payments.*.number'  => 'nullable|string|max:100',
+            'payments.*.number' => 'nullable|string|max:100',
         ]);
 
         $restrictedPm = PaymentMethod::paymentMethodIdsForBranchOrNull(session('branch_id') ? (int) session('branch_id') : null);
         if ($restrictedPm !== null) {
             foreach ($request->payments as $p) {
                 $pmId = (int) ($p['payment_method_id'] ?? 0);
-                if ($pmId > 0 && ! in_array($pmId, $restrictedPm, true)) {
+                if ($pmId > 0 && !in_array($pmId, $restrictedPm, true)) {
                     return back()
                         ->withErrors(['error' => 'Método de pago no permitido para esta sucursal.'])
                         ->withInput();
@@ -747,25 +807,25 @@ class PettyCashController extends Controller
 
                 $selectedShift = Shift::findOrFail($request->shift_id);
                 $shiftSnapshotJson = json_encode([
-                    'name'       => $selectedShift->name,
+                    'name' => $selectedShift->name,
                     'start_time' => $selectedShift->start_time,
-                    'end_time'   => $selectedShift->end_time
+                    'end_time' => $selectedShift->end_time
                 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
                 $newTotalAmount = collect($request->payments)->sum('amount');
 
                 $movement->update([
-                    'comment'        => $validated['comment'],
-                    'shift_id'       => $selectedShift->id,
+                    'comment' => $validated['comment'],
+                    'shift_id' => $selectedShift->id,
                     'shift_snapshot' => $shiftSnapshotJson,
                     'document_type_id' => $request->document_type_id
                 ]);
 
                 $cashMovement->update([
                     'payment_concept_id' => $validated['payment_concept_id'],
-                    'total'              => $newTotalAmount,
-                    'shift_id'           => $selectedShift->id,
-                    'shift_snapshot'     => $shiftSnapshotJson,
+                    'total' => $newTotalAmount,
+                    'shift_id' => $selectedShift->id,
+                    'shift_snapshot' => $shiftSnapshotJson,
                 ]);
 
                 CashMovementDetail::where('cash_movement_id', $cashMovement->id)->delete();
@@ -782,27 +842,27 @@ class PettyCashController extends Controller
                         : $validated['comment'];
 
                     CashMovementDetail::create([
-                        'cash_movement_id'   => $cashMovement->id,
-                        'branch_id'          => session('branch_id'),
-                        'type'               => 'PAGADO',
-                        'status'             => 'A',
-                        'paid_at'            => $movement->moved_at,
+                        'cash_movement_id' => $cashMovement->id,
+                        'branch_id' => session('branch_id'),
+                        'type' => 'PAGADO',
+                        'status' => 'A',
+                        'paid_at' => $movement->moved_at,
 
-                        'amount'             => $paymentData['amount'],
-                        'payment_method_id'  => $paymentData['payment_method_id'],
-                        'payment_method'     => $paymentData['payment_method'] ?? 'Desconocido',
+                        'amount' => $paymentData['amount'],
+                        'payment_method_id' => $paymentData['payment_method_id'],
+                        'payment_method' => $paymentData['payment_method'] ?? 'Desconocido',
 
-                        'comment'            => $individualComment,
+                        'comment' => $individualComment,
 
-                        'number'             => $paymentData['number'] ?? null,
-                        'card_id'            => $paymentData['card_id'] ?? null,
-                        'card'               => $cardName,
-                        'bank_id'            => $paymentData['bank_id'] ?? null,
-                        'bank'               => $bankName,
-                        'digital_wallet_id'  => $paymentData['digital_wallet_id'] ?? null,
-                        'digital_wallet'     => $walletName,
+                        'number' => $paymentData['number'] ?? null,
+                        'card_id' => $paymentData['card_id'] ?? null,
+                        'card' => $cardName,
+                        'bank_id' => $paymentData['bank_id'] ?? null,
+                        'bank' => $bankName,
+                        'digital_wallet_id' => $paymentData['digital_wallet_id'] ?? null,
+                        'digital_wallet' => $walletName,
                         'payment_gateway_id' => $paymentData['payment_gateway_id'] ?? null,
-                        'payment_gateway'    => $gatewayName,
+                        'payment_gateway' => $gatewayName,
                     ]);
                 }
             });
