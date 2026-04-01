@@ -1609,6 +1609,7 @@ class SalesController extends Controller
             $validated = $request->validate([
                 'movement_id' => ['required', 'integer', 'exists:movements,id'],
                 'printer_id' => ['nullable', 'integer', 'exists:printers_branch,id'],
+                'ticket_text' => ['nullable', 'string'],
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
@@ -1634,25 +1635,24 @@ class SalesController extends Controller
 
         $movement = $this->resolvePrintableForTicket($movement);
 
-        $printerBaseQuery = PrinterBranch::query()
-            ->where('branch_id', $branchId)
-            ->where('status', 'E');
+        $printer = null;
 
         if (! empty($validated['printer_id'])) {
-            $printer = (clone $printerBaseQuery)->where('id', $validated['printer_id'])->first();
-        } else {
-            // Priorizamos ticketera en red (IP) y si no existe usamos ticketera local (USB por nombre).
-            $printer = (clone $printerBaseQuery)
-                ->whereNotNull('ip')
-                ->where('ip', '!=', '')
-                ->orderBy('id')
+            $printer = PrinterBranch::query()
+                ->where('id', $validated['printer_id'])
+                ->where('branch_id', $branchId)
+                ->where('status', 'E')
                 ->first();
-            if (! $printer) {
-                $printer = (clone $printerBaseQuery)->orderBy('id')->first();
-            }
         }
 
-        $plain = $this->buildThermalTicketPlainText($movement, $request);
+        if (! $printer) {
+            $printer = $this->resolveBranchThermalPrinter($branchId);
+        }
+
+        $ticketText = $validated['ticket_text'] ?? null;
+        $plain = $ticketText !== null
+            ? (string) $ticketText
+            : $this->buildThermalTicketPlainText($movement, $request);
         $payload = $this->wrapEscPosPlainPayload($plain);
 
         // Modo QZ: devolver payload en base64 para que QZ Tray lo envíe (USB o red)
@@ -1715,6 +1715,38 @@ class SalesController extends Controller
                     : 'No se pudo enviar el ticket a la ticketera. Verifica IP o nombre de impresora local en Windows.',
             ], 500);
         }
+    }
+
+    private function resolveBranchThermalPrinter(int $branchId): ?PrinterBranch
+    {
+        $printerBaseQuery = PrinterBranch::query()
+            ->where('branch_id', $branchId)
+            ->where('status', 'E');
+
+        $printer = (clone $printerBaseQuery)
+            ->whereRaw('LOWER(TRIM(name)) = ?', ['barra'])
+            ->first();
+        if ($printer) {
+            return $printer;
+        }
+
+        $printer = (clone $printerBaseQuery)
+            ->whereRaw('LOWER(name) LIKE ?', ['%barra%'])
+            ->first();
+        if ($printer) {
+            return $printer;
+        }
+
+        $printer = (clone $printerBaseQuery)
+            ->whereNotNull('ip')
+            ->where('ip', '!=', '')
+            ->orderBy('id')
+            ->first();
+        if ($printer) {
+            return $printer;
+        }
+
+        return (clone $printerBaseQuery)->orderBy('id')->first();
     }
 
     private function normalizeUtf8ForJson(string $text): string

@@ -3,6 +3,9 @@ import * as qz from 'qz-tray';
 if (!window.qz) {
     window.qz = qz;
 }
+if (window.qz?.api?.showDebug) {
+    window.qz.api.showDebug(false);
+}
 
 function getQz() {
     return window.qz || null;

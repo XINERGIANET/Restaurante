@@ -1411,6 +1411,32 @@
                 setTimeout(() => notification.classList.add('opacity-0', 'pointer-events-none'), 3500);
             }
 
+            function isQzTrayAvailable() {
+                try {
+                    if (window.sessionStorage?.getItem('qzTrayUnavailable') === '1') {
+                        return false;
+                    }
+                } catch (e) {
+                    // Ignorar restricciones de sessionStorage.
+                }
+                return typeof window.qz !== 'undefined' && window.qz !== null;
+            }
+
+            function markQzTrayUnavailable() {
+                try {
+                    window.sessionStorage?.setItem('qzTrayUnavailable', '1');
+                } catch (e) {
+                    // Ignorar restricciones de sessionStorage.
+                }
+            }
+
+            async function ensureQzTrayConnected(qzApi) {
+                if (!qzApi || !isQzTrayAvailable()) {
+                    return false;
+                }
+                return qzApi.websocket.isActive();
+            }
+
             async function sendThermalTicketAfterSale(movementId, saleResponse) {
                 if (!movementId) return;
                 const qzApi = window.qz;
@@ -1422,8 +1448,8 @@
                 };
                 if (printerId) body.printer_id = printerId;
 
-                // Si QZ Tray está activo, obtener el payload del servidor e imprimir por QZ (USB o red)
-                if (qzApi) {
+                // Si QZ Tray está activo y conectado, obtener el payload del servidor e imprimir por QZ (USB o red)
+                if (qzApi && await ensureQzTrayConnected(qzApi)) {
                     try {
                         const tr = await fetch(salesThermalPrintUrl, {
                             method: 'POST',
@@ -1445,7 +1471,6 @@
                                 'No se pudo obtener el ticket del servidor.', 'error');
                             return;
                         }
-                        if (!qzApi.websocket.isActive()) await qzApi.websocket.connect();
                         let printerName = td.printer_name || '';
                         if (!printerName) printerName = await qzApi.printers.getDefault();
                         if (!printerName) {
@@ -1469,6 +1494,7 @@
                         }]);
                         showCobroNotification('Impresión', 'Ticket enviado a "' + printerName + '".', 'success');
                     } catch (e) {
+                        markQzTrayUnavailable();
                         console.warn('QZ Ticket:', e);
                         showCobroNotification('Impresión', 'Error al imprimir con QZ Tray: ' + (e?.message || e),
                             'error');
