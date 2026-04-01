@@ -781,6 +781,7 @@ class OrderController extends Controller
 
         // Clientes del selector: rol «Cliente» → sin usuario → todos de la sucursal (fallbacks).
         $people = $this->resolveClientPeople($branchId);
+        $waiters = $this->resolveWaiters($branchId);
 
         // Mismo criterio que Ventas: solo productos vendibles (sin tipo o tipo con behavior SELLABLE/BOTH), con product_branch y categoría en la sucursal.
         $products = Product::where('type', 'PRODUCT')
@@ -1039,12 +1040,15 @@ class OrderController extends Controller
             'productBranches' => $productBranches,
             'categories' => $categories,
             'people' => $people,
+            'waiters' => $waiters,
             'units' => $units,
             'startFresh' => $startFresh,
             'pendingOrderMovementId' => $pendingOrder?->id,
             'pendingMovementId' => $pendingOrder?->movement_id,
             'pendingClientId' => $pendingClientId,
             'pendingClientName' => $pendingClientName,
+            'pendingWaiterId' => $pendingOrder?->movement?->person_id ?? session('waiter_person_id'),
+            'pendingWaiterName' => $pendingOrder?->movement?->responsible_name ?? session('waiter_name'),
             'pendingPeopleCount' => (int) ($pendingOrder?->people_count ?: ($table->capacity ?? 1)),
             'pendingCancelledDetails' => $pendingCancelledDetails,
             'pendingItems' => $pendingItems,
@@ -1315,18 +1319,34 @@ class OrderController extends Controller
         $user = $request->user();
         $profileId = session('profile_id') ?? $user?->profile_id;
         $waiterPinEnabled = $this->shouldRequireWaiterPin($branchId ? (int) $branchId : null, $profileId);
-        $waiterPersonId = $waiterPinEnabled ? (int) $request->session()->get('waiter_person_id') : (int) ($user?->person?->id ?? 0);
-        $waiterName = $waiterPinEnabled ? (string) $request->session()->get('waiter_name') : trim(($user?->person?->first_name ?? '').' '.($user?->person?->last_name ?? ''));
-        // responsible_name = empleado que insertó el PIN (Person), nunca el usuario (User)
-        if ($waiterPersonId) {
+        $waiterIdFrontend = $request->input('waiter_id');
+        $responsibleId = $user?->id; // default
+        if ($waiterIdFrontend) {
+            $waiterPersonId = (int) $waiterIdFrontend;
             $waiterPerson = Person::find($waiterPersonId);
-            $resolvedName = $waiterPerson ? trim(($waiterPerson->first_name ?? '').' '.($waiterPerson->last_name ?? '')) : '';
-            $waiterName = $resolvedName !== '' ? $resolvedName : ($waiterPerson ? 'Mozo' : $waiterName);
+            $waiterName = $waiterPerson ? trim(($waiterPerson->first_name ?? '') . ' ' . ($waiterPerson->last_name ?? '')) : 'Mozo';
+            $responsibleUser = User::where('person_id', $waiterPersonId)->first();
+            if ($responsibleUser) {
+                $responsibleId = $responsibleUser->id;
+            }
+        } else {
+            $waiterPersonId = $waiterPinEnabled ? (int) $request->session()->get('waiter_person_id') : (int) ($user?->person?->id ?? 0);
+            $waiterName = $waiterPinEnabled ? (string) $request->session()->get('waiter_name') : trim(($user?->person?->first_name ?? '') . ' ' . ($user?->person?->last_name ?? ''));
+            // responsible_name = empleado que insertó el PIN (Person), nunca el usuario (User)
+            if ($waiterPersonId) {
+                $waiterPerson = Person::find($waiterPersonId);
+                $resolvedName = $waiterPerson ? trim(($waiterPerson->first_name ?? '') . ' ' . ($waiterPerson->last_name ?? '')) : '';
+                $waiterName = $resolvedName !== '' ? $resolvedName : ($waiterPerson ? 'Mozo' : $waiterName);
+                $responsibleUser = User::where('person_id', $waiterPersonId)->first();
+                if ($responsibleUser) {
+                    $responsibleId = $responsibleUser->id;
+                }
+            }
+            if (trim((string) $waiterName) === '' && !$waiterPinEnabled) {
+                $waiterName = $user?->name ?? 'Sistema';
+            }
         }
-        if (trim((string) $waiterName) === '' && ! $waiterPinEnabled) {
-            $waiterName = $user?->name ?? 'Sistema';
-        }
-        if ($waiterPinEnabled && ! $waiterPersonId) {
+        if ($waiterPinEnabled && !$waiterPersonId) {
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,
@@ -1501,7 +1521,7 @@ class OrderController extends Controller
                     'user_name' => $user?->name ?? 'Sistema',
                     'person_id' => $clientPerson?->id,
                     'person_name' => $clientName,
-                    'responsible_id' => $user?->id,
+                    'responsible_id' => $responsibleId,
 
                     'responsible_name' => $waiterName ?: (($user?->person?->first_name ?? '').' '.($user?->person?->last_name ?? '-')),
                 ]);
@@ -1540,7 +1560,7 @@ class OrderController extends Controller
                     'user_name' => $user?->name ?? 'Sistema',
                     'person_id' => $clientPerson?->id,
                     'person_name' => $clientName,
-                    'responsible_id' => $user?->id,
+                    'responsible_id' => $responsibleId,
                     'responsible_name' => $waiterName ?: (($user?->person?->first_name ?? '').' '.($user?->person?->last_name ?? '-')),
                     'comment' => 'Pedido desde punto de venta',
                     'status' => 'A',
@@ -2488,5 +2508,23 @@ class OrderController extends Controller
             });
 
         return $q->get(['id', 'first_name', 'last_name', 'document_number']);
+    }
+
+    private function resolveWaiters(?int $branchId): \Illuminate\Support\Collection
+    {
+        $mozoProfileId = $this->mozoProfileId();
+        if ($mozoProfileId === null) {
+            return collect();
+        }
+
+        return Person::query()
+            ->where('branch_id', $branchId)
+            ->whereHas('user', function ($q) use ($mozoProfileId) {
+                $q->where('profile_id', $mozoProfileId)
+                    ->whereNull('deleted_at');
+            })
+            ->orderBy('first_name')
+            ->orderBy('last_name')
+            ->get(['id', 'first_name', 'last_name', 'pin']);
     }
 }
