@@ -872,7 +872,7 @@ class OrderController extends Controller
                         'tax_rate' => $taxRatePct,
                         'favorite' => ($productBranch->favorite ?? 'N'),
                         // compat (1 impresora)
-                        'qz_printer_name' => $printerNames[0] ?? null,
+                        'qz_printer_name' => request()->ip() === '127.0.0.1' || request()->ip() === '::1' ? ($printerNames[0] ?? null) : 'BARRA2',
                         // recomendado (varias impresoras por pivote)
                         'qz_printer_names' => $printerNames,
                         // recomendado: info completa para formateo por ticketera
@@ -1769,14 +1769,14 @@ class OrderController extends Controller
             ->where('branch_id', $branchId)
             ->where('status', 'E');
 
-        $requestedName = trim((string) ($validated['printer_name'] ?? ''));
-        if ($requestedName !== '') {
-            $printer = (clone $printerBaseQuery)
-                ->whereRaw('LOWER(TRIM(name)) = ?', [mb_strtolower($requestedName)])
-                ->first();
-        } else {
-            $printer = null;
-        }
+        $host = strtolower(trim($request->getHost() ?: ''));
+        $isLocalhost = in_array($host, ['localhost', '127.0.0.1', '::1']);
+        $defaultPrinterName = $isLocalhost ? 'barra' : 'barra2';
+
+        $requestedName = trim((string) ($validated['printer_name'] ?? '')) ?: $defaultPrinterName;
+        $printer = (clone $printerBaseQuery)
+            ->whereRaw('LOWER(TRIM(name)) = ?', [mb_strtolower($requestedName)])
+            ->first();
 
         if (! $printer) {
             $printer = (clone $printerBaseQuery)
@@ -1830,6 +1830,100 @@ class OrderController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Comanda enviada a "'.($printer->name ?? 'Ticketera').'"',
+        ]);
+    }
+
+    public function printPreAccountThermal(Request $request)
+    {
+        if (! config('local_network.thermal_print_enabled', true)) {
+            abort(404);
+        }
+
+        if (! LocalNetworkClient::isOnLocalNetwork($request)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'La impresión por red desde el servidor solo está permitida dentro de la red del local.',
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'ticket_text' => ['required', 'string'],
+            'printer_name' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $branchId = (int) session('branch_id');
+        if (! $branchId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Sin sucursal en sesión.',
+            ], 422);
+        }
+
+        $printerBaseQuery = PrinterBranch::query()
+            ->where('branch_id', $branchId)
+            ->where('status', 'E');
+
+        $requestedName = trim((string) ($validated['printer_name'] ?? ''));
+        if ($requestedName !== '') {
+            $printer = (clone $printerBaseQuery)
+                ->whereRaw('LOWER(TRIM(name)) = ?', [mb_strtolower($requestedName)])
+                ->first();
+        } else {
+            $printer = null;
+        }
+
+        if (! $printer) {
+            $printer = (clone $printerBaseQuery)
+                ->whereNotNull('ip')
+                ->where('ip', '!=', '')
+                ->orderBy('id')
+                ->first();
+        }
+        if (! $printer) {
+            $printer = (clone $printerBaseQuery)->orderBy('id')->first();
+        }
+
+        if (! $printer) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No hay ticketeras activas configuradas para esta sucursal.',
+            ], 422);
+        }
+
+        $payload = $this->buildKitchenEscPosPayload((string) $validated['ticket_text']);
+        $printerService = app(ThermalNetworkPrintService::class);
+        $timeout = (int) config('local_network.thermal_timeout_seconds', 4);
+
+        try {
+            if (filled((string) $printer->ip)) {
+                $printerService->sendRaw(
+                    (string) $printer->ip,
+                    (int) config('local_network.thermal_port', 9100),
+                    $payload,
+                    $timeout
+                );
+            } else {
+                if (! config('local_network.thermal_windows_local_enabled', true)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'La ticketera no tiene IP y la impresión USB local está deshabilitada.',
+                    ], 422);
+                }
+
+                $printerService->sendRawToWindowsPrinter((string) $printer->name, $payload, $timeout + 4);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Impresión precuenta térmica: '.$e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => config('app.debug') ? (string) $e->getMessage() : 'No se pudo imprimir la precuenta.',
+            ], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Precuenta enviada a "'.($printer->name ?? 'Ticketera').'"',
         ]);
     }
 

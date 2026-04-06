@@ -215,6 +215,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/Pedidos/imprimir-comanda', [OrderController::class, 'printKitchenTicketThermal'])
         ->name('orders.print.kitchen.thermal')
         ->middleware('active.shift');
+    Route::post('/Pedidos/imprimir-precuenta', [OrderController::class, 'printPreAccountThermal'])
+        ->name('orders.print.preaccount.thermal')
+        ->middleware('active.shift');
 
     Route::post('/Pedidos/procesar-pago', [OrderController::class, 'processOrderPayment'])
         ->name('orders.processOrderPayment')

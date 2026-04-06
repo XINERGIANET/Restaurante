@@ -1723,15 +1723,19 @@ class SalesController extends Controller
             ->where('branch_id', $branchId)
             ->where('status', 'E');
 
+        $host = strtolower(trim(request()->getHost() ?: ''));
+        $isLocalhost = in_array($host, ['localhost', '127.0.0.1', '::1']);
+        $printerName = $isLocalhost ? 'barra' : 'barra2';
+
         $printer = (clone $printerBaseQuery)
-            ->whereRaw('LOWER(TRIM(name)) = ?', ['barra'])
+            ->whereRaw('LOWER(TRIM(name)) = ?', [$printerName])
             ->first();
         if ($printer) {
             return $printer;
         }
 
         $printer = (clone $printerBaseQuery)
-            ->whereRaw('LOWER(name) LIKE ?', ['%barra%'])
+            ->whereRaw('LOWER(name) LIKE ?', ['%' . $printerName . '%'])
             ->first();
         if ($printer) {
             return $printer;

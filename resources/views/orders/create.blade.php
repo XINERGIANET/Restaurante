@@ -704,6 +704,7 @@
                     const cobroBanks = @json($banks ?? []);
                     const salesThermalPrintUrl = @json(route('sales.print.ticket.thermal'));
                     const kitchenThermalPrintUrl = @json(route('orders.print.kitchen.thermal'));
+                    const orderPreAccountPrintUrl = @json(route('orders.print.preaccount.thermal'));
 
                     let autoSaveTimer = null;
 
@@ -1289,24 +1290,90 @@
                         return txt;
                     }
 
-                    function resolvePreAccountPrinterName(groupedItems) {
-                        // 1. Buscar por producto
-                        const productIds = new Set();
-                        (groupedItems || []).forEach((it) => {
-                            const pid = parseInt(it?.pId ?? it?.product_id, 10) || 0;
-                            if (pid) productIds.add(pid);
-                        });
-                        for (const pid of productIds) {
-                            const defs = resolveQzPrinters(pid);
-                            if (defs.length && defs[0]?.name) return String(defs[0].name).trim();
-                            const names = resolveQzPrinterNames(pid);
-                            if (names.length) return String(names[0]).trim();
-                            const single = resolveQzPrinterName(pid);
-                            if (single) return String(single).trim();
+                    function buildPaymentTicketText(table, groupedItems, paymentMethods, totals, paperWidth = 80) {
+                        const lineWidth = paperWidth === 80 ? 48 : 24;
+                        const colQty = 4;
+                        const colPrice = 10;
+                        const colName = lineWidth - colQty - colPrice;
+                        const sep = '='.repeat(lineWidth) + '\n';
+
+                        function padEndSafe(str, length) {
+                            const s = String(str ?? '').trim();
+                            if (s.length >= length) return s.slice(0, length);
+                            return s + ' '.repeat(length - s.length);
                         }
-                        // 2. Fallback: config global QZ
-                        if (window.__qzConfig && window.__qzConfig.printerName)
+                        function padCenterSafe(str, length) {
+                            const s = String(str ?? '').trim();
+                            if (s.length >= length) return s.slice(0, length);
+                            return ' '.repeat(Math.floor((length - s.length) / 2)) + s + ' '.repeat(length - s.length - Math.floor((length - s.length) / 2));
+                        }
+                        function padStartSafe(str, length) {
+                            const s = String(str ?? '').trim();
+                            if (s.length >= length) return s.slice(-length);
+                            return ' '.repeat(length - s.length) + s;
+                        }
+
+                        const area = String(table?.original_area_name || 'Sin area').trim();
+                        const salon = String(table?.original_location_name || table?.location_name || 'Salon').trim();
+                        const mesaLabel = String(table?.name ?? table?.table_id ?? '-');
+                        const mozo = String(table?.waiter || 'Sin asignar').trim();
+                        const fechaHora = formatDateTimeForTicket(new Date());
+
+                        let txt = '';
+                        txt += padCenterSafe('COMPROBANTE', lineWidth) + '\n';
+                        txt += `Salon: ${salon}\n`;
+                        txt += `Area: ${area} (Mesa: ${mesaLabel})\n`;
+                        txt += `Mozo: ${mozo}\n`;
+                        txt += `Fecha/Hora: ${fechaHora}\n`;
+                        txt += sep;
+                        txt += padEndSafe('Producto', colName) + padCenterSafe('Cant', colQty) + padStartSafe('P. unitario', colPrice) + '\n';
+                        txt += sep;
+
+                        (groupedItems || []).forEach((it) => {
+                            const name = String(it?.name || 'Producto').trim();
+                            const qty = parseFloat(it?.qty ?? 1) || 1;
+                            const price = parseFloat(it?.price ?? 0) || 0;
+                            txt += padEndSafe(name, colName) + padCenterSafe(String(qty), colQty) + padStartSafe('S/.' + price.toFixed(2), colPrice) + '\n';
+                        });
+
+                        txt += sep;
+                        txt += padEndSafe('Subtotal', lineWidth - 10) + padStartSafe('S/. ' + (totals.subtotal || 0).toFixed(2), 10) + '\n';
+                        txt += padEndSafe('Impuestos', lineWidth - 10) + padStartSafe('S/. ' + (totals.tax || 0).toFixed(2), 10) + '\n';
+                        if ((totals.deliveryFee || 0) > 0) {
+                            txt += padEndSafe('Delivery', lineWidth - 10) + padStartSafe('S/. ' + totals.deliveryFee.toFixed(2), 10) + '\n';
+                        }
+                        if ((totals.takeawayDisposableFee || 0) > 0) {
+                            txt += padEndSafe('Descartables', lineWidth - 10) + padStartSafe('S/. ' + totals.takeawayDisposableFee.toFixed(2), 10) + '\n';
+                        }
+                        txt += padEndSafe('TOTAL', lineWidth - 10) + padStartSafe('S/. ' + (totals.total || 0).toFixed(2), 10) + '\n';
+                        txt += sep;
+
+                        if (Array.isArray(paymentMethods) && paymentMethods.length > 0) {
+                            txt += 'PAGOS\n';
+                            paymentMethods.forEach((pm) => {
+                                const methodName = String(pm?.payment_method_name || pm?.payment_method || 'Método').trim();
+                                const amount = parseFloat(pm?.amount || 0) || 0;
+                                txt += padEndSafe(methodName, lineWidth - colPrice) + padStartSafe('S/. ' + amount.toFixed(2), colPrice) + '\n';
+                            });
+                            const paid = paymentMethods.reduce((sum, pm) => sum + (parseFloat(pm?.amount || 0) || 0), 0);
+                            const change = paid - (totals.total || 0);
+                            if (change > 0) {
+                                txt += sep;
+                                txt += padEndSafe('Cambio', lineWidth - colPrice) + padStartSafe('S/. ' + change.toFixed(2), colPrice) + '\n';
+                            }
+                        }
+
+                        txt += '\n';
+                        return txt;
+                    }
+
+                    function resolvePreAccountPrinterName() {
+                        if (window.__qzConfig && window.__qzConfig.printerName) {
                             return String(window.__qzConfig.printerName).trim();
+                        }
+                        if (window.__qzConfig && window.__qzConfig.defaultPrinterName) {
+                            return String(window.__qzConfig.defaultPrinterName).trim();
+                        }
                         return '';
                     }
 
@@ -1484,24 +1551,25 @@
                         }
 
                         const resolvePreAccountPrinterNameLocal = () => resolvePreAccountPrinterName(groupedItems);
+                        const printerName = resolvePreAccountPrinterNameLocal();
+                        const paperWidth = resolvePrinterWidthByName(printerName);
+                        const ticketText = buildPreAccountTicketText(currentTable, groupedItems, canceledItems, paperWidth);
 
                         let qzFailed = false;
                         // Si QZ está disponible y funciona, intentar imprimir por QZ
                         if (qzApi && await ensureQzTrayConnected(qzApi)) {
-                            let printerName = resolvePreAccountPrinterNameLocal();
-                            const paperWidth = resolvePrinterWidthByName(printerName);
-                            const ticketText = buildPreAccountTicketText(currentTable, groupedItems, canceledItems, paperWidth);
+                            let currentPrinterName = printerName;
                             try {
                                 // Si no hay impresora asignada en productos, usar la impresora por defecto de QZ
-                                if (!printerName) {
-                                    printerName = await qzApi.printers.getDefault();
+                                if (!currentPrinterName) {
+                                    currentPrinterName = await qzApi.printers.getDefault();
                                 }
-                                if (!printerName) {
+                                if (!currentPrinterName) {
                                     throw new Error('No se encontró ninguna impresora disponible en QZ Tray.');
                                 }
-                                await printTicketWithQz(qzApi, printerName, ticketText);
+                                await printTicketWithQz(qzApi, currentPrinterName, ticketText);
                                 if (typeof showNotification === 'function') {
-                                    showNotification('Precuenta', 'Ticket enviado a "' + printerName + '".', 'success');
+                                    showNotification('Precuenta', 'Ticket enviado a "' + currentPrinterName + '".', 'success');
                                 }
                                 return;
                             } catch (e) {
@@ -1512,7 +1580,7 @@
                             }
                         }
 
-                        // Fallback: ticketera por red (server-side ESC/POS)
+                        // Fallback: ticketera por red (server-side ESC/POS usando el endpoint de pedidos)
                         const movementId = currentTable?.movement_id;
                         if (!movementId) {
                             if (typeof showNotification === 'function') {
@@ -1522,11 +1590,11 @@
                         }
                         try {
                             const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-                            const tr = await fetch(salesThermalPrintUrl, {
+                            const tr = await fetch(orderPreAccountPrintUrl, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
                                 credentials: 'same-origin',
-                                body: JSON.stringify({ movement_id: movementId }),
+                                body: JSON.stringify({ ticket_text: ticketText, printer_name: printerName || '' }),
                             });
                             const td = tr.headers.get('content-type')?.includes('application/json') ? await tr.json() : null;
                             if (tr.ok && td?.success) {
@@ -3005,8 +3073,9 @@
                             const pmId = parseInt(methodSelect.value, 10);
                             const amount = parseFloat(String(input.value || 0).replace(',', '.')) || 0;
                             if (!pmId || amount <= 0) return;
-                            const obj = { payment_method_id: pmId, amount };
-                            const desc = (methodSelect.options[methodSelect.selectedIndex]?.text || '').toLowerCase();
+                            const methodName = String(methodSelect.options[methodSelect.selectedIndex]?.text || '').trim();
+                            const obj = { payment_method_id: pmId, amount, payment_method_name: methodName };
+                            const desc = methodName.toLowerCase();
                             const isCard = (desc.includes('tarjeta') || desc.includes('card')) && !desc.includes('billetera');
                             const isWallet = desc.includes('billetera');
                             const isTransfer = desc.includes('transferencia') || desc.includes('transfer') || desc.includes('deposito') || desc.includes('depósito');
@@ -3044,11 +3113,16 @@
                         const sel = document.getElementById('cobro-thermal-printer');
                         const printerId = sel && sel.value ? parseInt(sel.value, 10) : null;
                         const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-                        const body = { movement_id: movementId };
+                        const ticketMethods = getCobroPaymentMethodsFromForm();
+                        const items = getItemsGroupedByProduct();
+                        const totals = getTotalsWithDelivery(items);
+                        const printerName = resolvePreAccountPrinterName();
+                        const ticketText = buildPaymentTicketText(currentTable, items, ticketMethods, totals, resolvePrinterWidthByName(printerName));
+                        const body = { movement_id: movementId, ticket_text: ticketText };
                         if (printerId) body.printer_id = printerId;
 
-                        // Si QZ Tray está activo, obtener el payload del servidor e imprimir por QZ (USB o red)
-                        if (qzApi) {
+                        let qzFailed = false;
+                        if (qzApi && await ensureQzTrayConnected(qzApi)) {
                             try {
                                 const tr = await fetch(salesThermalPrintUrl, {
                                     method: 'POST',
@@ -3058,29 +3132,25 @@
                                 });
                                 const td = tr.headers.get('content-type')?.includes('application/json') ? await tr.json() : null;
                                 if (!tr.ok || !td?.success || !td?.payload_b64) {
-                                    if (typeof showNotification === 'function')
-                                        showNotification('Impresión', td?.message || 'No se pudo obtener el ticket del servidor.', 'error');
-                                    return;
+                                    throw new Error(td?.message || 'No se pudo obtener el ticket del servidor.');
                                 }
-                                if (!qzApi.websocket.isActive()) await qzApi.websocket.connect();
-                                let printerName = td.printer_name || '';
-                                if (!printerName) printerName = await qzApi.printers.getDefault();
-                                if (!printerName) {
-                                    if (typeof showNotification === 'function')
-                                        showNotification('Impresión', 'No se encontró ninguna impresora en QZ Tray.', 'error');
-                                    return;
+                                let currentPrinterName = td.printer_name || printerName || '';
+                                if (!currentPrinterName) currentPrinterName = await qzApi.printers.getDefault();
+                                if (!currentPrinterName) {
+                                    throw new Error('No se encontró ninguna impresora en QZ Tray.');
                                 }
                                 const paperMm = (parseInt(td.paper_width) || 58) === 80 ? 80 : 58;
-                                const config = qzApi.configs.create(printerName, { units: 'mm', size: { width: paperMm, height: 200 }, scaleContent: false });
+                                const config = qzApi.configs.create(currentPrinterName, { units: 'mm', size: { width: paperMm, height: 200 }, scaleContent: false });
                                 await qzApi.print(config, [{ type: 'raw', format: 'base64', data: td.payload_b64 }]);
                                 if (typeof showNotification === 'function')
-                                    showNotification('Impresión', 'Ticket enviado a "' + printerName + '".', 'success');
+                                    showNotification('Impresión', 'Comprobante enviado a "' + currentPrinterName + '".', 'success');
+                                return;
                             } catch (e) {
+                                qzFailed = true;
                                 console.warn('QZ Ticket:', e);
                                 if (typeof showNotification === 'function')
-                                    showNotification('Impresión', 'Error al imprimir con QZ Tray: ' + (e?.message || e), 'error');
+                                    showNotification('Impresión', 'QZ Tray no está disponible. Usando ticketera de red...', 'warning');
                             }
-                            return;
                         }
 
                         // Fallback: impresión TCP por red (requiere red local e IP en impresora)
@@ -3094,9 +3164,9 @@
                             const td = tr.headers.get('content-type')?.includes('application/json') ? await tr.json() : null;
                             if (tr.ok && td?.success) {
                                 if (typeof showNotification === 'function')
-                                    showNotification('Impresión', td.message || 'Ticket enviado a la ticketera.', 'success');
+                                    showNotification('Impresión', td.message || 'Comprobante enviado a la ticketera.', 'success');
                             } else {
-                                const msg = td?.message || 'No se pudo enviar el ticket a la ticketera.';
+                                const msg = td?.message || 'No se pudo enviar el comprobante a la ticketera.';
                                 console.warn('Ticketera red:', msg);
                                 if (typeof showNotification === 'function')
                                     showNotification('Impresión', msg, 'error');
@@ -3104,7 +3174,7 @@
                         } catch (e) {
                             console.warn('Ticketera red:', e);
                             if (typeof showNotification === 'function')
-                                showNotification('Impresión', 'Error de red al conectar con la ticketera.', 'error');
+                                showNotification('Impresión', qzFailed ? 'No se pudo imprimir por QZ ni por red.' : 'Error de red al conectar con la ticketera.', 'error');
                         }
                     }
 
@@ -3749,6 +3819,11 @@
                     window.printPreAccountTicket = printPreAccountTicket;
                     window.openPreAccountPdfTab = openPreAccountPdfTab;
                     window.ensureWaiterPin = ensureWaiterPin;
+
+                    // Fix scroll on page load
+                    window.addEventListener('turbo:load', () => {
+                        setTimeout(fixScrollLayout, 50);
+                    });
                 })();
             </script>
 
