@@ -8,7 +8,7 @@ return [
 
     'certificate_path' => env('QZ_CERTIFICATE_PATH') ?: storage_path('app/qz/digital-certificate.txt'),
 
-    'printer_name' => env('QZ_PRINTER_NAME', 'Ticketera'),
+    'printer_name' => env('QZ_PRINTER_NAME', 'BARRA'),
 
     // Algoritmo de firma que validará QZ (debe coincidir con qz.security.setSignatureAlgorithm()).
     // Valores: SHA1 | SHA256 | SHA384 | SHA512
