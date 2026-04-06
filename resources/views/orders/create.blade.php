@@ -146,25 +146,25 @@
 
                         <!-- Mozo -->
                         <div class="flex items-center gap-3" x-data="{
-                                                                                waiterId: null,
-                                                                                init() {
-                                                                                    if (window.currentTable && window.currentTable.waiter_id) {
-                                                                                        this.waiterId = window.currentTable.waiter_id;
-                                                                                    }
-                                                                                    this.$watch('waiterId', v => {
-                                                                                        if (!v) return;
-                                                                                        const opts = window.__orderWaiterOptions || [];
-                                                                                        const sel = opts.find(o => String(o.id) === String(v));
-                                                                                        if (sel && window.currentTable) {
-                                                                                            window.currentTable.waiter = sel.description;
-                                                                                            window.currentTable.waiter_id = sel.id;
-                                                                                            const el = document.getElementById('pos-waiter-name-display');
-                                                                                            if (el) el.innerText = sel.description;
-                                                                                            if (typeof saveDB === 'function') saveDB();
-                                                                                        }
-                                                                                    });
-                                                                                }
-                                                                            }">
+                                                                                                            waiterId: null,
+                                                                                                            init() {
+                                                                                                                if (window.currentTable && window.currentTable.waiter_id) {
+                                                                                                                    this.waiterId = window.currentTable.waiter_id;
+                                                                                                                }
+                                                                                                                this.$watch('waiterId', v => {
+                                                                                                                    if (!v) return;
+                                                                                                                    const opts = window.__orderWaiterOptions || [];
+                                                                                                                    const sel = opts.find(o => String(o.id) === String(v));
+                                                                                                                    if (sel && window.currentTable) {
+                                                                                                                        window.currentTable.waiter = sel.description;
+                                                                                                                        window.currentTable.waiter_id = sel.id;
+                                                                                                                        const el = document.getElementById('pos-waiter-name-display');
+                                                                                                                        if (el) el.innerText = sel.description;
+                                                                                                                        if (typeof saveDB === 'function') saveDB();
+                                                                                                                    }
+                                                                                                                });
+                                                                                                            }
+                                                                                                        }">
                             <div
                                 class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400">
                                 <i class="ri-user-smile-line text-xl"></i>
@@ -337,8 +337,8 @@
                             </div>
                         </div>
 
-                        <div id="cart-container"
-                            class="flex-1 overflow-y-auto p-3 sm:p-5 space-y-2 sm:space-y-3 bg-white dark:bg-gray-900 min-h-0">
+                        <div id="cart-container" style="max-height:350px; overflow-y:auto;"
+                            class="p-3 sm:p-4 space-y-2 sm:space-y-2.5 bg-white dark:bg-gray-900">
                         </div>
                         <div id="cancelled-platos-container"
                             class="shrink-0 hidden border-t border-gray-200 dark:border-gray-700 bg-amber-50 dark:bg-amber-900/20 p-3 sm:p-4 max-h-40 overflow-y-auto">
@@ -386,25 +386,25 @@
                                 <div class="flex items-center justify-center gap-2 w-full">
                                     <div class="flex-1 min-w-0" id="order-client-picker"
                                         x-data="{
-                                                                                                                                                                                                clientId: @json($pendingClientId ?? null),
-                                                                                                                                                                                                init() {
-                                                                                                                                                                                                    if (window.currentTable?.person_id) {
-                                                                                                                                                                                                        this.clientId = window.currentTable.person_id;
-                                                                                                                                                                                                    }
-                                                                                                                                                                                                    this.$watch('clientId', v => {
-                                                                                                                                                                                                        const opts = window.__orderClientOptions || [];
-                                                                                                                                                                                                        const sel = opts.find(o => String(o.id) === String(v));
-                                                                                                                                                                                                        const name = sel ? sel.description : 'Público General';
-                                                                                                                                                                                                        if (window.currentTable) {
-                                                                                                                                                                                                            window.currentTable.person_id = v ? parseInt(v, 10) : null;
-                                                                                                                                                                                                            window.currentTable.clientName = name;
-                                                                                                                                                                                                            if (typeof saveDB === 'function') saveDB();
-                                                                                                                                                                                                        }
-                                                                                                                                                                                                        const ci = document.getElementById('cobro-client-input');
-                                                                                                                                                                                                        if (ci) ci.value = name;
-                                                                                                                                                                                                    });
-                                                                                                                                                                                                }
-                                                                                                                                                                                            }">
+                                                                                                                                                                                                                                                clientId: @json($pendingClientId ?? null),
+                                                                                                                                                                                                                                                init() {
+                                                                                                                                                                                                                                                    if (window.currentTable?.person_id) {
+                                                                                                                                                                                                                                                        this.clientId = window.currentTable.person_id;
+                                                                                                                                                                                                                                                    }
+                                                                                                                                                                                                                                                    this.$watch('clientId', v => {
+                                                                                                                                                                                                                                                        const opts = window.__orderClientOptions || [];
+                                                                                                                                                                                                                                                        const sel = opts.find(o => String(o.id) === String(v));
+                                                                                                                                                                                                                                                        const name = sel ? sel.description : 'Público General';
+                                                                                                                                                                                                                                                        if (window.currentTable) {
+                                                                                                                                                                                                                                                            window.currentTable.person_id = v ? parseInt(v, 10) : null;
+                                                                                                                                                                                                                                                            window.currentTable.clientName = name;
+                                                                                                                                                                                                                                                            if (typeof saveDB === 'function') saveDB();
+                                                                                                                                                                                                                                                        }
+                                                                                                                                                                                                                                                        const ci = document.getElementById('cobro-client-input');
+                                                                                                                                                                                                                                                        if (ci) ci.value = name;
+                                                                                                                                                                                                                                                    });
+                                                                                                                                                                                                                                                }
+                                                                                                                                                                                                                                            }">
                                         <x-form.select.combobox :options="$clientOptions" x-model="clientId"
                                             name="header_client_id" placeholder="Elegir cliente..." :compact="true"
                                             input-id="order_client_search" class="w-full" />
@@ -581,17 +581,17 @@
             </script>
             {{-- Modal eliminar por cantidad (se abre al presionar la basurita en una línea del pedido) --}}
             <x-ui.modal x-data="removeQuantityModal()" @open-remove-quantity-modal.window="
-                                                                                        if ($event.detail && $event.detail.maxQty >= 1) {
-                                                                                            open = true;
-                                                                                            indexToRemove = $event.detail.index ?? null;
-                                                                                            maxQty = Math.max(1, $event.detail.maxQty ?? 1);
-                                                                                            productName = $event.detail.productName || 'Producto';
-                                                                                            quantityToRemove = 1;
-                                                                                            reasonToRemove = '';
-                                                                                            isComandado = !!$event.detail.isComandado;
-                                                                                            $nextTick(() => { if ($refs.qtyInput) $refs.qtyInput.value = 1; });
-                                                                                        }
-                                                                                    "
+                                                                                                                    if ($event.detail && $event.detail.maxQty >= 1) {
+                                                                                                                        open = true;
+                                                                                                                        indexToRemove = $event.detail.index ?? null;
+                                                                                                                        maxQty = Math.max(1, $event.detail.maxQty ?? 1);
+                                                                                                                        productName = $event.detail.productName || 'Producto';
+                                                                                                                        quantityToRemove = 1;
+                                                                                                                        reasonToRemove = '';
+                                                                                                                        isComandado = !!$event.detail.isComandado;
+                                                                                                                        $nextTick(() => { if ($refs.qtyInput) $refs.qtyInput.value = 1; });
+                                                                                                                    }
+                                                                                                                "
                 @close-remove-quantity-modal.window="open = false; indexToRemove = null; quantityToRemove = 1; maxQty = 1; productName = ''; reasonToRemove = ''; isComandado = false"
                 :showCloseButton="false" class="max-w-4xl z-[100]">
                 <div class="p-6 sm:p-8 bg-white dark:bg-gray-800">
@@ -616,18 +616,20 @@
                     <div class="mb-6">
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Cantidad a
                             eliminar</label>
-                        <input type="number" x-ref="qtyInput" @input="
-                                                                                                    let val = $event.target.value;
-                                                                                                    if (val === '' || val === null) { return; }
-                                                                                                    let v = parseInt(val, 10);
-                                                                                                    quantityToRemove = (isNaN(v) || v < 1) ? 1 : Math.min(maxQty, Math.max(1, v));
-                                                                                                    $event.target.value = quantityToRemove;
-                                                                                                " @blur="
-                                                                                                    if ($event.target.value === '' || isNaN(parseInt($event.target.value, 10))) {
-                                                                                                        quantityToRemove = 1;
-                                                                                                        $event.target.value = 1;
-                                                                                                    }
-                                                                                                " min="1" :max="maxQty"
+                        <input type="number" x-ref="qtyInput"
+                            @input="
+                                                                                                                                let val = $event.target.value;
+                                                                                                                                if (val === '' || val === null) { return; }
+                                                                                                                                let v = parseInt(val, 10);
+                                                                                                                                quantityToRemove = (isNaN(v) || v < 1) ? 1 : Math.min(maxQty, Math.max(1, v));
+                                                                                                                                $event.target.value = quantityToRemove;
+                                                                                                                            "
+                            @blur="
+                                                                                                                                if ($event.target.value === '' || isNaN(parseInt($event.target.value, 10))) {
+                                                                                                                                    quantityToRemove = 1;
+                                                                                                                                    $event.target.value = 1;
+                                                                                                                                }
+                                                                                                                            " min="1" :max="maxQty"
                             class="w-24 text-center text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-red-500 focus:border-red-500">
                         <p class="text-xs text-gray-500 dark:text-gray-400 mt-1"
                             x-text="'Entre 1 y ' + maxQty + (maxQty === 1 ? ' unidad' : ' unidades')"></p>
@@ -648,13 +650,14 @@
                             class="px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                             Cancelar
                         </button>
-                        <button type="button" @click="
-                                                                                                    if (indexToRemove != null && quantityToRemove >= 1 && (!isComandado || reasonToRemove.trim())) {
-                                                                                                        var q = Math.min(quantityToRemove, maxQty);
-                                                                                                        window.applyRemoveQuantity(indexToRemove, q, reasonToRemove.trim());
-                                                                                                        $dispatch('close-remove-quantity-modal');
-                                                                                                    }
-                                                                                                "
+                        <button type="button"
+                            @click="
+                                                                                                                                if (indexToRemove != null && quantityToRemove >= 1 && (!isComandado || reasonToRemove.trim())) {
+                                                                                                                                    var q = Math.min(quantityToRemove, maxQty);
+                                                                                                                                    window.applyRemoveQuantity(indexToRemove, q, reasonToRemove.trim());
+                                                                                                                                    $dispatch('close-remove-quantity-modal');
+                                                                                                                                }
+                                                                                                                            "
                             :disabled="isComandado && !reasonToRemove.trim()"
                             :class="isComandado && !reasonToRemove.trim() ? 'opacity-50 cursor-not-allowed' : ''"
                             class="px-4 py-2 rounded-xl bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
@@ -1286,6 +1289,27 @@
                         return txt;
                     }
 
+                    function resolvePreAccountPrinterName(groupedItems) {
+                        // 1. Buscar por producto
+                        const productIds = new Set();
+                        (groupedItems || []).forEach((it) => {
+                            const pid = parseInt(it?.pId ?? it?.product_id, 10) || 0;
+                            if (pid) productIds.add(pid);
+                        });
+                        for (const pid of productIds) {
+                            const defs = resolveQzPrinters(pid);
+                            if (defs.length && defs[0]?.name) return String(defs[0].name).trim();
+                            const names = resolveQzPrinterNames(pid);
+                            if (names.length) return String(names[0]).trim();
+                            const single = resolveQzPrinterName(pid);
+                            if (single) return String(single).trim();
+                        }
+                        // 2. Fallback: config global QZ
+                        if (window.__qzConfig && window.__qzConfig.printerName)
+                            return String(window.__qzConfig.printerName).trim();
+                        return '';
+                    }
+
                     function openPreAccountPdfTab() {
                         const groupedItems = getItemsGroupedByProduct();
                         const canceledItems = Array.isArray(currentTable?.cancellations) ? currentTable.cancellations : [];
@@ -1296,12 +1320,18 @@
                             return;
                         }
 
-                        const ticketText = buildPreAccountTicketText(currentTable, groupedItems, canceledItems, 58);
+                        // Detectar el ancho real de la impresora configurada (80mm o 58mm)
+                        const printerName = resolvePreAccountPrinterName(groupedItems);
+                        const paperWidth = resolvePrinterWidthByName(printerName);
+                        const paperMm = paperWidth === 80 ? '80mm' : '58mm';
+
+                        const ticketText = buildPreAccountTicketText(currentTable, groupedItems, canceledItems, paperWidth);
                         const escaped = escapeHtmlForQzPrint(ticketText);
                         const html = '<!DOCTYPE html><html><head><meta charset="utf-8">' +
                             '<title>Precuenta</title>' +
-                            '<style>body{font-family:Courier New,monospace;margin:24px;background:#f5f5f5;}' +
-                            '.paper{width:58mm;max-width:58mm;background:#fff;border:1px solid #ddd;padding:8px;box-shadow:0 2px 8px rgba(0,0,0,.08);}' +
+                            '<style>@page{size:' + paperMm + ' auto;margin:0;}' +
+                            'body{font-family:Courier New,monospace;margin:24px;background:#f5f5f5;}' +
+                            '.paper{width:' + paperMm + ';max-width:' + paperMm + ';background:#fff;border:1px solid #ddd;padding:8px;box-shadow:0 2px 8px rgba(0,0,0,.08);}' +
                             'pre{margin:0;white-space:pre-wrap;word-wrap:break-word;line-height:1.25;font-size:11px;}' +
                             '.hint{font:12px/1.4 Segoe UI,Arial,sans-serif;color:#444;margin-top:12px;}</style>' +
                             '</head><body><div class="paper"><pre>' + escaped + '</pre></div>' +
@@ -1398,7 +1428,8 @@
                         const hasCancellations = cancellations.length > 0;
                         const html = '<!DOCTYPE html><html><head><meta charset="utf-8">' +
                             '<title>' + (hasCancellations ? 'ANULADO - Comanda' : 'Comanda') + '</title>' +
-                            '<style>body{font-family:Courier New,monospace;margin:24px;background:#f5f5f5;}' +
+                            '<style>@page{size:' + (paperWidth === 80 ? '80mm' : '58mm') + ' auto;margin:0;}' +
+                            'body{font-family:Courier New,monospace;margin:24px;background:#f5f5f5;}' +
                             '.paper{width:' + (paperWidth === 80 ? '80mm' : '58mm') + ';max-width:' + (paperWidth === 80 ? '80mm' : '58mm') + ';background:#fff;border:' + (hasCancellations ? '2px solid #dc2626' : '1px solid #ddd') + ';padding:8px;box-shadow:0 2px 8px rgba(0,0,0,.08);}' +
                             '.anulado-badge{background:#dc2626;color:#fff;font-weight:bold;text-align:center;padding:4px;font-size:13px;letter-spacing:2px;margin-bottom:6px;}' +
                             'pre{margin:0;white-space:pre-wrap;word-wrap:break-word;line-height:1.25;font-size:11px;}' +
@@ -1452,31 +1483,12 @@
                             return;
                         }
 
-                        const resolvePreAccountPrinterName = () => {
-                            // 1. Buscar por producto
-                            const productIds = new Set();
-                            (groupedItems || []).forEach((it) => {
-                                const pid = parseInt(it?.pId ?? it?.product_id, 10) || 0;
-                                if (pid) productIds.add(pid);
-                            });
-                            for (const pid of productIds) {
-                                const defs = resolveQzPrinters(pid);
-                                if (defs.length && defs[0]?.name) return String(defs[0].name).trim();
-                                const names = resolveQzPrinterNames(pid);
-                                if (names.length) return String(names[0]).trim();
-                                const single = resolveQzPrinterName(pid);
-                                if (single) return String(single).trim();
-                            }
-                            // 2. Fallback: config global QZ
-                            if (window.__qzConfig && window.__qzConfig.printerName)
-                                return String(window.__qzConfig.printerName).trim();
-                            return '';
-                        };
+                        const resolvePreAccountPrinterNameLocal = () => resolvePreAccountPrinterName(groupedItems);
 
                         let qzFailed = false;
                         // Si QZ está disponible y funciona, intentar imprimir por QZ
                         if (qzApi && await ensureQzTrayConnected(qzApi)) {
-                            let printerName = resolvePreAccountPrinterName();
+                            let printerName = resolvePreAccountPrinterNameLocal();
                             const paperWidth = resolvePrinterWidthByName(printerName);
                             const ticketText = buildPreAccountTicketText(currentTable, groupedItems, canceledItems, paperWidth);
                             try {
@@ -1980,11 +1992,11 @@
                             };
 
                             el.innerHTML = `
-                                                                                                                                                                <img src="${imageUrl}" alt="${categoryName}"
-                                                                                                                                                                    class="w-6 h-6 rounded-full object-cover shrink-0 border ${isActive ? 'border-blue-300' : 'border-gray-200 dark:border-slate-600'}"
-                                                                                                                                                                    onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22200%22%3E%3Crect fill=%22%23e5e7eb%22 width=%22200%22 height=%22200%22/%3E%3C/svg%3E'">
-                                                                                                                                                                <span>${categoryName}</span>
-                                                                                                                                                            `;
+                                                                                                                                                                                            <img src="${imageUrl}" alt="${categoryName}"
+                                                                                                                                                                                                class="w-6 h-6 rounded-full object-cover shrink-0 border ${isActive ? 'border-blue-300' : 'border-gray-200 dark:border-slate-600'}"
+                                                                                                                                                                                                onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22200%22%3E%3Crect fill=%22%23e5e7eb%22 width=%22200%22 height=%22200%22/%3E%3C/svg%3E'">
+                                                                                                                                                                                            <span>${categoryName}</span>
+                                                                                                                                                                                        `;
                             grid.appendChild(el);
                         });
                     }
@@ -2055,22 +2067,22 @@
                             const stockText = !isNaN(stockVal) ? stockVal.toFixed(2) : '0.00';
 
                             el.innerHTML = `
-                                                                                                                                                                <div class="rounded-2xl overflow-hidden p-4 sm:p-5 bg-white dark:bg-slate-800/60 border-2 border-blue-200 dark:border-blue-500/40 hover:border-blue-400 dark:hover:border-blue-400 transition-all duration-200 hover:-translate-y-0.5 flex flex-col items-center text-center h-full w-full">
-                                                                                                                                                                    <div class="w-20 h-16 sm:w-20 sm:h-20 rounded-full bg-blue-500 flex items-center justify-center shrink-0 overflow-hidden mb-3">
-                                                                                                                                                                        ${hasImg
+                                                                                                                                                                                            <div class="rounded-2xl overflow-hidden p-4 sm:p-5 bg-white dark:bg-slate-800/60 border-2 border-blue-200 dark:border-blue-500/40 hover:border-blue-400 dark:hover:border-blue-400 transition-all duration-200 hover:-translate-y-0.5 flex flex-col items-center text-center h-full w-full">
+                                                                                                                                                                                                <div class="w-20 h-16 sm:w-20 sm:h-20 rounded-full bg-blue-500 flex items-center justify-center shrink-0 overflow-hidden mb-3">
+                                                                                                                                                                                                    ${hasImg
                                     ? `<img src="${imageUrl}" alt="${productName}" class="w-full h-full object-contain rounded-full object-cover object-center" loading="lazy" onerror="this.parentElement.innerHTML='<i class=\\'ri-restaurant-2-line text-2xl sm:text-3xl text-white\\'></i>'">`
                                     : `<i class="ri-restaurant-2-line text-2xl sm:text-3xl text-white"></i>`
                                 }
-                                                                                                                                                                    </div>
-                                                                                                                                                                    <h4 class="font-semibold text-gray-900 dark:text-white text-sm sm:text-base line-clamp-2 leading-tight mb-1 min-h-[2.5rem]">
-                                                                                                                                                                        ${productName}
-                                                                                                                                                                    </h4>
-                                                                                                                                                                    <span class="text-base sm:text-lg font-bold text-blue-600 dark:text-blue-400">
-                                                                                                                                                                        ${priceFormatted}
-                                                                                                                                                                    </span>
-                                                                                                                                                                    <span class="mt-1 text-xs font-medium text-gray-500 dark:text-gray-400">Stock: ` + stockText + `</span>
-                                                                                                                                                                </div>
-                                                                                                                                                            `;
+                                                                                                                                                                                                </div>
+                                                                                                                                                                                                <h4 class="font-semibold text-gray-900 dark:text-white text-sm sm:text-base line-clamp-2 leading-tight mb-1 min-h-[2.5rem]">
+                                                                                                                                                                                                    ${productName}
+                                                                                                                                                                                                </h4>
+                                                                                                                                                                                                <span class="text-base sm:text-lg font-bold text-blue-600 dark:text-blue-400">
+                                                                                                                                                                                                    ${priceFormatted}
+                                                                                                                                                                                                </span>
+                                                                                                                                                                                                <span class="mt-1 text-xs font-medium text-gray-500 dark:text-gray-400">Stock: ` + stockText + `</span>
+                                                                                                                                                                                            </div>
+                                                                                                                                                                                        `;
                             grid.appendChild(el);
                             productsRendered++;
                         });
@@ -2409,10 +2421,10 @@
 
                         if (!currentTable.items || currentTable.items.length === 0) {
                             container.innerHTML = `
-                                                                                                                                                            <div class="flex flex-col items-center justify-center py-10 text-gray-400 opacity-60">
-                                                                                                                                                                <i class="ri-restaurant-line text-4xl mb-3"></i>
-                                                                                                                                                                <p class="font-medium text-sm">Sin productos en el pedido</p>
-                                                                                                                                                            </div>`;
+                                                                                                                                                                                        <div class="flex flex-col items-center justify-center py-10 text-gray-400 opacity-60">
+                                                                                                                                                                                            <i class="ri-restaurant-line text-4xl mb-3"></i>
+                                                                                                                                                                                            <p class="font-medium text-sm">Sin productos en el pedido</p>
+                                                                                                                                                                                        </div>`;
                         } else {
                             // Badge de tipo de servicio + Toggle para "Para Llevar"
                             const serviceHeader = document.createElement('div');
@@ -2432,13 +2444,13 @@
 
                             serviceHeader.className = `flex items-center justify-between px-3 py-2.5 mb-4 rounded-xl border ${serviceColor} shadow-sm`;
                             serviceHeader.innerHTML = `
-                                                                                                                                                                <div class="flex flex-col">
-                                                                                                                                                                    <span class="font-bold text-xs uppercase tracking-wider">${serviceLabel}</span>
-                                                                                                                                                                    ${isTakeAway && currentTable.client_name_extra ? `<span class="text-[10px] font-normal lowercase italic text-orange-600">${escapeHtml(currentTable.client_name_extra)}</span>` : ''}
-                                                                                                                                                                </div>
+                                                                                                                                                                                            <div class="flex flex-col">
+                                                                                                                                                                                                <span class="font-bold text-xs uppercase tracking-wider">${serviceLabel}</span>
+                                                                                                                                                                                                ${isTakeAway && currentTable.client_name_extra ? `<span class="text-[10px] font-normal lowercase italic text-orange-600">${escapeHtml(currentTable.client_name_extra)}</span>` : ''}
+                                                                                                                                                                                            </div>
 
 
-                                                                                                                                                            `;
+                                                                                                                                                                                        `;
                             container.appendChild(serviceHeader);
 
                             const isComandado = !!currentTable.order_movement_id;
@@ -2506,87 +2518,87 @@
                                     : '';
 
                                 row.innerHTML = `
-                                                                                                                                                                <div class="flex flex-col gap-3 p-3.5 sm:p-4">
-                                                                                                                                                                        <div class="flex items-start justify-between gap-2">
-                                                                                                                                                                            <div class="min-w-0 flex-1">
-                                                                                                                                                                                <h3 class="font-bold text-[15px] sm:text-base leading-snug tracking-tight text-slate-900 dark:text-white">${productName}</h3>
-                                                                                                                                                                                ${takeawayBadge}
-                                                                                                                                                                                <p class="mt-1 text-[11px] sm:text-xs text-slate-500 dark:text-zinc-400 font-medium tabular-nums">${noteTime ? noteTime + ' · ' : ''}S/ ${itemPrice.toFixed(2)} <span class="text-slate-400 dark:text-zinc-500 font-normal">c/u</span></p>
-                                                                                                                                                                            </div>
-                                                                                                                                                                            <span class="shrink-0 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wide ${statusClass}">${statusLabel}</span>
-                                                                                                                                                                        </div>
+                                                                                                                                                                                            <div class="flex flex-col gap-3 p-3.5 sm:p-4">
+                                                                                                                                                                                                    <div class="flex items-start justify-between gap-2">
+                                                                                                                                                                                                        <div class="min-w-0 flex-1">
+                                                                                                                                                                                                            <h3 class="font-bold text-[15px] sm:text-base leading-snug tracking-tight text-slate-900 dark:text-white">${productName}</h3>
+                                                                                                                                                                                                            ${takeawayBadge}
+                                                                                                                                                                                                            <p class="mt-1 text-[11px] sm:text-xs text-slate-500 dark:text-zinc-400 font-medium tabular-nums">${noteTime ? noteTime + ' · ' : ''}S/ ${itemPrice.toFixed(2)} <span class="text-slate-400 dark:text-zinc-500 font-normal">c/u</span></p>
+                                                                                                                                                                                                        </div>
+                                                                                                                                                                                                        <span class="shrink-0 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wide ${statusClass}">${statusLabel}</span>
+                                                                                                                                                                                                    </div>
 
-                                                                                                                                                                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-lg bg-slate-50 border border-slate-200 px-2.5 py-2.5 dark:bg-zinc-900/50 dark:border-zinc-600/50">
-                                                                                                                                                                            <div class="flex justify-center items-center gap-0.5 rounded-lg bg-white px-0.5 py-0.5 border border-slate-200 dark:bg-zinc-800/80 dark:border-zinc-600/60">
-                                                                                                                                                                                <button type="button" ${qtyMinusOnclick} class="w-9 h-9 flex items-center justify-center rounded-md transition-all text-slate-600 dark:text-zinc-300 ${qtyMinusClass}"${qtyMinusDisabled}>
-                                                                                                                                                                                    <i class="ri-subtract-line text-base"></i>
-                                                                                                                                                                                </button>
-                                                                                                                                                                                <input type="number" value="${item.qty}" min="1" onchange="setQtyFromInput(${index}, this)" class="w-11 h-9 text-center text-sm font-bold bg-transparent border-none focus:ring-0 focus:outline-none tabular-nums text-slate-900 dark:text-white p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" ${canReduce ? '' : 'readonly'}>
-                                                                                                                                                                                <button type="button" onclick="updateQty(${index}, 1)" class="w-9 h-9 flex items-center justify-center rounded-md hover:bg-slate-100 dark:hover:bg-zinc-700 text-slate-600 dark:text-zinc-300 transition-all font-bold">
-                                                                                                                                                                                    <i class="ri-add-line text-base"></i>
-                                                                                                                                                                                </button>
-                                                                                                                                                                            </div>
-                                                                                                                                                                            <div class="text-center sm:text-right flex flex-col justify-center">
-                                                                                                                                                                                <span class="text-[10px] text-slate-500 dark:text-zinc-500 uppercase font-bold tracking-wider leading-none mb-0.5">Subtotal</span>
-                                                                                                                                                                                <span class="text-lg font-bold tabular-nums leading-none text-slate-900 dark:text-white">S/ ${lineTotal.toFixed(2)}</span>
-                                                                                                                                                                            </div>
-                                                                                                                                                                        </div>
+                                                                                                                                                                                                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-lg bg-slate-50 border border-slate-200 px-2.5 py-2.5 dark:bg-zinc-900/50 dark:border-zinc-600/50">
+                                                                                                                                                                                                        <div class="flex justify-center items-center gap-0.5 rounded-lg bg-white px-0.5 py-0.5 border border-slate-200 dark:bg-zinc-800/80 dark:border-zinc-600/60">
+                                                                                                                                                                                                            <button type="button" ${qtyMinusOnclick} class="w-9 h-9 flex items-center justify-center rounded-md transition-all text-slate-600 dark:text-zinc-300 ${qtyMinusClass}"${qtyMinusDisabled}>
+                                                                                                                                                                                                                <i class="ri-subtract-line text-base"></i>
+                                                                                                                                                                                                            </button>
+                                                                                                                                                                                                            <input type="number" value="${item.qty}" min="1" onchange="setQtyFromInput(${index}, this)" class="w-11 h-9 text-center text-sm font-bold bg-transparent border-none focus:ring-0 focus:outline-none tabular-nums text-slate-900 dark:text-white p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" ${canReduce ? '' : 'readonly'}>
+                                                                                                                                                                                                            <button type="button" onclick="updateQty(${index}, 1)" class="w-9 h-9 flex items-center justify-center rounded-md hover:bg-slate-100 dark:hover:bg-zinc-700 text-slate-600 dark:text-zinc-300 transition-all font-bold">
+                                                                                                                                                                                                                <i class="ri-add-line text-base"></i>
+                                                                                                                                                                                                            </button>
+                                                                                                                                                                                                        </div>
+                                                                                                                                                                                                        <div class="text-center sm:text-right flex flex-col justify-center">
+                                                                                                                                                                                                            <span class="text-[10px] text-slate-500 dark:text-zinc-500 uppercase font-bold tracking-wider leading-none mb-0.5">Subtotal</span>
+                                                                                                                                                                                                            <span class="text-lg font-bold tabular-nums leading-none text-slate-900 dark:text-white">S/ ${lineTotal.toFixed(2)}</span>
+                                                                                                                                                                                                        </div>
+                                                                                                                                                                                                    </div>
 
-                                                                                                                                                                        <div class="flex flex-wrap items-center gap-x-2 gap-y-1.5 border-t border-slate-200 pt-2.5 dark:border-zinc-700/60">
-                                                                                                                                                                            <button type="button" onclick="toggleDelivered(${index})" class="inline-flex shrink-0 items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-500 dark:text-sky-400 dark:hover:text-sky-300 transition-colors">
-                                                                                                                                                                                <i class="${isDelivered ? 'ri-check-double-line' : 'ri-checkbox-blank-circle-line'}"></i>
-                                                                                                                                                                                ${isDelivered ? 'Entregado' : 'Pendiente'}
-                                                                                                                                                                            </button>
-                                                                                                                                                                            <button type="button" onclick="toggleNoteInput(${index})" class="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-colors ${noteBtnActive ? 'bg-blue-50 text-blue-700 dark:bg-sky-500/15 dark:text-sky-300' : 'text-slate-500 hover:bg-slate-100 hover:text-blue-600 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-sky-400'}">
-                                                                                                                                                                                <i class="${hasNote ? 'ri-chat-1-fill' : 'ri-chat-1-line'}"></i> ${hasNote ? 'Editar nota' : 'Nota'}
-                                                                                                                                                                            </button>
-                                                                                                                                                                            <button type="button" onclick="toggleCourtesyInput(${index})" class="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-colors ${courtesyBtnActive ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300' : 'text-slate-500 hover:bg-slate-100 hover:text-emerald-600 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-emerald-400'}">
-                                                                                                                                                                                <i class="${courtesyBtnActive ? 'ri-star-fill' : 'ri-star-line'}"></i> Cortesía
-                                                                                                                                                                            </button>
-                                                                                                                                                                            ${isDelivery ? '' : `<button type="button" onclick="toggleTakeawayInput(${index})" class="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-colors ${takeawayBtnActive ? 'bg-orange-50 text-orange-800 dark:bg-orange-500/15 dark:text-orange-300' : 'text-slate-500 hover:bg-slate-100 hover:text-orange-600 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-orange-400'}">
-                                                                                                                                                                                <i class="${takeawayBtnActive ? 'ri-shopping-bag-3-fill' : 'ri-shopping-bag-3-line'}"></i> Llevar
-                                                                                                                                                                            </button>`}
-                                                                                                                                                                            <button type="button" ${trashOnclick} class="ml-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-red-500/10 hover:text-red-500 dark:text-zinc-500 dark:hover:text-red-400" title="Quitar o anular cantidad">
-                                                                                                                                                                                <i class="ri-delete-bin-line text-lg"></i>
-                                                                                                                                                                            </button>
-                                                                                                                                                                        </div>
+                                                                                                                                                                                                    <div class="flex flex-wrap items-center gap-x-2 gap-y-1.5 border-t border-slate-200 pt-2.5 dark:border-zinc-700/60">
+                                                                                                                                                                                                        <button type="button" onclick="toggleDelivered(${index})" class="inline-flex shrink-0 items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-500 dark:text-sky-400 dark:hover:text-sky-300 transition-colors">
+                                                                                                                                                                                                            <i class="${isDelivered ? 'ri-check-double-line' : 'ri-checkbox-blank-circle-line'}"></i>
+                                                                                                                                                                                                            ${isDelivered ? 'Entregado' : 'Pendiente'}
+                                                                                                                                                                                                        </button>
+                                                                                                                                                                                                        <button type="button" onclick="toggleNoteInput(${index})" class="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-colors ${noteBtnActive ? 'bg-blue-50 text-blue-700 dark:bg-sky-500/15 dark:text-sky-300' : 'text-slate-500 hover:bg-slate-100 hover:text-blue-600 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-sky-400'}">
+                                                                                                                                                                                                            <i class="${hasNote ? 'ri-chat-1-fill' : 'ri-chat-1-line'}"></i> ${hasNote ? 'Editar nota' : 'Nota'}
+                                                                                                                                                                                                        </button>
+                                                                                                                                                                                                        <button type="button" onclick="toggleCourtesyInput(${index})" class="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-colors ${courtesyBtnActive ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300' : 'text-slate-500 hover:bg-slate-100 hover:text-emerald-600 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-emerald-400'}">
+                                                                                                                                                                                                            <i class="${courtesyBtnActive ? 'ri-star-fill' : 'ri-star-line'}"></i> Cortesía
+                                                                                                                                                                                                        </button>
+                                                                                                                                                                                                        ${isDelivery ? '' : `<button type="button" onclick="toggleTakeawayInput(${index})" class="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-colors ${takeawayBtnActive ? 'bg-orange-50 text-orange-800 dark:bg-orange-500/15 dark:text-orange-300' : 'text-slate-500 hover:bg-slate-100 hover:text-orange-600 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-orange-400'}">
+                                                                                                                                                                                                            <i class="${takeawayBtnActive ? 'ri-shopping-bag-3-fill' : 'ri-shopping-bag-3-line'}"></i> Llevar
+                                                                                                                                                                                                        </button>`}
+                                                                                                                                                                                                        <button type="button" ${trashOnclick} class="ml-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-red-500/10 hover:text-red-500 dark:text-zinc-500 dark:hover:text-red-400" title="Quitar o anular cantidad">
+                                                                                                                                                                                                            <i class="ri-delete-bin-line text-lg"></i>
+                                                                                                                                                                                                        </button>
+                                                                                                                                                                                                    </div>
 
-                                                                                                                                                                        <div id="note-box-${index}" class="${showNoteBox ? '' : 'hidden'}">
-                                                                                                                                                                            <textarea rows="2" onblur="saveNote(${index}, this.value)" placeholder="Ej: Sin cebolla, término medio..." class="w-full min-h-[3.25rem] resize-y rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-600 dark:bg-zinc-900/80 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-sky-500">${itemNote}</textarea>
-                                                                                                                                                                        </div>
+                                                                                                                                                                                                    <div id="note-box-${index}" class="${showNoteBox ? '' : 'hidden'}">
+                                                                                                                                                                                                        <textarea rows="2" onblur="saveNote(${index}, this.value)" placeholder="Ej: Sin cebolla, término medio..." class="w-full min-h-[3.25rem] resize-y rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-600 dark:bg-zinc-900/80 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-sky-500">${itemNote}</textarea>
+                                                                                                                                                                                                    </div>
 
-                                                                                                                                                                        <div id="courtesy-box-${index}" class="${showCourtesyBox ? '' : 'hidden'}">
-                                                                                                                                                                            <div class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 dark:border-zinc-600/50 dark:bg-zinc-900/40">
-                                                                                                                                                                                <span class="text-[11px] font-semibold text-slate-700 dark:text-zinc-300">Cortesía <span class="font-normal text-slate-500 dark:text-zinc-500">(sin cargo)</span></span>
-                                                                                                                                                                                <div class="flex items-center gap-0.5 rounded-lg bg-white px-0.5 py-0.5 border border-slate-200 dark:bg-zinc-800/90 dark:border-zinc-600/60">
-                                                                                                                                                                                    <button type="button" ${courtesyMinusOnclick} class="w-8 h-8 flex items-center justify-center rounded-md transition-all text-slate-700 dark:text-zinc-200${courtesyMinusClass}"${courtesyMinusDisabled}>
-                                                                                                                                                                                        <i class="ri-subtract-line text-sm"></i>
-                                                                                                                                                                                    </button>
-                                                                                                                                                                                    <input type="number" min="0" max="${itemQty}" value="${courtesyQty}" onchange="setCourtesyQty(${index}, this)" class="w-10 h-8 text-center text-sm font-bold bg-transparent border-none focus:ring-0 focus:outline-none tabular-nums text-slate-900 dark:text-white p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
-                                                                                                                                                                                    <button type="button" ${courtesyPlusOnclick} class="w-8 h-8 flex items-center justify-center rounded-md transition-all text-slate-700 dark:text-zinc-200${courtesyPlusClass}"${courtesyPlusDisabled}>
-                                                                                                                                                                                        <i class="ri-add-line text-sm"></i>
-                                                                                                                                                                                    </button>
-                                                                                                                                                                                </div>
-                                                                                                                                                                            </div>
-                                                                                                                                                                        </div>
+                                                                                                                                                                                                    <div id="courtesy-box-${index}" class="${showCourtesyBox ? '' : 'hidden'}">
+                                                                                                                                                                                                        <div class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 dark:border-zinc-600/50 dark:bg-zinc-900/40">
+                                                                                                                                                                                                            <span class="text-[11px] font-semibold text-slate-700 dark:text-zinc-300">Cortesía <span class="font-normal text-slate-500 dark:text-zinc-500">(sin cargo)</span></span>
+                                                                                                                                                                                                            <div class="flex items-center gap-0.5 rounded-lg bg-white px-0.5 py-0.5 border border-slate-200 dark:bg-zinc-800/90 dark:border-zinc-600/60">
+                                                                                                                                                                                                                <button type="button" ${courtesyMinusOnclick} class="w-8 h-8 flex items-center justify-center rounded-md transition-all text-slate-700 dark:text-zinc-200${courtesyMinusClass}"${courtesyMinusDisabled}>
+                                                                                                                                                                                                                    <i class="ri-subtract-line text-sm"></i>
+                                                                                                                                                                                                                </button>
+                                                                                                                                                                                                                <input type="number" min="0" max="${itemQty}" value="${courtesyQty}" onchange="setCourtesyQty(${index}, this)" class="w-10 h-8 text-center text-sm font-bold bg-transparent border-none focus:ring-0 focus:outline-none tabular-nums text-slate-900 dark:text-white p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
+                                                                                                                                                                                                                <button type="button" ${courtesyPlusOnclick} class="w-8 h-8 flex items-center justify-center rounded-md transition-all text-slate-700 dark:text-zinc-200${courtesyPlusClass}"${courtesyPlusDisabled}>
+                                                                                                                                                                                                                    <i class="ri-add-line text-sm"></i>
+                                                                                                                                                                                                                </button>
+                                                                                                                                                                                                            </div>
+                                                                                                                                                                                                        </div>
+                                                                                                                                                                                                    </div>
 
-                                                                                                                                                                        ${isDelivery ? '' : `
-                                                                                                                                                                        <div id="takeaway-box-${index}" class="${showTakeawayBox ? '' : 'hidden'}">
-                                                                                                                                                                            <div class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-orange-200 bg-orange-50/80 px-3 py-2.5 dark:border-orange-700/50 dark:bg-orange-950/30">
-                                                                                                                                                                                <span class="text-[11px] font-semibold text-slate-800 dark:text-zinc-200">Para llevar <span class="font-normal text-slate-600 dark:text-zinc-300">(de ${itemQty} u.)</span></span>
-                                                                                                                                                                                <div class="flex items-center gap-0.5 rounded-lg bg-white px-0.5 py-0.5 border border-orange-200 dark:bg-zinc-800/90 dark:border-orange-700/50">
-                                                                                                                                                                                    <button type="button" ${takeawayMinusOnclick} class="w-8 h-8 flex items-center justify-center rounded-md transition-all text-slate-700 dark:text-zinc-200${takeawayMinusClass}"${takeawayMinusDisabled}>
-                                                                                                                                                                                        <i class="ri-subtract-line text-sm"></i>
-                                                                                                                                                                                    </button>
-                                                                                                                                                                                    <input type="number" min="0" max="${itemQty}" value="${takeawayQty}" onchange="setTakeawayQty(${index}, this)" class="w-10 h-8 text-center text-sm font-bold bg-transparent border-none focus:ring-0 focus:outline-none tabular-nums text-slate-900 dark:text-white p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
-                                                                                                                                                                                    <button type="button" ${takeawayPlusOnclick} class="w-8 h-8 flex items-center justify-center rounded-md transition-all text-slate-700 dark:text-zinc-200${takeawayPlusClass}"${takeawayPlusDisabled}>
-                                                                                                                                                                                        <i class="ri-add-line text-sm"></i>
-                                                                                                                                                                                    </button>
-                                                                                                                                                                                </div>
-                                                                                                                                                                            </div>
-                                                                                                                                                                        </div>`}
-                                                                                                                                                                </div>
-                                                                                                                                                            `;
+                                                                                                                                                                                                    ${isDelivery ? '' : `
+                                                                                                                                                                                                    <div id="takeaway-box-${index}" class="${showTakeawayBox ? '' : 'hidden'}">
+                                                                                                                                                                                                        <div class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-orange-200 bg-orange-50/80 px-3 py-2.5 dark:border-orange-700/50 dark:bg-orange-950/30">
+                                                                                                                                                                                                            <span class="text-[11px] font-semibold text-slate-800 dark:text-zinc-200">Para llevar <span class="font-normal text-slate-600 dark:text-zinc-300">(de ${itemQty} u.)</span></span>
+                                                                                                                                                                                                            <div class="flex items-center gap-0.5 rounded-lg bg-white px-0.5 py-0.5 border border-orange-200 dark:bg-zinc-800/90 dark:border-orange-700/50">
+                                                                                                                                                                                                                <button type="button" ${takeawayMinusOnclick} class="w-8 h-8 flex items-center justify-center rounded-md transition-all text-slate-700 dark:text-zinc-200${takeawayMinusClass}"${takeawayMinusDisabled}>
+                                                                                                                                                                                                                    <i class="ri-subtract-line text-sm"></i>
+                                                                                                                                                                                                                </button>
+                                                                                                                                                                                                                <input type="number" min="0" max="${itemQty}" value="${takeawayQty}" onchange="setTakeawayQty(${index}, this)" class="w-10 h-8 text-center text-sm font-bold bg-transparent border-none focus:ring-0 focus:outline-none tabular-nums text-slate-900 dark:text-white p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
+                                                                                                                                                                                                                <button type="button" ${takeawayPlusOnclick} class="w-8 h-8 flex items-center justify-center rounded-md transition-all text-slate-700 dark:text-zinc-200${takeawayPlusClass}"${takeawayPlusDisabled}>
+                                                                                                                                                                                                                    <i class="ri-add-line text-sm"></i>
+                                                                                                                                                                                                                </button>
+                                                                                                                                                                                                            </div>
+                                                                                                                                                                                                        </div>
+                                                                                                                                                                                                    </div>`}
+                                                                                                                                                                                            </div>
+                                                                                                                                                                                        `;
                                 container.appendChild(row);
                             });
                         }
@@ -3347,16 +3359,16 @@
                         if (!notification) return;
                         const isError = type === 'error';
                         notification.innerHTML = `
-                                                                                                                                                            <div class="rounded-xl border p-4 shadow-lg ${isError ? 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800' : 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800'}">
-                                                                                                                                                                <div class="flex items-start gap-3">
-                                                                                                                                                                    <div class="${isError ? 'text-red-500' : 'text-green-500'}"><i class="fas fa-${isError ? 'exclamation-circle' : 'check-circle'} text-xl"></i></div>
-                                                                                                                                                                    <div>
-                                                                                                                                                                        <h3 class="font-semibold ${isError ? 'text-red-800 dark:text-red-200' : 'text-green-800 dark:text-green-200'}">${title}</h3>
-                                                                                                                                                                        <p class="text-sm mt-1 ${isError ? 'text-red-700 dark:text-red-300' : 'text-green-700 dark:text-green-300'}">${message}</p>
-                                                                                                                                                                    </div>
-                                                                                                                                                                </div>
-                                                                                                                                                            </div>
-                                                                                                                                                        `;
+                                                                                                                                                                                        <div class="rounded-xl border p-4 shadow-lg ${isError ? 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800' : 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800'}">
+                                                                                                                                                                                            <div class="flex items-start gap-3">
+                                                                                                                                                                                                <div class="${isError ? 'text-red-500' : 'text-green-500'}"><i class="fas fa-${isError ? 'exclamation-circle' : 'check-circle'} text-xl"></i></div>
+                                                                                                                                                                                                <div>
+                                                                                                                                                                                                    <h3 class="font-semibold ${isError ? 'text-red-800 dark:text-red-200' : 'text-green-800 dark:text-green-200'}">${title}</h3>
+                                                                                                                                                                                                    <p class="text-sm mt-1 ${isError ? 'text-red-700 dark:text-red-300' : 'text-green-700 dark:text-green-300'}">${message}</p>
+                                                                                                                                                                                                </div>
+                                                                                                                                                                                            </div>
+                                                                                                                                                                                        </div>
+                                                                                                                                                                                    `;
                         notification.classList.remove('opacity-0', 'pointer-events-none');
                         setTimeout(() => {
                             notification.classList.add('opacity-0', 'pointer-events-none');
@@ -3569,54 +3581,54 @@
                         const row = document.createElement('div');
                         row.className = 'cobro-pm-row rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50 p-3 space-y-2';
                         row.innerHTML = `
-                                                                                                                                                            <div class="flex gap-2 items-end flex-wrap">
-                                                                                                                                                                <div class="flex-1 min-w-[120px]">
-                                                                                                                                                                    <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Método</label>
-                                                                                                                                                                    <select class="cobro-pm-method w-full py-2 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm focus:ring-2 focus:ring-orange-400 focus:border-orange-400" onchange="toggleCobroExtraFields(this.closest('.cobro-pm-row'))">
-                                                                                                                                                                        ${opts}
-                                                                                                                                                                    </select>
-                                                                                                                                                                </div>
-                                                                                                                                                                <div class="w-24 shrink-0">
-                                                                                                                                                                    <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Monto</label>
-                                                                                                                                                                    <input type="number" step="0.01" min="0" value="${autoAmount > 0 ? autoAmount.toFixed(2) : '0.00'}" placeholder="0.00"
-                                                                                                                                                                        class="w-full py-2 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm tabular-nums cobro-pm-amount"
-                                                                                                                                                                        oninput="updateCobroTotalPaid()" onfocus="autocompleteCobroAmount(this)">
-                                                                                                                                                                </div>
-                                                                                                                                                                <button type="button" onclick="this.closest('.cobro-pm-row').remove(); updateCobroTotalPaid();" class="p-2 h-9 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors shrink-0" title="Eliminar">
-                                                                                                                                                                    <i class="ri-delete-bin-line text-lg"></i>
-                                                                                                                                                                </button>
-                                                                                                                                                            </div>
-                                                                                                                                                            <div class="cobro-pm-card-group hidden flex gap-2 items-end flex-wrap">
-                                                                                                                                                                <div class="flex-1 min-w-[100px]">
-                                                                                                                                                                    <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Pasarela</label>
-                                                                                                                                                                    <select class="cobro-pm-gateway w-full py-2 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm">
-                                                                                                                                                                        ${buildCobroGatewayOptions()}
-                                                                                                                                                                    </select>
-                                                                                                                                                                </div>
-                                                                                                                                                                <div class="flex-1 min-w-[100px]">
-                                                                                                                                                                    <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Tarjeta</label>
-                                                                                                                                                                    <select class="cobro-pm-card w-full py-2 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm">
-                                                                                                                                                                        ${buildCobroCardOptions()}
-                                                                                                                                                                    </select>
-                                                                                                                                                                </div>
-                                                                                                                                                            </div>
-                                                                                                                                                            <div class="cobro-pm-wallet-group hidden flex gap-2 items-end flex-wrap">
-                                                                                                                                                                <div class="flex-1 min-w-[120px]">
-                                                                                                                                                                    <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Billetera (Yape, Plin...)</label>
-                                                                                                                                                                    <select class="cobro-pm-wallet w-full py-2 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm">
-                                                                                                                                                                        ${buildCobroWalletOptions()}
-                                                                                                                                                                    </select>
-                                                                                                                                                                </div>
-                                                                                                                                                            </div>
-                                                                                                                                                            <div class="cobro-pm-bank-group hidden flex gap-2 items-end flex-wrap">
-                                                                                                                                                                <div class="flex-1 min-w-[120px]">
-                                                                                                                                                                    <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Banco destino</label>
-                                                                                                                                                                    <select class="cobro-pm-bank w-full py-2 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm">
-                                                                                                                                                                        ${buildCobroBankOptions()}
-                                                                                                                                                                    </select>
-                                                                                                                                                                </div>
-                                                                                                                                                            </div>
-                                                                                                                                                        `;
+                                                                                                                                                                                        <div class="flex gap-2 items-end flex-wrap">
+                                                                                                                                                                                            <div class="flex-1 min-w-[120px]">
+                                                                                                                                                                                                <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Método</label>
+                                                                                                                                                                                                <select class="cobro-pm-method w-full py-2 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm focus:ring-2 focus:ring-orange-400 focus:border-orange-400" onchange="toggleCobroExtraFields(this.closest('.cobro-pm-row'))">
+                                                                                                                                                                                                    ${opts}
+                                                                                                                                                                                                </select>
+                                                                                                                                                                                            </div>
+                                                                                                                                                                                            <div class="w-24 shrink-0">
+                                                                                                                                                                                                <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Monto</label>
+                                                                                                                                                                                                <input type="number" step="0.01" min="0" value="${autoAmount > 0 ? autoAmount.toFixed(2) : '0.00'}" placeholder="0.00"
+                                                                                                                                                                                                    class="w-full py-2 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm tabular-nums cobro-pm-amount"
+                                                                                                                                                                                                    oninput="updateCobroTotalPaid()" onfocus="autocompleteCobroAmount(this)">
+                                                                                                                                                                                            </div>
+                                                                                                                                                                                            <button type="button" onclick="this.closest('.cobro-pm-row').remove(); updateCobroTotalPaid();" class="p-2 h-9 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors shrink-0" title="Eliminar">
+                                                                                                                                                                                                <i class="ri-delete-bin-line text-lg"></i>
+                                                                                                                                                                                            </button>
+                                                                                                                                                                                        </div>
+                                                                                                                                                                                        <div class="cobro-pm-card-group hidden flex gap-2 items-end flex-wrap">
+                                                                                                                                                                                            <div class="flex-1 min-w-[100px]">
+                                                                                                                                                                                                <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Pasarela</label>
+                                                                                                                                                                                                <select class="cobro-pm-gateway w-full py-2 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm">
+                                                                                                                                                                                                    ${buildCobroGatewayOptions()}
+                                                                                                                                                                                                </select>
+                                                                                                                                                                                            </div>
+                                                                                                                                                                                            <div class="flex-1 min-w-[100px]">
+                                                                                                                                                                                                <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Tarjeta</label>
+                                                                                                                                                                                                <select class="cobro-pm-card w-full py-2 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm">
+                                                                                                                                                                                                    ${buildCobroCardOptions()}
+                                                                                                                                                                                                </select>
+                                                                                                                                                                                            </div>
+                                                                                                                                                                                        </div>
+                                                                                                                                                                                        <div class="cobro-pm-wallet-group hidden flex gap-2 items-end flex-wrap">
+                                                                                                                                                                                            <div class="flex-1 min-w-[120px]">
+                                                                                                                                                                                                <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Billetera (Yape, Plin...)</label>
+                                                                                                                                                                                                <select class="cobro-pm-wallet w-full py-2 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm">
+                                                                                                                                                                                                    ${buildCobroWalletOptions()}
+                                                                                                                                                                                                </select>
+                                                                                                                                                                                            </div>
+                                                                                                                                                                                        </div>
+                                                                                                                                                                                        <div class="cobro-pm-bank-group hidden flex gap-2 items-end flex-wrap">
+                                                                                                                                                                                            <div class="flex-1 min-w-[120px]">
+                                                                                                                                                                                                <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Banco destino</label>
+                                                                                                                                                                                                <select class="cobro-pm-bank w-full py-2 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm">
+                                                                                                                                                                                                    ${buildCobroBankOptions()}
+                                                                                                                                                                                                </select>
+                                                                                                                                                                                            </div>
+                                                                                                                                                                                        </div>
+                                                                                                                                                                                    `;
                         list.appendChild(row);
                         toggleCobroExtraFields(row);
                         updateCobroTotalPaid();

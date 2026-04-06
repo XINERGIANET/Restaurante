@@ -1652,7 +1652,7 @@ class SalesController extends Controller
         $ticketText = $validated['ticket_text'] ?? null;
         $plain = $ticketText !== null
             ? (string) $ticketText
-            : $this->buildThermalTicketPlainText($movement, $request);
+            : $this->buildThermalTicketPlainText($movement, $request, $printer);
         $payload = $this->wrapEscPosPlainPayload($plain);
 
         // Modo QZ: devolver payload en base64 para que QZ Tray lo envíe (USB o red)
@@ -2434,7 +2434,7 @@ class SalesController extends Controller
         return (int) $movementTypeId;
     }
 
-    private function buildThermalTicketPlainText(Movement $sale, Request $request): string
+    private function buildThermalTicketPlainText(Movement $sale, Request $request, ?PrinterBranch $printer = null): string
     {
         $printData = $this->buildSalePrintData($sale, $request);
         $sale = $printData['sale'];
@@ -2442,7 +2442,9 @@ class SalesController extends Controller
         $branch = $printData['branchForLogo'];
         $paymentLabel = $printData['paymentLabel'];
 
-        $w = 32;
+        // Ancho dinámico según impresora configurada (80mm → 48 chars, 58mm → 32 chars)
+        $printerWidthMm = (int) ($printer?->width ?? 58);
+        $w = $printerWidthMm >= 80 ? 48 : 32;
         $sep = str_repeat('=', $w);
         $lines = [];
 

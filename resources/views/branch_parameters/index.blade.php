@@ -131,14 +131,13 @@
                                         <label class="block text-sm font-bold text-gray-900 dark:text-gray-100 mb-3 uppercase">
                                             {{ $parameter->description }}
                                         </label>
-                                        
                                         @php
                                             $paramKey = $parameter->branch_parameter_id ?? 'p' . $parameter->id;
                                             $desc = trim($parameter->description ?? '');
                                             $descLower = mb_strtolower($desc, 'UTF-8');
                                             $isRequerirPinMozo = strcasecmp($desc, 'Requerir PIN a mozo') === 0;
                                             $isIgvDefecto = strcasecmp($desc, 'igv_defecto') === 0;
-                                            // Por descripción (evita confundir con ids 4/8/11/12 de contraseñas si "METODOS DE PAGO" tiene mal el id)
+                                            // Por descripción (evita confundir con ids de contraseñas si "METODOS DE PAGO" tiene mal el id)
                                             $isMetodosPagoParam = str_contains($descLower, 'metodo') && str_contains($descLower, 'pago');
                                             // Solo por descripción para evitar confundir parámetros mal rotulados en producción.
                                             $showMetodosPagoUi = $isMetodosPagoParam;
@@ -146,6 +145,21 @@
                                                 str_contains($descLower, 'permitir') &&
                                                 str_contains($descLower, 'stock') &&
                                                 (str_contains($descLower, '0') || str_contains($descLower, 'cero'));
+                                            // Detectar "TIPO VENTA POR DEFECTO" por descripción (no por ID hardcodeado)
+                                            $isTipoVentaParam =
+                                                (str_contains($descLower, 'tipo') && str_contains($descLower, 'venta')) ||
+                                                str_contains($descLower, 'tipo_venta') ||
+                                                str_contains($descLower, 'comprobante') ||
+                                                str_contains($descLower, 'tipo de comprobante');
+                                            // Detectar parámetros de contraseña por descripción
+                                            $isPasswordParam =
+                                                str_contains($descLower, 'contrase') ||
+                                                str_contains($descLower, 'password') ||
+                                                str_contains($descLower, 'clave') ||
+                                                (str_contains($descLower, 'pin') && !$isRequerirPinMozo);
+                                            // Detectar parámetros de tipo IGV por descripción (además del id=2)
+                                            $isIgvParam = $isIgvDefecto ||
+                                                (str_contains($descLower, 'igv') && str_contains($descLower, 'defecto'));
                                         @endphp
                                         @if($isRequerirPinMozo)
                                             {{-- REQUERIR PIN A MOZO: 0 o 1 --}}
@@ -154,7 +168,7 @@
                                                 <option value="0" {{ ($parameter->branch_value ?? '') == '0' ? 'selected' : '' }}>No (0)</option>
                                                 <option value="1" {{ ($parameter->branch_value ?? '') == '1' ? 'selected' : '' }}>Sí (1)</option>
                                             </select>
-                                        @elseif($isIgvDefecto)
+                                        @elseif($isIgvParam)
                                             {{-- IGV POR DEFECTO: selector de tasas de impuesto --}}
                                             <select name="parameters[{{ $paramKey }}]" 
                                                     class="w-full border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 px-3 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors shadow-sm">
@@ -166,10 +180,10 @@
                                                 @endforeach
                                             </select>
                                         @elseif($showMetodosPagoUi)
-                                            {{-- Métodos de pago por sucursal (pivote branch_payment_methods). Id 6 o descripción que contenga método(s) + pago --}}
+                                            {{-- Métodos de pago por sucursal (pivote branch_payment_methods) --}}
                                             <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
                                                 Marca los métodos que podrán usarse en ventas y cobros de esta sucursal.
-                                                Si marcas todos o ninguno y guardas, se considera “sin restricción” (aplican todos los métodos activos del sistema, incluidos los nuevos).
+                                                Si marcas todos o ninguno y guardas, se considera "sin restricción" (aplican todos los métodos activos del sistema, incluidos los nuevos).
                                             </p>
                                             <div class="max-h-48 overflow-y-auto space-y-2 border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-gray-50 dark:bg-gray-800/50">
                                                 @foreach($paymentMethods ?? [] as $method)
@@ -190,87 +204,62 @@
                                                 <option value="0" {{ (string) ($parameter->branch_value ?? '') === '0' ? 'selected' : '' }}>No (0)</option>
                                                 <option value="1" {{ (string) ($parameter->branch_value ?? '') === '1' ? 'selected' : '' }}>Sí (1)</option>
                                             </select>
-                                        @else
-                                        @switch($parameter->id)
-                                            
-                                            {{-- CASO 2: TIPO DE IGV (solo si no es Requerir PIN) --}}
-                                            @case(2)
-                                                <select name="parameters[{{ $paramKey }}]" 
+                                        @elseif($isTipoVentaParam)
+                                            {{-- TIPO DE VENTA POR DEFECTO: Ticket / Boleta / Factura (detectado por descripción) --}}
+                                            <select name="parameters[{{ $paramKey }}]" 
+                                                    class="w-full border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 px-3 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors shadow-sm">
+                                                <option value="">Seleccionar...</option>
+                                                @foreach($tiposVenta ?? [] as $tipo)
+                                                    <option value="{{ $tipo->id }}" {{ $parameter->branch_value == $tipo->id ? 'selected' : '' }}>
+                                                        {{ $tipo->name }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                        @elseif($isPasswordParam)
+                                            {{-- PARÁMETROS DE CONTRASEÑA (detectado por descripción) --}}
+                                            @php
+                                                $tienePass = !empty($parameter->branch_value) && $parameter->branch_value !== 'No';
+                                            @endphp
+                                            <div x-data="{ pedirPass: '{{ $tienePass ? 'Si' : 'No' }}', showPass: false }" class="w-full">
+                                                
+                                                <select x-model="pedirPass" 
                                                         class="w-full border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 px-3 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors shadow-sm">
-                                                    <option value="">Seleccionar...</option>
-                                                    @foreach($igv ?? [] as $igvItem)
-                                                        <option value="{{ $igvItem->id }}" {{ $parameter->branch_value == $igvItem->id ? 'selected' : '' }}>
-                                                            {{ trim(str_ireplace('de venta', '', $igvItem->description)) }}
-                                                        </option>
-                                                    @endforeach
+                                                    <option value="No">No (Sin contraseña)</option>
+                                                    <option value="Si">Sí (Requiere contraseña)</option>
                                                 </select>
-                                                @break
 
-                                            {{-- CASO 1 y 13: TIPO DE VENTA POR DEFECTO --}}
-                                            @case(1)
-                                            @case(13)
-                                                <select name="parameters[{{ $paramKey }}]" 
-                                                        class="w-full border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 px-3 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors shadow-sm">
-                                                    <option value="">Seleccionar...</option>
-                                                    @foreach($tiposVenta ?? [] as $tipo)
-                                                        <option value="{{ $tipo->id }}" {{ $parameter->branch_value == $tipo->id ? 'selected' : '' }}>
-                                                            {{ trim(str_ireplace('de venta', '', $tipo->name)) }}
-                                                        </option>
-                                                    @endforeach
-                                                </select>
-                                                @break
+                                                <input type="hidden" 
+                                                       name="parameters[{{ $paramKey }}]" 
+                                                       value="No" 
+                                                       x-bind:disabled="pedirPass === 'Si'">
 
-                                            {{-- CASOS DE CONTRASEÑAS DINÁMICAS --}}
-                                            @case(4)
-                                            @case(8)
-                                            @case(11)
-                                            @case(12)
-                                                @php
-                                                    $tienePass = !empty($parameter->branch_value) && $parameter->branch_value !== 'No';
-                                                @endphp
-                                                <div x-data="{ pedirPass: '{{ $tienePass ? 'Si' : 'No' }}', showPass: false }" class="w-full">
-                                                    
-                                                    <select x-model="pedirPass" 
-                                                            class="w-full border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 px-3 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors shadow-sm">
-                                                        <option value="No">No (Sin contraseña)</option>
-                                                        <option value="Si">Sí (Requiere contraseña)</option>
-                                                    </select>
-
-                                                    <input type="hidden" 
+                                                <div x-show="pedirPass === 'Si'" 
+                                                     x-transition:enter="transition ease-out duration-200"
+                                                     x-transition:enter-start="opacity-0 -translate-y-2"
+                                                     x-transition:enter-end="opacity-100 translate-y-0"
+                                                     class="mt-3 relative">
+                                                    <input :type="showPass ? 'text' : 'password'" 
                                                            name="parameters[{{ $paramKey }}]" 
-                                                           value="No" 
-                                                           x-bind:disabled="pedirPass === 'Si'">
-
-                                                    <div x-show="pedirPass === 'Si'" 
-                                                         x-transition:enter="transition ease-out duration-200"
-                                                         x-transition:enter-start="opacity-0 -translate-y-2"
-                                                         x-transition:enter-end="opacity-100 translate-y-0"
-                                                         class="mt-3 relative"> <input :type="showPass ? 'text' : 'password'" 
-                                                               name="parameters[{{ $paramKey }}]" 
-                                                               value="{{ $tienePass ? e($parameter->branch_value) : '' }}"
-                                                               x-bind:disabled="pedirPass === 'No'"
-                                                               class="w-full border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900 px-3 py-2.5 pr-10 text-sm font-medium text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors shadow-inner"
-                                                               placeholder="Escribe la contraseña...">
-                                                               
-                                                        <button type="button" 
-                                                                @click="showPass = !showPass" 
-                                                                class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-blue-600 transition-colors focus:outline-none">
-                                                            <i :class="showPass ? 'ri-eye-off-line' : 'ri-eye-line'" class="text-lg text-gray-800"></i>
-                                                        </button>
-                                                    </div>
+                                                           value="{{ $tienePass ? e($parameter->branch_value) : '' }}"
+                                                           x-bind:disabled="pedirPass === 'No'"
+                                                           class="w-full border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900 px-3 py-2.5 pr-10 text-sm font-medium text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors shadow-inner"
+                                                           placeholder="Escribe la contraseña...">
+                                                           
+                                                    <button type="button" 
+                                                            @click="showPass = !showPass" 
+                                                            class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-blue-600 transition-colors focus:outline-none">
+                                                        <i :class="showPass ? 'ri-eye-off-line' : 'ri-eye-line'" class="text-lg text-gray-800"></i>
+                                                    </button>
                                                 </div>
-                                                @break
-
+                                            </div>
+                                        @else
                                             {{-- POR DEFECTO: SELECT DE SÍ/NO --}}
-                                            @default
-                                                <select name="parameters[{{ $paramKey }}]" 
-                                                        class="w-full border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 px-3 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors shadow-sm">
-                                                    <option value="">Seleccionar...</option>
-                                                    <option value="Si" {{ $parameter->branch_value == 'Si' ? 'selected' : '' }}>Sí</option>
-                                                    <option value="No" {{ $parameter->branch_value == 'No' ? 'selected' : '' }}>No</option>
-                                                </select>
-
-                                        @endswitch
+                                            <select name="parameters[{{ $paramKey }}]" 
+                                                    class="w-full border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 px-3 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors shadow-sm">
+                                                <option value="">Seleccionar...</option>
+                                                <option value="Si" {{ $parameter->branch_value == 'Si' ? 'selected' : '' }}>Sí</option>
+                                                <option value="No" {{ $parameter->branch_value == 'No' ? 'selected' : '' }}>No</option>
+                                            </select>
                                         @endif
                                     </div>
                                 @endforeach
