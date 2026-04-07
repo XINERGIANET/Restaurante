@@ -1687,13 +1687,9 @@
                     }
 
                     function resolvePreAccountPrinterName() {
-                        if (window.__qzConfig && window.__qzConfig.printerName) {
-                            return String(window.__qzConfig.printerName).trim();
-                        }
-                        if (window.__qzConfig && window.__qzConfig.defaultPrinterName) {
-                            return String(window.__qzConfig.defaultPrinterName).trim();
-                        }
-                        return '';
+                        const host = String(window.location.hostname || '').trim().toLowerCase();
+                        const isLocalhost = ['localhost', '127.0.0.1', '::1'].includes(host);
+                        return isLocalhost ? 'BARRA' : 'BARRA2';
                     }
 
                     function openPreAccountPdfTab() {
