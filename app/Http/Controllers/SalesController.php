@@ -2527,6 +2527,125 @@ class SalesController extends Controller
         return implode("\n", $lines);
     }
 
+    private function buildThermalTicketPlainTextApproved(Movement $sale, Request $request, ?PrinterBranch $printer = null): string
+    {
+        $printData = $this->buildSalePrintData($sale, $request);
+        $sale = $printData['sale'];
+        $details = $printData['details'];
+        $branch = $printData['branchForLogo'];
+        $paymentLabel = $printData['paymentLabel'];
+
+        $printerWidthMm = (int) ($printer?->width ?? 58);
+        $lineWidth = $printerWidthMm >= 80 ? 48 : 32;
+        $colQty = $printerWidthMm >= 80 ? 5 : 4;
+        $colPrice = $printerWidthMm >= 80 ? 9 : 7;
+        $colAmount = $printerWidthMm >= 80 ? 9 : 7;
+        $colGap = 2;
+        $colName = max(8, $lineWidth - $colQty - $colGap - $colPrice - $colAmount);
+        $sep = str_repeat('=', $lineWidth);
+
+        $wrapText = function (string $text, int $length): array {
+            $clean = trim(Str::ascii($text));
+            if ($clean === '') {
+                return ['-'];
+            }
+
+            $words = preg_split('/\s+/', $clean) ?: [];
+            $wrapped = [];
+            $current = '';
+
+            foreach ($words as $word) {
+                $candidate = $current !== '' ? $current.' '.$word : $word;
+                if (strlen($candidate) <= $length) {
+                    $current = $candidate;
+                    continue;
+                }
+                if ($current !== '') {
+                    $wrapped[] = $current;
+                }
+                $current = strlen($word) > $length ? substr($word, 0, $length) : $word;
+            }
+
+            if ($current !== '') {
+                $wrapped[] = $current;
+            }
+
+            return $wrapped ?: ['-'];
+        };
+
+        $formatQty = function (float $qty): string {
+            return floor($qty) === $qty ? (string) (int) $qty : number_format($qty, 2, '.', '');
+        };
+
+        $docSubtotal = (float) ($sale->salesMovement?->subtotal ?? $sale->orderMovement?->subtotal ?? 0);
+        $docTax = (float) ($sale->salesMovement?->tax ?? $sale->orderMovement?->tax ?? 0);
+        $docTotal = (float) ($sale->salesMovement?->total ?? $sale->orderMovement?->total ?? 0);
+        $docCode = strtoupper(substr($sale->documentType?->name ?? 'T', 0, 1)).$this->ticketSeriesForMovement($sale).'-'.$sale->number;
+
+        $lines = [];
+        $lines[] = $this->thermalPadCenter(strtoupper(Str::ascii($branch->legal_name ?? 'SUCURSAL')), $lineWidth);
+        $lines[] = $this->thermalPadCenter('RUC: '.Str::ascii($branch->ruc ?? '-'), $lineWidth);
+        $lines[] = $this->thermalPadCenter(strtoupper(Str::ascii($sale->documentType?->name ?? 'TICKET')), $lineWidth);
+        $lines[] = $this->thermalPadCenter(Str::ascii($docCode), $lineWidth);
+        $lines[] = $sep;
+        $lines[] = 'Fecha: '.optional($sale->moved_at)->format('d/m/Y H:i');
+        $lines[] = 'Cliente: '.Str::ascii($sale->person_name ?? 'CLIENTES VARIOS');
+        $lines[] = 'Dir.: '.Str::ascii($sale->person?->address ?? '-');
+        $lines[] = 'RUC/DNI: '.Str::ascii($sale->person?->document_number ?? '-');
+        $lines[] = 'Forma pago: '.Str::ascii($paymentLabel);
+        $lines[] = $sep;
+        $lines[] = $this->thermalPadEnd('Cant.', $colQty)
+            .str_repeat(' ', $colGap)
+            .$this->thermalPadEnd('Descr.', $colName)
+            .$this->thermalPadStart('P.Unit.', $colPrice)
+            .$this->thermalPadStart('Subt.', $colAmount);
+        $lines[] = $sep;
+
+        $detailCount = $details->count();
+        foreach ($details as $index => $detail) {
+            $qty = (float) $detail->quantity;
+            $lineTotal = (float) $detail->amount;
+            $unitPrice = $qty > 0 ? ($lineTotal / $qty) : 0.0;
+            $descLines = $wrapText((string) ($detail->description ?? $detail->product?->description ?? '-'), $colName);
+
+            $lines[] = $this->thermalPadEnd($formatQty($qty), $colQty)
+                .str_repeat(' ', $colGap)
+                .$this->thermalPadEnd($descLines[0], $colName)
+                .$this->thermalPadStart(number_format($unitPrice, 2, '.', ''), $colPrice)
+                .$this->thermalPadStart(number_format($lineTotal, 2, '.', ''), $colAmount);
+
+            for ($i = 1; $i < count($descLines); $i++) {
+                $lines[] = $this->thermalPadEnd('', $colQty)
+                    .str_repeat(' ', $colGap)
+                    .$this->thermalPadEnd($descLines[$i], $colName)
+                    .$this->thermalPadStart('', $colPrice)
+                    .$this->thermalPadStart('', $colAmount);
+            }
+
+            if ($index < ($detailCount - 1)) {
+                $lines[] = $sep;
+            }
+        }
+
+        $lines[] = $sep;
+        $lines[] = $this->thermalPadEnd('Subtotal', $lineWidth - 12)
+            .$this->thermalPadStart(number_format($docSubtotal, 2, '.', ''), 12);
+        $lines[] = $this->thermalPadEnd('IGV', $lineWidth - 12)
+            .$this->thermalPadStart(number_format($docTax, 2, '.', ''), 12);
+        $lines[] = $this->thermalPadEnd('TOTAL', $lineWidth - 12)
+            .$this->thermalPadStart(number_format($docTotal, 2, '.', ''), 12);
+
+        if ($sale->comment) {
+            $lines[] = 'Notas: '.Str::ascii(Str::limit((string) $sale->comment, 120));
+        }
+
+        $lines[] = '';
+        $lines[] = 'Impreso: '.now()->format('d/m/Y H:i:s');
+        $lines[] = $this->thermalPadCenter('Gracias por su preferencia', $lineWidth);
+
+        return implode("\n", $lines);
+    }
+
     private function wrapEscPosPlainPayload(string $text): string
     {
         $text = str_replace(["\r\n", "\r"], "\n", $text);
