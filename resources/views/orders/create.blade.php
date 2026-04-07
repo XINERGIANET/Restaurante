@@ -1383,9 +1383,9 @@
                     function buildPreAccountTicketText(table, groupedItems, canceledItems, paperWidth = 80) {
                         const lineWidth = paperWidth === 80 ? 48 : 24;
                         const colQty = paperWidth === 80 ? 5 : 4;
-                        const colPrice = paperWidth === 80 ? 7 : 6;
-                        const colAmount = paperWidth === 80 ? 7 : 6;
-                        const colGap = paperWidth === 80 ? 1 : 2;
+                        const colPrice = paperWidth === 80 ? 6 : 6;
+                        const colAmount = paperWidth === 80 ? 0 : 6;
+                        const colGap = 1;
                         const colName = Math.max(6, lineWidth - colQty - colGap - colPrice - colAmount);
                         const sep = '='.repeat(lineWidth) + '\n';
                         const normalizedCanceledItems = normalizeCancellationsForTicket(canceledItems);
@@ -1432,7 +1432,7 @@
                             + ' '.repeat(colGap)
                             + padEndSafe('Descr.', colName)
                             + padStartSafe('P.Unit.', colPrice)
-                            + padStartSafe('Subt.', colAmount) + '\n';
+                            + (colAmount > 0 ? padStartSafe('Subt.', colAmount) : '') + '\n';
                         txt += sep;
 
                         (groupedItems || []).forEach((it, index) => {
@@ -1446,7 +1446,7 @@
                                 + ' '.repeat(colGap)
                                 + padEndSafe(name, colName)
                                 + padStartSafe(price.toFixed(2), colPrice)
-                                + padStartSafe(amount.toFixed(2), colAmount) + '\n';
+                                + (colAmount > 0 ? padStartSafe(amount.toFixed(2), colAmount) : '') + '\n';
                             if (courtesyQty > 0 || takeawayQty > 0) {
                                 const tags = [];
                                 if (courtesyQty > 0) tags.push('Cortesia: ' + courtesyQty);
