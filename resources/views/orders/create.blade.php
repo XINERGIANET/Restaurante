@@ -36,7 +36,7 @@
                     'takeaway_disposable_charge' => ((float) ($pendingTakeawayDisposableAmount ?? 0)) > 0,
                     'takeaway_disposable_amount' => (float) ($pendingTakeawayDisposableAmount ?? 0),
                     'original_area_id' => $area->id ?? null,
-                    'original_area_name' => $area->name ?? 'Sin Ã¡rea',
+                    'original_area_name' => $area->name ?? 'Sin área',
                     'delivery_area_id' => $deliveryAreaId ?? null,
                 ];
 
@@ -115,7 +115,7 @@
                 })();
             </script>
 
-            <!-- Barra de InformaciÃ³n: Mesa, Mozo y Comensales -->
+            <!-- Barra de Información: Mesa, Mozo y Comensales -->
             <div class="px-3 sm:px-4 mb-2 flex-none">
                 <div
                     class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-3 sm:p-4 shadow-sm flex flex-wrap items-center justify-between gap-4">
@@ -133,11 +133,11 @@
                             </div>
                             <div>
                                 <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider leading-none mb-1">
-                                    Mesa / Ãrea</p>
+                                    Mesa / Área</p>
                                 <div class="flex items-center gap-1.5">
                                     <span id="pos-table-name"
                                         class="font-black text-gray-900 dark:text-white text-base">--</span>
-                                    <span class="text-gray-300 dark:text-gray-700">Â·</span>
+                                    <span class="text-gray-300 dark:text-gray-700">·</span>
                                     <span id="pos-table-area"
                                         class="text-sm font-medium text-gray-500 dark:text-gray-400">--</span>
                                 </div>
@@ -263,7 +263,7 @@
                             <div class="flex flex-col gap-2">
                                 <div class="flex-1 min-w-0">
                                     <label
-                                        class="block text-[10px] font-bold uppercase text-blue-600 dark:text-blue-400 mb-1">DirecciÃ³n
+                                        class="block text-[10px] font-bold uppercase text-blue-600 dark:text-blue-400 mb-1">Dirección
                                         de Entrega</label>
                                     <input type="text" id="delivery-address" oninput="updateDeliveryInfo()"
                                         placeholder="Av. Siempre Viva 123"
@@ -272,7 +272,7 @@
                                 <div class="flex gap-2">
                                     <div class="flex-1 min-w-0">
                                         <label
-                                            class="block text-[10px] font-bold uppercase text-blue-600 dark:text-blue-400 mb-1">TelÃ©fono
+                                            class="block text-[10px] font-bold uppercase text-blue-600 dark:text-blue-400 mb-1">Teléfono
                                             Contacto</label>
                                         <input type="text" id="delivery-phone" oninput="updateDeliveryInfo()"
                                             placeholder="999..."
@@ -394,7 +394,7 @@
                                                                                                                                                                                                                                                     this.$watch('clientId', v => {
                                                                                                                                                                                                                                                         const opts = window.__orderClientOptions || [];
                                                                                                                                                                                                                                                         const sel = opts.find(o => String(o.id) === String(v));
-                                                                                                                                                                                                                                                        const name = sel ? sel.description : 'PÃºblico General';
+                                                                                                                                                                                                                                                        const name = sel ? sel.description : 'Público General';
                                                                                                                                                                                                                                                         if (window.currentTable) {
                                                                                                                                                                                                                                                             window.currentTable.person_id = v ? parseInt(v, 10) : null;
                                                                                                                                                                                                                                                             window.currentTable.clientName = name;
@@ -446,7 +446,7 @@
                                 <div>
                                     <div class="flex items-center justify-between mb-2">
                                         <label
-                                            class="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">MÃ©todos
+                                            class="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Métodos
                                             de pago</label>
                                         <button type="button" onclick="addCobroPaymentMethod()"
                                             class="inline-flex items-center gap-1.5 rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-brand-600 active:scale-95 transition-colors shrink-0">
@@ -468,7 +468,7 @@
                         </div>
                     @endif
 
-                    {{-- Botones Guardar / Cobrar: visibles segÃºn pestaÃ±a activa --}}
+                    {{-- Botones Guardar / Cobrar: visibles según pestaña activa --}}
                     <div
                         class="shrink-0 p-4 sm:p-5 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
                         {{-- Footer Resumen: solo Guardar y Precuenta --}}
@@ -498,7 +498,7 @@
 
             </div>
 
-            {{-- Modal para crear/editar cliente rÃ¡pido --}}
+            {{-- Modal para crear/editar cliente rápido --}}
             <x-ui.modal x-data="{ open: false }" @open-person-modal.window="open = true"
                 @close-person-modal.window="open = false" :isOpen="false" :showCloseButton="false"
                 class="max-w-4xl z-[100]">
@@ -579,7 +579,7 @@
                     };
                 };
             </script>
-            {{-- Modal eliminar por cantidad (se abre al presionar la basurita en una lÃ­nea del pedido) --}}
+            {{-- Modal eliminar por cantidad (se abre al presionar la basurita en una línea del pedido) --}}
             <x-ui.modal x-data="removeQuantityModal()" @open-remove-quantity-modal.window="
                                                                                                                     if ($event.detail && $event.detail.maxQty >= 1) {
                                                                                                                         open = true;
@@ -605,7 +605,7 @@
                                 <h3 class="text-lg font-bold text-gray-900 dark:text-white">Eliminar cantidad del pedido
                                 </h3>
                                 <p class="text-sm text-gray-600 dark:text-gray-300 mt-0.5"
-                                    x-text="productName ? (productName + ' Â· Cantidad actual: ' + maxQty) : ''"></p>
+                                    x-text="productName ? (productName + ' · Cantidad actual: ' + maxQty) : ''"></p>
                             </div>
                         </div>
                         <button type="button" @click="$dispatch('close-remove-quantity-modal')"
@@ -634,15 +634,15 @@
                         <p class="text-xs text-gray-500 dark:text-gray-400 mt-1"
                             x-text="'Entre 1 y ' + maxQty + (maxQty === 1 ? ' unidad' : ' unidades')"></p>
                         <p class="text-sm font-medium text-gray-700 dark:text-gray-300 mt-2" x-show="maxQty >= 1">
-                            QuedarÃ¡n: <span x-text="Math.max(0, maxQty - quantityToRemove)"></span> <span
+                            Quedarán: <span x-text="Math.max(0, maxQty - quantityToRemove)"></span> <span
                                 x-text="(maxQty - quantityToRemove) === 1 ? 'unidad' : 'unidades'"></span>
                         </p>
                     </div>
                     <div class="mb-6">
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            RazÃ³n <span x-show="isComandado" class="text-red-600">(requerida)</span>
+                            Razón <span x-show="isComandado" class="text-red-600">(requerida)</span>
                         </label>
-                        <textarea x-model="reasonToRemove" rows="2" placeholder="Ej: pedido equivocado, cliente cancelÃ³..."
+                        <textarea x-model="reasonToRemove" rows="2" placeholder="Ej: pedido equivocado, cliente canceló..."
                             class="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"></textarea>
                     </div>
                     <div class="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-600">
@@ -836,7 +836,7 @@
                                     toast: true,
                                     position: 'bottom-end',
                                     icon: 'error',
-                                    title: data?.message || 'PIN invÃ¡lido.',
+                                    title: data?.message || 'PIN inválido.',
                                     showConfirmButton: false,
                                     timer: 2500
                                 });
@@ -877,7 +877,7 @@
                         }
                         if (document.getElementById('pos-table-area')) {
                             document.getElementById('pos-table-area').innerText = currentTable.area ||
-                                "{{ $table->area?->name ?? ($area?->name ?? 'Sin Ã¡rea') }}";
+                                "{{ $table->area?->name ?? ($area?->name ?? 'Sin área') }}";
                         }
                         if (document.getElementById('pos-waiter-name')) {
                             document.getElementById('pos-waiter-name').innerText = currentTable.waiter ||
@@ -889,14 +889,14 @@
                         }
                         const cobroClientInput = document.getElementById('cobro-client-input');
                         if (cobroClientInput) {
-                            cobroClientInput.value = currentTable.clientName || "{{ $person?->name ?? 'PÃºblico General' }}";
+                            cobroClientInput.value = currentTable.clientName || "{{ $person?->name ?? 'Público General' }}";
                         }
                         const dinersInput = document.getElementById('diners-input');
                         if (dinersInput && currentTable.people_count) {
                             dinersInput.value = currentTable.people_count;
                         }
 
-                        // Inicializar datos de servicio y delivery (automÃ¡tico por Ã¡rea)
+                        // Inicializar datos de servicio y delivery (automático por área)
                         if (currentTable.area_id == serverTable.delivery_area_id) {
                             currentTable.service_type = 'DELIVERY';
                         } else {
@@ -972,7 +972,7 @@
                         if (typeof addCobroPaymentMethod === 'function' && document.getElementById('cobro-payment-methods-list')?.children.length === 0) {
                             addCobroPaymentMethod();
                         }
-                        // Si viene con cobro=1 (desde botÃ³n Cobrar en mesas), abrir pestaÃ±a Cobro
+                        // Si viene con cobro=1 (desde botón Cobrar en mesas), abrir pestaña Cobro
                         if (new URLSearchParams(window.location.search).get('cobro') === '1' && typeof switchAsideTab === 'function') {
                             setTimeout(() => switchAsideTab('cobro'), 100);
                         }
@@ -1012,7 +1012,7 @@
                         });
                     }
 
-                    // FunciÃ³n para escapar HTML y prevenir XSS
+                    // Función para escapar HTML y prevenir XSS
                     function escapeHtml(text) {
                         if (!text) return '';
                         const div = document.createElement('div');
@@ -1022,7 +1022,7 @@
 
                     const PLACEHOLDER_IMG = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23e5e7eb" width="200" height="200"/%3E%3Ctext fill="%239ca3af" font-family="sans-serif" font-size="14" dy="10.5" font-weight="bold" x="50%25" y="50%25" text-anchor="middle"%3ESin imagen%3C/text%3E%3C/svg%3E';
 
-                    // FunciÃ³n para obtener la URL de la imagen
+                    // Función para obtener la URL de la imagen
                     function getImageUrl(imagePath) {
                         if (!imagePath || imagePath === 'null' || imagePath === null || imagePath === '') {
                             return PLACEHOLDER_IMG;
@@ -1041,12 +1041,12 @@
                     }
                     window.getImageUrl = getImageUrl;
 
-                    // Datos de productos, categorÃ­as y productBranches desde el servidor.
+                    // Datos de productos, categorías y productBranches desde el servidor.
                     const serverProductBranches = @json($productBranches ?? []);
                     const serverCategories = @json(collect($categories ?? [])->map(fn($c) => ['id' => $c->id, 'name' => $c->description ?? '', 'img' => $c->image ? asset('storage/' . $c->image) : null])->values()->all());
                     const serverProductsRaw = @json($products ?? []);
                     const categoryIdsInBranch = (serverCategories || []).map(c => Number(c.id));
-                    // Solo productos que tienen productBranch en esta sucursal Y cuya categorÃ­a estÃ¡ en category_branch (estÃ¡ en serverCategories).
+                    // Solo productos que tienen productBranch en esta sucursal Y cuya categoría está en category_branch (está en serverCategories).
                     const serverProducts = (serverProductsRaw || []).filter(p =>
                         serverProductBranches.some(pb => Number(pb.product_id) === Number(p.id)) &&
                         categoryIdsInBranch.includes(Number(p.category_id))
@@ -1117,49 +1117,8 @@
                             .replace(/\"/g, '&quot;');
                     }
 
-                    function buildStyledTicketHtmlForQz(plainText, paperMm) {
-                        const fontBase = paperMm === 80 ? 12 : 10;
-                        const fontTitle = paperMm === 80 ? 19 : 15;
-                        const fontProduct = paperMm === 80 ? 15 : 12;
-                        const htmlLines = String(plainText || '').split('\n').map((line, index) => {
-                            const raw = String(line || '');
-                            const trimmed = raw.trim();
-                            if (!trimmed) return '<div class="spacer"></div>';
-                            if (/^=+$/.test(trimmed)) return '<div class="sep"></div>';
-                            if ((index <= 1 && !trimmed.includes(':') && trimmed.length <= 32) || /^(COMANDA|PRECUENTA|ANULADO|COMPROBANTE)$/i.test(trimmed)) {
-                                return '<div class="title">' + escapeHtmlForQzPrint(trimmed) + '</div>';
-                            }
-                            if (/^(Cant\.|Descr\.|P\.Unit\.|Subt\.)/.test(trimmed)) {
-                                return '<div class="header-row mono">' + escapeHtmlForQzPrint(raw) + '</div>';
-                            }
-                            if (/^(TOTAL|Total)/.test(trimmed)) {
-                                return '<div class="total-line mono">' + escapeHtmlForQzPrint(raw) + '</div>';
-                            }
-                            if (/^(Mesa:|Mesero:|Fecha:|Fecha\/Hora:|Cliente:|Dir\.:|RUC\/DNI:|Forma pago:|Subtotal|Impuestos|IGV|Delivery|Descartables|Cambio|Pagos|Notas:)/i.test(trimmed)) {
-                                return '<div class="meta mono">' + escapeHtmlForQzPrint(raw) + '</div>';
-                            }
-                            return '<div class="product-line mono">' + escapeHtmlForQzPrint(raw) + '</div>';
-                        }).join('');
-
-                        return '<!DOCTYPE html><html><head><meta charset="utf-8">' +
-                            '<style>' +
-                            '@page{size:' + paperMm + 'mm auto;margin:0;}' +
-                            'html,body{width:' + paperMm + 'mm;margin:0;padding:0;background:#fff;}' +
-                            'body{font-family:\"Courier New\",Consolas,monospace;font-size:' + fontBase + 'px;color:#000;}' +
-                            '.ticket{padding:6px 7px 8px;box-sizing:border-box;width:' + paperMm + 'mm;}' +
-                            '.mono{white-space:pre;line-height:1.18;}' +
-                            '.title{font-size:' + fontTitle + 'px;font-weight:700;text-align:center;line-height:1.05;margin:1px 0;}' +
-                            '.meta{font-size:' + fontBase + 'px;font-weight:400;margin:1px 0;}' +
-                            '.header-row{font-size:' + (fontBase + 1) + 'px;font-weight:700;margin:2px 0;}' +
-                            '.product-line{font-size:' + fontProduct + 'px;font-weight:400;margin:1px 0;}' +
-                            '.total-line{font-size:' + (fontProduct + 2) + 'px;font-weight:700;margin:3px 0 1px;}' +
-                            '.sep{border-top:1px dashed #000;margin:5px 0;}' +
-                            '.spacer{height:4px;}' +
-                            '</style></head><body><div class="ticket">' + htmlLines + '</div></body></html>';
-                    }
-
                     /**
-                     * RAW para tÃ©rmicas; si falla (p. ej. Epson tinta), reintenta como HTML/pixel.
+                     * RAW para térmicas; si falla (p. ej. Epson tinta), reintenta como HTML/pixel.
                      * Esto permite "imprimir en todos" aunque no todos acepten RAW.
                      */
                     async function printTicketWithQz(qzApi, printerName, plainText) {
@@ -1171,36 +1130,25 @@
                             margins: 0,
                         });
                         try {
-                            await qzApi.print(config, [{
-                                type: 'pixel',
-                                format: 'html',
-                                flavor: 'plain',
-                                data: buildStyledTicketHtmlForQz(plainText, paperMm),
-                            }]);
-                            return;
-                        } catch (htmlErr) {
-                            console.warn('QZ Tray: HTML/pixel no disponible en "' + printerName + '", usando RAW.', htmlErr);
-                        }
-                        try {
-                            // Reemplaza caracteres especiales del espaÃ±ol a equivalentes ASCII
-                            // para que la ticketera tÃ©rmica los imprima correctamente (PC437/PC850).
+                            // Reemplaza caracteres especiales del español a equivalentes ASCII
+                            // para que la ticketera térmica los imprima correctamente (PC437/PC850).
                             function toEscPos(text) {
                                 return String(text || '')
-                                    .replace(/Ã¡/g, 'a').replace(/Ã/g, 'A')
-                                    .replace(/Ã©/g, 'e').replace(/Ã‰/g, 'E')
-                                    .replace(/Ã­/g, 'i').replace(/Ã/g, 'I')
-                                    .replace(/Ã³/g, 'o').replace(/Ã“/g, 'O')
-                                    .replace(/Ãº/g, 'u').replace(/Ãš/g, 'U')
-                                    .replace(/Ã¼/g, 'u').replace(/Ãœ/g, 'U')
-                                    .replace(/Ã±/g, 'n').replace(/Ã‘/g, 'N')
-                                    .replace(/Â¿/g, '?').replace(/Â¡/g, '!');
+                                    .replace(/á/g, 'a').replace(/Á/g, 'A')
+                                    .replace(/é/g, 'e').replace(/É/g, 'E')
+                                    .replace(/í/g, 'i').replace(/Í/g, 'I')
+                                    .replace(/ó/g, 'o').replace(/Ó/g, 'O')
+                                    .replace(/ú/g, 'u').replace(/Ú/g, 'U')
+                                    .replace(/ü/g, 'u').replace(/Ü/g, 'U')
+                                    .replace(/ñ/g, 'n').replace(/Ñ/g, 'N')
+                                    .replace(/¿/g, '?').replace(/¡/g, '!');
                             }
-                            // ESC/POS: init + cÃ³digo de pÃ¡gina PC850 (espaÃ±ol) + contenido + feeds + corte
-                            // Separa lÃ­neas para aplicar tamaÃ±os distintos:
-                            //   - primera lÃ­nea (COMANDA / ANULADO / PRECUENTA): doble alto + doble ancho (tÃ­tulo)
-                            //   - separadores (===...): tamaÃ±o normal
-                            //   - cabecera (Mesa, Mozo, Fecha, Area, Salon, Hora): tamaÃ±o normal
-                            //   - lÃ­neas de producto (Producto + cantidad al final): negrita + doble alto
+                            // ESC/POS: init + código de página PC850 (español) + contenido + feeds + corte
+                            // Separa líneas para aplicar tamaños distintos:
+                            //   - primera línea (COMANDA / ANULADO / PRECUENTA): doble alto + doble ancho (título)
+                            //   - separadores (===...): tamaño normal
+                            //   - cabecera (Mesa, Mozo, Fecha, Area, Salon, Hora): tamaño normal
+                            //   - líneas de producto (Producto + cantidad al final): negrita + doble alto
                             //   - resto (Nota, Estado, Motivo): normal
                             const rawContent = toEscPos(plainText);
                             const rawLines = rawContent.split('\n');
@@ -1213,26 +1161,26 @@
                                     || /^(Mesa |COMANDA|COCINA|PRECUENTA|ANULADO)/.test(trimmed);
                                 const isMeta = /^(Nota|Estado|Motivo|DETALLE|S\/\.)/.test(trimmed) || trimmed === '';
                                 if (li === 0) {
-                                    // TÃ­tulo principal: solo negrita
+                                    // Título principal: solo negrita
                                     formattedContent += '\x1B\x45\x01' + line + '\x1B\x45\x00\n';
                                 } else if (isSep || isHeader || isMeta) {
-                                    // Separadores, cabecera y metadatos: tamaÃ±o normal
+                                    // Separadores, cabecera y metadatos: tamaño normal
                                     formattedContent += '\x1B\x21\x00' + line + '\n';
                                 } else {
-                                    // LÃ­neas de producto: negrita + doble alto
-                                    formattedContent += '\x1B\x45\x01' +  // ESC E 1 â†’ negrita ON
-                                        '\x1B\x21\x10' +                  // ESC ! 0x10 â†’ doble alto
+                                    // Líneas de producto: negrita + doble alto
+                                    formattedContent += '\x1B\x45\x01' +  // ESC E 1 → negrita ON
+                                        '\x1B\x21\x10' +                  // ESC ! 0x10 → doble alto
                                         line +
-                                        '\x1B\x45\x00' +                  // ESC E 0 â†’ negrita OFF
-                                        '\x1B\x21\x00\n';                 // tamaÃ±o normal
+                                        '\x1B\x45\x00' +                  // ESC E 0 → negrita OFF
+                                        '\x1B\x21\x00\n';                 // tamaño normal
                                 }
                             }
                             const ticketCommands =
                                 '\x1B\x40' +               // ESC @ (init/reset)
-                                '\x1B\x74\x02' +           // ESC t 2 â†’ code page PC850 (Latin-1, incluye espaÃ±ol)
+                                '\x1B\x74\x02' +           // ESC t 2 → code page PC850 (Latin-1, incluye español)
                                 formattedContent +
                                 '\n\n' +
-                                '\x1D\x56\x42\x10';        // GS V B 16 â†’ avance + corte parcial
+                                '\x1D\x56\x42\x10';        // GS V B 16 → avance + corte parcial
 
                             await qzApi.print(config, [{
                                 type: 'raw',
@@ -1472,7 +1420,7 @@
                         if (Array.isArray(paymentMethods) && paymentMethods.length > 0) {
                             txt += 'PAGOS\n';
                             paymentMethods.forEach((pm) => {
-                                const methodName = String(pm?.payment_method_name || pm?.payment_method || 'MÃ©todo').trim();
+                                const methodName = String(pm?.payment_method_name || pm?.payment_method || 'Método').trim();
                                 const amount = parseFloat(pm?.amount || 0) || 0;
                                 txt += padEndSafe(methodName, lineWidth - colPrice) + padStartSafe('S/. ' + amount.toFixed(2), colPrice) + '\n';
                             });
@@ -1642,7 +1590,7 @@
                         }).catch((error) => {
                             console.error('Precuenta PDF:', error);
                             if (typeof showNotification === 'function') {
-                                showNotification('ImpresiÃ³n', 'No se pudo generar el PDF de precuenta.', 'error');
+                                showNotification('Impresión', 'No se pudo generar el PDF de precuenta.', 'error');
                             }
                         });
                     }
@@ -1729,7 +1677,7 @@
                         }).catch((error) => {
                             console.error('Comanda PDF:', error);
                             if (typeof showNotification === 'function') {
-                                showNotification('ImpresiÃ³n', 'No se pudo generar el PDF de comanda.', 'error');
+                                showNotification('Impresión', 'No se pudo generar el PDF de comanda.', 'error');
                             }
                         });
                     }
@@ -1776,7 +1724,7 @@
                         const ticketText = buildPreAccountTicketText(currentTable, groupedItems, canceledItems, paperWidth);
 
                         let qzFailed = false;
-                        // Si QZ estÃ¡ disponible y funciona, intentar imprimir por QZ
+                        // Si QZ está disponible y funciona, intentar imprimir por QZ
                         if (qzApi && await ensureQzTrayConnected(qzApi)) {
                             let currentPrinterName = printerName;
                             try {
@@ -1785,18 +1733,17 @@
                                     currentPrinterName = await qzApi.printers.getDefault();
                                 }
                                 if (!currentPrinterName) {
-                                    throw new Error('No se encontrÃ³ ninguna impresora disponible en QZ Tray.');
+                                    throw new Error('No se encontró ninguna impresora disponible en QZ Tray.');
                                 }
                                 await printTicketWithQz(qzApi, currentPrinterName, ticketText);
                                 if (typeof showNotification === 'function') {
                                     showNotification('Precuenta', 'Ticket enviado a "' + currentPrinterName + '".', 'success');
                                 }
                                 return;
-                                */
                             } catch (e) {
                                 qzFailed = true;
                                 if (typeof showNotification === 'function') {
-                                    showNotification('ImpresiÃ³n', 'QZ no disponible. Intentando impresora de red...', 'warning');
+                                    showNotification('Impresión', 'QZ no disponible. Intentando impresora de red...', 'warning');
                                 }
                             }
                         }
@@ -1828,7 +1775,7 @@
 
                     /**
                      * Imprime comandas agrupadas por ticketera (nombre exacto como en Windows / QZ).
-                     * Requiere window.qz (bundle qz-tray-init) y productos con ticketera en catÃ¡logo.
+                     * Requiere window.qz (bundle qz-tray-init) y productos con ticketera en catálogo.
                      */
                     async function printKitchenTickets(items, table) {
                         const activeItems = Array.isArray(items) ? items : [];
@@ -1856,7 +1803,7 @@
                             const pdefs = resolveQzPrinters(pId);
                             const pnames = pdefs.length ? pdefs.map(p => p.name) : resolveQzPrinterNames(pId);
                             if (!pnames.length) return;
-                            // Si un producto estÃ¡ asignado a varias impresoras (pivote), se imprime en todas.
+                            // Si un producto está asignado a varias impresoras (pivote), se imprime en todas.
                             pnames.forEach((pname) => {
                                 if (!byPrinter[pname]) byPrinter[pname] = [];
                                 byPrinter[pname].push(it);
@@ -1917,9 +1864,9 @@
                         let canUseQz = !!qzAvailable;
                         if (!canUseQz) {
                             if (qzApi) {
-                                console.warn('QZ Tray: no disponible. Se usarÃ¡ impresiÃ³n por servidor.');
+                                console.warn('QZ Tray: no disponible. Se usará impresión por servidor.');
                                 if (typeof showNotification === 'function') {
-                                    showNotification('ImpresiÃ³n', 'QZ no disponible. Se usarÃ¡ impresiÃ³n por servidor.', 'warning');
+                                    showNotification('Impresión', 'QZ no disponible. Se usará impresión por servidor.', 'warning');
                                 }
                             }
                         }
@@ -2025,10 +1972,10 @@
                                     try {
                                         await qzApi.printers.find(pname);
                                     } catch (notFoundErr) {
-                                        const msg = 'QZ no encontrÃ³ la impresora "' + pname + '". Verifica el nombre exacto en Windows/QZ.';
+                                        const msg = 'QZ no encontró la impresora "' + pname + '". Verifica el nombre exacto en Windows/QZ.';
                                         console.error(msg, notFoundErr);
                                         if (typeof showNotification === 'function') {
-                                            showNotification('ImpresiÃ³n', msg, 'error');
+                                            showNotification('Impresión', msg, 'error');
                                         }
                                         continue;
                                     }
@@ -2049,7 +1996,7 @@
                         return !isNaN(rate) && rate >= 0 ? rate : 10;
                     }
 
-                    /** Cantidad para llevar por lÃ­nea: 0 â€¦ qty (no aplica en DELIVERY en UI). */
+                    /** Cantidad para llevar por línea: 0 … qty (no aplica en DELIVERY en UI). */
                     function clampTakeawayQty(item) {
                         if (!item) return;
                         const q = parseFloat(item.qty) || 0;
@@ -2223,7 +2170,7 @@
                         favBtn.innerHTML = `<i class="ri-star-fill text-lg"></i><span>Favoritos</span>`;
                         grid.appendChild(favBtn);
 
-                        // BotÃ³n "Todos" (lista todos los productos de la sucursal con categorÃ­a)
+                        // Botón "Todos" (lista todos los productos de la sucursal con categoría)
                         const allBtn = document.createElement('button');
                         allBtn.type = 'button';
                         const isAllActive = selectedCategoryId === CATEGORY_ALL_ID;
@@ -2291,7 +2238,7 @@
                             return;
                         }
 
-                        // Filtrar por categorÃ­a seleccionada (Favoritos / Todos / categorÃ­a)
+                        // Filtrar por categoría seleccionada (Favoritos / Todos / categoría)
                         let productsToShow = serverProducts;
                         if (selectedCategoryId === CATEGORY_ALL_ID) {
                             productsToShow = serverProducts;
@@ -2301,7 +2248,7 @@
                             productsToShow = serverProducts.filter(p => p.category_id == selectedCategoryId);
                         }
 
-                        // Filtrar por texto de bÃºsqueda: leer siempre del input para filtrar desde la primera letra
+                        // Filtrar por texto de búsqueda: leer siempre del input para filtrar desde la primera letra
                         const searchInput = document.getElementById('search-products');
                         const q = (searchInput && searchInput.value !== undefined)
                             ? String(searchInput.value || '').trim().toLowerCase()
@@ -2324,7 +2271,7 @@
                             const el = document.createElement('div');
                             el.className = "group cursor-pointer transition-transform duration-200 hover:scale-105 h-full flex";
 
-                            // Prevenir mÃºltiples clics rÃ¡pidos
+                            // Prevenir múltiples clics rápidos
                             let isAdding = false;
                             el.onclick = function (e) {
                                 e.preventDefault();
@@ -2332,7 +2279,7 @@
                                 isAdding = true;
                                 addToCart(prod, productBranch);
 
-                                // Permitir agregar de nuevo despuÃ©s de un breve delay
+                                // Permitir agregar de nuevo después de un breve delay
                                 setTimeout(() => {
                                     isAdding = false;
                                 }, 500);
@@ -2370,11 +2317,11 @@
                             if (q.length > 0) {
                                 grid.innerHTML = '<div class="col-span-full text-center text-gray-500 py-8">No se encontraron productos para "' + escapeHtml(productSearchQuery) + '"</div>';
                             } else if (selectedCategoryId === CATEGORY_FAVORITES_ID) {
-                                grid.innerHTML = '<div class="col-span-full text-center text-gray-500 py-8">No hay productos favoritos en esta sucursal. Marca favoritos en el producto o elige la categorÃ­a Todos.</div>';
+                                grid.innerHTML = '<div class="col-span-full text-center text-gray-500 py-8">No hay productos favoritos en esta sucursal. Marca favoritos en el producto o elige la categoría Todos.</div>';
                             } else {
                                 grid.innerHTML = selectedCategoryId === CATEGORY_ALL_ID
                                     ? '<div class="col-span-full text-center text-gray-500 py-8">No hay productos disponibles para esta sucursal</div>'
-                                    : '<div class="col-span-full text-center text-gray-500 py-8">No hay productos en esta categorÃ­a</div>';
+                                    : '<div class="col-span-full text-center text-gray-500 py-8">No hay productos en esta categoría</div>';
                             }
                         }
 
@@ -2390,22 +2337,22 @@
 
                         const price = parseFloat(productBranch.price);
                         if (isNaN(price) || price <= 0) {
-                            showNotification('Precio invÃ¡lido', 'El precio del producto es invÃ¡lido.', 'error');
+                            showNotification('Precio inválido', 'El precio del producto es inválido.', 'error');
                             return;
                         }
 
                         const stock = parseFloat(productBranch.stock ?? 0) || 0;
                         const allowZeroStockSales = @json($allowZeroStockSales ?? true);
 
-                        // Asegurar que el ID del producto sea un nÃºmero entero para la comparaciÃ³n
+                        // Asegurar que el ID del producto sea un número entero para la comparación
                         const productId = parseInt(prod.id, 10);
                         if (isNaN(productId) || productId <= 0) {
 
-                            showNotification('ID de producto invÃ¡lido', 'El ID del producto es invÃ¡lido.', 'error');
+                            showNotification('ID de producto inválido', 'El ID del producto es inválido.', 'error');
                             return;
                         }
 
-                        // Limpiar items invÃ¡lidos antes de buscar
+                        // Limpiar items inválidos antes de buscar
                         currentTable.items = currentTable.items.filter(i => {
                             const itemPId = parseInt(i.pId, 10);
                             return !isNaN(itemPId) && itemPId > 0;
@@ -2458,7 +2405,7 @@
                         const oldQty = item.qty;
                         let newQty = oldQty + change;
 
-                        // Aumentar cantidad: no requiere razÃ³n
+                        // Aumentar cantidad: no requiere razón
                         if (change > 0) {
                             const allowZeroStockSales = @json($allowZeroStockSales ?? true);
                             const prodId = parseInt(item.pId || item.product_id, 10);
@@ -2528,7 +2475,7 @@
                         const savedQty = parseFloat(item.savedQty) ?? 0;
                         if (currentTable.order_movement_id && savedQty > 0 && newQty < savedQty) {
                             inputEl.value = savedQty;
-                            showNotification('Cantidad no vÃ¡lida', 'La cantidad no puede ser menor que la cantidad guardada.', 'error');
+                            showNotification('Cantidad no válida', 'La cantidad no puede ser menor que la cantidad guardada.', 'error');
                             item.qty = savedQty;
                             return;
                         }
@@ -2563,15 +2510,15 @@
                         const prod = serverProducts.find(p => p.id === item.pId);
                         const name = (prod && prod.name) ? prod.name : 'este producto';
                         const msg = qty === 1
-                            ? `Â¿Desea eliminar 1 unidad de **${escapeHtml(name)}** del pedido?`
-                            : `Â¿Desea eliminar **${qty}** unidades de **${escapeHtml(name)}** del pedido?`;
+                            ? `¿Desea eliminar 1 unidad de **${escapeHtml(name)}** del pedido?`
+                            : `¿Desea eliminar **${qty}** unidades de **${escapeHtml(name)}** del pedido?`;
                         if (window.Swal) {
                             const result = await Swal.fire({
                                 title: 'Eliminar del pedido',
                                 html: msg.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'),
                                 icon: 'question',
                                 showCancelButton: true,
-                                confirmButtonText: 'SÃ­, eliminar',
+                                confirmButtonText: 'Sí, eliminar',
                                 cancelButtonText: 'Cancelar',
                                 confirmButtonColor: '#dc2626'
                             });
@@ -2596,7 +2543,7 @@
                         const qty = parseFloat(item.qty) || 0;
                         const toCancel = Math.min(qtyToRemove, qty);
                         if (toCancel <= 0) return;
-                        // Siempre registrar la cancelaciÃ³n (no solo cuando hay order_movement_id)
+                        // Siempre registrar la cancelación (no solo cuando hay order_movement_id)
                         currentTable.cancellations = currentTable.cancellations || [];
                         currentTable.cancellations.push({
                             pId: item.pId,
@@ -2711,13 +2658,13 @@
                             const isDelivery = st === 'DELIVERY';
                             const isTakeAway = st === 'TAKE_AWAY';
 
-                            let serviceLabel = 'ðŸ  En Mesa';
+                            let serviceLabel = '🏠 En Mesa';
                             let serviceColor = 'bg-blue-100/50 text-blue-700 border-blue-200';
                             if (isTakeAway) {
-                                serviceLabel = 'ðŸ¥¡ Para Llevar';
+                                serviceLabel = '🥡 Para Llevar';
                                 serviceColor = 'bg-orange-100 text-orange-700 border-orange-200';
                             } else if (isDelivery) {
-                                serviceLabel = 'ðŸ›µ Delivery';
+                                serviceLabel = '🛵 Delivery';
                                 serviceColor = 'bg-purple-100 text-purple-700 border-purple-200';
                             }
 
@@ -2742,7 +2689,7 @@
                                 const paidQty = Math.max(itemQty - courtesyQty, 0);
                                 const lineBase = itemPrice * paidQty;
                                 const lineTotal = lineBase;
-                                // si quieres que el subtotal ignore las cortesÃ­as:
+                                // si quieres que el subtotal ignore las cortesías:
                                 subtotal += lineBase;
                                 const noteTime = item.commandTime || "";
                                 const noteText = typeof item.note === "string" ? item.note.trim() : "";
@@ -2802,7 +2749,7 @@
                                                                                                                                                                                                         <div class="min-w-0 flex-1">
                                                                                                                                                                                                             <h3 class="font-bold text-[15px] sm:text-base leading-snug tracking-tight text-slate-900 dark:text-white">${productName}</h3>
                                                                                                                                                                                                             ${takeawayBadge}
-                                                                                                                                                                                                            <p class="mt-1 text-[11px] sm:text-xs text-slate-500 dark:text-zinc-400 font-medium tabular-nums">${noteTime ? noteTime + ' Â· ' : ''}S/ ${itemPrice.toFixed(2)} <span class="text-slate-400 dark:text-zinc-500 font-normal">c/u</span></p>
+                                                                                                                                                                                                            <p class="mt-1 text-[11px] sm:text-xs text-slate-500 dark:text-zinc-400 font-medium tabular-nums">${noteTime ? noteTime + ' · ' : ''}S/ ${itemPrice.toFixed(2)} <span class="text-slate-400 dark:text-zinc-500 font-normal">c/u</span></p>
                                                                                                                                                                                                         </div>
                                                                                                                                                                                                         <span class="shrink-0 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wide ${statusClass}">${statusLabel}</span>
                                                                                                                                                                                                     </div>
@@ -2832,7 +2779,7 @@
                                                                                                                                                                                                             <i class="${hasNote ? 'ri-chat-1-fill' : 'ri-chat-1-line'}"></i> ${hasNote ? 'Editar nota' : 'Nota'}
                                                                                                                                                                                                         </button>
                                                                                                                                                                                                         <button type="button" onclick="toggleCourtesyInput(${index})" class="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-colors ${courtesyBtnActive ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300' : 'text-slate-500 hover:bg-slate-100 hover:text-emerald-600 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-emerald-400'}">
-                                                                                                                                                                                                            <i class="${courtesyBtnActive ? 'ri-star-fill' : 'ri-star-line'}"></i> CortesÃ­a
+                                                                                                                                                                                                            <i class="${courtesyBtnActive ? 'ri-star-fill' : 'ri-star-line'}"></i> Cortesía
                                                                                                                                                                                                         </button>
                                                                                                                                                                                                         ${isDelivery ? '' : `<button type="button" onclick="toggleTakeawayInput(${index})" class="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-colors ${takeawayBtnActive ? 'bg-orange-50 text-orange-800 dark:bg-orange-500/15 dark:text-orange-300' : 'text-slate-500 hover:bg-slate-100 hover:text-orange-600 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-orange-400'}">
                                                                                                                                                                                                             <i class="${takeawayBtnActive ? 'ri-shopping-bag-3-fill' : 'ri-shopping-bag-3-line'}"></i> Llevar
@@ -2843,12 +2790,12 @@
                                                                                                                                                                                                     </div>
 
                                                                                                                                                                                                     <div id="note-box-${index}" class="${showNoteBox ? '' : 'hidden'}">
-                                                                                                                                                                                                        <textarea rows="2" onblur="saveNote(${index}, this.value)" placeholder="Ej: Sin cebolla, tÃ©rmino medio..." class="w-full min-h-[3.25rem] resize-y rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-600 dark:bg-zinc-900/80 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-sky-500">${itemNote}</textarea>
+                                                                                                                                                                                                        <textarea rows="2" onblur="saveNote(${index}, this.value)" placeholder="Ej: Sin cebolla, término medio..." class="w-full min-h-[3.25rem] resize-y rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-600 dark:bg-zinc-900/80 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-sky-500">${itemNote}</textarea>
                                                                                                                                                                                                     </div>
 
                                                                                                                                                                                                     <div id="courtesy-box-${index}" class="${showCourtesyBox ? '' : 'hidden'}">
                                                                                                                                                                                                         <div class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 dark:border-zinc-600/50 dark:bg-zinc-900/40">
-                                                                                                                                                                                                            <span class="text-[11px] font-semibold text-slate-700 dark:text-zinc-300">CortesÃ­a <span class="font-normal text-slate-500 dark:text-zinc-500">(sin cargo)</span></span>
+                                                                                                                                                                                                            <span class="text-[11px] font-semibold text-slate-700 dark:text-zinc-300">Cortesía <span class="font-normal text-slate-500 dark:text-zinc-500">(sin cargo)</span></span>
                                                                                                                                                                                                             <div class="flex items-center gap-0.5 rounded-lg bg-white px-0.5 py-0.5 border border-slate-200 dark:bg-zinc-800/90 dark:border-zinc-600/60">
                                                                                                                                                                                                                 <button type="button" ${courtesyMinusOnclick} class="w-8 h-8 flex items-center justify-center rounded-md transition-all text-slate-700 dark:text-zinc-200${courtesyMinusClass}"${courtesyMinusDisabled}>
                                                                                                                                                                                                                     <i class="ri-subtract-line text-sm"></i>
@@ -2963,19 +2910,19 @@
                         serverCancelled.forEach(function (d) {
                             const desc = escapeHtml(d.description || 'Producto');
                             const qty = d.quantity != null ? d.quantity : 1;
-                            const reason = escapeHtml((d.comment || '').trim() || 'â€”');
-                            html += `<div class="rounded border border-amber-200 dark:border-amber-700/50 p-1.5 bg-white/60 dark:bg-gray-800/60"><span class="font-medium text-slate-700 dark:text-slate-200">${desc}</span> <span class="text-amber-700 dark:text-amber-300">Ã—${qty}</span><br><span class="text-amber-800 dark:text-amber-200 italic">${reason}</span></div>`;
+                            const reason = escapeHtml((d.comment || '').trim() || '—');
+                            html += `<div class="rounded border border-amber-200 dark:border-amber-700/50 p-1.5 bg-white/60 dark:bg-gray-800/60"><span class="font-medium text-slate-700 dark:text-slate-200">${desc}</span> <span class="text-amber-700 dark:text-amber-300">×${qty}</span><br><span class="text-amber-800 dark:text-amber-200 italic">${reason}</span></div>`;
                         });
                         clientCancelled.forEach(function (c) {
                             const name = escapeHtml(c.name || 'Producto');
                             const qty = c.qtyCanceled != null ? c.qtyCanceled : 1;
-                            const reason = escapeHtml((c.cancel_reason || '').trim() || 'â€”');
-                            html += `<div class="rounded border border-amber-200 dark:border-amber-700/50 p-1.5 bg-white/60 dark:bg-gray-800/60"><span class="font-medium text-slate-700 dark:text-slate-200">${name}</span> <span class="text-amber-700 dark:text-amber-300">Ã—${qty}</span><br><span class="text-amber-800 dark:text-amber-200 italic">${reason}</span></div>`;
+                            const reason = escapeHtml((c.cancel_reason || '').trim() || '—');
+                            html += `<div class="rounded border border-amber-200 dark:border-amber-700/50 p-1.5 bg-white/60 dark:bg-gray-800/60"><span class="font-medium text-slate-700 dark:text-slate-200">${name}</span> <span class="text-amber-700 dark:text-amber-300">×${qty}</span><br><span class="text-amber-800 dark:text-amber-200 italic">${reason}</span></div>`;
                         });
                         listEl.innerHTML = html;
                     }
 
-                    /** Devuelve los Ã­tems del pedido agrupados por producto (mismo pId â†’ un Ã­tem con qty sumada) para enviar al servidor. */
+                    /** Devuelve los ítems del pedido agrupados por producto (mismo pId → un ítem con qty sumada) para enviar al servidor. */
                     function getItemsGroupedByProduct() {
                         const items = currentTable.items || [];
                         const byPid = {};
@@ -3015,7 +2962,7 @@
 
                     function saveDB() {
                         if (db && currentTable) {
-                            // Agregar timestamp para saber cuÃ¡ndo se guardÃ³
+                            // Agregar timestamp para saber cuándo se guardó
                             currentTable.lastUpdated = new Date().toISOString();
                             currentTable.isActive = true;
                             db[activeKey] = currentTable;
@@ -3023,7 +2970,7 @@
                             const hasItems = currentTable.items && currentTable.items.length > 0;
                             const hasCancels = currentTable.cancellations && currentTable.cancellations.length > 0;
                             if (hasItems || hasCancels) {
-                                // scheduleAutoSave(); // Deshabilitado auto-guardado automÃ¡tico al servidor
+                                // scheduleAutoSave(); // Deshabilitado auto-guardado automático al servidor
                             }
                         }
                     }
@@ -3065,7 +3012,7 @@
                             || m.indexOf('apertura de caja primero') !== -1;
                     }
 
-                    // Limpiar auto-guardado al navegar con Turbo para no dispararlo en otra pÃ¡gina
+                    // Limpiar auto-guardado al navegar con Turbo para no dispararlo en otra página
                     document.addEventListener('turbo:before-visit', function () {
                         if (autoSaveTimer) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
                     });
@@ -3079,7 +3026,7 @@
                         autoSaveTimer = null;
                         const items = currentTable.items || [];
                         if (items.length === 0 && (!currentTable.cancellations || currentTable.cancellations.length === 0)) return;
-                        // No auto-guardar si hay cancelaciones pendientes de razÃ³n (se pide al hacer Guardar / Cobrar)
+                        // No auto-guardar si hay cancelaciones pendientes de razón (se pide al hacer Guardar / Cobrar)
                         const cancels = currentTable.cancellations || [];
                         if (cancels.some(c => !(c.cancel_reason && String(c.cancel_reason).trim()))) return;
                         const itemsToSend = getItemsGroupedByProduct();
@@ -3113,7 +3060,7 @@
                             },
                             body: JSON.stringify(order)
                         })
-                            .then(res => res.headers.get('content-type')?.includes('application/json') ? res.json() : Promise.reject(new Error('Respuesta invÃ¡lida')))
+                            .then(res => res.headers.get('content-type')?.includes('application/json') ? res.json() : Promise.reject(new Error('Respuesta inválida')))
                             .then(data => {
                                 if (data && data.success) {
                                     currentTable.cancellations = [];
@@ -3127,7 +3074,7 @@
                             .catch(() => { });
                     }
 
-                    /** Pide una sola razÃ³n de anulaciÃ³n y la asigna a todas las cancelaciones que no la tengan. Devuelve false si el usuario cancela. */
+                    /** Pide una sola razón de anulación y la asigna a todas las cancelaciones que no la tengan. Devuelve false si el usuario cancela. */
                     async function ensureCancellationReasons() {
                         const cancels = currentTable.cancellations || [];
                         const pending = cancels.filter(c => !(c.cancel_reason && String(c.cancel_reason).trim()));
@@ -3136,22 +3083,22 @@
                         let reason = null;
                         if (window.Swal) {
                             const result = await Swal.fire({
-                                title: 'RazÃ³n de anulaciÃ³n',
-                                html: `Hay <strong>${pending.length}</strong> Ã­tem(s) anulados. Indica la razÃ³n (aplica a todos).`,
+                                title: 'Razón de anulación',
+                                html: `Hay <strong>${pending.length}</strong> ítem(s) anulados. Indica la razón (aplica a todos).`,
                                 input: 'textarea',
-                                inputPlaceholder: 'Escribe la razÃ³n de la anulaciÃ³n...',
+                                inputPlaceholder: 'Escribe la razón de la anulación...',
                                 showCancelButton: true,
                                 confirmButtonText: 'Continuar',
                                 cancelButtonText: 'Cancelar',
                                 inputValidator: (value) => {
-                                    if (!value || !value.trim()) return 'Debes ingresar una razÃ³n';
+                                    if (!value || !value.trim()) return 'Debes ingresar una razón';
                                     return null;
                                 }
                             });
                             if (!result.isConfirmed || !result.value) return false;
                             reason = result.value.trim();
                         } else {
-                            const p = window.prompt('RazÃ³n de anulaciÃ³n (aplica a todos los Ã­tems anulados):');
+                            const p = window.prompt('Razón de anulación (aplica a todos los ítems anulados):');
                             if (!p || !p.trim()) return false;
                             reason = p.trim();
                         }
@@ -3225,7 +3172,7 @@
                                 if (ct && ct.includes('application/json')) {
                                     return response.json();
                                 }
-                                throw new Error(response.status === 419 ? 'SesiÃ³n expirada. Recarga la pÃ¡gina.' : (response.status === 401 ? 'Debes iniciar sesiÃ³n.' : 'Error del servidor. Intenta de nuevo.'));
+                                throw new Error(response.status === 419 ? 'Sesión expirada. Recarga la página.' : (response.status === 401 ? 'Debes iniciar sesión.' : 'Error del servidor. Intenta de nuevo.'));
                             })
                             .then(async data => {
                                 if (data && data.success) {
@@ -3289,7 +3236,7 @@
                             const desc = methodName.toLowerCase();
                             const isCard = (desc.includes('tarjeta') || desc.includes('card')) && !desc.includes('billetera');
                             const isWallet = desc.includes('billetera');
-                            const isTransfer = desc.includes('transferencia') || desc.includes('transfer') || desc.includes('deposito') || desc.includes('depÃ³sito');
+                            const isTransfer = desc.includes('transferencia') || desc.includes('transfer') || desc.includes('deposito') || desc.includes('depósito');
                             if (isCard) {
                                 const gw = row.querySelector('.cobro-pm-gateway');
                                 const card = row.querySelector('.cobro-pm-card');
@@ -3365,7 +3312,7 @@
                             }
                         }
 
-                        // Fallback: impresiÃ³n TCP por red (requiere red local e IP en impresora)
+                        // Fallback: impresión TCP por red (requiere red local e IP en impresora)
                         try {
                             const tr = await fetch(salesThermalPrintUrl, {
                                 method: 'POST',
@@ -3376,7 +3323,7 @@
                             const td = tr.headers.get('content-type')?.includes('application/json') ? await tr.json() : null;
                             if (tr.ok && td?.success) {
                                 if (typeof showNotification === 'function')
-                                    showNotification('ImpresiÃ³n', td.message || 'Comprobante enviado a la ticketera.', 'success');
+                                    showNotification('Impresión', td.message || 'Comprobante enviado a la ticketera.', 'success');
                             } else {
                                 openSaleTicketPdfTab(movementId);
                             }
@@ -3407,17 +3354,17 @@
 
                         if (paymentMethodsData.length === 0) {
                             if (typeof showNotification === 'function') {
-                                showNotification('Error', 'Agrega al menos un mÃ©todo de pago.', 'error');
+                                showNotification('Error', 'Agrega al menos un método de pago.', 'error');
                             } else {
-                                alert('Agrega al menos un mÃ©todo de pago.');
+                                alert('Agrega al menos un método de pago.');
                             }
                             return;
                         }
                         if (Math.abs(totalPaid - total) > 0.01) {
                             if (typeof showNotification === 'function') {
-                                showNotification('Error', 'La suma de los mÃ©todos de pago debe ser igual al total (S/ ' + total.toFixed(2) + ').', 'error');
+                                showNotification('Error', 'La suma de los métodos de pago debe ser igual al total (S/ ' + total.toFixed(2) + ').', 'error');
                             } else {
-                                alert('La suma de los mÃ©todos de pago debe ser igual al total (S/ ' + total.toFixed(2) + ').');
+                                alert('La suma de los métodos de pago debe ser igual al total (S/ ' + total.toFixed(2) + ').');
                             }
                             return;
                         }
@@ -3425,12 +3372,12 @@
                         if (window.Swal) {
                             const confirmPayment = await Swal.fire({
                                 title: 'Confirmar Cobro',
-                                text: `Total a cobrar: S/ ${total.toFixed(2)}. Â¿Deseas proceder?`,
+                                text: `Total a cobrar: S/ ${total.toFixed(2)}. ¿Deseas proceder?`,
                                 icon: 'question',
                                 showCancelButton: true,
                                 confirmButtonColor: '#3085d6',
                                 cancelButtonColor: '#d33',
-                                confirmButtonText: 'SÃ­, cobrar',
+                                confirmButtonText: 'Sí, cobrar',
                                 cancelButtonText: 'Cancelar'
                             });
                             if (!confirmPayment.isConfirmed) return;
@@ -3484,7 +3431,7 @@
                                 if (ct && ct.includes('application/json')) {
                                     processData = await processRes.json();
                                 } else {
-                                    throw new Error(processRes.status === 419 ? 'SesiÃ³n expirada. Recarga la pÃ¡gina.' : (processRes.status === 401 ? 'Debes iniciar sesiÃ³n.' : (processRes.status === 500 ? 'Error al procesar. Intenta de nuevo.' : 'Error del servidor.')));
+                                    throw new Error(processRes.status === 419 ? 'Sesión expirada. Recarga la página.' : (processRes.status === 401 ? 'Debes iniciar sesión.' : (processRes.status === 500 ? 'Error al procesar. Intenta de nuevo.' : 'Error del servidor.')));
                                 }
                                 if (!processData || !processData.success || !processData.movement_id) {
                                     throw new Error(processData?.message || 'No se pudo guardar el pedido. Intenta de nuevo.');
@@ -3616,7 +3563,7 @@
                         }
                     }
 
-                    // Inicializar cuando el DOM estÃ© listo
+                    // Inicializar cuando el DOM esté listo
                     if (document.readyState === 'loading') {
                         document.addEventListener('DOMContentLoaded', init);
                     } else {
@@ -3690,7 +3637,7 @@
                             btnResumen?.classList.add('bg-gray-200', 'dark:bg-gray-700', 'text-gray-700', 'dark:text-gray-300');
                             btnCobro?.classList.remove('bg-gray-100', 'dark:bg-gray-800', 'text-gray-500', 'dark:text-gray-400');
                             btnCobro?.classList.add('bg-brand-500', 'text-white');
-                            // Deshabilitar agregar/modificar productos mientras se estÃ¡ en Cobro
+                            // Deshabilitar agregar/modificar productos mientras se está en Cobro
                             if (productsGrid) {
                                 productsGrid.classList.add('pointer-events-none', 'opacity-60');
                             }
@@ -3727,9 +3674,9 @@
 
                     function clearCobroClient() {
                         const input = document.getElementById('cobro-client-input');
-                        if (input) input.value = 'PÃºblico General';
+                        if (input) input.value = 'Público General';
                         if (currentTable) {
-                            currentTable.clientName = 'PÃºblico General';
+                            currentTable.clientName = 'Público General';
                             currentTable.person_id = null;
                             saveDB();
                         }
@@ -3784,7 +3731,7 @@
                     }
                     function isCobroMethodTransfer(desc) {
                         const d = ('' + (desc || '')).toLowerCase();
-                        return d.includes('transferencia') || d.includes('transfer') || d.includes('deposito') || d.includes('depÃ³sito');
+                        return d.includes('transferencia') || d.includes('transfer') || d.includes('deposito') || d.includes('depósito');
                     }
 
                     function buildCobroGatewayOptions() {
@@ -3798,10 +3745,10 @@
                         const debit = cards.filter(c => (c.type || '').toUpperCase() === 'D');
                         let html = '<option value="">Seleccionar tarjeta</option>';
                         if (credit.length) {
-                            html += '<optgroup label="CrÃ©dito">' + credit.map(c => `<option value="${c.id}">${escapeHtml(c.description || '')}</option>`).join('') + '</optgroup>';
+                            html += '<optgroup label="Crédito">' + credit.map(c => `<option value="${c.id}">${escapeHtml(c.description || '')}</option>`).join('') + '</optgroup>';
                         }
                         if (debit.length) {
-                            html += '<optgroup label="DÃ©bito">' + debit.map(c => `<option value="${c.id}">${escapeHtml(c.description || '')}</option>`).join('') + '</optgroup>';
+                            html += '<optgroup label="Débito">' + debit.map(c => `<option value="${c.id}">${escapeHtml(c.description || '')}</option>`).join('') + '</optgroup>';
                         }
                         return html || '<option value="">Sin tarjetas</option>';
                     }
@@ -3861,7 +3808,7 @@
                         row.innerHTML = `
                                                                                                                                                                                         <div class="flex gap-2 items-end flex-wrap">
                                                                                                                                                                                             <div class="flex-1 min-w-[120px]">
-                                                                                                                                                                                                <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">MÃ©todo</label>
+                                                                                                                                                                                                <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Método</label>
                                                                                                                                                                                                 <select class="cobro-pm-method w-full py-2 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm focus:ring-2 focus:ring-orange-400 focus:border-orange-400" onchange="toggleCobroExtraFields(this.closest('.cobro-pm-row'))">
                                                                                                                                                                                                     ${opts}
                                                                                                                                                                                                 </select>
@@ -3924,7 +3871,7 @@
 
                     function changeClient(selectEl) {
                         if (!selectEl || !currentTable) return;
-                        const name = selectEl.options[selectEl.selectedIndex]?.text || 'PÃºblico General';
+                        const name = selectEl.options[selectEl.selectedIndex]?.text || 'Público General';
                         const personId = selectEl.value ? parseInt(selectEl.value, 10) : null;
                         currentTable.clientName = name;
                         currentTable.person_id = personId;
@@ -3996,7 +3943,7 @@
                         renderTicket();
                     }
 
-                    // Exponer funciones usadas desde onclick en el HTML (mismo Ã¡mbito tras re-render)
+                    // Exponer funciones usadas desde onclick en el HTML (mismo ámbito tras re-render)
                     window.toggleCourtesyInput = toggleCourtesyInput;
                     window.toggleNoteInput = toggleNoteInput;
                     window.updateQty = updateQty;
