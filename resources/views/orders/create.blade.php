@@ -1384,7 +1384,7 @@
                         const lineWidth = paperWidth === 80 ? 48 : 24;
                         const colQty = paperWidth === 80 ? 3 : 2;
                         const colPrice = paperWidth === 80 ? 6 : 5;
-                        const compactGap = ' ';
+                        const compactGap = '  ';
                         const sep = '='.repeat(lineWidth) + '\n';
                         const normalizedCanceledItems = normalizeCancellationsForTicket(canceledItems);
                         const hasCanceled = normalizedCanceledItems.length > 0;
@@ -1468,7 +1468,8 @@
 
                         const totals = getTotalsWithDelivery(groupedItems || []);
                         txt += sep;
-                        txt += 'TOTAL' + compactGap + (totals.total || 0).toFixed(2) + '\n';
+                        txt += padEndSafe('TOTAL', Math.max(5, lineWidth - String((totals.total || 0).toFixed(2)).length))
+                            + (totals.total || 0).toFixed(2) + '\n';
                         txt += '\n';
                         txt += `MESA ${mesaLabel}` + (area ? ' - ' + area.toUpperCase() : '') + '\n';
                         txt += `Mesero: ${mozo}\n`;
