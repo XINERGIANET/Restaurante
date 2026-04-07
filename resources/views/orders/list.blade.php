@@ -138,8 +138,7 @@
                             </div>
                             <div class="col-span-1">
                                 <label class="{{ $labelClass }}">Caja</label>
-                                <select name="cash_register_id" class="{{ $selectClass }}">
-                                    <option value="">Todas</option>
+                                <select name="cash_register_id" class="{{ $selectClass }}" disabled>
                                     @foreach ($cashRegisters ?? [] as $cr)
                                         <option value="{{ $cr->id }}" @selected(($cashRegisterId ?? '') == $cr->id)>{{ $cr->number ?? $cr->id }}</option>
                                     @endforeach

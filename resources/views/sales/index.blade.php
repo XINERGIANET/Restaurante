@@ -165,8 +165,7 @@
                             </div>
                             <div class="{{ $filterClass }}">
                                 <label class="{{ $labelClass }}">Caja</label>
-                                <select name="cash_register_id" class="{{ $inputClass }}">
-                                    <option value="">Todas</option>
+                                <select name="cash_register_id" class="{{ $inputClass }}" disabled>
                                     @foreach ($cashRegisters ?? [] as $cr)
                                         <option value="{{ $cr->id }}" @selected(($cashRegisterId ?? '') == $cr->id)>
                                             {{ $cr->number ?? $cr->id }}</option>

@@ -174,7 +174,7 @@ class OrderController extends Controller
         $profileId = $request->session()->get('profile_id') ?? $request->user()?->profile_id;
         $documentTypeId = $request->input('document_type_id');
         $paymentMethodId = $request->input('payment_method_id');
-        $cashRegisterId = $request->input('cash_register_id');
+        $cashRegisterId = effective_cash_register_id($branchId ? (int) $branchId : null);
         $documentTypes = DocumentType::query()
             ->orderBy('name')
             ->tap(fn ($q) => InsensitiveSearch::whereInsensitiveLikePattern($q, 'name', '%venta%'))
@@ -184,10 +184,13 @@ class OrderController extends Controller
             ->restrictedToBranch($branchId ? (int) $branchId : null)
             ->orderBy('order_num')
             ->get(['id', 'description']);
-        $effectiveCashRegisterId = $cashRegisterId ?: session('cash_register_id');
+        $effectiveCashRegisterId = $cashRegisterId;
         $cashShiftRelationId = $request->input('cash_shift_relation_id');
 
-        $cashRegisters = CashRegister::query()->orderBy('number')->get(['id', 'number']);
+        $cashRegisters = CashRegister::query()
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->orderBy('number')
+            ->get(['id', 'number']);
         $operaciones = collect();
         if ($viewId && $branchId && $profileId) {
             $operaciones = Operation::query()
@@ -528,7 +531,7 @@ class OrderController extends Controller
         $search = $request->input('search');
         $documentTypeId = $request->input('document_type_id');
         $paymentMethodId = $request->input('payment_method_id');
-        $cashRegisterId = $request->input('cash_register_id');
+        $cashRegisterId = effective_cash_register_id($branchId ? (int) $branchId : null);
         $status = $request->input('status');
         $cashShiftRelationId = $request->input('cash_shift_relation_id');
         $branchId = $request->session()->get('branch_id');
@@ -586,7 +589,7 @@ class OrderController extends Controller
             });
 
         // Filtro por turno (CashShiftRelation): ventana temporal por movimientos
-        $effectiveCR = $cashRegisterId ?: session('cash_register_id');
+        $effectiveCR = $cashRegisterId;
         if ($cashShiftRelationId !== null && $cashShiftRelationId !== '' && $branchId && $effectiveCR) {
             $csrApplied = \App\Models\CashShiftRelation::query()
                 ->with(['cashMovementStart', 'cashMovementEnd'])
@@ -1000,6 +1003,7 @@ class OrderController extends Controller
             ->orderBy('name')
             ->whereIn('movement_type_id', ! empty($saleOrOrderTypeIds) ? $saleOrOrderTypeIds : [2])
             ->get(['id', 'name']);
+        $defaultDocumentTypeId = effective_default_sale_document_type_id($branchId, ! empty($saleOrOrderTypeIds) ? $saleOrOrderTypeIds : [2]);
         $paymentMethods = PaymentMethod::query()
             ->where('status', true)
             ->restrictedToBranch($branchId)
@@ -1059,6 +1063,7 @@ class OrderController extends Controller
             'pendingDeliveryAmount' => $pendingOrder?->delivery_amount ?? 0,
             'pendingTakeawayDisposableAmount' => (float) ($pendingOrder?->takeaway_disposable_amount ?? 0),
             'documentTypes' => $documentTypes,
+            'defaultDocumentTypeId' => $defaultDocumentTypeId,
             'paymentMethods' => $paymentMethods,
             'paymentGateways' => $paymentGateways,
             'cards' => $cards,
@@ -1102,6 +1107,7 @@ class OrderController extends Controller
             ->orderBy('name')
             ->whereIn('movement_type_id', ! empty($saleOrOrderTypeIds) ? $saleOrOrderTypeIds : [2])
             ->get(['id', 'name']);
+        $defaultDocumentTypeId = effective_default_sale_document_type_id($branchIdForPm ?: null, ! empty($saleOrOrderTypeIds) ? $saleOrOrderTypeIds : [2]);
 
         $branchIdForPm = (int) session('branch_id');
 
@@ -1217,6 +1223,7 @@ class OrderController extends Controller
 
         return view('orders.charge', [
             'documentTypes' => $documentTypes,
+            'defaultDocumentTypeId' => $defaultDocumentTypeId,
             'paymentMethods' => $paymentMethods,
             'paymentGateways' => $paymentGateways,
             'cards' => $cards,
@@ -2120,10 +2127,13 @@ class OrderController extends Controller
         }
 
         // ── Validar caja ANTES de tocar la base de datos ──────────────────────
-        $requestCashRegisterId = $request->input('cash_register_id');
-        $cashRegisterId = ($requestCashRegisterId && CashRegister::find((int) $requestCashRegisterId))
-            ? (int) $requestCashRegisterId
-            : $this->resolveActiveCashRegisterId($branchId);
+        $cashRegisterId = effective_cash_register_id($branchId);
+        if (! $cashRegisterId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Seleccione una caja de trabajo antes de cobrar el pedido.',
+            ], 422);
+        }
 
         try {
             $this->assertCashRegisterIsOpen($cashRegisterId, $branchId);
@@ -2161,8 +2171,12 @@ class OrderController extends Controller
                         $updateData['person_name'] = $clientName;
                     }
                     $requestDocumentTypeId = $request->input('document_type_id');
-                    if ($requestDocumentTypeId && DocumentType::where('id', $requestDocumentTypeId)->exists()) {
-                        $updateData['document_type_id'] = (int) $requestDocumentTypeId;
+                    $defaultDocumentTypeId = effective_default_sale_document_type_id($branchId, [2]);
+                    $resolvedDocumentTypeId = ($requestDocumentTypeId && DocumentType::where('id', $requestDocumentTypeId)->exists())
+                        ? (int) $requestDocumentTypeId
+                        : $defaultDocumentTypeId;
+                    if ($resolvedDocumentTypeId && DocumentType::where('id', $resolvedDocumentTypeId)->exists()) {
+                        $updateData['document_type_id'] = (int) $resolvedDocumentTypeId;
                     }
                     $orderBaseMovement->update($updateData);
 

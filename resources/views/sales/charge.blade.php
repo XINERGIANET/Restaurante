@@ -143,7 +143,7 @@
                                             onclick="selectDocument(this, '{{ $documentType->id }}')"
                                             {{-- Clases Dinámicas --}}
                                             class="doc-type-btn inline-flex items-center gap-1 rounded-lg border-2 px-3 py-1.5 text-xs font-semibold transition-all duration-200
-                                            {{ $index === 0 
+                                            {{ (int) ($defaultDocumentTypeId ?? ($documentTypes->first()?->id ?? 0)) === (int) $documentType->id
                                                 ? 'doc-selected border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-600' 
                                                 : 'border-slate-200 bg-slate-50 text-gray-600 hover:border-blue-400 hover:bg-blue-50/80 hover:text-blue-700 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:border-blue-500 dark:hover:bg-blue-900/30' 
                                             }}"
@@ -157,7 +157,7 @@
                                 </div>
 
                                 {{-- Input Oculto que guarda el ID --}}
-                                <input type="hidden" id="document-type-id" name="document_type_id" value="{{ $documentTypes->first()?->id ?? '' }}">
+                                <input type="hidden" id="document-type-id" name="document_type_id" value="{{ $defaultDocumentTypeId ?? ($documentTypes->first()?->id ?? '') }}">
                             </div>
 
                             <div class="rounded-xl border border-cyan-100 bg-cyan-50/35 p-3 dark:border-gray-600 dark:bg-gray-800 shadow-sm">

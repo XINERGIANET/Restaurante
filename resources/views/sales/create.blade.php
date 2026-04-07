@@ -172,7 +172,7 @@
                                         <select id="cobro-document-type"
                                             class="w-full py-2.5 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-slate-700 dark:text-slate-200 text-sm">
                                             @forelse(($documentTypes ?? []) as $dt)
-                                                <option value="{{ $dt?->id }}">{{ $dt?->name ?? '' }}</option>
+                                                <option value="{{ $dt?->id }}" @selected((int) ($defaultDocumentTypeId ?? 0) === (int) ($dt?->id ?? 0))>{{ $dt?->name ?? '' }}</option>
                                             @empty
                                                 <option value="">Sin documentos</option>
                                             @endforelse
@@ -182,9 +182,10 @@
                                         <label
                                             class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">Caja</label>
                                         <select id="cobro-cash-register"
-                                            class="w-full py-2.5 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-slate-700 dark:text-slate-200 text-sm">
+                                            disabled
+                                            class="w-full py-2.5 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-100 dark:bg-gray-800/70 text-slate-700 dark:text-slate-200 text-sm cursor-not-allowed">
                                             @forelse(($cashRegisters ?? []) as $cr)
-                                                <option value="{{ $cr?->id }}">
+                                                <option value="{{ $cr?->id }}" @selected((int) session('cash_register_id') === (int) $cr?->id)>
                                                     {{ $cr?->number ?? 'Caja ' . ($cr?->id ?? '') }}
                                                 </option>
                                             @empty

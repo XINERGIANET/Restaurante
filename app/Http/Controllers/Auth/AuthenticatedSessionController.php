@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Helpers\MenuHelper;
 use App\Http\Controllers\Controller;
+use App\Models\CashRegister;
 use App\Models\Profile;
 use App\Models\Shift;
 use Illuminate\Http\Request;
@@ -34,6 +35,9 @@ class AuthenticatedSessionController extends Controller
 
             $request->session()->put('user_id', $user->id);
             $request->session()->put('user_name', $user->name);
+            $request->session()->forget('cash_register_id');
+            $request->session()->forget('cash_register_name');
+            $request->session()->forget('cash_register_number');
 
             if ($person) {
                 $request->session()->put('person_id', $person->id);             
@@ -58,6 +62,12 @@ class AuthenticatedSessionController extends Controller
                     ];
                     $request->session()->put('shift_snapshot', $shiftSnapshot);
                 }
+
+                $hasCashRegisters = CashRegister::query()
+                    ->where('branch_id', $person->branch_id)
+                    ->exists();
+
+                $request->session()->put('force_cash_register_modal', $hasCashRegisters);
             }
 
             // Redirección según perfil:

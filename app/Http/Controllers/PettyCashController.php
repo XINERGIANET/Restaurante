@@ -29,19 +29,15 @@ class PettyCashController extends Controller
     public function redirectBase(Request $request)
     {
         $branchId = $request->session()->get('branch_id');
-        $query = CashRegister::where('status', '1');
-        if ($branchId) {
-            $query->where('branch_id', $branchId);
-        }
-        $firstBox = $query->orderBy('number', 'asc')->first();
-        if ($firstBox) {
-            $params = ['cash_register_id' => $firstBox->id];
+        $selectedBoxId = effective_cash_register_id($branchId ? (int) $branchId : null);
+        if ($selectedBoxId) {
+            $params = ['cash_register_id' => $selectedBoxId];
             if ($request->filled('view_id')) {
                 $params['view_id'] = $request->input('view_id');
             }
             return redirect()->route('petty-cash.index', $params);
         }
-        return redirect()->route('boxes.index')->with('error', 'No hay cajas registradas');
+        return redirect()->route('boxes.index')->with('error', 'Seleccione una caja de trabajo antes de operar caja chica.');
     }
 
     public function index(Request $request, $cash_register_id = null)
@@ -102,14 +98,17 @@ class PettyCashController extends Controller
         $cashRegisters = $branchId
             ? CashRegister::where('status', '1')->where('branch_id', $branchId)->orderBy('number', 'asc')->get()
             : CashRegister::where('status', '1')->orderBy('number', 'asc')->get();
-        $selectedBoxId = $request->input('cash_register_id') ?? $cash_register_id;
-
-        if (empty($selectedBoxId) && $cashRegisters->isNotEmpty()) {
-            $selectedBoxId = $cashRegisters->first()->id;
+        $selectedBoxId = effective_cash_register_id($branchId ? (int) $branchId : null);
+        if (! $selectedBoxId) {
+            return redirect()->route('boxes.index')->with('error', 'Seleccione una caja de trabajo antes de operar caja chica.');
         }
-        // Si hay sucursal y la caja elegida no es de esta sucursal, usar la primera caja de la sucursal
-        if ($branchId && $selectedBoxId && $cashRegisters->isNotEmpty() && !$cashRegisters->contains('id', $selectedBoxId)) {
-            $selectedBoxId = $cashRegisters->first()->id;
+        if ($cash_register_id !== null && (int) $cash_register_id !== (int) $selectedBoxId) {
+            $params = ['cash_register_id' => $selectedBoxId];
+            if ($request->query()) {
+                $params = array_merge($request->query(), $params);
+            }
+
+            return redirect()->route('petty-cash.index', $params);
         }
 
         $summary = $this->getShiftSummary($selectedBoxId);
@@ -288,13 +287,19 @@ class PettyCashController extends Controller
 
     public function cierre(Request $request, $cash_register_id)
     {
+        $selectedBoxId = effective_cash_register_id(session('branch_id') ? (int) session('branch_id') : null);
+        if (! $selectedBoxId || (int) $cash_register_id !== (int) $selectedBoxId) {
+            return redirect()->route('petty-cash.index', ['cash_register_id' => $selectedBoxId ?: $cash_register_id, 'view_id' => $request->input('view_id')])
+                ->with('error', 'La caja activa de la sesión no coincide con la solicitada.');
+        }
+
         $branchId = $request->session()->get('branch_id');
         $viewId = $request->input('view_id');
 
-        $summary = $this->getShiftSummary($cash_register_id);
+        $summary = $this->getShiftSummary($selectedBoxId);
 
         if (!$summary['hasOpening']) {
-            return redirect()->route('petty-cash.index', ['cash_register_id' => $cash_register_id, 'view_id' => $viewId])
+            return redirect()->route('petty-cash.index', ['cash_register_id' => $selectedBoxId, 'view_id' => $viewId])
                 ->with('error', 'No hay un turno activo para esta caja. Realice una Apertura de Caja primero.');
         }
 
@@ -317,8 +322,8 @@ class PettyCashController extends Controller
 
         return view('petty_cash.cierre', [
             'title' => 'Registrar Cierre de Caja',
-            'cash_register_id' => $cash_register_id,
-            'selectedBoxId' => $cash_register_id,
+            'cash_register_id' => $selectedBoxId,
+            'selectedBoxId' => $selectedBoxId,
             'viewId' => $viewId,
             'egresoDocId' => $egresoDocId,
             'conceptsEgreso' => $conceptsEgreso,

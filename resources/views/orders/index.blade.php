@@ -75,8 +75,8 @@
                         <template x-for="table in (filteredTables || [])" :key="table.id">
                             <div @click="openTable(table)"
                             class="relative rounded-2xl shadow-md rounded-2xl border border-l-4 overflow-hidden bg-white dark:bg-gray-800 transition-all hover:shadow-lg cursor-pointer flex h-[220px] min-h-[220px] max-h-[220px]"
-                            :class="table.situation === 'ocupada' ? 'border-gray-200 dark:border-gray-700' : 'border-blue-200 dark:border-blue-700'"
-                            :style="table.situation === 'ocupada' ? 'border-left-color: #F37022' : 'border-left-color: rgb(59, 130, 246)'">
+                            :class="table.situation === 'ocupada' ? 'border-gray-200 dark:border-gray-700' : 'border-emerald-200 dark:border-emerald-700'"
+                            :style="table.situation === 'ocupada' ? 'border-left-color: #F37022' : 'border-left-color: #10B981'">
                 
                                 <div class="flex flex-col w-full flex-1 min-h-0 overflow-hidden p-4">
                 
@@ -89,7 +89,7 @@
                                             </div>
                                         </template>
                                         <template x-if="table.situation === 'libre'">
-                                            <div class="w-10 h-10 rounded-full border-2 border-blue-500 text-blue-500 flex items-center justify-center font-semibold text-base"
+                                            <div class="w-10 h-10 rounded-full border-2 border-emerald-500 text-emerald-500 flex items-center justify-center font-semibold text-base"
                                                 x-text="String(table.name || table.id).padStart(2, '0')">
                                             </div>
                                         </template>
@@ -104,7 +104,7 @@
                                                 x-text="table.elapsed"></span>
                                         </template>
                                         <template x-if="table.situation === 'libre'">
-                                            <span class="text-xs bg-gray-100 dark:bg-gray-700 px-2.5 py-1 rounded-full text-gray-400 font-medium">Libre</span>
+                                            <span class="text-xs bg-emerald-50 dark:bg-emerald-900/30 px-2.5 py-1 rounded-full text-emerald-600 dark:text-emerald-300 font-medium">Libre</span>
                                         </template>
                                     </div>
                 
@@ -113,12 +113,12 @@
                 
                                     {{-- Grid de metadata --}}
                                     <div class="flex flex-col gap-y-2 flex-1">
-                                        <div class="min-w-0">
+                                        <div class="min-w-0" x-show="table.situation === 'ocupada'">
                                             <p class="text-[10px] text-gray-400 dark:text-gray-500">Mozo</p>
                                             <p class="text-xs font-medium text-gray-800 dark:text-white truncate"
                                                 x-text="table.waiter || '-'" :title="table.waiter || '-'"></p>
                                         </div>
-                                        <div class="min-w-0">
+                                        <div class="min-w-0" x-show="table.situation === 'ocupada'">
                                             <p class="text-[10px] text-gray-400 dark:text-gray-500">Cliente</p>
                                             <p class="text-xs font-medium text-gray-800 dark:text-white truncate"
                                                 x-text="(table.client && table.client !== '-') ? table.client : 'Público General'"
@@ -138,7 +138,7 @@
                                                 x-text="'S/. ' + parseFloat(table.total).toFixed(2)"></p>
                                         </template>
                                         <template x-if="table.situation === 'libre'">
-                                            <p class="text-lg font-semibold text-gray-400">—</p>
+                                            <div></div>
                                         </template>
                 
                                         <template x-if="table.situation === 'ocupada'">

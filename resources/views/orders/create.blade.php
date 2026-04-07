@@ -94,12 +94,16 @@
                         currentTable.order_movement_id = null;
                         currentTable.movement_id = null;
                         currentTable.items = currentTable.items || [];
+                        currentTable.cancellations = [];
                         (currentTable.items || []).forEach(it => {
                             if (it.takeawayQty == null || isNaN(parseFloat(it.takeawayQty))) it.takeawayQty = 0;
                             const q = parseFloat(it.qty) || 0;
                             let t = parseFloat(it.takeawayQty) || 0;
                             if (t > q) it.takeawayQty = q;
                         });
+                    }
+                    if (!serverOrderMovementId || tableIsFree) {
+                        currentTable.cancellations = [];
                     }
                     currentTable.cancellations = currentTable.cancellations || [];
                     if (currentTable.takeaway_disposable_charge === undefined) {
@@ -422,7 +426,7 @@
                                         <select id="cobro-document-type"
                                             class="w-full py-2.5 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-slate-700 dark:text-slate-200 text-sm">
                                             @forelse(($documentTypes ?? []) as $dt)
-                                                <option value="{{ optional($dt)->id }}">{{ optional($dt)->name ?? '' }}</option>
+                                                <option value="{{ optional($dt)->id }}" @selected((int) ($defaultDocumentTypeId ?? 0) === (int) optional($dt)->id)>{{ optional($dt)->name ?? '' }}</option>
                                             @empty
                                                 <option value="">Sin documentos</option>
                                             @endforelse
@@ -432,9 +436,10 @@
                                         <label
                                             class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">Caja</label>
                                         <select id="cobro-cash-register"
-                                            class="w-full py-2.5 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-slate-700 dark:text-slate-200 text-sm">
+                                            disabled
+                                            class="w-full py-2.5 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-100 dark:bg-gray-800/70 text-slate-700 dark:text-slate-200 text-sm cursor-not-allowed">
                                             @forelse(($cashRegisters ?? []) as $cr)
-                                                <option value="{{ optional($cr)->id }}">
+                                                <option value="{{ optional($cr)->id }}" @selected((int) session('cash_register_id') === (int) optional($cr)->id)>
                                                     {{ optional($cr)->number ?? 'Caja ' . optional($cr)->id }}
                                                 </option>
                                             @empty
@@ -2893,10 +2898,11 @@
                         const listEl = document.getElementById('cancelled-platos-list');
                         if (!container || !listEl) return;
 
-                        const hasSavedOrder = !!currentTable.order_movement_id;
+                        const hasActiveServerOrder = !!serverOrderMovementId && !tableIsFree;
+                        const hasSavedOrder = hasActiveServerOrder && !!currentTable.order_movement_id;
                         const isCurrentPendingOrder = hasSavedOrder && (currentTable.order_movement_id === serverOrderMovementId);
                         const serverCancelled = (isCurrentPendingOrder && serverPendingCancelledDetails && serverPendingCancelledDetails.length) ? serverPendingCancelledDetails : [];
-                        const clientCancelled = currentTable.cancellations || [];
+                        const clientCancelled = isCurrentPendingOrder ? (currentTable.cancellations || []) : [];
                         const hasAny = serverCancelled.length > 0 || clientCancelled.length > 0;
 
                         if (!hasSavedOrder || !hasAny) {
@@ -3271,12 +3277,8 @@
                         const sel = document.getElementById('cobro-thermal-printer');
                         const printerId = sel && sel.value ? parseInt(sel.value, 10) : null;
                         const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-                        const ticketMethods = getCobroPaymentMethodsFromForm();
-                        const items = getItemsGroupedByProduct();
-                        const totals = getTotalsWithDelivery(items);
                         const printerName = resolvePreAccountPrinterName();
-                        const ticketText = buildPaymentTicketTextApproved(currentTable, items, ticketMethods, totals, resolvePrinterWidthByName(printerName));
-                        const body = { movement_id: movementId, ticket_text: ticketText };
+                        const body = { movement_id: movementId };
                         if (printerId) body.printer_id = printerId;
 
                         let qzFailed = false;

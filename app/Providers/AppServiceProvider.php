@@ -60,13 +60,22 @@ class AppServiceProvider extends ServiceProvider
                     $query->where('branch_id', $branchId);
                 }
                 $cajas = $query->get();
-                $currentCajaId = session('cash_register_id');
-                if ($cajas->isNotEmpty()) {
-                    if (!$currentCajaId || ($branchId && !$cajas->contains('id', $currentCajaId))) {
-                        session(['cash_register_id' => $cajas->first()->id]);
-                    }
+                $currentCajaId = effective_cash_register_id($branchId ? (int) $branchId : null);
+                $currentCaja = $currentCajaId ? $cajas->firstWhere('id', $currentCajaId) : null;
+
+                if (! $currentCaja && session()->has('cash_register_id')) {
+                    session()->forget(['cash_register_id', 'cash_register_name', 'cash_register_number']);
                 }
-                $view->with('cashRegisters', $cajas);
+
+                $cashSelectionRequired = cash_register_selection_required($branchId ? (int) $branchId : null);
+                $forceCashRegisterModal = $cashSelectionRequired || (bool) session('force_cash_register_modal', false);
+
+                $view->with([
+                    'cashRegisters' => $cajas,
+                    'selectedCashRegister' => $currentCaja,
+                    'cashSelectionRequired' => $cashSelectionRequired,
+                    'forceCashRegisterModal' => $forceCashRegisterModal,
+                ]);
             }
         });
     }

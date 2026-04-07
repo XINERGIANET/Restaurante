@@ -28,6 +28,10 @@
         .totals .final { border-top: 2px solid #111827; margin-top: 6px; padding-top: 6px; font-weight: 700; font-size: 20px; }
         .notes { margin-top: 20px; }
         .notes p { margin: 6px 0 0; }
+        .qr-box { margin-top: 18px; display: flex; justify-content: flex-end; }
+        .qr-box-inner { width: 180px; text-align: center; }
+        .qr-box img { width: 170px; height: 170px; object-fit: contain; display: block; margin: 0 auto; }
+        .qr-caption { margin-top: 6px; font-size: 10px; color: #475569; word-break: break-all; }
         @media print {
             body { margin: 10mm; }
         }
@@ -42,6 +46,15 @@
     $ticketTax = (float) ($sale->salesMovement?->tax ?? $sale->orderMovement?->tax ?? 0);
     $ticketTotal = (float) ($sale->salesMovement?->total ?? $sale->orderMovement?->total ?? 0);
     $ticketCurrency = $sale->salesMovement?->currency ?? 'PEN';
+    $customerName = trim((string) ($sale->person_name ?? ''));
+    $customerLower = mb_strtolower($customerName, 'UTF-8');
+    $customerDocument = trim((string) ($sale->person?->document_number ?? ''));
+    if ($customerName === '' || $customerLower === 'sin cliente') {
+        $customerName = 'CLIENTES VARIOS';
+    }
+    if ($customerDocument === '' || $customerDocument === '-') {
+        $customerDocument = '0';
+    }
 @endphp
 
 <div class="head">
@@ -65,11 +78,11 @@
     </tr>
     <tr>
         <td class="label">Cliente:</td>
-        <td>{{ $sale->person_name ?? 'CLIENTES VARIOS' }}</td>
+        <td>{{ $customerName }}</td>
     </tr>
     <tr>
         <td class="label">RUC/DNI:</td>
-        <td>{{ $sale->person?->document_number ?? '-' }}</td>
+        <td>{{ $customerDocument }}</td>
     </tr>
     <tr>
         <td class="label">Direccion:</td>
@@ -122,6 +135,14 @@
     <div><span>I.G.V.:</span><span>S/ {{ number_format($ticketTax, 2) }}</span></div>
     <div class="final"><span>Importe total:</span><span>S/ {{ number_format($ticketTotal, 2) }}</span></div>
 </div>
+
+@if(!empty($qrImageUrl))
+    <div class="qr-box">
+        <div class="qr-box-inner">
+            <img src="{{ $qrImageUrl }}" alt="QR del comprobante">
+        </div>
+    </div>
+@endif
 
 <div class="notes">
     <b>Observacion:</b>

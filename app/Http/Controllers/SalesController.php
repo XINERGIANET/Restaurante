@@ -57,7 +57,7 @@ class SalesController extends Controller
         $personId = $request->input('person_id');
         $documentTypeId = $request->input('document_type_id');
         $paymentMethodId = $request->input('payment_method_id');
-        $cashRegisterId = $request->input('cash_register_id');
+        $cashRegisterId = effective_cash_register_id($branchId ? (int) $branchId : null);
         $cashShiftRelationId = $request->input('cash_shift_relation_id');
         $saleType = $request->input('sale_type');
         $perPage = (int) $request->input('per_page', 10);
@@ -105,7 +105,7 @@ class SalesController extends Controller
             ? CashRegister::query()->where('branch_id', $branchId)->orderBy('number')->get(['id', 'number'])
             : CashRegister::query()->whereRaw('1 = 0')->get(['id', 'number']);
 
-        $effectiveCashRegisterId = $cashRegisterId ?: session('cash_register_id');
+        $effectiveCashRegisterId = $cashRegisterId;
 
         // Sesiones (turnos) por caja para filtrar el listado y "limpiar" al abrir una nueva
         $cashShiftSessions = collect();
@@ -267,7 +267,7 @@ class SalesController extends Controller
     // Obtener caja desde sesión
     public function getSessionCashRegister(Request $request)
     {
-        $cashRegisterId = session('cash_register_id');
+        $cashRegisterId = effective_cash_register_id(session('branch_id') ? (int) session('branch_id') : null);
 
         return response()->json([
             'success' => true,
@@ -390,6 +390,7 @@ class SalesController extends Controller
             ->orderBy('name')
             ->where('movement_type_id', 2)
             ->get(['id', 'name']);
+        $defaultDocumentTypeId = effective_default_sale_document_type_id($branchId, [2]);
 
         $paymentMethods = PaymentMethod::query()
             ->where('status', true)
@@ -444,6 +445,7 @@ class SalesController extends Controller
             'categories' => $categories,
             'people' => $people,
             'documentTypes' => $documentTypes,
+            'defaultDocumentTypeId' => $defaultDocumentTypeId,
             'paymentMethods' => $paymentMethods,
             'paymentGateways' => $paymentGateways,
             'cards' => $cards,
@@ -470,6 +472,7 @@ class SalesController extends Controller
             ->get(['id', 'name']);
 
         $branchId = session('branch_id');
+        $defaultDocumentTypeId = effective_default_sale_document_type_id($branchId ? (int) $branchId : null, [2]);
 
         $paymentMethods = PaymentMethod::query()
             ->where('status', true)
@@ -591,6 +594,7 @@ class SalesController extends Controller
 
         return view('sales.charge', [
             'documentTypes' => $documentTypes,
+            'defaultDocumentTypeId' => $defaultDocumentTypeId,
             'paymentMethods' => $paymentMethods,
             'paymentGateways' => $paymentGateways,
             'cards' => $cards,
@@ -655,7 +659,7 @@ class SalesController extends Controller
 
         // ── Validar caja ANTES de iniciar la transacción ──────────────────────
         $branchIdForCheck = (int) session('branch_id');
-        $cashRegisterId = $request->input('cash_register_id') ?: session('cash_register_id');
+        $cashRegisterId = effective_cash_register_id($branchIdForCheck);
 
         if (! $cashRegisterId) {
             return response()->json(['success' => false, 'message' => 'Selecciona una caja antes de registrar la venta.'], 422);
@@ -1587,21 +1591,31 @@ class SalesController extends Controller
 
     private function estimateSaleTicketHeight(Movement $sale): string
     {
-        $details = $sale->details ?? collect();
+        $details = $this->ticketDetailsForMovement($sale);
+        $lineWidth = 20;
         $detailLines = 0;
 
         foreach ($details as $detail) {
             $description = trim((string) ($detail->description ?? $detail->product?->description ?? 'Producto'));
-            $detailLines += max(1, (int) ceil(mb_strlen($description) / 22));
+            $detailLines += max(1, (int) ceil(mb_strlen($description) / $lineWidth));
         }
 
-        $baseHeight = 78;
-        $itemsHeight = $detailLines * 7;
-        $addressHeight = mb_strlen((string) ($sale->person?->address ?? '')) > 24 ? 8 : 0;
-        $customerHeight = mb_strlen((string) ($sale->person_name ?? '')) > 24 ? 4 : 0;
-        $notesHeight = $sale->salesMovement?->payment_type === 'CREDIT' ? 6 : 0;
+        $customerNameLines = max(1, (int) ceil(mb_strlen((string) ($sale->person_name ?? 'CLIENTES VARIOS')) / 24));
+        $addressLines = max(1, (int) ceil(mb_strlen((string) ($sale->person?->address ?? '-')) / 24));
+        $documentLines = max(1, (int) ceil(mb_strlen((string) ($sale->person?->document_number ?? '-')) / 24));
+        $paymentLines = max(1, (int) ceil(mb_strlen((string) $this->resolveSalePaymentLabel($sale)) / 24));
+        $notesLines = 0;
+        if (filled((string) $sale->comment)) {
+            $notesLines = max(1, (int) ceil(mb_strlen((string) $sale->comment) / 26));
+        }
 
-        $height = max(95, min(600, $baseHeight + $itemsHeight + $addressHeight + $customerHeight + $notesHeight));
+        $baseHeight = 106;
+        $itemsHeight = $detailLines * 8;
+        $metaHeight = ($customerNameLines + $addressLines + $documentLines + $paymentLines) * 4;
+        $notesHeight = $notesLines * 5;
+        $footerSafety = 18;
+
+        $height = max(120, min(900, $baseHeight + $itemsHeight + $metaHeight + $notesHeight + $footerSafety));
 
         return $height.'mm';
     }
@@ -1936,8 +1950,61 @@ class SalesController extends Controller
             'logoFileUrl' => $logoFileUrl,
             'printedAt' => now(),
             'paymentLabel' => $this->resolveSalePaymentLabel($sale),
+            'qrPayload' => $this->buildSaleQrPayload($sale, $branchForLogo),
+            'qrImageUrl' => $this->buildSaleQrImageUrl($sale, $branchForLogo),
             'viewId' => $request->input('view_id'),
         ];
+    }
+
+    private function buildSaleQrPayload(Movement $sale, ?Branch $branchForLogo): ?string
+    {
+        $docName = mb_strtolower(trim((string) ($sale->documentType?->name ?? '')), 'UTF-8');
+        $documentCode = null;
+
+        if (str_contains($docName, 'factura')) {
+            $documentCode = '01';
+        } elseif (str_contains($docName, 'boleta')) {
+            $documentCode = '03';
+        }
+
+        if (! $documentCode) {
+            return null;
+        }
+
+        $series = $this->ticketSeriesForMovement($sale);
+        $correlative = (string) ($sale->number ?? '');
+        $tax = number_format((float) ($sale->salesMovement?->tax ?? $sale->orderMovement?->tax ?? 0), 2, '.', '');
+        $total = number_format((float) ($sale->salesMovement?->total ?? $sale->orderMovement?->total ?? 0), 2, '.', '');
+        $issueDate = optional($sale->moved_at)->format('Y-m-d') ?? now()->format('Y-m-d');
+        $customerDocument = trim((string) ($sale->person?->document_number ?? ''));
+        $customerDocument = ($customerDocument === '' || $customerDocument === '-') ? '0' : $customerDocument;
+        $customerDocumentType = strlen($customerDocument) === 11 ? '6' : (strlen($customerDocument) === 8 ? '1' : '0');
+        $ruc = trim((string) ($branchForLogo?->ruc ?? ''));
+        if ($ruc === '') {
+            $ruc = '0';
+        }
+
+        return implode('|', [
+            $ruc,
+            $documentCode,
+            $series,
+            $correlative,
+            $tax,
+            $total,
+            $issueDate,
+            $customerDocumentType,
+            $customerDocument,
+        ]);
+    }
+
+    private function buildSaleQrImageUrl(Movement $sale, ?Branch $branchForLogo): ?string
+    {
+        $payload = $this->buildSaleQrPayload($sale, $branchForLogo);
+        if (! $payload) {
+            return null;
+        }
+
+        return 'https://api.qrserver.com/v1/create-qr-code/?size=170x170&margin=0&data='.rawurlencode($payload);
     }
 
     /**
@@ -2063,7 +2130,7 @@ class SalesController extends Controller
         $dateTo = $request->input('date_to');
         $documentTypeId = $request->input('document_type_id');
         $paymentMethodId = $request->input('payment_method_id');
-        $cashRegisterId = $request->input('cash_register_id');
+        $cashRegisterId = effective_cash_register_id($branchId ? (int) $branchId : null);
         $personId = $request->input('person_id');
         $saleType = $request->input('sale_type');
         $cashShiftRelationId = $request->input('cash_shift_relation_id');
@@ -2124,7 +2191,7 @@ class SalesController extends Controller
         }
 
         // Filtro por turno (CashShiftRelation): ventana temporal por movimientos
-        $effectiveCR = $cashRegisterId ?: session('cash_register_id');
+        $effectiveCR = $cashRegisterId;
         if ($cashShiftRelationId !== null && $cashShiftRelationId !== '' && $branchId && $effectiveCR) {
             $csrApplied = CashShiftRelation::query()
                 ->with(['cashMovementStart', 'cashMovementEnd'])
@@ -2218,7 +2285,7 @@ class SalesController extends Controller
         $dateTo = $request->input('date_to');
         $documentTypeId = $request->input('document_type_id');
         $paymentMethodId = $request->input('payment_method_id');
-        $cashRegisterId = $request->input('cash_register_id');
+        $cashRegisterId = effective_cash_register_id($branchId ? (int) $branchId : null);
         $saleType = $request->input('sale_type');
         $cashShiftRelationId = $request->input('cash_shift_relation_id');
 
@@ -2272,7 +2339,7 @@ class SalesController extends Controller
             });
         }
 
-        $effectiveCR = $cashRegisterId ?: session('cash_register_id');
+        $effectiveCR = $cashRegisterId;
         if ($cashShiftRelationId !== null && $cashShiftRelationId !== '' && $branchId && $effectiveCR) {
             $csrApplied = CashShiftRelation::query()
                 ->with(['cashMovementStart', 'cashMovementEnd'])

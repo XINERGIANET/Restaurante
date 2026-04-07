@@ -118,6 +118,7 @@
         .col-product {
             width: 42%;
             text-align: left;
+            padding-left: 1.4mm;
             padding-right: 1mm;
             word-break: break-word;
             overflow-wrap: anywhere;
@@ -126,6 +127,7 @@
         .col-qty {
             width: 15%;
             text-align: right;
+            padding-right: 1.4mm;
         }
 
         .col-unit {
@@ -168,6 +170,17 @@
             font-weight: 800;
         }
 
+        .qr-wrap {
+            text-align: center;
+            margin-top: 1.6mm;
+        }
+
+        .qr-wrap img {
+            width: 24mm;
+            height: 24mm;
+            object-fit: contain;
+        }
+
         .footer {
             text-align: center;
             font-size: 2.7mm;
@@ -188,6 +201,15 @@
     $ticketSubtotal = (float) ($sale->salesMovement?->subtotal ?? $sale->orderMovement?->subtotal ?? 0);
     $ticketTax = (float) ($sale->salesMovement?->tax ?? $sale->orderMovement?->tax ?? 0);
     $ticketTotal = (float) ($sale->salesMovement?->total ?? $sale->orderMovement?->total ?? 0);
+    $customerName = trim((string) ($sale->person_name ?? ''));
+    $customerLower = mb_strtolower($customerName, 'UTF-8');
+    $customerDocument = trim((string) ($sale->person?->document_number ?? ''));
+    if ($customerName === '' || $customerLower === 'sin cliente') {
+        $customerName = 'CLIENTES VARIOS';
+    }
+    if ($customerDocument === '' || $customerDocument === '-') {
+        $customerDocument = '0';
+    }
 @endphp
 
 <div class="ticket">
@@ -212,7 +234,7 @@
         </tr>
         <tr>
             <td class="info-label">Cliente:</td>
-            <td class="info-value">{{ $sale->person_name ?? 'CLIENTES VARIOS' }}</td>
+            <td class="info-value">{{ $customerName }}</td>
         </tr>
         <tr>
             <td class="info-label">Dir.:</td>
@@ -220,7 +242,7 @@
         </tr>
         <tr>
             <td class="info-label">RUC/DNI:</td>
-            <td class="info-value">{{ $sale->person?->document_number ?? '-' }}</td>
+            <td class="info-value">{{ $customerDocument }}</td>
         </tr>
         <tr>
             <td class="info-label">Forma pago:</td>
@@ -234,7 +256,7 @@
         <thead>
         <tr>
             <th class="col-qty">CANT.</th>
-            <th class="col-product">DESCRIPCION</th>
+            <th class="col-product">&nbsp;&nbsp;DESCRIPCION</th>
             <th class="col-unit">PRECIO</th>
             <th class="col-subtotal">IMPORTE</th>
         </tr>
@@ -248,7 +270,7 @@
             @endphp
             <tr>
                 <td class="col-qty">{{ number_format($qty, 2) }}</td>
-                <td class="col-product">{{ $detail->description ?? $detail->product?->description ?? '-' }}</td>
+                <td class="col-product">&nbsp;&nbsp;{{ $detail->description ?? $detail->product?->description ?? '-' }}</td>
                 <td class="col-unit">{{ number_format($unitPrice, 2) }}</td>
                 <td class="col-subtotal">{{ number_format($lineTotal, 2) }}</td>
             </tr>
@@ -276,6 +298,13 @@
     @if($sale->comment)
         <div class="separator"></div>
         <div class="notes"><strong>Notas:</strong> {{ $sale->comment }}</div>
+    @endif
+
+    @if(!empty($qrImageUrl))
+        <div class="separator"></div>
+        <div class="qr-wrap">
+            <img src="{{ $qrImageUrl }}" alt="QR del comprobante">
+        </div>
     @endif
 
     <div class="separator"></div>
