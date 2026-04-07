@@ -1695,6 +1695,11 @@
                         return isLocalhost ? 'BARRA' : 'BARRA2';
                     }
 
+                    function requiresStrictLocalQz(printerName) {
+                        const target = String(printerName || '').trim().toLowerCase();
+                        return target === 'barra2' || target.startsWith('barra2');
+                    }
+
                     function openPreAccountPdfTab() {
                         const groupedItems = getItemsGroupedByProduct();
                         const canceledItems = Array.isArray(currentTable?.cancellations) ? currentTable.cancellations : [];
@@ -1854,6 +1859,7 @@
                         const printerName = resolvePreAccountPrinterNameLocal();
                         const paperWidth = resolvePrinterWidthByName(printerName);
                         const ticketText = buildPreAccountTicketText(currentTable, groupedItems, canceledItems, paperWidth);
+                        const strictLocalQz = requiresStrictLocalQz(printerName);
 
                         let qzFailed = false;
                         // Si QZ está disponible y funciona, intentar imprimir por QZ
@@ -1874,10 +1880,23 @@
                                 return;
                             } catch (e) {
                                 qzFailed = true;
+                                if (strictLocalQz) {
+                                    if (typeof showNotification === 'function') {
+                                        showNotification('Impresión', 'Abra QZ Tray en esta PC para imprimir la precuenta en "' + printerName + '".', 'error');
+                                    }
+                                    return;
+                                }
                                 if (typeof showNotification === 'function') {
                                     showNotification('Impresión', 'QZ no disponible. Intentando impresora de red...', 'warning');
                                 }
                             }
+                        }
+
+                        if (strictLocalQz) {
+                            if (typeof showNotification === 'function') {
+                                showNotification('Impresión', 'Abra QZ Tray en esta PC para imprimir la precuenta en "' + printerName + '".', 'error');
+                            }
+                            return;
                         }
 
                         // Fallback: ticketera por red (server-side ESC/POS usando el endpoint de pedidos)
@@ -3543,6 +3562,7 @@
                         const printerId = sel && sel.value ? parseInt(sel.value, 10) : null;
                         const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
                         const printerName = resolvePreAccountPrinterName();
+                        const strictLocalQz = requiresStrictLocalQz(printerName);
                         const body = { movement_id: movementId };
                         if (printerId) body.printer_id = printerId;
 
@@ -3559,7 +3579,7 @@
                                 if (!tr.ok || !td?.success || !td?.payload_b64) {
                                     throw new Error(td?.message || 'No se pudo obtener el ticket del servidor.');
                                 }
-                                let currentPrinterName = td.printer_name || printerName || '';
+                                let currentPrinterName = printerName || td.printer_name || '';
                                 if (!currentPrinterName) currentPrinterName = await qzApi.printers.getDefault();
                                 if (!currentPrinterName) {
                                     openSaleTicketPdfTab(movementId);
@@ -3574,12 +3594,25 @@
                             } catch (e) {
                                 qzFailed = true;
                                 console.warn('QZ Ticket:', e);
+                                if (strictLocalQz) {
+                                    if (typeof showNotification === 'function') {
+                                        showNotification('Impresión', 'Abra QZ Tray en esta PC para imprimir el comprobante en "' + printerName + '".', 'error');
+                                    }
+                                    return;
+                                }
                                 openSaleTicketPdfTab(movementId);
                                 return;
                             }
                         }
 
                         // Fallback: impresión TCP por red (requiere red local e IP en impresora)
+                        if (strictLocalQz) {
+                            if (typeof showNotification === 'function') {
+                                showNotification('Impresión', 'Abra QZ Tray en esta PC para imprimir el comprobante en "' + printerName + '".', 'error');
+                            }
+                            return;
+                        }
+
                         try {
                             const tr = await fetch(salesThermalPrintUrl, {
                                 method: 'POST',

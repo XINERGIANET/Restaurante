@@ -1454,12 +1454,25 @@
                 return qzApi.websocket.isActive();
             }
 
+            function resolveStrictLocalPrinterName() {
+                const host = String(window.location.hostname || '').trim().toLowerCase();
+                const isLocalhost = ['localhost', '127.0.0.1', '::1'].includes(host);
+                return isLocalhost ? 'BARRA' : 'BARRA2';
+            }
+
+            function requiresStrictLocalQz(printerName) {
+                const target = String(printerName || '').trim().toLowerCase();
+                return target === 'barra2' || target.startsWith('barra2');
+            }
+
             async function sendThermalTicketAfterSale(movementId, saleResponse) {
                 if (!movementId) return;
                 const qzApi = window.qz;
                 const sel = document.getElementById('cobro-thermal-printer');
                 const printerId = sel && sel.value ? parseInt(sel.value, 10) : null;
                 const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                const preferredPrinterName = resolveStrictLocalPrinterName();
+                const strictLocalQz = requiresStrictLocalQz(preferredPrinterName);
                 const body = {
                     movement_id: movementId
                 };
@@ -1487,7 +1500,7 @@
                             openSaleTicketPdfTab(movementId);
                             return;
                         }
-                        let printerName = td.printer_name || '';
+                        let printerName = preferredPrinterName || td.printer_name || '';
                         if (!printerName) printerName = await qzApi.printers.getDefault();
                         if (!printerName) {
                             openSaleTicketPdfTab(movementId);
@@ -1511,12 +1524,21 @@
                     } catch (e) {
                         markQzTrayUnavailable();
                         console.warn('QZ Ticket:', e);
+                        if (strictLocalQz) {
+                            showCobroNotification('Impresión', 'Abra QZ Tray en esta PC para imprimir el comprobante en "' + preferredPrinterName + '".', 'error');
+                            return;
+                        }
                         openSaleTicketPdfTab(movementId);
                     }
                     return;
                 }
 
                 // Fallback: impresión TCP por red (requiere red local e IP en impresora)
+                if (strictLocalQz) {
+                    showCobroNotification('Impresión', 'Abra QZ Tray en esta PC para imprimir el comprobante en "' + preferredPrinterName + '".', 'error');
+                    return;
+                }
+
                 try {
                     const tr = await fetch(salesThermalPrintUrl, {
                         method: 'POST',
