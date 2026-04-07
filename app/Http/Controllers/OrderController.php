@@ -37,6 +37,7 @@ use App\Support\InsensitiveSearch;
 use App\Support\LocalNetworkClient;
 use Barryvdh\Snappy\Facades\SnappyPdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -1925,6 +1926,137 @@ class OrderController extends Controller
             'success' => true,
             'message' => 'Precuenta enviada a "'.($printer->name ?? 'Ticketera').'"',
         ]);
+    }
+
+    public function printKitchenTicketPdf(Request $request)
+    {
+        $validated = $request->validate([
+            'ticket_text' => ['required', 'string'],
+            'paper_width' => ['nullable', 'integer', 'in:58,80'],
+            'title' => ['nullable', 'string', 'max:120'],
+        ]);
+
+        return $this->renderTextTicketPdfResponse(
+            (string) $validated['ticket_text'],
+            (int) ($validated['paper_width'] ?? 58),
+            (string) ($validated['title'] ?? 'Comanda'),
+            'comanda'
+        );
+    }
+
+    public function createKitchenTicketPdfLink(Request $request)
+    {
+        $validated = $request->validate([
+            'ticket_text' => ['required', 'string'],
+            'paper_width' => ['nullable', 'integer', 'in:58,80'],
+            'title' => ['nullable', 'string', 'max:120'],
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'url' => $this->storeTextTicketPdfPayload(
+                (string) $validated['ticket_text'],
+                (int) ($validated['paper_width'] ?? 58),
+                (string) ($validated['title'] ?? 'Comanda'),
+                'comanda'
+            ),
+        ]);
+    }
+
+    public function printPreAccountPdf(Request $request)
+    {
+        $validated = $request->validate([
+            'ticket_text' => ['required', 'string'],
+            'paper_width' => ['nullable', 'integer', 'in:58,80'],
+            'title' => ['nullable', 'string', 'max:120'],
+        ]);
+
+        return $this->renderTextTicketPdfResponse(
+            (string) $validated['ticket_text'],
+            (int) ($validated['paper_width'] ?? 58),
+            (string) ($validated['title'] ?? 'Precuenta'),
+            'precuenta'
+        );
+    }
+
+    public function createPreAccountPdfLink(Request $request)
+    {
+        $validated = $request->validate([
+            'ticket_text' => ['required', 'string'],
+            'paper_width' => ['nullable', 'integer', 'in:58,80'],
+            'title' => ['nullable', 'string', 'max:120'],
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'url' => $this->storeTextTicketPdfPayload(
+                (string) $validated['ticket_text'],
+                (int) ($validated['paper_width'] ?? 58),
+                (string) ($validated['title'] ?? 'Precuenta'),
+                'precuenta'
+            ),
+        ]);
+    }
+
+    public function showStoredTextTicketPdf(string $token)
+    {
+        $payload = Cache::get('text-ticket-pdf:'.$token);
+        abort_unless(is_array($payload), 404);
+
+        return $this->renderTextTicketPdfResponse(
+            (string) ($payload['ticket_text'] ?? ''),
+            (int) ($payload['paper_width'] ?? 58),
+            (string) ($payload['title'] ?? 'Ticket'),
+            (string) ($payload['file_prefix'] ?? 'ticket')
+        );
+    }
+
+    private function renderTextTicketPdfResponse(string $ticketText, int $paperWidth, string $title, string $filePrefix)
+    {
+        $paperWidth = $paperWidth === 80 ? 80 : 58;
+        $normalizedText = str_replace(["\r\n", "\r"], "\n", trim($ticketText));
+        $lineCount = max(1, count(explode("\n", $normalizedText)));
+        $heightMm = min(500, max(60, (int) ceil(($paperWidth === 80 ? 22 : 18) + ($lineCount * ($paperWidth === 80 ? 4.0 : 3.7)))));
+
+        $pdf = SnappyPdf::loadView('orders.print.text_ticket_pdf', [
+            'title' => $title,
+            'ticketText' => $normalizedText,
+            'paperWidth' => $paperWidth,
+        ]);
+
+        $pdf->setOption('page-width', $paperWidth.'mm')
+            ->setOption('page-height', $heightMm.'mm')
+            ->setOption('margin-top', 0)
+            ->setOption('margin-right', 0)
+            ->setOption('margin-bottom', 0)
+            ->setOption('margin-left', 0)
+            ->setOption('encoding', 'utf-8')
+            ->setOption('print-media-type', true)
+            ->setOption('disable-smart-shrinking', true)
+            ->setOption('enable-local-file-access', true)
+            ->setOption('dpi', 203);
+
+        $output = $pdf->output();
+
+        return response($output, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="'.$filePrefix.'_'.now()->format('Ymd_His').'.pdf"',
+            'Content-Length' => strlen($output),
+        ]);
+    }
+
+    private function storeTextTicketPdfPayload(string $ticketText, int $paperWidth, string $title, string $filePrefix): string
+    {
+        $token = bin2hex(random_bytes(20));
+
+        Cache::put('text-ticket-pdf:'.$token, [
+            'ticket_text' => $ticketText,
+            'paper_width' => $paperWidth === 80 ? 80 : 58,
+            'title' => $title,
+            'file_prefix' => $filePrefix,
+        ], now()->addMinutes(10));
+
+        return route('orders.print.ticket.pdf.show', ['token' => $token]);
     }
 
     private function buildKitchenEscPosPayload(string $plainText): string

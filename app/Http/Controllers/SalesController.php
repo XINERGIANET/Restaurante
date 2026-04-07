@@ -1551,11 +1551,12 @@ class SalesController extends Controller
         $printData['autoPrint'] = false;
 
         $html = view('sales.print.ticket', $printData)->render();
+        $pageHeight = $this->estimateSaleTicketHeight($sale);
         $pdfBinary = $this->renderPdfWithWkhtmltopdf($html, null, [
             '--page-width',
             '80mm',
             '--page-height',
-            '140mm',
+            $pageHeight,
             '--margin-top',
             '0',
             '--margin-right',
@@ -1582,6 +1583,27 @@ class SalesController extends Controller
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="'.$docName.'-ticket.pdf"',
         ]);
+    }
+
+    private function estimateSaleTicketHeight(Movement $sale): string
+    {
+        $details = $sale->details ?? collect();
+        $detailLines = 0;
+
+        foreach ($details as $detail) {
+            $description = trim((string) ($detail->description ?? $detail->product?->description ?? 'Producto'));
+            $detailLines += max(1, (int) ceil(mb_strlen($description) / 22));
+        }
+
+        $baseHeight = 78;
+        $itemsHeight = $detailLines * 7;
+        $addressHeight = mb_strlen((string) ($sale->person?->address ?? '')) > 24 ? 8 : 0;
+        $customerHeight = mb_strlen((string) ($sale->person_name ?? '')) > 24 ? 4 : 0;
+        $notesHeight = $sale->salesMovement?->payment_type === 'CREDIT' ? 6 : 0;
+
+        $height = max(95, min(600, $baseHeight + $itemsHeight + $addressHeight + $customerHeight + $notesHeight));
+
+        return $height.'mm';
     }
 
     /**
@@ -1652,7 +1674,7 @@ class SalesController extends Controller
         $ticketText = $validated['ticket_text'] ?? null;
         $plain = $ticketText !== null
             ? (string) $ticketText
-            : $this->buildThermalTicketPlainText($movement, $request, $printer);
+            : $this->buildThermalTicketPlainTextApproved($movement, $request, $printer);
         $payload = $this->wrapEscPosPlainPayload($plain);
 
         // Modo QZ: devolver payload en base64 para que QZ Tray lo envíe (USB o red)

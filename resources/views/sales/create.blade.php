@@ -398,6 +398,18 @@
             const salesProcessUrl = @json(route('sales.process'));
             const salesIndexUrl = @json($salesIndexUrl ?? route('sales.index'));
             const salesThermalPrintUrl = @json(route('sales.print.ticket.thermal'));
+            const salesTicketPrintBaseUrl = @json(route('admin.sales.print.ticket', ['sale' => '__SALE__']));
+
+            function openSaleTicketPdfTab(movementId) {
+                if (!movementId) return;
+                let ticketUrl = salesTicketPrintBaseUrl.replace('__SALE__', movementId);
+                const currentUrl = new URL(window.location.href);
+                const viewId = currentUrl.searchParams.get('view_id');
+                if (viewId) {
+                    ticketUrl += (ticketUrl.includes('?') ? '&' : '?') + 'view_id=' + encodeURIComponent(viewId);
+                }
+                window.open(ticketUrl, '_blank', 'noopener,noreferrer');
+            }
 
             function escapeHtml(text) {
                 if (!text) return '';
@@ -1467,15 +1479,13 @@
                         const td = tr.headers.get('content-type')?.includes('application/json') ? await tr.json() :
                             null;
                         if (!tr.ok || !td?.success || !td?.payload_b64) {
-                            showCobroNotification('Impresión', td?.message ||
-                                'No se pudo obtener el ticket del servidor.', 'error');
+                            openSaleTicketPdfTab(movementId);
                             return;
                         }
                         let printerName = td.printer_name || '';
                         if (!printerName) printerName = await qzApi.printers.getDefault();
                         if (!printerName) {
-                            showCobroNotification('Impresión', 'No se encontró ninguna impresora en QZ Tray.',
-                                'error');
+                            openSaleTicketPdfTab(movementId);
                             return;
                         }
                         const paperMm = (parseInt(td.paper_width) || 58) === 80 ? 80 : 58;
@@ -1496,8 +1506,7 @@
                     } catch (e) {
                         markQzTrayUnavailable();
                         console.warn('QZ Ticket:', e);
-                        showCobroNotification('Impresión', 'Error al imprimir con QZ Tray: ' + (e?.message || e),
-                            'error');
+                        openSaleTicketPdfTab(movementId);
                     }
                     return;
                 }
@@ -1520,13 +1529,11 @@
                         showCobroNotification('Impresión', td.message || 'Ticket enviado a la ticketera.',
                             'success');
                     } else {
-                        const msg = td?.message || 'No se pudo enviar el ticket a la ticketera.';
-                        console.warn('Ticketera red:', msg);
-                        showCobroNotification('Impresión', msg, 'error');
+                        openSaleTicketPdfTab(movementId);
                     }
                 } catch (e) {
                     console.warn('Ticketera red:', e);
-                    showCobroNotification('Impresión', 'Error de red al conectar con la ticketera.', 'error');
+                    openSaleTicketPdfTab(movementId);
                 }
             }
 

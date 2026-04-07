@@ -215,8 +215,23 @@ Route::middleware('auth')->group(function () {
     Route::post('/Pedidos/imprimir-comanda', [OrderController::class, 'printKitchenTicketThermal'])
         ->name('orders.print.kitchen.thermal')
         ->middleware('active.shift');
+    Route::post('/Pedidos/imprimir-comanda/pdf', [OrderController::class, 'printKitchenTicketPdf'])
+        ->name('orders.print.kitchen.pdf')
+        ->middleware('active.shift');
+    Route::post('/Pedidos/imprimir-comanda/pdf-link', [OrderController::class, 'createKitchenTicketPdfLink'])
+        ->name('orders.print.kitchen.pdf.link')
+        ->middleware('active.shift');
     Route::post('/Pedidos/imprimir-precuenta', [OrderController::class, 'printPreAccountThermal'])
         ->name('orders.print.preaccount.thermal')
+        ->middleware('active.shift');
+    Route::post('/Pedidos/imprimir-precuenta/pdf', [OrderController::class, 'printPreAccountPdf'])
+        ->name('orders.print.preaccount.pdf')
+        ->middleware('active.shift');
+    Route::post('/Pedidos/imprimir-precuenta/pdf-link', [OrderController::class, 'createPreAccountPdfLink'])
+        ->name('orders.print.preaccount.pdf.link')
+        ->middleware('active.shift');
+    Route::get('/Pedidos/imprimir-ticket/pdf/{token}', [OrderController::class, 'showStoredTextTicketPdf'])
+        ->name('orders.print.ticket.pdf.show')
         ->middleware('active.shift');
 
     Route::post('/Pedidos/procesar-pago', [OrderController::class, 'processOrderPayment'])

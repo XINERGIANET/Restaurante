@@ -697,16 +697,66 @@
                     const waiterPinEnabled = @json($waiterPinEnabled ?? false);
                     const validateWaiterPinUrl = @json(route('orders.validateWaiterPin'));
                     const waiterPinBranchId = @json((int) session('branch_id'));
+                    const branchDisplayName = @json($branch?->legal_name ?? $branch?->company?->legal_name ?? 'SUCURSAL');
                     const cobroPaymentMethods = @json($paymentMethods ?? []);
                     const cobroPaymentGateways = @json($paymentGateways ?? []);
                     const cobroCards = @json($cards ?? []);
                     const cobroDigitalWallets = @json($digitalWallets ?? []);
                     const cobroBanks = @json($banks ?? []);
                     const salesThermalPrintUrl = @json(route('sales.print.ticket.thermal'));
+                    const salesTicketPrintBaseUrl = @json(route('admin.sales.print.ticket', ['sale' => '__SALE__']));
                     const kitchenThermalPrintUrl = @json(route('orders.print.kitchen.thermal'));
+                    const kitchenPdfLinkUrl = @json(route('orders.print.kitchen.pdf.link'));
                     const orderPreAccountPrintUrl = @json(route('orders.print.preaccount.thermal'));
+                    const orderPreAccountPdfLinkUrl = @json(route('orders.print.preaccount.pdf.link'));
 
                     let autoSaveTimer = null;
+
+                    async function openPdfLinkInNewTab(endpointUrl, payload) {
+                        const popup = window.open('', '_blank');
+                        const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                        const response = await fetch(endpointUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrf,
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                            },
+                            credentials: 'same-origin',
+                            body: JSON.stringify(payload),
+                        });
+
+                        if (!response.ok) {
+                            if (popup) popup.close();
+                            throw new Error('No se pudo generar el PDF.');
+                        }
+
+                        const data = await response.json();
+                        if (!data?.url) {
+                            if (popup) popup.close();
+                            throw new Error('No se pudo obtener la URL del PDF.');
+                        }
+
+                        if (popup) {
+                            popup.location.href = data.url;
+                        } else {
+                            window.open(data.url, '_blank');
+                        }
+                    }
+
+                    function openSaleTicketPdfTab(movementId) {
+                        if (!movementId) return;
+                        const url = new URL(
+                            salesTicketPrintBaseUrl.replace('__SALE__', encodeURIComponent(String(movementId))),
+                            window.location.origin
+                        );
+                        const currentViewId = @json($viewId ?? null);
+                        if (currentViewId) {
+                            url.searchParams.set('view_id', currentViewId);
+                        }
+                        window.open(url.toString(), '_blank', 'noopener,noreferrer');
+                    }
 
                     function getStoredWaiter() {
                         try {
@@ -1202,9 +1252,11 @@
 
                     function buildPreAccountTicketText(table, groupedItems, canceledItems, paperWidth = 80) {
                         const lineWidth = paperWidth === 80 ? 48 : 24;
-                        const colQty = 4;
-                        const colPrice = 10;
-                        const colName = lineWidth - colQty - colPrice;
+                        const colQty = paperWidth === 80 ? 5 : 4;
+                        const colPrice = paperWidth === 80 ? 9 : 6;
+                        const colAmount = paperWidth === 80 ? 9 : 6;
+                        const colGap = 2;
+                        const colName = Math.max(6, lineWidth - colQty - colGap - colPrice - colAmount);
                         const sep = '='.repeat(lineWidth) + '\n';
                         const normalizedCanceledItems = normalizeCancellationsForTicket(canceledItems);
                         const hasCanceled = normalizedCanceledItems.length > 0;
@@ -1226,67 +1278,84 @@
                             return ' '.repeat(length - s.length) + s;
                         }
 
+                        function formatQty(qty) {
+                            return Number.isInteger(qty) ? String(qty) : qty.toFixed(2);
+                        }
+
                         const area = String(table?.original_area_name || 'Sin area').trim();
-                        const salon = String(table?.original_location_name || table?.location_name || 'Salon').trim();
+                        const branchName = String(branchDisplayName || table?.original_location_name || table?.location_name || 'SUCURSAL').trim();
                         const mesaLabel = String(table?.name ?? table?.table_id ?? '-');
                         const mozo = String(table?.waiter || 'Sin asignar').trim();
                         const fechaHora = formatDateTimeForTicket(new Date());
+                        const cuenta = String(table?.order_movement_number || table?.order_movement_id || table?.movement_id || '').trim();
+                        const buildFieldLine = (label) => {
+                            const prefix = `${label}: `;
+                            return prefix + '_'.repeat(Math.max(6, lineWidth - prefix.length));
+                        };
 
                         let txt = '';
                         if (hasCanceled) txt += 'ANULADO\n';
-                        txt += padCenterSafe('PRECUENTA', lineWidth) + '\n';
-                        txt += `Salon: ${salon}\n`;
-                        txt += `Area: ${area} (Mesa: ${mesaLabel})\n`;
-                        txt += `Mozo: ${mozo}\n`;
-                        txt += `Fecha/Hora: ${fechaHora}\n`;
+                        txt += padCenterSafe(branchName.toUpperCase(), lineWidth) + '\n';
+                        txt += '\n';
                         txt += sep;
-                        txt += padEndSafe('Producto', colName) + padCenterSafe('Cant', colQty) + padStartSafe('P. unitario', colPrice) + '\n';
+                        txt += padEndSafe('Cant.', colQty)
+                            + ' '.repeat(colGap)
+                            + padEndSafe('Descr.', colName)
+                            + padStartSafe('P.Unit.', colPrice)
+                            + padStartSafe('Subt.', colAmount) + '\n';
                         txt += sep;
 
-                        (groupedItems || []).forEach((it) => {
+                        (groupedItems || []).forEach((it, index) => {
                             const name = String(it?.name || 'Producto').trim();
                             const qty = parseFloat(it?.qty ?? 1) || 1;
                             const price = parseFloat(it?.price ?? 0) || 0;
+                            const amount = qty * price;
                             const courtesyQty = Math.max(0, Math.min(qty, parseFloat(it?.courtesyQty ?? 0) || 0));
                             const takeawayQty = Math.max(0, Math.min(qty, parseFloat(it?.takeawayQty ?? 0) || 0));
-                            txt += padEndSafe(name, colName) + padCenterSafe(String(qty), colQty) + padStartSafe('S/.' + price.toFixed(2), colPrice) + '\n';
+                            txt += padEndSafe(formatQty(qty), colQty)
+                                + ' '.repeat(colGap)
+                                + padEndSafe(name, colName)
+                                + padStartSafe(price.toFixed(2), colPrice)
+                                + padStartSafe(amount.toFixed(2), colAmount) + '\n';
                             if (courtesyQty > 0 || takeawayQty > 0) {
                                 const tags = [];
                                 if (courtesyQty > 0) tags.push('Cortesia: ' + courtesyQty);
                                 if (takeawayQty > 0) tags.push('Llevar: ' + takeawayQty);
-                                txt += '  * ' + tags.join(' | ') + '\n';
+                                txt += tags.join(' | ') + '\n';
+                            }
+                            if (index < (groupedItems.length - 1)) {
+                                txt += sep;
                             }
                         });
 
                         if (hasCanceled) {
-                            txt += sep;
                             txt += 'DETALLE ANULADO\n';
                             txt += sep;
                             normalizedCanceledItems.forEach((c) => {
                                 const cName = String(c?.name || c?.description || 'Producto').trim();
                                 const cQty = parseFloat(c?.qtyCanceled ?? c?.quantity ?? 1) || 1;
-                                txt += padEndSafe(cName, colName) + padStartSafe('x' + String(cQty), colQty) + '\n';
+                                txt += padEndSafe(formatQty(cQty), colQty) + padEndSafe(cName, lineWidth - colQty) + '\n';
                                 if (c?.cancel_reason && String(c.cancel_reason).trim()) {
                                     txt += 'Motivo: ' + String(c.cancel_reason).trim() + '\n';
                                 }
+                                txt += sep;
                             });
                         }
 
-                        // Totales alineados con el panel (descuenta cortesias y suma cargos aplicables).
                         const totals = getTotalsWithDelivery(groupedItems || []);
                         txt += sep;
-                        txt += padEndSafe('Subtotal', lineWidth - 10) + padStartSafe('S/. ' + (totals.subtotal || 0).toFixed(2), 10) + '\n';
-                        txt += padEndSafe('Impuestos', lineWidth - 10) + padStartSafe('S/. ' + (totals.tax || 0).toFixed(2), 10) + '\n';
-                        if ((totals.deliveryFee || 0) > 0) {
-                            txt += padEndSafe('Delivery', lineWidth - 10) + padStartSafe('S/. ' + totals.deliveryFee.toFixed(2), 10) + '\n';
-                        }
-                        if ((totals.takeawayDisposableFee || 0) > 0) {
-                            txt += padEndSafe('Descartables', lineWidth - 10) + padStartSafe('S/. ' + totals.takeawayDisposableFee.toFixed(2), 10) + '\n';
-                        }
-                        txt += padEndSafe('TOTAL', lineWidth - 10) + padStartSafe('S/. ' + (totals.total || 0).toFixed(2), 10) + '\n';
-                        txt += sep;
-
+                        txt += padEndSafe('Total', lineWidth - 12) + padStartSafe((totals.total || 0).toFixed(2), 12) + '\n';
                         txt += '\n';
+                        txt += `MESA ${mesaLabel}` + (area ? ' - ' + area.toUpperCase() : '') + '\n';
+                        txt += `Mesero: ${mozo}\n`;
+                        txt += sep;
+                        txt += 'Boleta[] Factura[] Consumo[] Detal.[]\n';
+                        txt += buildFieldLine('Razon Soc.') + '\n';
+                        txt += buildFieldLine('Direcci.') + '\n';
+                        txt += buildFieldLine('DNI/RUC.') + '\n';
+                        txt += '\n';
+                        txt += `Fecha: ${fechaHora}\n`;
+                        txt += '<<No valido como documento contable>>\n';
                         return txt;
                     }
 
@@ -1367,6 +1436,129 @@
                         return txt;
                     }
 
+                    function buildPaymentTicketTextApproved(table, groupedItems, paymentMethods, totals, paperWidth = 80) {
+                        const lineWidth = paperWidth === 80 ? 48 : 32;
+                        const colQty = paperWidth === 80 ? 5 : 4;
+                        const colPrice = paperWidth === 80 ? 9 : 7;
+                        const colAmount = paperWidth === 80 ? 9 : 7;
+                        const colGap = 2;
+                        const colName = Math.max(8, lineWidth - colQty - colGap - colPrice - colAmount);
+                        const sep = '='.repeat(lineWidth) + '\n';
+
+                        function padEndSafe(str, length) {
+                            const s = String(str ?? '').trim();
+                            if (s.length >= length) return s.slice(0, length);
+                            return s + ' '.repeat(length - s.length);
+                        }
+                        function padCenterSafe(str, length) {
+                            const s = String(str ?? '').trim();
+                            if (s.length >= length) return s.slice(0, length);
+                            return ' '.repeat(Math.floor((length - s.length) / 2)) + s + ' '.repeat(length - s.length - Math.floor((length - s.length) / 2));
+                        }
+                        function padStartSafe(str, length) {
+                            const s = String(str ?? '').trim();
+                            if (s.length >= length) return s.slice(-length);
+                            return ' '.repeat(length - s.length) + s;
+                        }
+                        function wrapText(str, length) {
+                            const source = String(str ?? '').trim();
+                            if (!source) return ['-'];
+                            const words = source.split(/\s+/);
+                            const lines = [];
+                            let current = '';
+                            words.forEach((word) => {
+                                const candidate = current ? `${current} ${word}` : word;
+                                if (candidate.length <= length) {
+                                    current = candidate;
+                                    return;
+                                }
+                                if (current) lines.push(current);
+                                current = word.length > length ? word.slice(0, length) : word;
+                            });
+                            if (current) lines.push(current);
+                            return lines.length ? lines : ['-'];
+                        }
+                        function formatQty(qty) {
+                            return Number.isInteger(qty) ? String(qty) : qty.toFixed(2);
+                        }
+
+                        const area = String(table?.original_area_name || 'Sin area').trim();
+                        const branchName = String(branchDisplayName || table?.original_location_name || table?.location_name || 'SUCURSAL').trim();
+                        const mesaLabel = String(table?.name ?? table?.table_id ?? '-');
+                        const mozo = String(table?.waiter || 'Sin asignar').trim();
+                        const fechaHora = formatDateTimeForTicket(new Date());
+
+                        let txt = '';
+                        txt += padCenterSafe(branchName.toUpperCase(), lineWidth) + '\n';
+                        txt += padCenterSafe('COMPROBANTE', lineWidth) + '\n';
+                        txt += '\n';
+                        txt += `Mesa: ${mesaLabel}` + (area ? ' - ' + area.toUpperCase() : '') + '\n';
+                        txt += `Mesero: ${mozo}\n`;
+                        txt += `Fecha: ${fechaHora}\n`;
+                        txt += sep;
+                        txt += padEndSafe('Cant.', colQty)
+                            + ' '.repeat(colGap)
+                            + padEndSafe('Descr.', colName)
+                            + padStartSafe('P.Unit.', colPrice)
+                            + padStartSafe('Subt.', colAmount) + '\n';
+                        txt += sep;
+
+                        (groupedItems || []).forEach((it, index) => {
+                            const name = String(it?.name || 'Producto').trim();
+                            const qty = parseFloat(it?.qty ?? 1) || 1;
+                            const price = parseFloat(it?.price ?? 0) || 0;
+                            const amount = qty * price;
+                            const nameLines = wrapText(name, colName);
+
+                            txt += padEndSafe(formatQty(qty), colQty)
+                                + ' '.repeat(colGap)
+                                + padEndSafe(nameLines[0], colName)
+                                + padStartSafe(price.toFixed(2), colPrice)
+                                + padStartSafe(amount.toFixed(2), colAmount) + '\n';
+
+                            for (let i = 1; i < nameLines.length; i += 1) {
+                                txt += padEndSafe('', colQty)
+                                    + ' '.repeat(colGap)
+                                    + padEndSafe(nameLines[i], colName)
+                                    + padStartSafe('', colPrice)
+                                    + padStartSafe('', colAmount) + '\n';
+                            }
+
+                            if (index < groupedItems.length - 1) {
+                                txt += sep;
+                            }
+                        });
+
+                        txt += sep;
+                        txt += padEndSafe('Subtotal', lineWidth - 12) + padStartSafe((totals.subtotal || 0).toFixed(2), 12) + '\n';
+                        txt += padEndSafe('Impuestos', lineWidth - 12) + padStartSafe((totals.tax || 0).toFixed(2), 12) + '\n';
+                        if ((totals.deliveryFee || 0) > 0) {
+                            txt += padEndSafe('Delivery', lineWidth - 12) + padStartSafe(totals.deliveryFee.toFixed(2), 12) + '\n';
+                        }
+                        if ((totals.takeawayDisposableFee || 0) > 0) {
+                            txt += padEndSafe('Descartables', lineWidth - 12) + padStartSafe(totals.takeawayDisposableFee.toFixed(2), 12) + '\n';
+                        }
+                        txt += padEndSafe('TOTAL', lineWidth - 12) + padStartSafe((totals.total || 0).toFixed(2), 12) + '\n';
+
+                        if (Array.isArray(paymentMethods) && paymentMethods.length > 0) {
+                            txt += '\n';
+                            txt += 'Pagos\n';
+                            paymentMethods.forEach((pm) => {
+                                const methodName = String(pm?.payment_method_name || pm?.payment_method || 'Metodo').trim();
+                                const amount = parseFloat(pm?.amount || 0) || 0;
+                                txt += padEndSafe(methodName, lineWidth - 12) + padStartSafe(amount.toFixed(2), 12) + '\n';
+                            });
+                            const paid = paymentMethods.reduce((sum, pm) => sum + (parseFloat(pm?.amount || 0) || 0), 0);
+                            const change = paid - (totals.total || 0);
+                            if (change > 0) {
+                                txt += padEndSafe('Cambio', lineWidth - 12) + padStartSafe(change.toFixed(2), 12) + '\n';
+                            }
+                        }
+
+                        txt += '\n';
+                        return txt;
+                    }
+
                     function resolvePreAccountPrinterName() {
                         if (window.__qzConfig && window.__qzConfig.printerName) {
                             return String(window.__qzConfig.printerName).trim();
@@ -1390,25 +1582,17 @@
                         // Detectar el ancho real de la impresora configurada (80mm o 58mm)
                         const printerName = resolvePreAccountPrinterName(groupedItems);
                         const paperWidth = resolvePrinterWidthByName(printerName);
-                        const paperMm = paperWidth === 80 ? '80mm' : '58mm';
-
                         const ticketText = buildPreAccountTicketText(currentTable, groupedItems, canceledItems, paperWidth);
-                        const escaped = escapeHtmlForQzPrint(ticketText);
-                        const html = '<!DOCTYPE html><html><head><meta charset="utf-8">' +
-                            '<title>Precuenta</title>' +
-                            '<style>@page{size:' + paperMm + ' auto;margin:0;}' +
-                            'body{font-family:Courier New,monospace;margin:24px;background:#f5f5f5;}' +
-                            '.paper{width:' + paperMm + ';max-width:' + paperMm + ';background:#fff;border:1px solid #ddd;padding:8px;box-shadow:0 2px 8px rgba(0,0,0,.08);}' +
-                            'pre{margin:0;white-space:pre-wrap;word-wrap:break-word;line-height:1.25;font-size:11px;}' +
-                            '.hint{font:12px/1.4 Segoe UI,Arial,sans-serif;color:#444;margin-top:12px;}</style>' +
-                            '</head><body><div class="paper"><pre>' + escaped + '</pre></div>' +
-                            '<div class="hint">Vista previa temporal sin ticketera. Presiona Ctrl+P y guarda como PDF.</div>' +
-                            '</body></html>';
-
-                        const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-                        const url = URL.createObjectURL(blob);
-                        window.open(url, '_blank', 'noopener,noreferrer');
-                        setTimeout(() => URL.revokeObjectURL(url), 10000);
+                        openPdfLinkInNewTab(orderPreAccountPdfLinkUrl, {
+                            title: 'Precuenta',
+                            ticket_text: ticketText,
+                            paper_width: paperWidth,
+                        }).catch((error) => {
+                            console.error('Precuenta PDF:', error);
+                            if (typeof showNotification === 'function') {
+                                showNotification('Impresión', 'No se pudo generar el PDF de precuenta.', 'error');
+                            }
+                        });
                     }
 
                     function openKitchenCommandPdfTab(items, table) {
@@ -1425,20 +1609,14 @@
                         const firstPrinterName = firstPid ? (resolveQzPrinterNames(firstPid)[0] || '') : '';
                         const paperWidth = firstPrinterName ? resolvePrinterWidthByName(firstPrinterName) : 58;
                         const lineWidth = paperWidth === 80 ? 32 : 24;
-                        const colQty = 4;
-                        const colTime = 6;
-                        const colName = lineWidth - colQty - colTime;
                         const sep = '='.repeat(lineWidth) + '\n';
                         const tableLabel = table?.name ?? table?.table_id ?? 'Mesa';
                         const areaLabel = (table?.original_area_name || '').trim();
+                        const orderLabel = String(table?.order_movement_number ?? table?.order_movement_id ?? '').trim();
 
                         const padEnd = (s, len) => {
                             const v = String(s ?? '');
                             return v.length >= len ? v.slice(0, len) : (v + ' '.repeat(len - v.length));
-                        };
-                        const padStart = (s, len) => {
-                            const v = String(s ?? '');
-                            return v.length >= len ? v.slice(-len) : (' '.repeat(len - v.length) + v);
                         };
                         const padCenter = (s, len) => {
                             const v = String(s ?? '');
@@ -1450,12 +1628,10 @@
 
                         let text = '';
                         text += padCenter('COMANDA', lineWidth) + '\n';
-                        if (areaLabel) text += padCenter(areaLabel, lineWidth) + '\n';
-                        text += padCenter('Mesa ' + tableLabel, lineWidth) + '\n';
-                        text += 'Mozo: ' + (table?.waiter || '-') + '\n';
+                        text += '\n';
+                        text += 'Mesa: ' + tableLabel + (areaLabel ? ' - ' + areaLabel : '') + '\n';
                         text += 'Fecha: ' + formatDateTimeForTicket(new Date()) + '\n';
-                        text += sep;
-                        text += padEnd('Producto', colName) + padCenter('Hora', colTime) + padStart('Cant', colQty) + '\n';
+                        text += 'Mesero: ' + (table?.waiter || '-') + '\n';
                         text += sep;
 
                         activeItems.forEach((it) => {
@@ -1466,52 +1642,44 @@
                             const takeawayQty = Math.max(0, Math.min(parseFloat(qty) || 0, parseFloat(it?.takeawayQty ?? 0) || 0));
                             const status = String(it?.status ?? '').toUpperCase();
                             const isDelivered = !!it?.delivered || status === 'ENTREGADO' || status === 'E';
-                            text += '  ' + padEnd(name, Math.max(0, colName - 2)) + padCenter(hour, colTime) + padStart('x' + qty, colQty) + '\n';
-                            if (isDelivered) text += '  [ENTREGADO]\n';
+                            text += String(qty) + '  ' + name + '\n';
+                            if (hour) text += 'Hora: ' + hour + '\n';
+                            if (isDelivered) text += 'Estado: ENTREGADO\n';
                             if (courtesyQty > 0 || takeawayQty > 0) {
                                 const tags = [];
                                 if (courtesyQty > 0) tags.push('Cortesia: ' + courtesyQty);
                                 if (takeawayQty > 0) tags.push('Llevar: ' + takeawayQty);
-                                text += '    * ' + tags.join(' | ') + '\n';
+                                text += tags.join(' | ') + '\n';
                             }
-                            if (it?.note && String(it.note).trim()) text += '      Nota: ' + String(it.note).trim() + '\n';
+                            if (it?.note && String(it.note).trim()) text += 'Nota: ' + String(it.note).trim() + '\n';
+                            text += sep + '\n';
                             text += '\n';
                         });
 
                         // Cancelados: cada uno con "ANULADO" encima y cantidad anulada
                         if (cancellations.length) {
-                            text += sep;
                             cancellations.forEach((c) => {
                                 const cName = String(c?.name ?? c?.description ?? 'Producto').trim();
                                 const cQty = parseFloat(c?.qtyCanceled ?? c?.quantity ?? 1) || 1;
                                 text += 'ANULADO\n';
-                                text += padEnd(cName, colName) + padCenter('', colTime) + padStart('x' + cQty, colQty) + '\n';
+                                text += String(cQty) + '  ' + cName + '\n';
                                 if (c?.cancel_reason && String(c.cancel_reason).trim()) text += 'Motivo: ' + String(c.cancel_reason).trim() + '\n';
+                                text += sep + '\n';
                                 text += '\n';
                             });
                         }
 
-                        const escaped = escapeHtmlForQzPrint(text);
                         const hasCancellations = cancellations.length > 0;
-                        const html = '<!DOCTYPE html><html><head><meta charset="utf-8">' +
-                            '<title>' + (hasCancellations ? 'ANULADO - Comanda' : 'Comanda') + '</title>' +
-                            '<style>@page{size:' + (paperWidth === 80 ? '80mm' : '58mm') + ' auto;margin:0;}' +
-                            'body{font-family:Courier New,monospace;margin:24px;background:#f5f5f5;}' +
-                            '.paper{width:' + (paperWidth === 80 ? '80mm' : '58mm') + ';max-width:' + (paperWidth === 80 ? '80mm' : '58mm') + ';background:#fff;border:' + (hasCancellations ? '2px solid #dc2626' : '1px solid #ddd') + ';padding:8px;box-shadow:0 2px 8px rgba(0,0,0,.08);}' +
-                            '.anulado-badge{background:#dc2626;color:#fff;font-weight:bold;text-align:center;padding:4px;font-size:13px;letter-spacing:2px;margin-bottom:6px;}' +
-                            'pre{margin:0;white-space:pre-wrap;word-wrap:break-word;line-height:1.25;font-size:11px;}' +
-                            '.hint{font:12px/1.4 Segoe UI,Arial,sans-serif;color:#444;margin-top:12px;}</style>' +
-                            '</head><body>' +
-                            '<div class="paper">' +
-                            (hasCancellations ? '<div class="anulado-badge">&#9733; ANULADO &#9733;</div>' : '') +
-                            '<pre>' + escaped + '</pre></div>' +
-                            '<div class="hint">Vista previa temporal sin ticketera. Presiona Ctrl+P y guarda como PDF.</div>' +
-                            '</body></html>';
-
-                        const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-                        const url = URL.createObjectURL(blob);
-                        window.open(url, '_blank', 'noopener,noreferrer');
-                        setTimeout(() => URL.revokeObjectURL(url), 10000);
+                        openPdfLinkInNewTab(kitchenPdfLinkUrl, {
+                            title: hasCancellations ? 'ANULADO - Comanda' : 'Comanda',
+                            ticket_text: text,
+                            paper_width: paperWidth,
+                        }).catch((error) => {
+                            console.error('Comanda PDF:', error);
+                            if (typeof showNotification === 'function') {
+                                showNotification('Impresión', 'No se pudo generar el PDF de comanda.', 'error');
+                            }
+                        });
                     }
 
                     function isQzTrayAvailable() {
@@ -1583,9 +1751,7 @@
                         // Fallback: ticketera por red (server-side ESC/POS usando el endpoint de pedidos)
                         const movementId = currentTable?.movement_id;
                         if (!movementId) {
-                            if (typeof showNotification === 'function') {
-                                showNotification('Precuenta', 'Guarda el pedido antes de imprimir la precuenta.', 'warning');
-                            }
+                            openPreAccountPdfTab();
                             return;
                         }
                         try {
@@ -1600,14 +1766,10 @@
                             if (tr.ok && td?.success) {
                                 if (typeof showNotification === 'function') showNotification('Precuenta', td.message || 'Ticket enviado.', 'success');
                             } else {
-                                const msg = td?.message || 'No se pudo enviar el ticket.';
-                                if (typeof showNotification === 'function') showNotification('Impresión', msg, 'error');
+                                openPreAccountPdfTab();
                             }
                         } catch (e) {
-                            const networkMsg = qzFailed
-                                ? 'No se pudo imprimir por QZ ni por red.'
-                                : 'Error de red al imprimir precuenta.';
-                            if (typeof showNotification === 'function') showNotification('Impresión', networkMsg, 'error');
+                            openPreAccountPdfTab();
                         }
                     }
 
@@ -1670,9 +1832,7 @@
                             ...Object.keys(canceledByPrinter),
                         ]));
                         if (!names.length) {
-                            if (typeof showNotification === 'function') {
-                                showNotification('Impresión', 'No hay impresoras asignadas a los productos (product_branch_printer).', 'warning');
-                            }
+                            openKitchenCommandPdfTab(activeItems, table);
                             return;
                         }
 
@@ -1825,10 +1985,8 @@
                                     await sendKitchenTicketToServer(pname, data);
                                 }
                             } catch (e) {
-                                console.error('Impresión comanda: error al imprimir en ' + pname, e);
-                                if (typeof showNotification === 'function') {
-                                    showNotification('Impresión', 'No se pudo imprimir en "' + pname + '". ' + (e?.message || ''), 'error');
-                                }
+                                console.error('Impresi?n comanda: error al imprimir en ' + pname, e);
+                                openKitchenCommandPdfTab(lines, table);
                             }
                         }
                     }
@@ -3117,7 +3275,7 @@
                         const items = getItemsGroupedByProduct();
                         const totals = getTotalsWithDelivery(items);
                         const printerName = resolvePreAccountPrinterName();
-                        const ticketText = buildPaymentTicketText(currentTable, items, ticketMethods, totals, resolvePrinterWidthByName(printerName));
+                        const ticketText = buildPaymentTicketTextApproved(currentTable, items, ticketMethods, totals, resolvePrinterWidthByName(printerName));
                         const body = { movement_id: movementId, ticket_text: ticketText };
                         if (printerId) body.printer_id = printerId;
 
@@ -3137,7 +3295,8 @@
                                 let currentPrinterName = td.printer_name || printerName || '';
                                 if (!currentPrinterName) currentPrinterName = await qzApi.printers.getDefault();
                                 if (!currentPrinterName) {
-                                    throw new Error('No se encontró ninguna impresora en QZ Tray.');
+                                    openSaleTicketPdfTab(movementId);
+                                    return;
                                 }
                                 const paperMm = (parseInt(td.paper_width) || 58) === 80 ? 80 : 58;
                                 const config = qzApi.configs.create(currentPrinterName, { units: 'mm', size: { width: paperMm, height: 200 }, scaleContent: false });
@@ -3148,8 +3307,8 @@
                             } catch (e) {
                                 qzFailed = true;
                                 console.warn('QZ Ticket:', e);
-                                if (typeof showNotification === 'function')
-                                    showNotification('Impresión', 'QZ Tray no está disponible. Usando ticketera de red...', 'warning');
+                                openSaleTicketPdfTab(movementId);
+                                return;
                             }
                         }
 
@@ -3166,15 +3325,11 @@
                                 if (typeof showNotification === 'function')
                                     showNotification('Impresión', td.message || 'Comprobante enviado a la ticketera.', 'success');
                             } else {
-                                const msg = td?.message || 'No se pudo enviar el comprobante a la ticketera.';
-                                console.warn('Ticketera red:', msg);
-                                if (typeof showNotification === 'function')
-                                    showNotification('Impresión', msg, 'error');
+                                openSaleTicketPdfTab(movementId);
                             }
                         } catch (e) {
                             console.warn('Ticketera red:', e);
-                            if (typeof showNotification === 'function')
-                                showNotification('Impresión', qzFailed ? 'No se pudo imprimir por QZ ni por red.' : 'Error de red al conectar con la ticketera.', 'error');
+                            openSaleTicketPdfTab(movementId);
                         }
                     }
 

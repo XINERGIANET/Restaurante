@@ -12,7 +12,7 @@
         }
 
         @page {
-            size: 80mm 140mm;
+            size: 80mm auto;
             margin: 0;
         }
 
@@ -25,13 +25,13 @@
         }
 
         body {
-            font-size: 10px;
-            line-height: 1.15;
+            font-size: 10.5px;
+            line-height: 1.18;
         }
 
         .ticket {
             width: 100%;
-            padding: 2.5mm 3mm 3mm;
+            padding: 2.2mm 2.6mm 3mm;
         }
 
         .center {
@@ -71,8 +71,8 @@
         }
 
         .separator {
-            border-top: 0.25mm dashed #8ea9cf;
-            margin: 2mm 0;
+            border-top: 0.3mm dashed #7ea1d4;
+            margin: 1.8mm 0;
         }
 
         table {
@@ -82,9 +82,9 @@
         }
 
         .info-table td {
-            padding: 0.15mm 0;
+            padding: 0.2mm 0;
             vertical-align: top;
-            font-size: 2.95mm;
+            font-size: 3.05mm;
             line-height: 1.08;
         }
 
@@ -102,8 +102,8 @@
 
         .items-table th,
         .items-table td {
-            padding: 0.5mm 0;
-            font-size: 2.8mm;
+            padding: 0.55mm 0;
+            font-size: 2.95mm;
         }
 
         .items-table th {
@@ -139,8 +139,8 @@
         }
 
         .totals-table td {
-            padding: 0.4mm 0;
-            font-size: 3.1mm;
+            padding: 0.45mm 0;
+            font-size: 3.2mm;
         }
 
         .totals-label {
@@ -153,9 +153,9 @@
         }
 
         .grand-total td {
-            border-top: 0.2mm solid #8ea9cf;
-            padding-top: 1mm;
-            font-size: 4.3mm;
+            border-top: 0.25mm solid #7ea1d4;
+            padding-top: 1.1mm;
+            font-size: 4.55mm;
             font-weight: 800;
         }
 
@@ -170,7 +170,7 @@
 
         .footer {
             text-align: center;
-            font-size: 2.6mm;
+            font-size: 2.7mm;
             line-height: 1.15;
         }
 
@@ -233,10 +233,10 @@
     <table class="items-table">
         <thead>
         <tr>
-            <th class="col-product">Prod.</th>
-            <th class="col-qty">Cant</th>
-            <th class="col-unit">P.Unit.</th>
-            <th class="col-subtotal">Subt.</th>
+            <th class="col-qty">CANT.</th>
+            <th class="col-product">DESCRIPCION</th>
+            <th class="col-unit">PRECIO</th>
+            <th class="col-subtotal">IMPORTE</th>
         </tr>
         </thead>
         <tbody>
@@ -247,8 +247,8 @@
                 $unitPrice = $qty > 0 ? ($lineTotal / $qty) : 0;
             @endphp
             <tr>
-                <td class="col-product">{{ $detail->description ?? $detail->product?->description ?? '-' }}</td>
                 <td class="col-qty">{{ number_format($qty, 2) }}</td>
+                <td class="col-product">{{ $detail->description ?? $detail->product?->description ?? '-' }}</td>
                 <td class="col-unit">{{ number_format($unitPrice, 2) }}</td>
                 <td class="col-subtotal">{{ number_format($lineTotal, 2) }}</td>
             </tr>
