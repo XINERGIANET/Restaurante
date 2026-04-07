@@ -1220,6 +1220,9 @@
                     function resolvePrinterWidthByName(printerName) {
                         const target = String(printerName || '').trim().toLowerCase();
                         if (!target) return 58;
+                        if (target === 'barra' || target === 'barra2' || target.startsWith('barra')) {
+                            return 80;
+                        }
                         for (let i = 0; i < serverProductBranches.length; i++) {
                             const pb = serverProductBranches[i];
                             const plist = Array.isArray(pb?.qz_printers) ? pb.qz_printers : [];
