@@ -490,8 +490,8 @@
                             </x-ui.button>
                             <button type="button" id="btn-guardar" onclick="processOrder()"
                                 class="py-2.5 px-4 rounded-xl bg-gray-500 text-white font-bold text-xs sm:text-sm shadow-lg hover:bg-gray-600 active:scale-95 transition-all flex justify-center items-center gap-2">
-                                <i class="ri-save-line text-base"></i>
-                                <span>Guardar</span>
+                                <i class="ri-send-plane-2-line text-base"></i>
+                                <span>Enviar</span>
                             </button>
                         </div>
                         {{-- Footer Cobro: solo Cobrar (oculto para Mozo) --}}
@@ -2920,7 +2920,7 @@
                                 const qtyMinusOnclick = canReduce ? `onclick="updateQty(${index}, -1)"` : '';
                                 const trashOnclick = itemIsComandado
                                     ? `onclick="window.dispatchEvent(new CustomEvent('open-remove-quantity-modal', { detail: { index: ${index}, maxQty: ${itemQty}, productName: '${String(prod.name || 'Producto').replace(/\\/g, '\\\\').replace(/'/g, "\\'")}', isComandado: true } }))"`
-                                    : `onclick="confirmRemoveLine(${index})"`;
+                                    : `onclick="removeFromCart(${index})"`;
                                 const hasCourtesy = (parseFloat(item.courtesyQty) || 0) > 0;
                                 const showNoteBox = item.noteOpen === true || (item.noteOpen === undefined && hasNote);
                                 const showCourtesyBox = item.courtesyOpen === true || (item.courtesyOpen === undefined && hasCourtesy);
