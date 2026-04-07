@@ -1525,7 +1525,7 @@
                         markQzTrayUnavailable();
                         console.warn('QZ Ticket:', e);
                         if (strictLocalQz) {
-                            showCobroNotification('Impresión', 'Abra QZ Tray en esta PC para imprimir el comprobante en "' + preferredPrinterName + '".', 'error');
+                            openSaleTicketPdfTab(movementId);
                             return;
                         }
                         openSaleTicketPdfTab(movementId);
@@ -1535,7 +1535,7 @@
 
                 // Fallback: impresión TCP por red (requiere red local e IP en impresora)
                 if (strictLocalQz) {
-                    showCobroNotification('Impresión', 'Abra QZ Tray en esta PC para imprimir el comprobante en "' + preferredPrinterName + '".', 'error');
+                    openSaleTicketPdfTab(movementId);
                     return;
                 }
 

@@ -1881,9 +1881,7 @@
                             } catch (e) {
                                 qzFailed = true;
                                 if (strictLocalQz) {
-                                    if (typeof showNotification === 'function') {
-                                        showNotification('Impresión', 'Abra QZ Tray en esta PC para imprimir la precuenta en "' + printerName + '".', 'error');
-                                    }
+                                    openPreAccountPdfTab();
                                     return;
                                 }
                                 if (typeof showNotification === 'function') {
@@ -1893,9 +1891,7 @@
                         }
 
                         if (strictLocalQz) {
-                            if (typeof showNotification === 'function') {
-                                showNotification('Impresión', 'Abra QZ Tray en esta PC para imprimir la precuenta en "' + printerName + '".', 'error');
-                            }
+                            openPreAccountPdfTab();
                             return;
                         }
 
@@ -3595,9 +3591,7 @@
                                 qzFailed = true;
                                 console.warn('QZ Ticket:', e);
                                 if (strictLocalQz) {
-                                    if (typeof showNotification === 'function') {
-                                        showNotification('Impresión', 'Abra QZ Tray en esta PC para imprimir el comprobante en "' + printerName + '".', 'error');
-                                    }
+                                    openSaleTicketPdfTab(movementId);
                                     return;
                                 }
                                 openSaleTicketPdfTab(movementId);
@@ -3607,9 +3601,7 @@
 
                         // Fallback: impresión TCP por red (requiere red local e IP en impresora)
                         if (strictLocalQz) {
-                            if (typeof showNotification === 'function') {
-                                showNotification('Impresión', 'Abra QZ Tray en esta PC para imprimir el comprobante en "' + printerName + '".', 'error');
-                            }
+                            openSaleTicketPdfTab(movementId);
                             return;
                         }
 
