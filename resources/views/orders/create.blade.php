@@ -83,6 +83,8 @@
                         currentTable.items = Array.isArray(serverPendingItems) ? serverPendingItems : [];
                         currentTable.items.forEach(it => {
                             it.savedQty = parseFloat(it.qty) ?? parseFloat(it.quantity) ?? 0;
+                            it.savedCourtesyQty = parseFloat(it.courtesyQty) ?? parseFloat(it.courtesy_quantity) ?? 0;
+                            it.savedTakeawayQty = parseFloat(it.takeawayQty) ?? parseFloat(it.takeaway_quantity) ?? 0;
                             if (it.takeawayQty == null || isNaN(parseFloat(it.takeawayQty))) it.takeawayQty = 0;
                             const q = parseFloat(it.qty) || 0;
                             let t = parseFloat(it.takeawayQty) || 0;
@@ -1784,22 +1786,11 @@
                      */
                     async function printKitchenTickets(items, table) {
                         const activeItems = Array.isArray(items) ? items : [];
-                        const hasSavedOrder = !!(table?.order_movement_id);
-                        const isCurrentPendingOrder = hasSavedOrder && (table?.order_movement_id === serverOrderMovementId);
-                        const serverCancelled = (isCurrentPendingOrder && Array.isArray(serverPendingCancelledDetails))
-                            ? serverPendingCancelledDetails
-                            : [];
                         const clientCancelled = Array.isArray(table?.cancellations) ? table.cancellations : [];
                         const mergedCancellations = [
-                            ...serverCancelled.map((d) => ({
-                                pId: d?.product_id ?? null,
-                                name: d?.description ?? 'Producto',
-                                qtyCanceled: d?.quantity ?? 0,
-                                cancel_reason: d?.comment ?? '',
-                            })),
                             ...clientCancelled,
                         ];
-                        if (!activeItems.length && !mergedCancellations.length) return;
+                        if (!activeItems.length && !mergedCancellations.length) return true;
                         const qzApi = window.qz;
                         const byPrinter = {};
                         activeItems.forEach((it) => {
@@ -1838,8 +1829,9 @@
                         ]));
                         if (!names.length) {
                             openKitchenCommandPdfTab(activeItems, table);
-                            return;
+                            return false;
                         }
+                        let printedDirectly = true;
 
                         async function sendKitchenTicketToServer(printerName, ticketText) {
                             const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
@@ -1991,9 +1983,11 @@
                                 }
                             } catch (e) {
                                 console.error('Impresi?n comanda: error al imprimir en ' + pname, e);
+                                printedDirectly = false;
                                 openKitchenCommandPdfTab(lines, table);
                             }
                         }
+                        return printedDirectly;
                     }
 
                     function getItemTaxRatePercent(item) {
@@ -2708,13 +2702,23 @@
 
                                 const rawSaved = item.savedQty != null && item.savedQty !== '' ? parseFloat(item.savedQty) : NaN;
                                 const savedQtyItem = Number.isFinite(rawSaved) ? rawSaved : 0;
+                                const commandedQty = Math.max(0, Math.min(itemQty, savedQtyItem));
+                                const pendingQty = Math.max(0, itemQty - commandedQty);
                                 const itemIsComandado = savedQtyItem > 0;
                                 const canReduce = !itemIsComandado || (parseFloat(item.qty) || 0) > savedQtyItem;
 
-                                const statusLabel = isDelivered ? 'Entregado' : (itemIsComandado ? 'Comandado' : 'Pendiente');
+                                const statusLabel = isDelivered ? 'Entregado' : (itemIsComandado ? (pendingQty > 0 ? `Parcial ${commandedQty}/${itemQty}` : 'Comandado') : 'Pendiente');
                                 const statusClass = isDelivered
                                     ? 'bg-emerald-500/20 text-emerald-600 border border-emerald-500/35 dark:text-emerald-400 dark:border-emerald-500/40'
-                                    : (itemIsComandado ? 'bg-sky-500/15 text-sky-700 border border-sky-500/35 dark:text-sky-300 dark:border-sky-500/40' : 'bg-zinc-200/90 text-zinc-600 border border-zinc-300 dark:bg-zinc-700/60 dark:text-zinc-300 dark:border-zinc-600');
+                                    : (itemIsComandado ? (pendingQty > 0 ? 'bg-amber-500/15 text-amber-700 border border-amber-500/35 dark:text-amber-300 dark:border-amber-500/40' : 'bg-sky-500/15 text-sky-700 border border-sky-500/35 dark:text-sky-300 dark:border-sky-500/40') : 'bg-zinc-200/90 text-zinc-600 border border-zinc-300 dark:bg-zinc-700/60 dark:text-zinc-300 dark:border-zinc-600');
+                                const commandSummary = itemIsComandado
+                                    ? `<div class="mt-1 flex flex-wrap items-center gap-1.5">
+                                            <span class="inline-flex items-center gap-1 rounded-full bg-sky-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sky-700 dark:bg-sky-500/15 dark:text-sky-300">
+                                                <i class="ri-printer-line"></i> Comandado x${commandedQty}
+                                            </span>
+                                            ${pendingQty > 0 ? `<span class="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700 dark:bg-amber-500/15 dark:text-amber-300"><i class="ri-time-line"></i> Nuevo x${pendingQty}</span>` : ''}
+                                        </div>`
+                                    : '';
 
                                 const qtyMinusDisabled = canReduce ? '' : ' disabled';
                                 const qtyMinusClass = canReduce ? ' hover:bg-slate-100 dark:hover:bg-slate-700 font-bold' : ' opacity-30 cursor-not-allowed';
@@ -2754,6 +2758,7 @@
                                                                                                                                                                                                         <div class="min-w-0 flex-1">
                                                                                                                                                                                                             <h3 class="font-bold text-[15px] sm:text-base leading-snug tracking-tight text-slate-900 dark:text-white">${productName}</h3>
                                                                                                                                                                                                             ${takeawayBadge}
+                                                                                                                                                                                                            ${commandSummary}
                                                                                                                                                                                                             <p class="mt-1 text-[11px] sm:text-xs text-slate-500 dark:text-zinc-400 font-medium tabular-nums">${noteTime ? noteTime + ' · ' : ''}S/ ${itemPrice.toFixed(2)} <span class="text-slate-400 dark:text-zinc-500 font-normal">c/u</span></p>
                                                                                                                                                                                                         </div>
                                                                                                                                                                                                         <span class="shrink-0 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wide ${statusClass}">${statusLabel}</span>
@@ -2945,13 +2950,19 @@
                                     commandTime: it.commandTime || null,
                                     delivered: !!it.delivered,
                                     courtesyQty: 0,
+                                    savedCourtesyQty: 0,
                                     takeawayQty: 0,
+                                    savedTakeawayQty: 0,
+                                    savedQty: 0,
                                     qty: 0
                                 };
                             }
                             byPid[id].qty = (byPid[id].qty || 0) + (parseInt(it.qty, 10) || 1);
                             byPid[id].courtesyQty = (byPid[id].courtesyQty || 0) + (parseInt(it.courtesyQty) || 0);
                             byPid[id].takeawayQty = (byPid[id].takeawayQty || 0) + (parseFloat(it.takeawayQty) || 0);
+                            byPid[id].savedQty = (byPid[id].savedQty || 0) + (parseFloat(it.savedQty) || 0);
+                            byPid[id].savedCourtesyQty = (byPid[id].savedCourtesyQty || 0) + (parseFloat(it.savedCourtesyQty) || 0);
+                            byPid[id].savedTakeawayQty = (byPid[id].savedTakeawayQty || 0) + (parseFloat(it.savedTakeawayQty) || 0);
                             if (it.delivered) byPid[id].delivered = true;
                         });
                         const st = currentTable?.service_type || 'IN_SITU';
@@ -2964,6 +2975,38 @@
                             v.takeawayQty = st === 'DELIVERY' ? q : t;
                         });
                         return vals;
+                    }
+
+                    function getKitchenDeltaItems(items, commandTime) {
+                        return (Array.isArray(items) ? items : []).map((it) => {
+                            const qty = Math.max(0, parseFloat(it?.qty) || 0);
+                            const savedQty = Math.max(0, parseFloat(it?.savedQty) || 0);
+                            const deltaQty = Math.max(0, qty - savedQty);
+                            if (deltaQty <= 0) return null;
+
+                            const courtesyQty = Math.max(0, parseFloat(it?.courtesyQty) || 0);
+                            const savedCourtesyQty = Math.max(0, parseFloat(it?.savedCourtesyQty) || 0);
+                            const takeawayQty = Math.max(0, parseFloat(it?.takeawayQty) || 0);
+                            const savedTakeawayQty = Math.max(0, parseFloat(it?.savedTakeawayQty) || 0);
+
+                            return {
+                                ...it,
+                                qty: deltaQty,
+                                courtesyQty: Math.max(0, Math.min(deltaQty, courtesyQty - savedCourtesyQty)),
+                                takeawayQty: Math.max(0, Math.min(deltaQty, takeawayQty - savedTakeawayQty)),
+                                commandTime: commandTime || it?.commandTime || null,
+                            };
+                        }).filter(Boolean);
+                    }
+
+                    function markCurrentItemsAsCommanded(commandTime) {
+                        (currentTable.items || []).forEach((item) => {
+                            const qty = Math.max(0, parseFloat(item?.qty) || 0);
+                            item.savedQty = qty;
+                            item.savedCourtesyQty = Math.max(0, Math.min(qty, parseFloat(item?.courtesyQty) || 0));
+                            item.savedTakeawayQty = Math.max(0, Math.min(qty, parseFloat(item?.takeawayQty) || 0));
+                            if (commandTime) item.commandTime = commandTime;
+                        });
                     }
 
                     function saveDB() {
@@ -3133,6 +3176,7 @@
                             if (!it) return;
                             if (!it.commandTime) it.commandTime = timeString;
                         });
+                        const kitchenDeltaItems = getKitchenDeltaItems(items, timeString);
 
                         const totals = calculateTotalsFromItems(items);
                         const subtotal = totals.subtotal;
@@ -3182,14 +3226,26 @@
                             })
                             .then(async data => {
                                 if (data && data.success) {
+                                    currentTable.order_movement_id = data.order_movement_id ?? currentTable.order_movement_id ?? null;
+                                    currentTable.movement_id = data.movement_id ?? currentTable.movement_id ?? null;
+                                    const hasKitchenOutput = kitchenDeltaItems.length > 0 || (currentTable.cancellations || []).length > 0;
+                                    let kitchenPrintedOk = true;
                                     try {
-                                        await printKitchenTickets(items, currentTable);
+                                        if (hasKitchenOutput) {
+                                            kitchenPrintedOk = await printKitchenTickets(kitchenDeltaItems, currentTable);
+                                        }
                                     } catch (pzErr) {
                                         console.error('QZ Tray:', pzErr);
+                                        kitchenPrintedOk = false;
                                     }
+                                    markCurrentItemsAsCommanded(timeString);
                                     // Limpiar cancelaciones ya persistidas
                                     currentTable.cancellations = [];
                                     saveDB();
+                                    renderTicket();
+                                    if (!kitchenPrintedOk && hasKitchenOutput && typeof showNotification === 'function') {
+                                        showNotification('Pedido guardado', 'El pedido se guardó, pero la comanda salió por PDF de respaldo.', 'warning');
+                                    }
                                     sessionStorage.setItem('flash_success_message', data.message);
                                     goToIndexWithTurbo();
                                 } else if (data && isMesaYaCobradaMessage(data.message)) {
