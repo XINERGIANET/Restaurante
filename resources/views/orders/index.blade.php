@@ -18,15 +18,17 @@
                 <div class="flex flex-col sm:flex-row justify-between items-center gap-4 w-full">
 
                     <template x-if="areas && areas.length > 0">
-                        <div class="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-xl">
+                        <div class="w-full sm:w-auto overflow-x-auto overflow-y-hidden pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                            <div class="inline-flex min-w-max p-1 bg-gray-100 dark:bg-gray-800 rounded-xl">
                             <template x-for="area in areas" :key="area.id">
                                 <button @click="switchArea(area)"
                                     :class="currentAreaId === area.id ?
                                         'bg-white dark:bg-gray-700 shadow-sm text-gray-800 dark:text-white' :
                                         'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
-                                    class="px-4 py-2 rounded-lg text-sm font-medium transition-all" x-text="area.name">
+                                    class="shrink-0 whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium transition-all" x-text="area.name">
                                 </button>
                             </template>
+                            </div>
                         </div>
                     </template>
                     <template x-if="!areas || areas.length === 0">
