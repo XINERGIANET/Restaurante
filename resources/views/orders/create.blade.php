@@ -1117,6 +1117,47 @@
                             .replace(/\"/g, '&quot;');
                     }
 
+                    function buildStyledTicketHtmlForQz(plainText, paperMm) {
+                        const fontBase = paperMm === 80 ? 12 : 10;
+                        const fontTitle = paperMm === 80 ? 19 : 15;
+                        const fontProduct = paperMm === 80 ? 15 : 12;
+                        const htmlLines = String(plainText || '').split('\n').map((line, index) => {
+                            const raw = String(line || '');
+                            const trimmed = raw.trim();
+                            if (!trimmed) return '<div class="spacer"></div>';
+                            if (/^=+$/.test(trimmed)) return '<div class="sep"></div>';
+                            if ((index <= 1 && !trimmed.includes(':') && trimmed.length <= 32) || /^(COMANDA|PRECUENTA|ANULADO|COMPROBANTE)$/i.test(trimmed)) {
+                                return '<div class="title">' + escapeHtmlForQzPrint(trimmed) + '</div>';
+                            }
+                            if (/^(Cant\.|Descr\.|P\.Unit\.|Subt\.)/.test(trimmed)) {
+                                return '<div class="header-row mono">' + escapeHtmlForQzPrint(raw) + '</div>';
+                            }
+                            if (/^(TOTAL|Total)/.test(trimmed)) {
+                                return '<div class="total-line mono">' + escapeHtmlForQzPrint(raw) + '</div>';
+                            }
+                            if (/^(Mesa:|Mesero:|Fecha:|Fecha\/Hora:|Cliente:|Dir\.:|RUC\/DNI:|Forma pago:|Subtotal|Impuestos|IGV|Delivery|Descartables|Cambio|Pagos|Notas:)/i.test(trimmed)) {
+                                return '<div class="meta mono">' + escapeHtmlForQzPrint(raw) + '</div>';
+                            }
+                            return '<div class="product-line mono">' + escapeHtmlForQzPrint(raw) + '</div>';
+                        }).join('');
+
+                        return '<!DOCTYPE html><html><head><meta charset="utf-8">' +
+                            '<style>' +
+                            '@page{size:' + paperMm + 'mm auto;margin:0;}' +
+                            'html,body{width:' + paperMm + 'mm;margin:0;padding:0;background:#fff;}' +
+                            'body{font-family:\"Courier New\",Consolas,monospace;font-size:' + fontBase + 'px;color:#000;}' +
+                            '.ticket{padding:6px 7px 8px;box-sizing:border-box;width:' + paperMm + 'mm;}' +
+                            '.mono{white-space:pre;line-height:1.18;}' +
+                            '.title{font-size:' + fontTitle + 'px;font-weight:700;text-align:center;line-height:1.05;margin:1px 0;}' +
+                            '.meta{font-size:' + fontBase + 'px;font-weight:400;margin:1px 0;}' +
+                            '.header-row{font-size:' + (fontBase + 1) + 'px;font-weight:700;margin:2px 0;}' +
+                            '.product-line{font-size:' + fontProduct + 'px;font-weight:400;margin:1px 0;}' +
+                            '.total-line{font-size:' + (fontProduct + 2) + 'px;font-weight:700;margin:3px 0 1px;}' +
+                            '.sep{border-top:1px dashed #000;margin:5px 0;}' +
+                            '.spacer{height:4px;}' +
+                            '</style></head><body><div class="ticket">' + htmlLines + '</div></body></html>';
+                    }
+
                     /**
                      * RAW para térmicas; si falla (p. ej. Epson tinta), reintenta como HTML/pixel.
                      * Esto permite "imprimir en todos" aunque no todos acepten RAW.
@@ -1129,6 +1170,17 @@
                             size: { width: paperMm, height: 200 },
                             margins: 0,
                         });
+                        try {
+                            await qzApi.print(config, [{
+                                type: 'pixel',
+                                format: 'html',
+                                flavor: 'plain',
+                                data: buildStyledTicketHtmlForQz(plainText, paperMm),
+                            }]);
+                            return;
+                        } catch (htmlErr) {
+                            console.warn('QZ Tray: HTML/pixel no disponible en "' + printerName + '", usando RAW.', htmlErr);
+                        }
                         try {
                             // Reemplaza caracteres especiales del español a equivalentes ASCII
                             // para que la ticketera térmica los imprima correctamente (PC437/PC850).
@@ -1740,6 +1792,7 @@
                                     showNotification('Precuenta', 'Ticket enviado a "' + currentPrinterName + '".', 'success');
                                 }
                                 return;
+                                */
                             } catch (e) {
                                 qzFailed = true;
                                 if (typeof showNotification === 'function') {
@@ -3302,8 +3355,42 @@
                                 const config = qzApi.configs.create(currentPrinterName, { units: 'mm', size: { width: paperMm, height: 200 }, scaleContent: false });
                                 await qzApi.print(config, [{ type: 'raw', format: 'base64', data: td.payload_b64 }]);
                                 if (typeof showNotification === 'function')
+                                    showNotification('ImpresiÃ³n', 'Comprobante enviado a "' + currentPrinterName + '".', 'success');
+                                return;
+                                /* legacy removed
+                                let currentPrinterNameRaw = currentPrinterNameLegacy;
+                                if (!currentPrinterNameRaw) currentPrinterNameRaw = await qzApi.printers.getDefault();
+                                if (!currentPrinterNameRaw) {
+                                    openSaleTicketPdfTab(movementId);
+                                    return;
+                                }
+                                await printTicketWithQz(qzApi, currentPrinterNameLegacy, ticketText);
+                                if (typeof showNotification === 'function')
+                                    showNotification('ImpresiÃ³n', 'Comprobante enviado a "' + currentPrinterNameRaw + '".', 'success');
+                                return;
+                                const tr = await fetch(salesThermalPrintUrl, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+                                    credentials: 'same-origin',
+                                    body: JSON.stringify({ ...body, mode: 'qz' })
+                                });
+                                const td = tr.headers.get('content-type')?.includes('application/json') ? await tr.json() : null;
+                                if (!tr.ok || !td?.success || !td?.payload_b64) {
+                                    throw new Error(td?.message || 'No se pudo obtener el ticket del servidor.');
+                                }
+                                let currentPrinterNameRaw = td.printer_name || printerName || '';
+                                if (!currentPrinterName) currentPrinterName = await qzApi.printers.getDefault();
+                                if (!currentPrinterName) {
+                                    openSaleTicketPdfTab(movementId);
+                                    return;
+                                }
+                                const paperMm = (parseInt(td.paper_width) || 58) === 80 ? 80 : 58;
+                                const config = qzApi.configs.create(currentPrinterNameRaw, { units: 'mm', size: { width: paperMm, height: 200 }, scaleContent: false });
+                                await qzApi.print(config, [{ type: 'raw', format: 'base64', data: td.payload_b64 }]);
+                                if (typeof showNotification === 'function')
                                     showNotification('Impresión', 'Comprobante enviado a "' + currentPrinterName + '".', 'success');
                                 return;
+                                */
                             } catch (e) {
                                 qzFailed = true;
                                 console.warn('QZ Ticket:', e);
