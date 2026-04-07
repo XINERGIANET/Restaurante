@@ -3355,48 +3355,15 @@
                                 const config = qzApi.configs.create(currentPrinterName, { units: 'mm', size: { width: paperMm, height: 200 }, scaleContent: false });
                                 await qzApi.print(config, [{ type: 'raw', format: 'base64', data: td.payload_b64 }]);
                                 if (typeof showNotification === 'function')
-                                    showNotification('ImpresiÃ³n', 'Comprobante enviado a "' + currentPrinterName + '".', 'success');
+                                    showNotification('Impresi�n', 'Comprobante enviado a "' + currentPrinterName + '".', 'success');
                                 return;
-                                /* legacy removed
-                                let currentPrinterNameRaw = currentPrinterNameLegacy;
-                                if (!currentPrinterNameRaw) currentPrinterNameRaw = await qzApi.printers.getDefault();
-                                if (!currentPrinterNameRaw) {
-                                    openSaleTicketPdfTab(movementId);
-                                    return;
-                                }
-                                await printTicketWithQz(qzApi, currentPrinterNameLegacy, ticketText);
-                                if (typeof showNotification === 'function')
-                                    showNotification('ImpresiÃ³n', 'Comprobante enviado a "' + currentPrinterNameRaw + '".', 'success');
-                                return;
-                                const tr = await fetch(salesThermalPrintUrl, {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
-                                    credentials: 'same-origin',
-                                    body: JSON.stringify({ ...body, mode: 'qz' })
-                                });
-                                const td = tr.headers.get('content-type')?.includes('application/json') ? await tr.json() : null;
-                                if (!tr.ok || !td?.success || !td?.payload_b64) {
-                                    throw new Error(td?.message || 'No se pudo obtener el ticket del servidor.');
-                                }
-                                let currentPrinterNameRaw = td.printer_name || printerName || '';
-                                if (!currentPrinterName) currentPrinterName = await qzApi.printers.getDefault();
-                                if (!currentPrinterName) {
-                                    openSaleTicketPdfTab(movementId);
-                                    return;
-                                }
-                                const paperMm = (parseInt(td.paper_width) || 58) === 80 ? 80 : 58;
-                                const config = qzApi.configs.create(currentPrinterNameRaw, { units: 'mm', size: { width: paperMm, height: 200 }, scaleContent: false });
-                                await qzApi.print(config, [{ type: 'raw', format: 'base64', data: td.payload_b64 }]);
-                                if (typeof showNotification === 'function')
-                                    showNotification('Impresión', 'Comprobante enviado a "' + currentPrinterName + '".', 'success');
-                                return;
-                                */
                             } catch (e) {
                                 qzFailed = true;
                                 console.warn('QZ Ticket:', e);
                                 openSaleTicketPdfTab(movementId);
                                 return;
                             }
+                        }
                         }
 
                         // Fallback: impresión TCP por red (requiere red local e IP en impresora)
