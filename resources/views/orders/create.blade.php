@@ -1426,19 +1426,21 @@
                         txt += padCenterSafe(branchName.toUpperCase(), lineWidth) + '\n';
                         txt += '\n';
                         txt += sep;
-                        txt += 'Cant.' + compactGap + 'Descr.' + compactGap + 'P.Unit.' + '\n';
+                        txt += 'Cant.' + compactGap + 'Descr.' + compactGap + 'P.Unit.' + compactGap + 'Subt.' + '\n';
                         txt += sep;
 
                         (groupedItems || []).forEach((it, index) => {
                             const name = String(it?.name || 'Producto').trim();
                             const qty = parseFloat(it?.qty ?? 1) || 1;
                             const price = parseFloat(it?.price ?? 0) || 0;
+                            const amount = qty * price;
                             const courtesyQty = Math.max(0, Math.min(qty, parseFloat(it?.courtesyQty ?? 0) || 0));
                             const takeawayQty = Math.max(0, Math.min(qty, parseFloat(it?.takeawayQty ?? 0) || 0));
-                            const compactLine = `${formatQty(qty)}${compactGap}${name}${compactGap}${price.toFixed(2)}`;
+                            const compactLine = `${formatQty(qty)}${compactGap}${name}${compactGap}${price.toFixed(2)}${compactGap}${amount.toFixed(2)}`;
+                            const maxNameLength = Math.max(6, lineWidth - String(formatQty(qty)).length - price.toFixed(2).length - amount.toFixed(2).length - 3);
                             txt += compactLine.length <= lineWidth
                                 ? compactLine + '\n'
-                                : `${formatQty(qty)}${compactGap}${name.slice(0, Math.max(6, lineWidth - colQty - colPrice - 2))}${compactGap}${price.toFixed(2)}\n`;
+                                : `${formatQty(qty)}${compactGap}${name.slice(0, maxNameLength)}${compactGap}${price.toFixed(2)}${compactGap}${amount.toFixed(2)}\n`;
                             if (courtesyQty > 0 || takeawayQty > 0) {
                                 const tags = [];
                                 if (courtesyQty > 0) tags.push('Cortesia: ' + courtesyQty);
