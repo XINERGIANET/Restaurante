@@ -484,7 +484,7 @@
                         class="shrink-0 p-4 sm:p-5 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
                         {{-- Footer Resumen: solo Guardar y Precuenta --}}
                         <div id="footer-resumen" class="flex justify-between">
-                            <x-ui.button id="btn-precuenta" type="button" variant="secondary" size="sm" class="hidden">
+                            <x-ui.button id="btn-precuenta" type="button" variant="secondary" size="sm" class="hidden" style="display: none;">
                                 <i class="ri-save-line text-base"></i>
                                 <span>Precuenta</span>
                             </x-ui.button>
@@ -1037,17 +1037,19 @@
                     function syncPreAccountVisibility() {
                         const btnPrecuenta = document.getElementById('btn-precuenta');
                         if (!btnPrecuenta) return;
+                        const items = Array.isArray(currentTable?.items) ? currentTable.items : [];
+                        const hasItems = items.length > 0;
+                        const hasCommandedItems = hasItems && items.some(item => {
+                            const savedQty = parseFloat(item?.savedQty);
+                            return Number.isFinite(savedQty) && savedQty > 0;
+                        });
                         const hasServerPendingOrder = !!serverOrderMovementId && !window.tableIsFree;
                         const hasCurrentSavedOrder = hasServerPendingOrder
                             && Number(currentTable?.order_movement_id || 0) > 0
                             && Number(currentTable?.order_movement_id || 0) === Number(serverOrderMovementId || 0);
-                        const hasItems = Array.isArray(currentTable?.items) && currentTable.items.length > 0;
-                        const shouldShow = hasCurrentSavedOrder && hasItems;
-                        if (shouldShow) {
-                            btnPrecuenta.classList.remove('hidden');
-                        } else {
-                            btnPrecuenta.classList.add('hidden');
-                        }
+                        const shouldShow = hasCurrentSavedOrder && hasItems && hasCommandedItems;
+                        btnPrecuenta.classList.toggle('hidden', !shouldShow);
+                        btnPrecuenta.style.display = shouldShow ? '' : 'none';
                     }
 
                     function escapeHtml(text) {
