@@ -35,9 +35,9 @@
         }
 
         .line {
-            white-space: pre-wrap;
-            word-break: break-word;
-            overflow-wrap: anywhere;
+            white-space: pre;
+            word-break: normal;
+            overflow-wrap: normal;
             margin: 0;
             min-height: 1.15em;
         }
