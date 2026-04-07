@@ -484,7 +484,7 @@
                         class="shrink-0 p-4 sm:p-5 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
                         {{-- Footer Resumen: solo Guardar y Precuenta --}}
                         <div id="footer-resumen" class="flex justify-between">
-                            <x-ui.button id="btn-precuenta" type="button" variant="secondary" size="sm">
+                            <x-ui.button id="btn-precuenta" type="button" variant="secondary" size="sm" class="hidden">
                                 <i class="ri-save-line text-base"></i>
                                 <span>Precuenta</span>
                             </x-ui.button>
@@ -1038,9 +1038,16 @@
                         const btnPrecuenta = document.getElementById('btn-precuenta');
                         if (!btnPrecuenta) return;
                         const hasServerPendingOrder = !!serverOrderMovementId && !window.tableIsFree;
-                        const hasCurrentSavedOrder = hasServerPendingOrder && Number(currentTable?.order_movement_id || 0) === Number(serverOrderMovementId || 0);
+                        const hasCurrentSavedOrder = hasServerPendingOrder
+                            && Number(currentTable?.order_movement_id || 0) > 0
+                            && Number(currentTable?.order_movement_id || 0) === Number(serverOrderMovementId || 0);
                         const hasItems = Array.isArray(currentTable?.items) && currentTable.items.length > 0;
-                        btnPrecuenta.classList.toggle('hidden', !(hasCurrentSavedOrder && hasItems));
+                        const shouldShow = hasCurrentSavedOrder && hasItems;
+                        if (shouldShow) {
+                            btnPrecuenta.classList.remove('hidden');
+                        } else {
+                            btnPrecuenta.classList.add('hidden');
+                        }
                     }
 
                     function escapeHtml(text) {
