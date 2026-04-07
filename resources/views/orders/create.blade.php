@@ -1382,11 +1382,9 @@
 
                     function buildPreAccountTicketText(table, groupedItems, canceledItems, paperWidth = 80) {
                         const lineWidth = paperWidth === 80 ? 48 : 24;
-                        const colQty = paperWidth === 80 ? 5 : 4;
-                        const colPrice = paperWidth === 80 ? 6 : 6;
-                        const colAmount = paperWidth === 80 ? 0 : 6;
-                        const colGap = 1;
-                        const colName = Math.max(6, lineWidth - colQty - colGap - colPrice - colAmount);
+                        const colQty = paperWidth === 80 ? 3 : 2;
+                        const colPrice = paperWidth === 80 ? 6 : 5;
+                        const compactGap = ' ';
                         const sep = '='.repeat(lineWidth) + '\n';
                         const normalizedCanceledItems = normalizeCancellationsForTicket(canceledItems);
                         const hasCanceled = normalizedCanceledItems.length > 0;
@@ -1428,25 +1426,19 @@
                         txt += padCenterSafe(branchName.toUpperCase(), lineWidth) + '\n';
                         txt += '\n';
                         txt += sep;
-                        txt += padEndSafe('Cant.', colQty)
-                            + ' '.repeat(colGap)
-                            + padEndSafe('Descr.', colName)
-                            + padStartSafe('P.Unit.', colPrice)
-                            + (colAmount > 0 ? padStartSafe('Subt.', colAmount) : '') + '\n';
+                        txt += 'Cant.' + compactGap + 'Descr.' + compactGap + 'P.Unit.' + '\n';
                         txt += sep;
 
                         (groupedItems || []).forEach((it, index) => {
                             const name = String(it?.name || 'Producto').trim();
                             const qty = parseFloat(it?.qty ?? 1) || 1;
                             const price = parseFloat(it?.price ?? 0) || 0;
-                            const amount = qty * price;
                             const courtesyQty = Math.max(0, Math.min(qty, parseFloat(it?.courtesyQty ?? 0) || 0));
                             const takeawayQty = Math.max(0, Math.min(qty, parseFloat(it?.takeawayQty ?? 0) || 0));
-                            txt += padEndSafe(formatQty(qty), colQty)
-                                + ' '.repeat(colGap)
-                                + padEndSafe(name, colName)
-                                + padStartSafe(price.toFixed(2), colPrice)
-                                + (colAmount > 0 ? padStartSafe(amount.toFixed(2), colAmount) : '') + '\n';
+                            const compactLine = `${formatQty(qty)}${compactGap}${name}${compactGap}${price.toFixed(2)}`;
+                            txt += compactLine.length <= lineWidth
+                                ? compactLine + '\n'
+                                : `${formatQty(qty)}${compactGap}${name.slice(0, Math.max(6, lineWidth - colQty - colPrice - 2))}${compactGap}${price.toFixed(2)}\n`;
                             if (courtesyQty > 0 || takeawayQty > 0) {
                                 const tags = [];
                                 if (courtesyQty > 0) tags.push('Cortesia: ' + courtesyQty);
