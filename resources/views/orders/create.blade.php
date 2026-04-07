@@ -1382,9 +1382,12 @@
 
                     function buildPreAccountTicketText(table, groupedItems, canceledItems, paperWidth = 80) {
                         const lineWidth = paperWidth === 80 ? 48 : 24;
-                        const colQty = paperWidth === 80 ? 3 : 2;
+                        const compactGap = paperWidth === 80 ? '  ' : ' ';
+                        const gapWidth = compactGap.length;
+                        const colQty = paperWidth === 80 ? 4 : 3;
                         const colPrice = paperWidth === 80 ? 6 : 5;
-                        const compactGap = '  ';
+                        const colSubt = paperWidth === 80 ? 6 : 5;
+                        const colDescr = Math.max(6, lineWidth - colQty - colPrice - colSubt - (gapWidth * 3));
                         const sep = '='.repeat(lineWidth) + '\n';
                         const normalizedCanceledItems = normalizeCancellationsForTicket(canceledItems);
                         const hasCanceled = normalizedCanceledItems.length > 0;
@@ -1426,7 +1429,10 @@
                         txt += padCenterSafe(branchName.toUpperCase(), lineWidth) + '\n';
                         txt += '\n';
                         txt += sep;
-                        txt += 'Cant' + compactGap + 'Descr' + compactGap + 'P.U.' + compactGap + 'Subt' + '\n';
+                        txt += padEndSafe('Cant', colQty)
+                            + compactGap + padEndSafe('Descr', colDescr)
+                            + compactGap + padStartSafe('P.U.', colPrice)
+                            + compactGap + padStartSafe('Subt', colSubt) + '\n';
                         txt += sep;
 
                         (groupedItems || []).forEach((it, index) => {
@@ -1436,11 +1442,10 @@
                             const amount = qty * price;
                             const courtesyQty = Math.max(0, Math.min(qty, parseFloat(it?.courtesyQty ?? 0) || 0));
                             const takeawayQty = Math.max(0, Math.min(qty, parseFloat(it?.takeawayQty ?? 0) || 0));
-                            const compactLine = `${formatQty(qty)}${compactGap}${name}${compactGap}${price.toFixed(2)}${compactGap}${amount.toFixed(2)}`;
-                            const maxNameLength = Math.max(6, lineWidth - String(formatQty(qty)).length - price.toFixed(2).length - amount.toFixed(2).length - 3);
-                            txt += compactLine.length <= lineWidth
-                                ? compactLine + '\n'
-                                : `${formatQty(qty)}${compactGap}${name.slice(0, maxNameLength)}${compactGap}${price.toFixed(2)}${compactGap}${amount.toFixed(2)}\n`;
+                            txt += padEndSafe(formatQty(qty), colQty)
+                                + compactGap + padEndSafe(name, colDescr)
+                                + compactGap + padStartSafe(price.toFixed(2), colPrice)
+                                + compactGap + padStartSafe(amount.toFixed(2), colSubt) + '\n';
                             if (courtesyQty > 0 || takeawayQty > 0) {
                                 const tags = [];
                                 if (courtesyQty > 0) tags.push('Cortesia: ' + courtesyQty);
@@ -1468,8 +1473,8 @@
 
                         const totals = getTotalsWithDelivery(groupedItems || []);
                         txt += sep;
-                        txt += padEndSafe('TOTAL', Math.max(5, lineWidth - String((totals.total || 0).toFixed(2)).length))
-                            + (totals.total || 0).toFixed(2) + '\n';
+                        txt += padEndSafe('TOTAL', colQty + gapWidth + colDescr + gapWidth + colPrice + gapWidth)
+                            + padStartSafe((totals.total || 0).toFixed(2), colSubt) + '\n';
                         txt += '\n';
                         txt += `MESA ${mesaLabel}` + (area ? ' - ' + area.toUpperCase() : '') + '\n';
                         txt += `Mesero: ${mozo}\n`;
