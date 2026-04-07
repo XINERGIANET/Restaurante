@@ -1949,30 +1949,25 @@ class OrderController extends Controller
             ->where('branch_id', $branchId)
             ->where('status', 'E');
 
-        $requestedName = trim((string) ($validated['printer_name'] ?? ''));
-        if ($requestedName !== '') {
-            $printer = (clone $printerBaseQuery)
-                ->whereRaw('LOWER(TRIM(name)) = ?', [mb_strtolower($requestedName)])
-                ->first();
-        } else {
-            $printer = null;
-        }
+        $host = strtolower(trim($request->getHost() ?: ''));
+        $isLocalhost = in_array($host, ['localhost', '127.0.0.1', '::1']);
+        $defaultPrinterName = $isLocalhost ? 'barra' : 'barra2';
+
+        $requestedName = trim((string) ($validated['printer_name'] ?? '')) ?: $defaultPrinterName;
+        $printer = (clone $printerBaseQuery)
+            ->whereRaw('LOWER(TRIM(name)) = ?', [mb_strtolower($requestedName)])
+            ->first();
 
         if (! $printer) {
             $printer = (clone $printerBaseQuery)
-                ->whereNotNull('ip')
-                ->where('ip', '!=', '')
-                ->orderBy('id')
+                ->whereRaw('LOWER(TRIM(name)) LIKE ?', ['barra%'])
                 ->first();
-        }
-        if (! $printer) {
-            $printer = (clone $printerBaseQuery)->orderBy('id')->first();
         }
 
         if (! $printer) {
             return response()->json([
                 'success' => false,
-                'message' => 'No hay ticketeras activas configuradas para esta sucursal.',
+                'message' => 'No hay una ticketera de barra configurada para la precuenta.',
             ], 422);
         }
 
