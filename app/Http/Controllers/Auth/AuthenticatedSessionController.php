@@ -67,7 +67,7 @@ class AuthenticatedSessionController extends Controller
                     ->where('branch_id', $person->branch_id)
                     ->exists();
 
-                $request->session()->put('force_cash_register_modal', $hasCashRegisters);
+                $request->session()->put('force_cash_register_modal', $hasCashRegisters && ! current_user_is_mozo());
             }
 
             // Redirección según perfil:

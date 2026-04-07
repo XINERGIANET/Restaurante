@@ -633,12 +633,12 @@
                     el.innerHTML =
                         `
                                                                                                                                                                                     <div class="rounded-2xl overflow-hidden p-4 sm:p-5 bg-white dark:bg-slate-800/60 border-2 border-blue-200 dark:border-blue-500/40 hover:border-blue-400 dark:hover:border-blue-400 transition-all duration-200 hover:-translate-y-0.5 flex flex-col items-center text-center h-full w-full">
-                                                                                                                                                                                        <div class="w-20 h-16 sm:w-20 sm:h-20 rounded-full bg-blue-500 flex items-center justify-center shrink-0 overflow-hidden mb-3">
-                                                                                                                                                                                            ${hasImg
+                        <div class="hidden sm:flex w-20 h-20 rounded-full bg-blue-500 items-center justify-center shrink-0 overflow-hidden mb-3">
+                        ${hasImg
                             ? `<img src="${imageUrl}" alt="${safeName}" class="w-full h-full object-contain rounded-full object-cover object-center" loading="lazy" onerror="this.parentElement.innerHTML='<i class=\\'ri-restaurant-2-line text-2xl sm:text-3xl text-white\\'></i>'">`
                             : `<i class="ri-restaurant-2-line text-2xl sm:text-3xl text-white"></i>`
                         }
-                                                                                                                                                                                        </div>
+                        </div>
                                                                                                                                                                                         <h4 class="font-semibold text-gray-900 dark:text-white text-sm sm:text-base line-clamp-2 leading-tight mb-1 min-h-[2.5rem]">${safeName}</h4>
                                                                                                                                                                                         <span class="text-base sm:text-lg font-bold text-blue-600 dark:text-blue-400">S/ ${safePrice}</span>
                                                                                                                                                                                         <span class="mt-1 text-xs font-medium text-gray-500 dark:text-gray-400">Stock: ` +
@@ -672,6 +672,10 @@
                 const container = document.getElementById('categories-grid');
                 if (!container) return;
                 container.innerHTML = '';
+                const mobileOnlyQuickFilters = window.matchMedia('(max-width: 767.98px)').matches;
+                if (mobileOnlyQuickFilters && selectedCategoryId !== CATEGORY_ALL_ID && selectedCategoryId !== CATEGORY_FAVORITES_ID) {
+                    selectedCategoryId = CATEGORY_ALL_ID;
+                }
 
                 // Favoritos (predeterminado)
                 const favBtn = document.createElement('button');
@@ -711,7 +715,7 @@
                 allBtn.innerHTML = `<i class="ri-apps-line text-lg"></i><span>Todos</span>`;
                 container.appendChild(allBtn);
 
-                if (!serverCategories || serverCategories.length === 0) {
+                if (mobileOnlyQuickFilters || !serverCategories || serverCategories.length === 0) {
                     renderProducts();
                     return;
                 }

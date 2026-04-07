@@ -25,7 +25,7 @@
                     'waiter' => $pendingWaiterName ?? ($user?->name ?? 'Sin asignar'),
                     'waiter_id' => $pendingWaiterId ?? null,
                     'person_id' => $pendingClientId ?? null,
-                    'clientName' => $pendingClientName ?? ($person?->name ?? 'Sin cliente'),
+                    'clientName' => $pendingClientName ?? 'CLIENTES VARIOS',
                     'status' => $table->situation ?? 'libre',
                     'items' => [],
                     'people_count' => (int) ($pendingPeopleCount ?? ($table->capacity ?? 1)),
@@ -82,6 +82,7 @@
                         currentTable.movement_id = serverMovementId;
                         currentTable.items = Array.isArray(serverPendingItems) ? serverPendingItems : [];
                         currentTable.items.forEach(it => {
+                            it.complements = Array.isArray(it.complements) ? it.complements.filter(Boolean) : [];
                             it.savedQty = parseFloat(it.qty) ?? parseFloat(it.quantity) ?? 0;
                             it.savedCourtesyQty = parseFloat(it.courtesyQty) ?? parseFloat(it.courtesy_quantity) ?? 0;
                             it.savedTakeawayQty = parseFloat(it.takeawayQty) ?? parseFloat(it.takeaway_quantity) ?? 0;
@@ -98,6 +99,7 @@
                         currentTable.items = currentTable.items || [];
                         currentTable.cancellations = [];
                         (currentTable.items || []).forEach(it => {
+                            it.complements = Array.isArray(it.complements) ? it.complements.filter(Boolean) : [];
                             if (it.takeawayQty == null || isNaN(parseFloat(it.takeawayQty))) it.takeawayQty = 0;
                             const q = parseFloat(it.qty) || 0;
                             let t = parseFloat(it.takeawayQty) || 0;
@@ -118,26 +120,18 @@
                     window.serverTable = serverTable;
                     window.activeKey = activeKey;
                     window.db = db;
+                    window.tableIsFree = tableIsFree;
                 })();
             </script>
 
             <!-- Barra de Información: Mesa, Mozo y Comensales -->
             <div class="px-3 sm:px-4 mb-2 flex-none">
                 <div
-                    class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-3 sm:p-4 shadow-sm flex flex-wrap items-center justify-between gap-4">
-                    <div class="flex items-center gap-4 sm:gap-8 flex-wrap">
+                    class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-3 sm:p-4 shadow-sm flex items-center justify-between gap-2 sm:gap-4">
+                    <div class="flex items-center gap-2 sm:gap-8 min-w-0 flex-1">
                         <!-- Mesa -->
-                        <div class="flex items-center gap-3">
-
-                            <!--Boton de atras-->
-                            <x-ui.link-button href="{{ route('orders.index') }}" class="text-blue-600 dark:text-blue-400">
-                                <i class="ri-arrow-left-line text-sm"></i>
-                            </x-ui.link-button>
-                            <div
-                                class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
-                                <i class="ri-home-line text-xl"></i>
-                            </div>
-                            <div>
+                        <div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                            <div class="hidden">
                                 <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider leading-none mb-1">
                                     Mesa / Área</p>
                                 <div class="flex items-center gap-1.5">
@@ -150,6 +144,7 @@
                             </div>
                         </div>
 
+                        @if(!($isMozo ?? false))
                         <!-- Mozo -->
                         <div class="flex items-center gap-3" x-data="{
                                                                                                             waiterId: null,
@@ -183,27 +178,39 @@
                                 <span id="pos-waiter-name-display" class="hidden">--</span>
                             </div>
                         </div>
+                        @else
+                        <div class="flex items-center gap-3">
+                            <div class="min-w-0 flex-1 sm:min-w-[220px]">
+                                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider leading-none mb-1">
+                                    Cliente</p>
+                                <div class="relative">
+                                    <input type="text" id="header-client-name"
+                                        value="{{ old('client_name', $pendingClientName ?? 'CLIENTES VARIOS') }}"
+                                        placeholder="Escribir nombre del cliente..."
+                                        oninput="updateHeaderClientName(this.value)"
+                                        class="w-full h-11 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 pr-10 text-sm text-gray-800 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 outline-none transition-all">
+                                    <button type="button" onclick="clearHeaderClientName()"
+                                        class="absolute right-2 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-red-500 dark:hover:bg-gray-700 dark:hover:text-red-400 transition-colors"
+                                        title="Limpiar cliente">
+                                        <i class="ri-close-line text-base"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        @endif
                     </div>
 
                     <!-- Comensales -->
-                    <div
-                        class="flex items-center gap-3 bg-gray-50 dark:bg-gray-950 px-4 py-2 rounded-xl border border-gray-100 dark:border-gray-800 shadow-inner">
-                        <div class="flex items-center gap-2">
-                            <i class="ri-group-line text-gray-400"></i>
-                            <span class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Personas</span>
+                    <div class="shrink-0 flex items-center gap-2">
+                        <div class="flex h-10 w-10 items-center justify-center text-gray-400">
+                            <i class="ri-group-line"></i>
                         </div>
-                        <div class="flex items-center gap-1 ml-2">
-                            <button type="button"
-                                onclick="const i = document.getElementById('diners-input'); i.stepDown(); i.dispatchEvent(new Event('change'))"
-                                class="w-7 h-7 flex items-center justify-center rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors shadow-sm"><i
-                                    class="ri-subtract-line text-xs"></i></button>
+                        <div>
+                            <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider leading-none mb-1">
+                                Nro Personas</p>
                             <input type="number" id="diners-input" min="1" max="50" value="1"
-                                class="w-10 text-center text-sm font-black bg-transparent border-none focus:ring-0 p-0 text-gray-900 dark:text-white [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                onchange="currentTable.people_count = parseInt(this.value, 10) || 1; saveDB();">
-                            <button type="button"
-                                onclick="const i = document.getElementById('diners-input'); i.stepUp(); i.dispatchEvent(new Event('change'))"
-                                class="w-7 h-7 flex items-center justify-center rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors shadow-sm"><i
-                                    class="ri-add-line text-xs"></i></button>
+                                class="w-11 h-8 text-center text-sm font-semibold rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                onchange="currentTable.people_count = parseInt(this.value, 10) || 1; this.value = currentTable.people_count; saveDB();">
                         </div>
                     </div>
                 </div>
@@ -233,10 +240,7 @@
                                     <i class="ri-close-circle-fill text-lg"></i>
                                 </button>
                             </div>
-                            <button type="button" onclick="toggleProductModal()"
-                                class="text-sm font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300">
-                                Ver todos
-                            </button>
+                          
                         </div>
                         <div class="flex-1 overflow-y-auto pt-2 sm:pt-3">
                             <div id="products-grid"
@@ -398,9 +402,9 @@
                                                                                                                                                                                                                                                         this.clientId = window.currentTable.person_id;
                                                                                                                                                                                                                                                     }
                                                                                                                                                                                                                                                     this.$watch('clientId', v => {
-                                                                                                                                                                                                                                                        const opts = window.__orderClientOptions || [];
-                                                                                                                                                                                                                                                        const sel = opts.find(o => String(o.id) === String(v));
-                                                                                                                                                                                                                                                        const name = sel ? sel.description : 'Público General';
+                                                        const opts = window.__orderClientOptions || [];
+                                                        const sel = opts.find(o => String(o.id) === String(v));
+                                                        const name = sel ? sel.description : 'CLIENTES VARIOS';
                                                                                                                                                                                                                                                         if (window.currentTable) {
                                                                                                                                                                                                                                                             window.currentTable.person_id = v ? parseInt(v, 10) : null;
                                                                                                                                                                                                                                                             window.currentTable.clientName = name;
@@ -702,6 +706,7 @@
                     const serverOrderMovementId = @json($pendingOrderMovementId ?? null);
                     const serverMovementId = @json($pendingMovementId ?? null);
                     const waiterPinEnabled = @json($waiterPinEnabled ?? false);
+                    const isMozoProfile = @json($isMozo ?? false);
                     const validateWaiterPinUrl = @json(route('orders.validateWaiterPin'));
                     const waiterPinBranchId = @json((int) session('branch_id'));
                     const branchDisplayName = @json($branch?->legal_name ?? $branch?->company?->legal_name ?? 'SUCURSAL');
@@ -862,7 +867,7 @@
 
                     function init() {
                         // Si requiere PIN, pedirlo al abrir la mesa
-                        if (waiterPinEnabled) {
+                        if (waiterPinEnabled && !isMozoProfile) {
                             ensureWaiterPin();
                         }
                         // Marcar la mesa como ocupada al abrir la vista
@@ -892,11 +897,15 @@
                         }
                         if (document.getElementById('pos-client-name')) {
                             document.getElementById('pos-client-name').innerText = currentTable.clientName ||
-                                "{{ $person?->name ?? 'Sin cliente' }}";
+                                "CLIENTES VARIOS";
+                        }
+                        const headerClientNameInput = document.getElementById('header-client-name');
+                        if (headerClientNameInput) {
+                            headerClientNameInput.value = currentTable.clientName || '';
                         }
                         const cobroClientInput = document.getElementById('cobro-client-input');
                         if (cobroClientInput) {
-                            cobroClientInput.value = currentTable.clientName || "{{ $person?->name ?? 'Público General' }}";
+                            cobroClientInput.value = currentTable.clientName || "CLIENTES VARIOS";
                         }
                         const dinersInput = document.getElementById('diners-input');
                         if (dinersInput && currentTable.people_count) {
@@ -936,8 +945,10 @@
                         }
                         refreshCartPricesFromServer();
                         renderCategories();
+                        ensureMobileQuickFilters();
                         renderProducts();
                         renderTicket();
+                        syncPreAccountVisibility();
                         renderCancelledSection();
                         fixScrollLayout();
                         function updateSearchClearVisibility() {
@@ -973,6 +984,9 @@
                             if (e.target && e.target.id === 'search-products' && e.key === 'Escape') clearProductSearch();
                         });
                         updateSearchClearVisibility();
+                        setTimeout(() => {
+                            ensureMobileQuickFilters();
+                        }, 120);
                         if (currentTable.items && currentTable.items.length > 0) {
                             // setTimeout(scheduleAutoSave, 800);
                         }
@@ -990,7 +1004,7 @@
                                 printPreAccountTicket();
                             });
                         }
-                        if (new URLSearchParams(window.location.search).get('pre_account') === '1') {
+                        if (new URLSearchParams(window.location.search).get('pre_account') === '1' && currentTable?.order_movement_id) {
                             setTimeout(() => {
                                 printPreAccountTicket();
                             }, 250);
@@ -1020,6 +1034,12 @@
                     }
 
                     // Función para escapar HTML y prevenir XSS
+                    function syncPreAccountVisibility() {
+                        const btnPrecuenta = document.getElementById('btn-precuenta');
+                        if (!btnPrecuenta) return;
+                        btnPrecuenta.classList.toggle('hidden', !currentTable?.order_movement_id);
+                    }
+
                     function escapeHtml(text) {
                         if (!text) return '';
                         const div = document.createElement('div');
@@ -1058,6 +1078,94 @@
                         serverProductBranches.some(pb => Number(pb.product_id) === Number(p.id)) &&
                         categoryIdsInBranch.includes(Number(p.category_id))
                     );
+
+                    function normalizeComplements(list) {
+                        return (Array.isArray(list) ? list : [])
+                            .map(item => String(item || '').trim())
+                            .filter(Boolean);
+                    }
+
+                    function getComplementSignature(list) {
+                        return normalizeComplements(list)
+                            .slice()
+                            .sort((a, b) => a.localeCompare(b))
+                            .join('|');
+                    }
+
+                    function getItemGroupingKey(item) {
+                        const productId = parseInt(item?.pId ?? item?.product_id, 10) || 0;
+                        return [
+                            productId,
+                            getComplementSignature(item?.complements),
+                            String(item?.note || '').trim()
+                        ].join('::');
+                    }
+
+                    function formatComplementsLabel(list) {
+                        const normalized = normalizeComplements(list);
+                        return normalized.length ? normalized.join(', ') : '';
+                    }
+
+                    function getCurrentProductQtyInCart(productId, excludeIndex = null) {
+                        return (currentTable.items || []).reduce((sum, item, index) => {
+                            if (excludeIndex !== null && index === excludeIndex) {
+                                return sum;
+                            }
+                            const itemId = parseInt(item?.pId ?? item?.product_id, 10) || 0;
+                            if (itemId !== Number(productId)) {
+                                return sum;
+                            }
+                            return sum + (parseFloat(item?.qty) || 0);
+                        }, 0);
+                    }
+
+                    async function promptProductDetailSelection(prod) {
+                        const detailOptions = normalizeComplements(prod?.detail_options);
+                        if (!detailOptions.length) {
+                            return { qty: 1, complements: [] };
+                        }
+
+                        if (!window.Swal) {
+                            return { qty: 1, complements: detailOptions };
+                        }
+
+                        const html = `
+                            <div class="text-left">
+                                <label class="mb-2 block text-sm font-semibold text-slate-700">Cantidad</label>
+                                <input id="swal-product-detail-qty" type="number" min="1" value="1" class="swal2-input !mt-0 !mb-4 !w-full" />
+                                <label class="mb-2 block text-sm font-semibold text-slate-700">Detalles</label>
+                                <div class="max-h-56 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                                    ${detailOptions.map((option, index) => `
+                                        <label class="flex items-center gap-2 py-1 text-sm text-slate-700">
+                                            <input type="checkbox" class="swal-product-detail-option" value="${index}" checked ${index === 0 ? 'autofocus' : ''}>
+                                            <span>${escapeHtml(option)}</span>
+                                        </label>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        `;
+
+                        const result = await Swal.fire({
+                            title: prod?.name || 'Configurar producto',
+                            html,
+                            width: 420,
+                            focusConfirm: false,
+                            showCancelButton: true,
+                            confirmButtonText: 'Agregar',
+                            cancelButtonText: 'Cancelar',
+                            preConfirm: () => {
+                                const qtyInput = document.getElementById('swal-product-detail-qty');
+                                const qty = Math.max(1, parseInt(qtyInput?.value || '1', 10) || 1);
+                                const complements = Array.from(document.querySelectorAll('.swal-product-detail-option:checked'))
+                                    .map(input => detailOptions[parseInt(input.value || '-1', 10)] ?? '')
+                                    .map(value => String(value || '').trim())
+                                    .filter(Boolean);
+                                return { qty, complements };
+                            }
+                        });
+
+                        return result.isConfirmed ? result.value : null;
+                    }
 
                     /** Nombre de impresora QZ (printers_branch) asignado al producto en esta sucursal (primera ticketera). */
                     function resolveQzPrinterName(productId) {
@@ -1620,6 +1728,7 @@
                         const tableLabel = table?.name ?? table?.table_id ?? 'Mesa';
                         const areaLabel = (table?.original_area_name || '').trim();
                         const orderLabel = String(table?.order_movement_number ?? table?.order_movement_id ?? '').trim();
+                        const clientLabel = String(table?.clientName || table?.client || '').trim();
 
                         const padEnd = (s, len) => {
                             const v = String(s ?? '');
@@ -1639,17 +1748,20 @@
                         text += 'Mesa: ' + tableLabel + (areaLabel ? ' - ' + areaLabel : '') + '\n';
                         text += 'Fecha: ' + formatDateTimeForTicket(new Date()) + '\n';
                         text += 'Mesero: ' + (table?.waiter || '-') + '\n';
+                        if (clientLabel) text += 'Cliente: ' + clientLabel + '\n';
                         text += sep;
 
                         activeItems.forEach((it) => {
                             const qty = it?.qty ?? 1;
                             const name = (it?.name || 'Producto').trim();
                             const hour = (it?.commandTime || '').trim();
+                            const complementsText = formatComplementsLabel(it?.complements);
                             const courtesyQty = Math.max(0, Math.min(parseFloat(qty) || 0, parseFloat(it?.courtesyQty ?? 0) || 0));
                             const takeawayQty = Math.max(0, Math.min(parseFloat(qty) || 0, parseFloat(it?.takeawayQty ?? 0) || 0));
                             const status = String(it?.status ?? '').toUpperCase();
                             const isDelivered = !!it?.delivered || status === 'ENTREGADO' || status === 'E';
                             text += String(qty) + '  ' + name + '\n';
+                            if (complementsText) text += 'Detalle: ' + complementsText + '\n';
                             if (hour) text += 'Hora: ' + hour + '\n';
                             if (isDelivered) text += 'Estado: ENTREGADO\n';
                             if (courtesyQty > 0 || takeawayQty > 0) {
@@ -1668,8 +1780,10 @@
                             cancellations.forEach((c) => {
                                 const cName = String(c?.name ?? c?.description ?? 'Producto').trim();
                                 const cQty = parseFloat(c?.qtyCanceled ?? c?.quantity ?? 1) || 1;
+                                const cComplements = formatComplementsLabel(c?.complements);
                                 text += 'ANULADO\n';
                                 text += String(cQty) + '  ' + cName + '\n';
+                                if (cComplements) text += 'Detalle: ' + cComplements + '\n';
                                 if (c?.cancel_reason && String(c.cancel_reason).trim()) text += 'Motivo: ' + String(c.cancel_reason).trim() + '\n';
                                 text += sep + '\n';
                                 text += '\n';
@@ -1819,6 +1933,7 @@
                                     pId,
                                     name: String(c?.name ?? c?.description ?? 'Producto').trim(),
                                     qty,
+                                    complements: normalizeComplements(c?.complements),
                                     reason: String(c?.cancel_reason ?? c?.comment ?? '').trim(),
                                 });
                             });
@@ -1902,11 +2017,13 @@
                             const orderDate = String(table?.order_movement_date ?? '').trim();
                             const comandaLabel = [`COMANDA: ${table?.order_movement_id}`, orderNumber].filter(Boolean).join(': ');
                             const comandaSub = orderDate ? orderDate : 'COCINA';
+                            const clientLabel = String(table?.clientName || table?.client || '').trim();
                             const header = padCenter(comandaLabel, LINE_WIDTH) + '\n' +
                                 padCenter(comandaSub, LINE_WIDTH) + '\n' +
                                 (areaLabel ? areaLabel + '\n' : '') +
                                 'Mesa ' + tableLabel + '\n' +
                                 'Mozo: ' + (table?.waiter || '-') + '\n' +
+                                (clientLabel ? 'Cliente: ' + clientLabel + '\n' : '') +
                                 'Fecha: ' + new Date().toLocaleString() + '\n' +
                                 separator +
                                 padEnd('Producto', COL_NAME) + padCenter('Hora', COL_TIME) + padStart('Cant', COL_QTY) + '\n' +
@@ -1924,9 +2041,13 @@
                                 const nm = (it.name || 'Producto').trim();
                                 const qtyCol = 'x' + qty;
                                 const timeCol = (it.commandTime ? String(it.commandTime).trim() : '');
+                                const complementsText = formatComplementsLabel(it?.complements);
                                 const courtesyQty = Math.max(0, Math.min(parseFloat(qty) || 0, parseFloat(it?.courtesyQty ?? 0) || 0));
                                 const takeawayQty = Math.max(0, Math.min(parseFloat(qty) || 0, parseFloat(it?.takeawayQty ?? 0) || 0));
                                 body += padEnd(nm, COL_NAME) + padCenter(timeCol, COL_TIME) + padStart(qtyCol, COL_QTY) + '\n';
+                                if (complementsText) {
+                                    body += 'Detalle: ' + complementsText + '\n';
+                                }
                                 if (courtesyQty > 0 || takeawayQty > 0) {
                                     const tags = [];
                                     if (courtesyQty > 0) tags.push('Cortesia: ' + courtesyQty);
@@ -1955,7 +2076,11 @@
                                 body += separator;
                                 canceledItems.forEach((c) => {
                                     const qtyCol = 'x' + (c.qty ?? 1);
+                                    const complementsText = formatComplementsLabel(c?.complements);
                                     body += padEnd('ANULADO ' + (c.name || 'Producto'), COL_NAME) + padCenter('', COL_TIME) + padStart(qtyCol, COL_QTY) + '\n';
+                                    if (complementsText) {
+                                        body += 'Detalle: ' + complementsText + '\n';
+                                    }
                                     if (c.reason) {
                                         body += 'Motivo: ' + c.reason + '\n';
                                     }
@@ -2143,11 +2268,60 @@
                         return pb && String(pb.favorite || 'N').toUpperCase() === 'S';
                     }
 
+                    function ensureMobileQuickFilters() {
+                        const grid = document.getElementById('categories-grid');
+                        if (!grid) return;
+                        const mobileOnlyQuickFilters = window.matchMedia('(max-width: 767.98px)').matches;
+                        if (!mobileOnlyQuickFilters || grid.children.length >= 2) return;
+
+                        grid.innerHTML = '';
+
+                        const favBtn = document.createElement('button');
+                        favBtn.type = 'button';
+                        favBtn.className = [
+                            'inline-flex items-center gap-2 px-2.5 py-1.5 rounded-full text-xs sm:text-sm font-semibold',
+                            'border transition-all duration-150 whitespace-nowrap cursor-pointer shrink-0',
+                            selectedCategoryId === CATEGORY_FAVORITES_ID
+                                ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                                : 'bg-white dark:bg-slate-800 text-gray-700 border-gray-300 dark:border-slate-600 hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400'
+                        ].join(' ');
+                        favBtn.onclick = function (e) {
+                            e.preventDefault();
+                            selectedCategoryId = CATEGORY_FAVORITES_ID;
+                            renderCategories();
+                            renderProducts();
+                        };
+                        favBtn.innerHTML = `<i class="ri-star-fill text-lg"></i><span>Favoritos</span>`;
+                        grid.appendChild(favBtn);
+
+                        const allBtn = document.createElement('button');
+                        allBtn.type = 'button';
+                        allBtn.className = [
+                            'inline-flex items-center gap-2 px-2.5 py-1.5 rounded-full text-xs sm:text-sm font-semibold',
+                            'border transition-all duration-150 whitespace-nowrap cursor-pointer shrink-0',
+                            selectedCategoryId === CATEGORY_ALL_ID
+                                ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                                : 'bg-white dark:bg-slate-800 text-gray-700 border-gray-300 dark:border-slate-600 hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400'
+                        ].join(' ');
+                        allBtn.onclick = function (e) {
+                            e.preventDefault();
+                            selectedCategoryId = CATEGORY_ALL_ID;
+                            renderCategories();
+                            renderProducts();
+                        };
+                        allBtn.innerHTML = `<i class="ri-apps-line text-lg"></i><span>Todos</span>`;
+                        grid.appendChild(allBtn);
+                    }
+
                     function renderCategories() {
                         const grid = document.getElementById('categories-grid');
                         if (!grid) return;
 
                         grid.innerHTML = '';
+                        const mobileOnlyQuickFilters = window.matchMedia('(max-width: 767.98px)').matches;
+                        if (mobileOnlyQuickFilters && selectedCategoryId !== CATEGORY_ALL_ID && selectedCategoryId !== CATEGORY_FAVORITES_ID) {
+                            selectedCategoryId = CATEGORY_ALL_ID;
+                        }
 
                         // Favoritos (predeterminado)
                         const favBtn = document.createElement('button');
@@ -2189,7 +2363,8 @@
                         allBtn.innerHTML = `<i class="ri-apps-line text-lg"></i><span>Todos</span>`;
                         grid.appendChild(allBtn);
 
-                        if (!serverCategories || serverCategories.length === 0) {
+                        if (mobileOnlyQuickFilters || !serverCategories || serverCategories.length === 0) {
+                            ensureMobileQuickFilters();
                             renderProducts();
                             return;
                         }
@@ -2224,6 +2399,7 @@
                                                                                                                                                                                         `;
                             grid.appendChild(el);
                         });
+                        ensureMobileQuickFilters();
                     }
 
                     function renderProducts() {
@@ -2237,21 +2413,23 @@
                             return;
                         }
 
-                        // Filtrar por categoría seleccionada (Favoritos / Todos / categoría)
-                        let productsToShow = serverProducts;
-                        if (selectedCategoryId === CATEGORY_ALL_ID) {
-                            productsToShow = serverProducts;
-                        } else if (selectedCategoryId === CATEGORY_FAVORITES_ID) {
-                            productsToShow = serverProducts.filter(p => isProductFavorite(p.id));
-                        } else {
-                            productsToShow = serverProducts.filter(p => p.category_id == selectedCategoryId);
-                        }
-
-                        // Filtrar por texto de búsqueda: leer siempre del input para filtrar desde la primera letra
+                        // Leer búsqueda actual. Si hay texto, ignora la categoría seleccionada y busca en todo.
                         const searchInput = document.getElementById('search-products');
                         const q = (searchInput && searchInput.value !== undefined)
                             ? String(searchInput.value || '').trim().toLowerCase()
                             : String(productSearchQuery || '').trim().toLowerCase();
+
+                        let productsToShow = serverProducts;
+                        if (q.length === 0) {
+                            if (selectedCategoryId === CATEGORY_ALL_ID) {
+                                productsToShow = serverProducts;
+                            } else if (selectedCategoryId === CATEGORY_FAVORITES_ID) {
+                                productsToShow = serverProducts.filter(p => isProductFavorite(p.id));
+                            } else {
+                                productsToShow = serverProducts.filter(p => p.category_id == selectedCategoryId);
+                            }
+                        }
+
                         if (q.length > 0) {
                             const searchWords = q.split(/\s+/).filter(word => word.length > 0);
                             productsToShow = productsToShow.filter(p => {
@@ -2293,12 +2471,12 @@
 
                             el.innerHTML = `
                                                                                                                                                                                             <div class="rounded-2xl overflow-hidden p-4 sm:p-5 bg-white dark:bg-slate-800/60 border-2 border-blue-200 dark:border-blue-500/40 hover:border-blue-400 dark:hover:border-blue-400 transition-all duration-200 hover:-translate-y-0.5 flex flex-col items-center text-center h-full w-full">
-                                                                                                                                                                                                <div class="w-20 h-16 sm:w-20 sm:h-20 rounded-full bg-blue-500 flex items-center justify-center shrink-0 overflow-hidden mb-3">
-                                                                                                                                                                                                    ${hasImg
+                                <div class="hidden sm:flex w-20 h-20 rounded-full bg-blue-500 items-center justify-center shrink-0 overflow-hidden mb-3">
+                                    ${hasImg
                                     ? `<img src="${imageUrl}" alt="${productName}" class="w-full h-full object-contain rounded-full object-cover object-center" loading="lazy" onerror="this.parentElement.innerHTML='<i class=\\'ri-restaurant-2-line text-2xl sm:text-3xl text-white\\'></i>'">`
                                     : `<i class="ri-restaurant-2-line text-2xl sm:text-3xl text-white"></i>`
                                 }
-                                                                                                                                                                                                </div>
+                                </div>
                                                                                                                                                                                                 <h4 class="font-semibold text-gray-900 dark:text-white text-sm sm:text-base line-clamp-2 leading-tight mb-1 min-h-[2.5rem]">
                                                                                                                                                                                                     ${productName}
                                                                                                                                                                                                 </h4>
@@ -2326,7 +2504,7 @@
 
                     }
 
-                    function addToCart(prod, productBranch) {
+                    async function addToCart(prod, productBranch) {
                         if (!currentTable.items) currentTable.items = [];
 
                         if (!productBranch || !productBranch.price) {
@@ -2357,41 +2535,51 @@
                             return !isNaN(itemPId) && itemPId > 0;
                         });
 
-                        // Buscar si el producto ya existe en el carrito
+                        const detailSelection = await promptProductDetailSelection(prod);
+                        if (!detailSelection) {
+                            return;
+                        }
+                        const selectedComplements = normalizeComplements(detailSelection.complements);
+                        const qtyRequested = Math.max(1, parseInt(detailSelection.qty, 10) || 1);
+
+                        // Buscar si el producto ya existe en el carrito con la misma configuración.
                         const existing = currentTable.items.find(i => {
                             const itemPId = parseInt(i.pId, 10);
-                            return !isNaN(itemPId) && itemPId === productId;
+                            return !isNaN(itemPId) && itemPId === productId &&
+                                getComplementSignature(i.complements) === getComplementSignature(selectedComplements);
                         });
 
-                        const qtyToAdd = existing ? existing.qty + 1 : 1;
-                        if (!allowZeroStockSales && qtyToAdd > stock) {
+                        const productQtyInCart = getCurrentProductQtyInCart(productId);
+                        if (!allowZeroStockSales && (productQtyInCart + qtyRequested) > stock) {
                             showNotification('Stock insuficiente', (prod.name || 'Producto') + ': solo hay ' + stock + ' disponible(s).', 'error');
                             return;
                         }
 
                         const st = currentTable.service_type || 'IN_SITU';
                         if (existing) {
-                            // Si existe, solo aumentar la cantidad
-                            existing.qty++;
+                            // Si existe con la misma configuración, solo aumentar la cantidad
+                            existing.qty += qtyRequested;
                             if (st === 'TAKE_AWAY') {
-                                existing.takeawayQty = (parseFloat(existing.takeawayQty) || 0) + 1;
+                                existing.takeawayQty = (parseFloat(existing.takeawayQty) || 0) + qtyRequested;
                                 clampTakeawayQty(existing);
                             }
                             if (existing.tax_rate === undefined || existing.tax_rate === null) {
                                 existing.tax_rate = parseFloat(productBranch.tax_rate ?? 10);
                             }
+                            existing.complements = selectedComplements;
                         } else {
-                            // Si no existe, agregarlo como nuevo item
+                            // Si no existe, agregarlo como nueva línea.
                             currentTable.items.push({
                                 pId: productId,
                                 name: prod.name || 'Sin nombre',
-                                qty: 1,
+                                qty: qtyRequested,
                                 price: price,
                                 tax_rate: parseFloat(productBranch.tax_rate ?? 10),
                                 note: "",
                                 delivered: false,
                                 courtesyQty: 0,
-                                takeawayQty: st === 'TAKE_AWAY' ? 1 : 0
+                                takeawayQty: st === 'TAKE_AWAY' ? qtyRequested : 0,
+                                complements: selectedComplements
                             });
                         }
                         saveDB();
@@ -2410,8 +2598,9 @@
                             const prodId = parseInt(item.pId || item.product_id, 10);
                             const pb = serverProductBranches.find(p => parseInt(p.product_id, 10) === prodId);
                             const stock = parseFloat(pb?.stock ?? 0) || 0;
+                            const currentOtherQty = getCurrentProductQtyInCart(prodId, index);
 
-                            if (!allowZeroStockSales && newQty > stock) {
+                            if (!allowZeroStockSales && (currentOtherQty + newQty) > stock) {
                                 showNotification('Stock insuficiente', (item.name || 'Producto') + ': solo hay ' + stock + ' disponible(s).', 'error');
                                 return;
                             }
@@ -2455,8 +2644,9 @@
                             const prodId = parseInt(item.pId || item.product_id, 10);
                             const pb = serverProductBranches.find(p => parseInt(p.product_id, 10) === prodId);
                             const stock = parseFloat(pb?.stock ?? 0) || 0;
+                            const currentOtherQty = getCurrentProductQtyInCart(prodId, index);
 
-                            if (!allowZeroStockSales && newQty > stock) {
+                            if (!allowZeroStockSales && (currentOtherQty + newQty) > stock) {
                                 showNotification('Stock insuficiente', (item.name || 'Producto') + ': solo hay ' + stock + ' disponible(s).', 'error');
                                 inputEl.value = oldQty;
                                 return;
@@ -2551,6 +2741,7 @@
                             qtyCanceled: toCancel,
                             price: item.price,
                             note: item.note || null,
+                            complements: normalizeComplements(item.complements),
                             cancel_reason: reason || null,
                             product_snapshot: prod ? { ...prod } : null
                         });
@@ -2676,7 +2867,7 @@
 
 
                                                                                                                                                                                         `;
-                            container.appendChild(serviceHeader);
+                            // Estado de servicio oculto por solicitud del usuario.
 
                             const isComandado = !!currentTable.order_movement_id;
                             currentTable.items.forEach((item, index) => {
@@ -2693,6 +2884,10 @@
                                 const noteTime = item.commandTime || "";
                                 const noteText = typeof item.note === "string" ? item.note.trim() : "";
                                 const hasNote = noteText !== "";
+                                const complementsLabel = formatComplementsLabel(item.complements);
+                                const complementSummary = complementsLabel
+                                    ? `<div class="mt-1 flex flex-wrap items-center gap-1.5"><span class="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"><i class="ri-checkbox-circle-line"></i> ${escapeHtml(complementsLabel)}</span></div>`
+                                    : '';
                                 const row = document.createElement('div');
                                 row.className = "cart-item-row group relative mb-3 rounded-xl overflow-hidden border border-slate-200 bg-white text-slate-900 shadow-md dark:border-zinc-600/50 dark:bg-[#252526] dark:text-zinc-100 dark:shadow-lg dark:shadow-black/40";
 
@@ -2758,13 +2953,14 @@
                                                                                                                                                                                                         <div class="min-w-0 flex-1">
                                                                                                                                                                                                             <h3 class="font-bold text-[15px] sm:text-base leading-snug tracking-tight text-slate-900 dark:text-white">${productName}</h3>
                                                                                                                                                                                                             ${takeawayBadge}
+                                                                                                                                                                                                            ${complementSummary}
                                                                                                                                                                                                             ${commandSummary}
                                                                                                                                                                                                             <p class="mt-1 text-[11px] sm:text-xs text-slate-500 dark:text-zinc-400 font-medium tabular-nums">${noteTime ? noteTime + ' · ' : ''}S/ ${itemPrice.toFixed(2)} <span class="text-slate-400 dark:text-zinc-500 font-normal">c/u</span></p>
                                                                                                                                                                                                         </div>
                                                                                                                                                                                                         <span class="shrink-0 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wide ${statusClass}">${statusLabel}</span>
                                                                                                                                                                                                     </div>
 
-                                                                                                                                                                                                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-lg bg-slate-50 border border-slate-200 px-2.5 py-2.5 dark:bg-zinc-900/50 dark:border-zinc-600/50">
+                                                                                                                                                                                                    <div class="flex items-center justify-between gap-3 rounded-lg bg-slate-50 border border-slate-200 px-2.5 py-2.5 dark:bg-zinc-900/50 dark:border-zinc-600/50">
                                                                                                                                                                                                         <div class="flex justify-center items-center gap-0.5 rounded-lg bg-white px-0.5 py-0.5 border border-slate-200 dark:bg-zinc-800/80 dark:border-zinc-600/60">
                                                                                                                                                                                                             <button type="button" ${qtyMinusOnclick} class="w-9 h-9 flex items-center justify-center rounded-md transition-all text-slate-600 dark:text-zinc-300 ${qtyMinusClass}"${qtyMinusDisabled}>
                                                                                                                                                                                                                 <i class="ri-subtract-line text-base"></i>
@@ -2774,7 +2970,7 @@
                                                                                                                                                                                                                 <i class="ri-add-line text-base"></i>
                                                                                                                                                                                                             </button>
                                                                                                                                                                                                         </div>
-                                                                                                                                                                                                        <div class="text-center sm:text-right flex flex-col justify-center">
+                                                                                                                                                                                                        <div class="text-right flex flex-col justify-center shrink-0">
                                                                                                                                                                                                             <span class="text-[10px] text-slate-500 dark:text-zinc-500 uppercase font-bold tracking-wider leading-none mb-0.5">Subtotal</span>
                                                                                                                                                                                                             <span class="text-lg font-bold tabular-nums leading-none text-slate-900 dark:text-white">S/ ${lineTotal.toFixed(2)}</span>
                                                                                                                                                                                                         </div>
@@ -2791,10 +2987,7 @@
                                                                                                                                                                                                         <button type="button" onclick="toggleCourtesyInput(${index})" class="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-colors ${courtesyBtnActive ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300' : 'text-slate-500 hover:bg-slate-100 hover:text-emerald-600 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-emerald-400'}">
                                                                                                                                                                                                             <i class="${courtesyBtnActive ? 'ri-star-fill' : 'ri-star-line'}"></i> Cortesía
                                                                                                                                                                                                         </button>
-                                                                                                                                                                                                        ${isDelivery ? '' : `<button type="button" onclick="toggleTakeawayInput(${index})" class="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-colors ${takeawayBtnActive ? 'bg-orange-50 text-orange-800 dark:bg-orange-500/15 dark:text-orange-300' : 'text-slate-500 hover:bg-slate-100 hover:text-orange-600 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-orange-400'}">
-                                                                                                                                                                                                            <i class="${takeawayBtnActive ? 'ri-shopping-bag-3-fill' : 'ri-shopping-bag-3-line'}"></i> Llevar
-                                                                                                                                                                                                        </button>`}
-                                                                                                                                                                                                        <button type="button" ${trashOnclick} class="ml-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-red-500/10 hover:text-red-500 dark:text-zinc-500 dark:hover:text-red-400" title="Quitar o anular cantidad">
+                                                                                                                                                                                                        <button type="button" ${trashOnclick} class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-red-500/10 hover:text-red-500 dark:text-zinc-500 dark:hover:text-red-400" title="Quitar o anular cantidad">
                                                                                                                                                                                                             <i class="ri-delete-bin-line text-lg"></i>
                                                                                                                                                                                                         </button>
                                                                                                                                                                                                     </div>
@@ -2853,12 +3046,12 @@
                         const takeawayDispRow = document.getElementById('ticket-takeaway-disposable-row');
                         const takeawayDispEl = document.getElementById('ticket-takeaway-disposable');
 
-                        if (subtotalEl) subtotalEl.innerText = `$${subtotal.toFixed(2)}`;
-                        if (taxEl) taxEl.innerText = `$${tax.toFixed(2)}`;
+                        if (subtotalEl) subtotalEl.innerText = `S/ ${subtotal.toFixed(2)}`;
+                        if (taxEl) taxEl.innerText = `S/ ${tax.toFixed(2)}`;
                         if (deliveryRow && deliveryEl) {
                             if (currentTable?.service_type === 'DELIVERY' && deliveryFee > 0) {
                                 deliveryRow.classList.remove('hidden');
-                                deliveryEl.innerText = `$${deliveryFee.toFixed(2)}`;
+                                deliveryEl.innerText = `S/ ${deliveryFee.toFixed(2)}`;
                             } else {
                                 deliveryRow.classList.add('hidden');
                             }
@@ -2866,12 +3059,12 @@
                         if (takeawayDispRow && takeawayDispEl) {
                             if (takeawayDispFee > 0) {
                                 takeawayDispRow.classList.remove('hidden');
-                                takeawayDispEl.innerText = `$${takeawayDispFee.toFixed(2)}`;
+                                takeawayDispEl.innerText = `S/ ${takeawayDispFee.toFixed(2)}`;
                             } else {
                                 takeawayDispRow.classList.add('hidden');
                             }
                         }
-                        if (totalEl) totalEl.innerText = `$${total.toFixed(2)}`;
+                        if (totalEl) totalEl.innerText = `S/ ${total.toFixed(2)}`;
 
                         syncTakeawayDisposablePanel();
                         syncCobroAmountsWithCart(total);
@@ -2903,7 +3096,7 @@
                         const listEl = document.getElementById('cancelled-platos-list');
                         if (!container || !listEl) return;
 
-                        const hasActiveServerOrder = !!serverOrderMovementId && !tableIsFree;
+                        const hasActiveServerOrder = !!serverOrderMovementId && !window.tableIsFree;
                         const hasSavedOrder = hasActiveServerOrder && !!currentTable.order_movement_id;
                         const isCurrentPendingOrder = hasSavedOrder && (currentTable.order_movement_id === serverOrderMovementId);
                         const serverCancelled = (isCurrentPendingOrder && serverPendingCancelledDetails && serverPendingCancelledDetails.length) ? serverPendingCancelledDetails : [];
@@ -2940,8 +3133,9 @@
                         items.forEach((it) => {
                             const id = parseInt(it.pId, 10) || 0;
                             if (!id) return;
-                            if (!byPid[id]) {
-                                byPid[id] = {
+                            const key = getItemGroupingKey(it);
+                            if (!byPid[key]) {
+                                byPid[key] = {
                                     pId: it.pId,
                                     name: it.name,
                                     price: parseFloat(it.price) || 0,
@@ -2949,6 +3143,7 @@
                                     note: it.note || '',
                                     commandTime: it.commandTime || null,
                                     delivered: !!it.delivered,
+                                    complements: normalizeComplements(it.complements),
                                     courtesyQty: 0,
                                     savedCourtesyQty: 0,
                                     takeawayQty: 0,
@@ -2957,13 +3152,13 @@
                                     qty: 0
                                 };
                             }
-                            byPid[id].qty = (byPid[id].qty || 0) + (parseInt(it.qty, 10) || 1);
-                            byPid[id].courtesyQty = (byPid[id].courtesyQty || 0) + (parseInt(it.courtesyQty) || 0);
-                            byPid[id].takeawayQty = (byPid[id].takeawayQty || 0) + (parseFloat(it.takeawayQty) || 0);
-                            byPid[id].savedQty = (byPid[id].savedQty || 0) + (parseFloat(it.savedQty) || 0);
-                            byPid[id].savedCourtesyQty = (byPid[id].savedCourtesyQty || 0) + (parseFloat(it.savedCourtesyQty) || 0);
-                            byPid[id].savedTakeawayQty = (byPid[id].savedTakeawayQty || 0) + (parseFloat(it.savedTakeawayQty) || 0);
-                            if (it.delivered) byPid[id].delivered = true;
+                            byPid[key].qty = (byPid[key].qty || 0) + (parseInt(it.qty, 10) || 1);
+                            byPid[key].courtesyQty = (byPid[key].courtesyQty || 0) + (parseInt(it.courtesyQty) || 0);
+                            byPid[key].takeawayQty = (byPid[key].takeawayQty || 0) + (parseFloat(it.takeawayQty) || 0);
+                            byPid[key].savedQty = (byPid[key].savedQty || 0) + (parseFloat(it.savedQty) || 0);
+                            byPid[key].savedCourtesyQty = (byPid[key].savedCourtesyQty || 0) + (parseFloat(it.savedCourtesyQty) || 0);
+                            byPid[key].savedTakeawayQty = (byPid[key].savedTakeawayQty || 0) + (parseFloat(it.savedTakeawayQty) || 0);
+                            if (it.delivered) byPid[key].delivered = true;
                         });
                         const st = currentTable?.service_type || 'IN_SITU';
                         const vals = Object.values(byPid);
@@ -3159,7 +3354,7 @@
                     }
 
                     async function processOrder() {
-                        if (waiterPinEnabled) {
+                        if (waiterPinEnabled && !isMozoProfile) {
                             const ok = await ensureWaiterPin();
                             if (!ok) return;
                         }
@@ -3228,6 +3423,8 @@
                                 if (data && data.success) {
                                     currentTable.order_movement_id = data.order_movement_id ?? currentTable.order_movement_id ?? null;
                                     currentTable.movement_id = data.movement_id ?? currentTable.movement_id ?? null;
+                                    currentTable.person_id = data.client_person_id ?? currentTable.person_id ?? null;
+                                    currentTable.clientName = data.client_name ?? currentTable.clientName ?? '';
                                     const hasKitchenOutput = kitchenDeltaItems.length > 0 || (currentTable.cancellations || []).length > 0;
                                     let kitchenPrintedOk = true;
                                     try {
@@ -3243,6 +3440,7 @@
                                     currentTable.cancellations = [];
                                     saveDB();
                                     renderTicket();
+                                    syncPreAccountVisibility();
                                     if (!kitchenPrintedOk && hasKitchenOutput && typeof showNotification === 'function') {
                                         showNotification('Pedido guardado', 'El pedido se guardó, pero la comanda salió por PDF de respaldo.', 'warning');
                                     }
@@ -3392,7 +3590,7 @@
                     }
 
                     async function processOrderPayment() {
-                        if (waiterPinEnabled) {
+                        if (waiterPinEnabled && !isMozoProfile) {
                             const ok = await ensureWaiterPin();
                             if (!ok) return;
                         }
@@ -3722,6 +3920,7 @@
                             }
                             if (categoriesGrid) {
                                 categoriesGrid.classList.remove('pointer-events-none', 'opacity-60');
+                                ensureMobileQuickFilters();
                             }
                             if (searchInput) {
                                 searchInput.removeAttribute('disabled');
@@ -3732,12 +3931,14 @@
 
                     function clearCobroClient() {
                         const input = document.getElementById('cobro-client-input');
-                        if (input) input.value = 'Público General';
+                        if (input) input.value = 'CLIENTES VARIOS';
                         if (currentTable) {
-                            currentTable.clientName = 'Público General';
+                            currentTable.clientName = 'CLIENTES VARIOS';
                             currentTable.person_id = null;
                             saveDB();
                         }
+                        const headerInput = document.getElementById('header-client-name');
+                        if (headerInput) headerInput.value = '';
                         const picker = document.getElementById('order-client-picker');
                         if (picker && window.Alpine) {
                             const d = Alpine.$data(picker);
@@ -3746,6 +3947,30 @@
                         window.dispatchEvent(new CustomEvent('clear-combobox', {
                             detail: { name: 'header_client_id' }
                         }));
+                    }
+
+                    function clearHeaderClientName() {
+                        const input = document.getElementById('header-client-name');
+                        if (input) {
+                            input.value = '';
+                            input.focus();
+                        }
+                        if (!currentTable) return;
+                        currentTable.clientName = '';
+                        currentTable.person_id = null;
+                        saveDB();
+                        const cobroInput = document.getElementById('cobro-client-input');
+                        if (cobroInput) cobroInput.value = '';
+                    }
+
+                    function updateHeaderClientName(value) {
+                        if (!currentTable) return;
+                        const name = String(value || '').trim();
+                        currentTable.clientName = name;
+                        currentTable.person_id = null;
+                        saveDB();
+                        const cobroInput = document.getElementById('cobro-client-input');
+                        if (cobroInput) cobroInput.value = name || 'CLIENTES VARIOS';
                     }
 
                     function getCobroOrderTotal() {
@@ -3929,11 +4154,13 @@
 
                     function changeClient(selectEl) {
                         if (!selectEl || !currentTable) return;
-                        const name = selectEl.options[selectEl.selectedIndex]?.text || 'Público General';
+                        const name = selectEl.options[selectEl.selectedIndex]?.text || 'CLIENTES VARIOS';
                         const personId = selectEl.value ? parseInt(selectEl.value, 10) : null;
                         currentTable.clientName = name;
                         currentTable.person_id = personId;
                         saveDB();
+                        const headerInput = document.getElementById('header-client-name');
+                        if (headerInput) headerInput.value = personId ? name : '';
                         const cobroInput = document.getElementById('cobro-client-input');
                         if (cobroInput) cobroInput.value = name;
                     }
@@ -4022,6 +4249,8 @@
                     window.updateCobroTotalPaid = updateCobroTotalPaid;
                     window.autocompleteCobroAmount = autocompleteCobroAmount;
                     window.toggleCobroExtraFields = toggleCobroExtraFields;
+                    window.clearHeaderClientName = clearHeaderClientName;
+                    window.updateHeaderClientName = updateHeaderClientName;
                     window.changeClient = changeClient;
                     window.changeWaiter = changeWaiter;
                     window.changeServiceType = changeServiceType;

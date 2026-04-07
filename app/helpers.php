@@ -17,6 +17,26 @@ if (!function_exists('effective_branch_id')) {
     }
 }
 
+if (!function_exists('current_user_is_mozo')) {
+    /**
+     * Indica si el perfil actual en sesión corresponde al perfil Mozo.
+     */
+    function current_user_is_mozo(): bool
+    {
+        $profileId = session('profile_id') ?? auth()->user()?->profile_id;
+        if (! $profileId) {
+            return false;
+        }
+
+        $mozoId = \App\Models\Profile::query()
+            ->whereNull('deleted_at')
+            ->whereRaw('LOWER(TRIM(name)) = ?', ['mozo'])
+            ->value('id');
+
+        return $mozoId && (int) $profileId === (int) $mozoId;
+    }
+}
+
 if (!function_exists('effective_cash_register_id')) {
     /**
      * Devuelve la caja seleccionada en sesión si pertenece a la sucursal actual.
@@ -50,6 +70,10 @@ if (!function_exists('cash_register_selection_required')) {
      */
     function cash_register_selection_required(?int $branchId = null): bool
     {
+        if (current_user_is_mozo()) {
+            return false;
+        }
+
         $branchId = $branchId ?? effective_branch_id() ?? (session('branch_id') !== null ? (int) session('branch_id') : null);
 
         if ($branchId === null) {

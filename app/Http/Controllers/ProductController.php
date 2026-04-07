@@ -410,6 +410,12 @@ class ProductController extends Controller
                 $merge[$key] = $val;
             }
         }
+        if (! $request->has('detail_options_lines')) {
+            $merge['detail_options_lines'] = collect($product->detail_options ?? [])
+                ->map(fn ($item) => trim((string) $item))
+                ->filter()
+                ->implode(PHP_EOL);
+        }
 
         if ($productBranch) {
             $branchFields = ['price', 'purchase_price', 'stock', 'stock_minimum', 'stock_maximum', 'minimum_sell', 'minimum_purchase', 'tax_rate_id', 'unit_sale', 'expiration_date'];
@@ -528,6 +534,7 @@ class ProductController extends Controller
             'complement_mode' => ['nullable', 'string', 'in:,ALL,QUANTITY'],
             'classification' => ['required', 'string', 'in:GOOD,SERVICE'],
             'features' => ['nullable', 'string'],
+            'detail_options_lines' => ['nullable', 'string'],
             'recipe' => ['required', 'boolean'],
             'branch_id' => ['required', 'integer', 'exists:branches,id'],
             'favorite' => ['required', 'string', 'in:S,N'],
@@ -576,8 +583,19 @@ class ProductController extends Controller
             'complement_mode' => $validated['complement_mode'],
             'classification' => $validated['classification'],
             'features' => $validated['features'],
+            'detail_options' => $this->parseDetailOptions($validated['detail_options_lines'] ?? null),
             'recipe' => (bool) $validated['recipe'],
         ];
+    }
+
+    private function parseDetailOptions(?string $raw): array
+    {
+        return collect(preg_split('/\r\n|\r|\n/', (string) ($raw ?? '')))
+            ->map(fn ($item) => trim((string) $item))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
     }
 
     private function prepareBranchData(array $validated, ?ProductType $productType): array

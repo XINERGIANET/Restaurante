@@ -35,6 +35,7 @@ class OrderMovementDetail extends Model
         'commanded_at' => 'datetime',
         'product_snapshot' => 'array',
         'tax_rate_snapshot' => 'array',
+        'complements' => 'array',
         'quantity' => 'decimal:6',
         'courtesy_quantity' => 'decimal:6',
         'takeaway_quantity' => 'decimal:6',

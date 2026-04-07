@@ -110,6 +110,7 @@
                     </div>
                 @endif
 
+                @if(($cashRegisterSelectionEnabled ?? true))
                 <div x-data="{ openCashModal: @js((bool) ($forceCashRegisterModal ?? false)), cashSelectionRequired: @js((bool) ($cashSelectionRequired ?? false)) }" class="flex items-center gap-2">
 
                     <button type="button" 
@@ -228,6 +229,7 @@
                         </div>
                     </div>
                 </div>
+                @endif
 
                
             </div>

@@ -26,6 +26,7 @@ use App\Models\Product;
 use App\Models\ProductBranch;
 use App\Models\ProductType;
 use App\Models\Profile;
+use App\Models\Role;
 use App\Models\SalesMovement;
 use App\Models\SalesMovementDetail;
 use App\Models\Shift;
@@ -97,6 +98,52 @@ class OrderController extends Controller
         $currentProfileId = $profileId !== null && $profileId !== '' ? (int) $profileId : null;
 
         return $currentProfileId !== $mozoId;
+    }
+
+    private function clienteRoleId(): ?int
+    {
+        $id = Role::query()
+            ->whereNull('deleted_at')
+            ->whereRaw('LOWER(TRIM(name)) = ?', ['cliente'])
+            ->value('id');
+
+        return $id ? (int) $id : null;
+    }
+
+    private function resolveOrCreateClientPerson(?int $branchId, ?Branch $branch, ?int $clientPersonId, ?string $clientName): ?Person
+    {
+        if ($clientPersonId) {
+            $person = Person::find($clientPersonId);
+            if ($person) {
+                return $person;
+            }
+        }
+
+        $name = trim((string) $clientName);
+        if ($name === '' || mb_strtolower($name) === 'público general' || mb_strtolower($name) === 'publico general') {
+            return null;
+        }
+
+        $person = Person::create([
+            'first_name' => $name,
+            'last_name' => '',
+            'person_type' => 'DNI',
+            'document_number' => '0',
+            'address' => '',
+            'phone' => null,
+            'email' => null,
+            'location_id' => $branch?->location_id,
+            'branch_id' => $branchId,
+        ]);
+
+        $clienteRoleId = $this->clienteRoleId();
+        if ($clienteRoleId) {
+            $person->roles()->syncWithoutDetaching([
+                $clienteRoleId => ['branch_id' => $branchId],
+            ]);
+        }
+
+        return $person;
     }
 
     /**
@@ -825,6 +872,7 @@ class OrderController extends Controller
                     'img' => $imageUrl,
                     'category' => $product->category ? $product->category->description : 'Sin categoría',
                     'category_id' => $product->category_id,
+                    'detail_options' => collect($product->detail_options ?? [])->map(fn ($item) => trim((string) $item))->filter()->values()->all(),
                     'table_id' => $tableId,
                     'branch_id' => $branchId,
                 ];
@@ -945,12 +993,21 @@ class OrderController extends Controller
                         'delivered' => $status === 'E',
                         'courtesyQty' => $courtesyQty,
                         'takeawayQty' => $takeawayQty,
+                        'complements' => collect($d->complements ?? [])->map(fn ($item) => trim((string) $item))->filter()->values()->all(),
                     ];
                 })->values()->all()
             : [];
 
         // Agrupar mismo producto en un solo ítem (ej. PB x5 + PB x1 → PB x6)
-        $pendingItems = collect($pendingItemsRaw)->groupBy('pId')->map(function ($group) {
+        $pendingItems = collect($pendingItemsRaw)->groupBy(function ($item) {
+            $complements = collect($item['complements'] ?? [])->map(fn ($value) => trim((string) $value))->filter()->values()->all();
+            sort($complements);
+            return implode('|', [
+                (int) ($item['pId'] ?? 0),
+                md5(json_encode($complements)),
+                trim((string) ($item['note'] ?? '')),
+            ]);
+        })->map(function ($group) {
             $first = $group->first();
 
             $sumQty = $group->sum('qty');
@@ -967,6 +1024,7 @@ class OrderController extends Controller
                 'delivered' => $group->contains('delivered', true),
                 'courtesyQty' => $group->sum('courtesyQty'),
                 'takeawayQty' => min($sumTakeaway, $sumQty),
+                'complements' => $first['complements'] ?? [],
             ];
         })->values()->all();
 
@@ -977,12 +1035,18 @@ class OrderController extends Controller
                 'description' => $d->description ?? 'Producto',
                 'quantity' => (float) $d->quantity,
                 'comment' => $d->comment ?? '',
+                'complements' => collect($d->complements ?? [])->map(fn ($item) => trim((string) $item))->filter()->values()->all(),
             ]))
-                ->groupBy('product_id')
+                ->groupBy(function ($item) {
+                    $complements = collect($item['complements'] ?? [])->map(fn ($value) => trim((string) $value))->filter()->values()->all();
+                    sort($complements);
+                    return implode('|', [(int) ($item['product_id'] ?? 0), md5(json_encode($complements))]);
+                })
                 ->map(fn ($group) => [
                     'description' => $group->first()['description'],
                     'quantity' => $group->sum('quantity'),
                     'comment' => $group->first()['comment'],
+                    'complements' => $group->first()['complements'] ?? [],
                 ])
                 ->values()
                 ->all()
@@ -1327,9 +1391,16 @@ class OrderController extends Controller
         $user = $request->user();
         $profileId = session('profile_id') ?? $user?->profile_id;
         $waiterPinEnabled = $this->shouldRequireWaiterPin($branchId ? (int) $branchId : null, $profileId);
+        $isMozoProfile = ! $this->canCharge($profileId);
         $waiterIdFrontend = $request->input('waiter_id');
         $responsibleId = $user?->id; // default
-        if ($waiterIdFrontend) {
+        if ($isMozoProfile) {
+            $waiterPersonId = (int) ($user?->person?->id ?? 0);
+            $waiterName = trim(($user?->person?->first_name ?? '') . ' ' . ($user?->person?->last_name ?? ''));
+            if ($waiterName === '') {
+                $waiterName = $user?->name ?? 'Mozo';
+            }
+        } elseif ($waiterIdFrontend) {
             $waiterPersonId = (int) $waiterIdFrontend;
             $waiterPerson = Person::find($waiterPersonId);
             $waiterName = $waiterPerson ? trim(($waiterPerson->first_name ?? '') . ' ' . ($waiterPerson->last_name ?? '')) : 'Mozo';
@@ -1354,7 +1425,7 @@ class OrderController extends Controller
                 $waiterName = $user?->name ?? 'Sistema';
             }
         }
-        if ($waiterPinEnabled && !$waiterPersonId) {
+        if ($waiterPinEnabled && ! $isMozoProfile && ! $waiterPersonId) {
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,
@@ -1423,9 +1494,8 @@ class OrderController extends Controller
         }
 
         $clientPersonId = $request->filled('client_id') ? (int) $request->client_id : null;
-        $clientPerson = $clientPersonId ? Person::find($clientPersonId) : null;
-        // Si hay persona encontrada, usar siempre su nombre (ignora lo que mande el front en client_name)
         $clientNameFromRequest = $request->filled('client_name') ? trim((string) $request->client_name) : null;
+        $clientPerson = $this->resolveOrCreateClientPerson($branchId ? (int) $branchId : null, $branch, $clientPersonId, $clientNameFromRequest);
         $clientName = $clientPerson
             ? trim(($clientPerson->first_name ?? '').' '.($clientPerson->last_name ?? ''))
             : ($clientNameFromRequest ?: 'Público General');
@@ -1645,6 +1715,11 @@ class OrderController extends Controller
 
                 $rawNote = trim((string) ($rawItem['note'] ?? ''));
                 $comment = $rawNote !== '' ? $rawNote : null;
+                $complements = collect($rawItem['complements'] ?? [])
+                    ->map(fn ($item) => trim((string) $item))
+                    ->filter()
+                    ->values()
+                    ->all();
                 $commandTime = $rawItem['commandTime'] ?? null;
                 $commandedAt = null;
                 if ($commandTime && preg_match('/^\\d{1,2}:\\d{2}(?::\\d{2})?/', $commandTime)) {
@@ -1670,6 +1745,7 @@ class OrderController extends Controller
                     'amount' => $amount,
                     'branch_id' => $branchId,
                     'comment' => $comment,
+                    'complements' => $complements,
                     'commanded_at' => $commandedAt,
                     'status' => $delivered ? 'E' : 'A',
                 ]);
@@ -1700,6 +1776,11 @@ class OrderController extends Controller
                 if (! is_array($productSnapshot) && $product) {
                     $productSnapshot = $product->toArray();
                 }
+                $cancelComplements = collect($rawCancel['complements'] ?? [])
+                    ->map(fn ($item) => trim((string) $item))
+                    ->filter()
+                    ->values()
+                    ->all();
 
                 OrderMovementDetail::create([
                     'order_movement_id' => $orderMovement->id,
@@ -1715,6 +1796,7 @@ class OrderController extends Controller
                     'amount' => $amount,
                     'branch_id' => $branchId,
                     'comment' => $rawCancel['cancel_reason'] ?? null,
+                    'complements' => $cancelComplements,
                     'status' => 'C',
                 ]);
             }
@@ -1727,6 +1809,8 @@ class OrderController extends Controller
                     'message' => 'Pedido guardado correctamente',
                     'movement_id' => $movement->id,
                     'order_movement_id' => $orderMovement->id,
+                    'client_person_id' => $clientPerson?->id,
+                    'client_name' => $clientName,
                 ]);
             }
         } catch (\Throwable $e) {
@@ -2105,8 +2189,9 @@ class OrderController extends Controller
         $branchId = (int) session('branch_id');
         $user = $request->user();
         $clientPersonId = $request->input('client_id');
-        $clientPerson = $clientPersonId ? Person::find((int) $clientPersonId) : null;
         $clientNameFromRequest = $request->filled('client_name') ? trim((string) $request->client_name) : null;
+        $branch = $branchId ? Branch::find($branchId) : null;
+        $clientPerson = $this->resolveOrCreateClientPerson($branchId ?: null, $branch, $clientPersonId ? (int) $clientPersonId : null, $clientNameFromRequest);
         $clientName = $clientNameFromRequest
             ?: ($clientPerson
                 ? trim(($clientPerson->first_name ?? '').' '.($clientPerson->last_name ?? ''))
@@ -2168,6 +2253,8 @@ class OrderController extends Controller
                     ];
                     if ($clientPerson) {
                         $updateData['person_id'] = $clientPerson->id;
+                    }
+                    if ($clientName) {
                         $updateData['person_name'] = $clientName;
                     }
                     $requestDocumentTypeId = $request->input('document_type_id');
@@ -2250,6 +2337,7 @@ class OrderController extends Controller
                                 'discount_percentage' => 0,
                                 'original_amount' => $subtotalDetail,
                                 'comment' => $orderDetail->comment,
+                                'complements' => $orderDetail->complements ?? [],
                                 'status' => 'A',
                                 'branch_id' => $branchId,
                             ]);
