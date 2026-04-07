@@ -1383,9 +1383,9 @@
                     function buildPreAccountTicketText(table, groupedItems, canceledItems, paperWidth = 80) {
                         const lineWidth = paperWidth === 80 ? 48 : 24;
                         const colQty = paperWidth === 80 ? 5 : 4;
-                        const colPrice = paperWidth === 80 ? 9 : 6;
-                        const colAmount = paperWidth === 80 ? 9 : 6;
-                        const colGap = 2;
+                        const colPrice = paperWidth === 80 ? 7 : 6;
+                        const colAmount = paperWidth === 80 ? 7 : 6;
+                        const colGap = paperWidth === 80 ? 1 : 2;
                         const colName = Math.max(6, lineWidth - colQty - colGap - colPrice - colAmount);
                         const sep = '='.repeat(lineWidth) + '\n';
                         const normalizedCanceledItems = normalizeCancellationsForTicket(canceledItems);
