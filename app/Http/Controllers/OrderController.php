@@ -1872,19 +1872,13 @@ class OrderController extends Controller
 
         if (! $printer) {
             $printer = (clone $printerBaseQuery)
-                ->whereNotNull('ip')
-                ->where('ip', '!=', '')
-                ->orderBy('id')
+                ->whereRaw('LOWER(TRIM(name)) LIKE ?', ['barra%'])
                 ->first();
         }
         if (! $printer) {
-            $printer = (clone $printerBaseQuery)->orderBy('id')->first();
-        }
-
-        if (! $printer) {
             return response()->json([
                 'success' => false,
-                'message' => 'No hay ticketeras activas configuradas para esta sucursal.',
+                'message' => 'No hay una ticketera de barra configurada para la precuenta.',
             ], 422);
         }
 
