@@ -1037,7 +1037,10 @@
                     function syncPreAccountVisibility() {
                         const btnPrecuenta = document.getElementById('btn-precuenta');
                         if (!btnPrecuenta) return;
-                        btnPrecuenta.classList.toggle('hidden', !currentTable?.order_movement_id);
+                        const hasServerPendingOrder = !!serverOrderMovementId && !window.tableIsFree;
+                        const hasCurrentSavedOrder = hasServerPendingOrder && Number(currentTable?.order_movement_id || 0) === Number(serverOrderMovementId || 0);
+                        const hasItems = Array.isArray(currentTable?.items) && currentTable.items.length > 0;
+                        btnPrecuenta.classList.toggle('hidden', !(hasCurrentSavedOrder && hasItems));
                     }
 
                     function escapeHtml(text) {
