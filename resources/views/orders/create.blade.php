@@ -1426,7 +1426,7 @@
                         txt += padCenterSafe(branchName.toUpperCase(), lineWidth) + '\n';
                         txt += '\n';
                         txt += sep;
-                        txt += 'Cant.' + compactGap + 'Descr.' + compactGap + 'P.Unit.' + compactGap + 'Subt.' + '\n';
+                        txt += 'Cant' + compactGap + 'Descr' + compactGap + 'P.U.' + compactGap + 'Subt' + '\n';
                         txt += sep;
 
                         (groupedItems || []).forEach((it, index) => {
@@ -1468,7 +1468,7 @@
 
                         const totals = getTotalsWithDelivery(groupedItems || []);
                         txt += sep;
-                        txt += padEndSafe('Total', lineWidth - 12) + padStartSafe((totals.total || 0).toFixed(2), 12) + '\n';
+                        txt += 'TOTAL' + compactGap + (totals.total || 0).toFixed(2) + '\n';
                         txt += '\n';
                         txt += `MESA ${mesaLabel}` + (area ? ' - ' + area.toUpperCase() : '') + '\n';
                         txt += `Mesero: ${mozo}\n`;
