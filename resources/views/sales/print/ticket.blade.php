@@ -44,8 +44,8 @@
 
         .logo {
             display: block;
-            max-width: 34mm;
-            max-height: 14mm;
+            max-width: 38mm;
+            max-height: 16mm;
             margin: 0 auto;
             object-fit: contain;
         }
