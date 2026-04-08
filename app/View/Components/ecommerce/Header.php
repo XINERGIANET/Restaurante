@@ -9,7 +9,7 @@ use Illuminate\View\Component;
 class Header extends Component
 {
     public $userName;
-    public $companyName;
+    public $companyName = '';
 
     /**
      * Create a new component instance.
@@ -17,6 +17,7 @@ class Header extends Component
     public function __construct($userName = 'Administrador')
     {
         $this->userName = $userName;
+        $this->companyName = config('app.name', 'Sistema');
         
         // Fetch dynamic company/branch name
         $branchId = session('branch_id');
