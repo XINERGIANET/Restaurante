@@ -8,14 +8,14 @@ use Illuminate\View\Component;
 
 class RecentOrders extends Component
 {
-    public $orders;
+    public $products;
 
     /**
      * Create a new component instance.
      */
-    public function __construct($orders = [])
+    public function __construct($products = [])
     {
-        $this->orders = $orders;
+        $this->products = $products;
     }
 
     /**

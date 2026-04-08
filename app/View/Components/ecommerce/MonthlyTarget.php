@@ -8,11 +8,13 @@ use Illuminate\View\Component;
 
 class MonthlyTarget extends Component
 {
-    public $occupancyData;
+    public $incomeTrend;
+    public $expenseTrend;
 
-    public function __construct($occupancyData = [])
+    public function __construct($incomeTrend = [], $expenseTrend = [])
     {
-        $this->occupancyData = $occupancyData;
+        $this->incomeTrend = $incomeTrend;
+        $this->expenseTrend = $expenseTrend;
     }
 
     public function render(): View|Closure|string

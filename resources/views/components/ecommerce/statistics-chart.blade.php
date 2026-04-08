@@ -1,73 +1,135 @@
-<div
-    class="rounded-2xl border border-gray-200 bg-white px-5 pb-5 pt-5 dark:border-gray-800 dark:bg-white/[0.03] sm:px-6 sm:pt-6">
-    <div class="flex flex-col gap-5 mb-6 sm:flex-row sm:justify-between">
-        <div class="w-full">
-            <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">
-                Statistics
-            </h3>
-            <p class="mt-1 text-gray-500 text-theme-sm dark:text-gray-400">
-                Target you’ve set for each month
-            </p>
-        </div>
-
-        <div class="flex items-start w-full gap-3 sm:justify-end">
-            <div x-data="{ selected: 'overview' }"
-                class="inline-flex w-fit items-center gap-0.5 rounded-lg bg-gray-100 p-0.5 dark:bg-gray-900">
-
-                @php
-                    $options = [
-                        ['value' => 'overview', 'label' => 'Overview'],
-                        ['value' => 'sales', 'label' => 'Sales'],
-                        ['value' => 'revenue', 'label' => 'Revenue'],
-                    ];
-                @endphp
-
-                @foreach ($options as $option)
-                    <button @click="selected = '{{ $option['value'] }}'"
-                        :class="selected === '{{ $option['value'] }}' ?
-                            'shadow-theme-xs text-gray-900 dark:text-white bg-white dark:bg-gray-800' :
-                            'text-gray-500 dark:text-gray-400'"
-                        class="px-3 py-2 font-medium rounded-md text-theme-sm hover:text-gray-900 dark:hover:text-white">
-                        {{ $option['label'] }}
-                    </button>
-                @endforeach
-            </div>
-
-            <div x-data="{
-                init() {
-                    flatpickr(this.$refs.datepicker, {
-                        mode: 'range',
-                        static: true,
-                        monthSelectorType: 'static',
-                        dateFormat: 'M j',
-                        defaultDate: [new Date(Date.now() - 6 * 24 * 60 * 60 * 1000), new Date()],
-                        prevArrow: '<svg class=\'stroke-current\' width=\'24\' height=\'24\' viewBox=\'0 0 24 24\' fill=\'none\' xmlns=\'http://www.w3.org/2000/svg\'><path d=\'M15.25 6L9 12.25L15.25 18.5\' stroke=\'\' stroke-width=\'1.5\' stroke-linecap=\'round\' stroke-linejoin=\'round\'/></svg>',
-                        nextArrow: '<svg class=\'stroke-current\' width=\'24\' height=\'24\' viewBox=\'0 0 24 24\' fill=\'none\' xmlns=\'http://www.w3.org/2000/svg\'><path d=\'M8.75 19L15 12.75L8.75 6.5\' stroke=\'\' stroke-width=\'1.5\' stroke-linecap=\'round\' stroke-linejoin=\'round\'/></svg>',
-                        onReady: (selectedDates, dateStr, instance) => {
-                            instance.element.value = dateStr.replace('to', '-');
-                            const customClass = instance.element.getAttribute('data-class');
-                            if (instance.calendarContainer) {
-                                instance.calendarContainer.classList.add(customClass);
-                            }
-                        },
-                        onChange: (selectedDates, dateStr, instance) => {
-                            instance.element.value = dateStr.replace('to', '-');
-                        },
-                    })
+<div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] md:p-6 shadow-sm" 
+     x-data="{ 
+        activeTab: 'overview',
+        startDate: '{{ $startDate }}',
+        endDate: '{{ $endDate }}',
+        init() {
+            flatpickr($refs.datePicker, {
+                mode: 'range',
+                dateFormat: 'Y-m-d',
+                defaultDate: [this.startDate, this.endDate],
+                onClose: (selectedDates) => {
+                    if (selectedDates.length === 2) {
+                        const start = selectedDates[0].toISOString().split('T')[0];
+                        const end = selectedDates[1].toISOString().split('T')[0];
+                        window.location.href = `{{ route('dashboard') }}?start_date=${start}&end_date=${end}`;
+                    }
                 }
-            }" class="relative max-w-40">
-                <input x-ref="datepicker" class="h-10 w-full max-w-11 rounded-lg border border-gray-200 bg-white py-2.5 pl-[34px] pr-4 text-theme-sm font-medium text-gray-700 shadow-theme-xs focus:outline-hidden focus:ring-0 focus-visible:outline-hidden dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 xl:max-w-fit xl:pl-11" placeholder="Select dates" data-class="flatpickr-right" readonly="readonly" />
-                <div class="absolute inset-0 right-auto flex items-center pointer-events-none left-4">
-                    <svg class="fill-gray-700 dark:fill-gray-400" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path fill-rule="evenodd" clip-rule="evenodd" d="M6.66683 1.54199C7.08104 1.54199 7.41683 1.87778 7.41683 2.29199V3.00033H12.5835V2.29199C12.5835 1.87778 12.9193 1.54199 13.3335 1.54199C13.7477 1.54199 14.0835 1.87778 14.0835 2.29199V3.00033L15.4168 3.00033C16.5214 3.00033 17.4168 3.89576 17.4168 5.00033V7.50033V15.8337C17.4168 16.9382 16.5214 17.8337 15.4168 17.8337H4.5835C3.47893 17.8337 2.5835 16.9382 2.5835 15.8337V7.50033V5.00033C2.5835 3.89576 3.47893 3.00033 4.5835 3.00033L5.91683 3.00033V2.29199C5.91683 1.87778 6.25262 1.54199 6.66683 1.54199ZM6.66683 4.50033H4.5835C4.30735 4.50033 4.0835 4.72418 4.0835 5.00033V6.75033H15.9168V5.00033C15.9168 4.72418 15.693 4.50033 15.4168 4.50033H13.3335H6.66683ZM15.9168 8.25033H4.0835V15.8337C4.0835 16.1098 4.30735 16.3337 4.5835 16.3337H15.4168C15.693 16.3337 15.9168 16.1098 15.9168 15.8337V8.25033Z" fill="" />
-                    </svg>
-                </div>
-            </div>
-
+            });
+        },
+        updateChart(type) {
+            this.activeTab = type;
+            const salesData = @json($sales);
+            const profitData = @json($profit);
+            
+            let newSeries = [];
+            if (type === 'overview' || type === 'sales') {
+                newSeries = [{ name: 'Ventas', data: salesData }];
+            } else if (type === 'profit') {
+                newSeries = [{ name: 'Ganancia', data: profitData }];
+            }
+            
+            if (window.statisticsChartInstance) {
+                window.statisticsChartInstance.updateSeries(newSeries);
+            }
+        }
+     }">
+    <div class="flex flex-col gap-5 mb-8 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+            <h3 class="text-lg font-bold text-gray-800 dark:text-white/90">Estadística</h3>
+            <p class="text-xs text-gray-500">Objetivo que te has fijado para cada mes</p>
+        </div>
+        
+        <div class="flex items-center gap-2 p-1 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
+            <button @click="updateChart('overview')" :class="activeTab === 'overview' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500 hover:text-gray-700'" class="px-4 py-1.5 text-xs font-bold rounded-lg transition-all">
+                Descripción general
+            </button>
+            <button @click="updateChart('sales')" :class="activeTab === 'sales' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500 hover:text-gray-700'" class="px-4 py-1.5 text-xs font-bold rounded-lg transition-all">
+                Ventas
+            </button>
+            <button @click="updateChart('profit')" :class="activeTab === 'profit' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500 hover:text-gray-700'" class="px-4 py-1.5 text-xs font-bold rounded-lg transition-all">
+                Ganancia
+            </button>
+            
+            <div class="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-1"></div>
+            
+            <button x-ref="datePicker" class="flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-gray-500 bg-transparent hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-all">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                <span x-text="startDate === endDate ? startDate : (new Date(startDate + 'T12:00:00').toLocaleDateString('es-ES', {month:'short', day:'numeric'}) + ' a ' + new Date(endDate + 'T12:00:00').toLocaleDateString('es-ES', {month:'short', day:'numeric'}))"></span>
+            </button>
         </div>
     </div>
-    <div class="max-w-full overflow-x-auto custom-scrollbar">
-        <div id="chartThree" class="-ml-4 min-w-[700px] pl-2 xl:min-w-full"></div>
-    </div>
+
+    <div id="statisticsChart" class="w-full"></div>
 </div>
 
+<script>
+    document.addEventListener('turbo:load', function() {
+        const chartElement = document.getElementById('statisticsChart');
+        if (!chartElement) return;
+
+        const options = {
+            series: [{
+                name: 'Ventas',
+                data: @json($sales)
+            }],
+            chart: {
+                height: 350,
+                type: 'area',
+                toolbar: { show: false },
+                fontFamily: 'Inter, sans-serif',
+                zoom: { enabled: false },
+                redrawOnParentResize: true
+            },
+            colors: ['#3b82f6'],
+            fill: {
+                type: 'gradient',
+                gradient: {
+                    shadeIntensity: 1,
+                    opacityFrom: 0.4,
+                    opacityTo: 0.1,
+                    stops: [0, 90, 100]
+                }
+            },
+            dataLabels: { enabled: false },
+            stroke: {
+                curve: 'straight',
+                width: 3
+            },
+            grid: {
+                borderColor: '#f1f1f1',
+                strokeDashArray: 4,
+                yaxis: { lines: { show: true } }
+            },
+            xaxis: {
+                categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                axisBorder: { show: false },
+                axisTicks: { show: false }
+            },
+            yaxis: {
+                labels: {
+                    formatter: function (val) {
+                        return val.toFixed(2);
+                    }
+                }
+            },
+            tooltip: {
+                y: {
+                    formatter: function (val) {
+                        return "S/ " + val.toFixed(2);
+                    }
+                }
+            }
+        };
+
+        setTimeout(() => {
+            if (window.statisticsChartInstance) {
+                window.statisticsChartInstance.destroy();
+            }
+            window.statisticsChartInstance = new ApexCharts(chartElement, options);
+            window.statisticsChartInstance.render().then(() => {
+                window.dispatchEvent(new Event('resize'));
+            });
+        }, 200);
+    });
+</script>

@@ -11,11 +11,11 @@ class CustomerDemographic extends Component
     /**
      * Create a new component instance.
      */
-    public $financialData;
+    public $topProducts;
 
-    public function __construct($financialData = [])
+    public function __construct($topProducts = [])
     {
-        $this->financialData = $financialData;
+        $this->topProducts = $topProducts;
     }
 
     /**
