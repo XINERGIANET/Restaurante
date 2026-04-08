@@ -7,7 +7,7 @@
     <style>
         body { font-family: Arial, sans-serif; color: #111827; margin: 24px; }
         .head { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; }
-        .logo { max-height: 84px; max-width: 220px; object-fit: contain; }
+        .logo { max-height: 96px; max-width: 240px; object-fit: contain; }
         .doc-box { border: 1px solid #334155; padding: 16px; min-width: 300px; text-align: center; }
         .doc-box h1 { margin: 0; font-size: 30px; }
         .doc-box p { margin: 4px 0; font-size: 18px; }
