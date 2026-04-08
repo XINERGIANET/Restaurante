@@ -1917,19 +1917,29 @@ class SalesController extends Controller
             'orderMovement.details.product',
         ]);
 
+        $userBranchId = (int) (auth()->user()?->person?->branch_id ?? 0);
         $sessionBranchId = (int) session('branch_id');
+        $userBranch = $userBranchId ? Branch::find($userBranchId) : null;
         $sessionBranch = $sessionBranchId ? Branch::find($sessionBranchId) : null;
-        $branchForLogo = $sessionBranch ?: $sale->branch;
+        $branchForLogo = $userBranch ?: $sessionBranch ?: $sale->branch;
 
         $logoUrl = null;
         $logoFileUrl = null;
         if ($branchForLogo?->logo) {
-            $logoUrl = str_starts_with($branchForLogo->logo, 'http')
-                ? $branchForLogo->logo
-                : asset('storage/'.ltrim((string) $branchForLogo->logo, '/'));
+            $rawLogo = trim((string) $branchForLogo->logo);
 
-            if (! str_starts_with((string) $branchForLogo->logo, 'http')) {
-                $localLogoPath = storage_path('app/public/'.ltrim((string) $branchForLogo->logo, '/'));
+            if (str_starts_with($rawLogo, 'http://') || str_starts_with($rawLogo, 'https://')) {
+                $logoUrl = $rawLogo;
+            } else {
+                $publicLogoPath = '/'.ltrim($rawLogo, '/');
+                if (! str_starts_with($publicLogoPath, '/storage/')) {
+                    $publicLogoPath = '/storage/'.ltrim($publicLogoPath, '/');
+                }
+
+                $logoUrl = asset(ltrim($publicLogoPath, '/'));
+
+                $storageRelativePath = preg_replace('#^/storage/#', '', $publicLogoPath) ?: '';
+                $localLogoPath = storage_path('app/public/'.ltrim($storageRelativePath, '/'));
                 if (file_exists($localLogoPath)) {
                     $normalized = str_replace('\\', '/', $localLogoPath);
                     $logoFileUrl = 'file:///'.ltrim($normalized, '/');
