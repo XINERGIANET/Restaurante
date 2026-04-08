@@ -9,7 +9,7 @@
     <div class="mx-4 md:mx-6 flex flex-col gap-4 rounded-2xl border border-gray-200 bg-white dark:bg-gray-900 p-5">
         <div x-data="posSystem()" x-cloak
             class="flex flex-col min-h-[calc(100vh-9rem)] w-full font-sans text-slate-800 dark:text-white"
-            style="--brand:#3B82F6; --brand-soft:rgba(59,130,246,0.14);">
+            style="--brand:#FF4622; --brand-soft:rgba(255,70,34,0.14);">
 
             {{-- CONTROLES SUPERIORES: Áreas, Buscador y Chips --}}
             <div class="flex flex-col w-full mb-6 gap-4 shrink-0">
@@ -41,8 +41,8 @@
                     <div class="relative w-full max-w-2xl min-w-0 flex-1 sm:min-w-[20rem] flex items-center gap-2">
                         <input type="text" x-model="searchQuery" @keydown.enter.prevent="addSearchChip"
                             placeholder="Buscar por cliente, mozo o producto..."
-                            class="w-full pl-10 pr-4 py-2.5 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 outline-none transition-all">
-                        <x-ui.button size="xs" variant="primary" type="button" onclick="addSearchChip()" class="!px-1.5 !py-1.5 text-[11px] font-normal h-auto leading-tight">Añadir filtro</x-ui.button>
+                            class="w-full pl-10 pr-4 py-2.5 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:ring-2 focus:ring-[#FF4622]/30 focus:border-[#FF4622] outline-none transition-all">
+                        <x-ui.button size="xs" variant="primary" type="button" onclick="addSearchChip()" class="!px-1.5 !py-1.5 text-[11px] font-normal h-auto leading-tight" style="background-color: #FF4622; border-color: #FF4622;">Añadir filtro</x-ui.button>
                     </div>
 
                 </div>

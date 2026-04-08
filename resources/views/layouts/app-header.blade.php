@@ -1,5 +1,5 @@
 <header
-    style="height: 55px; background: linear-gradient(150deg, #4BB4ED 0%, #234bbb 100%) !important;"
+    style="height: 55px; background: linear-gradient(150deg, #FF4622 0%, #C43B25 100%) !important;"
     class="sticky top-0 flex w-full z-99999 dark:border-gray-800 dark:bg-gray-900"
     x-data="{
         isApplicationMenuOpen: false,
@@ -204,28 +204,28 @@
                                                 <button type="submit" 
                                                     class="group relative w-full flex items-center p-3 text-left border rounded-xl transition-all duration-200
                                                     {{ $isActive 
-                                                        ? 'bg-brand-50 border-brand-200 ring-1 ring-brand-500/20 dark:bg-brand-500/10 dark:border-brand-500/30' 
+                                                        ? 'bg-[#FF4622]/10 border-brand-200 ring-1 ring-brand-500/20 dark:bg-[#FF4622]/20 dark:border-[#FF4622]/30' 
                                                         : 'bg-gray-50 border-transparent hover:bg-white hover:border-gray-200 hover:shadow-sm dark:bg-gray-800 dark:hover:bg-gray-700 dark:hover:border-gray-600' 
                                                     }}">
                                                     
                                                     <div class="flex items-center justify-center w-10 h-10 rounded-lg mr-4 
-                                                        {{ $isActive ? 'bg-brand-100 text-brand-600 dark:bg-brand-500/20 dark:text-brand-400' : 'bg-white text-gray-400 shadow-sm group-hover:text-brand-500 dark:bg-gray-700 dark:text-gray-400' }}">
+                                                        {{ $isActive ? 'bg-brand-100 text-[#C43B25] dark:bg-[#FF4622]/20 dark:text-[#FF4622]/80' : 'bg-white text-gray-400 shadow-sm group-hover:text-[#FF4622] dark:bg-gray-700 dark:text-gray-400' }}">
                                                         <i class="ri-store-2-line text-lg"></i>
                                                     </div>
 
                                                     <div class="flex-1 ml-4">
-                                                        <h4 class="font-medium {{ $isActive ? 'text-brand-700 dark:text-brand-400' : 'text-gray-800 dark:text-gray-200' }}">
+                                                        <h4 class="font-medium {{ $isActive ? 'text-brand-700 dark:text-[#FF4622]/80' : 'text-gray-800 dark:text-gray-200' }}">
                                                             {{ $caja->number }}
                                                         </h4>
                                                         @if($isActive)
-                                                            <span class="text-xs text-brand-500 font-medium">● Activa actualmente</span>
+                                                            <span class="text-xs text-[#FF4622] font-medium">● Activa actualmente</span>
                                                         @else
                                                             <span class="text-xs text-gray-400 group-hover:text-gray-500"> Click para cambiar</span>
                                                         @endif
                                                     </div>
 
                                                     @if($isActive)
-                                                        <div class="text-brand-500">
+                                                        <div class="text-[#FF4622]">
                                                             <i class="ri-checkbox-circle-fill text-xl"></i>
                                                         </div>
                                                     @endif

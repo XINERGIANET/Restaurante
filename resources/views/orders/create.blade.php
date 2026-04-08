@@ -188,7 +188,7 @@
                                         value="{{ old('client_name', $pendingClientName ?? 'CLIENTES VARIOS') }}"
                                         placeholder="Escribir nombre del cliente..."
                                         oninput="updateHeaderClientName(this.value)"
-                                        class="w-full h-11 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 pr-10 text-sm text-gray-800 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 outline-none transition-all">
+                                        class="w-full h-11 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 pr-10 text-sm text-gray-800 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-[#FF4622]/30 focus:border-[#FF4622] outline-none transition-all">
                                     <button type="button" onclick="clearHeaderClientName()"
                                         class="absolute right-2 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-red-500 dark:hover:bg-gray-700 dark:hover:text-red-400 transition-colors"
                                         title="Limpiar cliente">
@@ -209,7 +209,7 @@
                             <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider leading-none mb-1">
                                 Nro Personas</p>
                             <input type="number" id="diners-input" min="1" max="50" value="1"
-                                class="w-11 h-8 text-center text-sm font-semibold rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                class="w-11 h-8 text-center text-sm font-semibold rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#FF4622]/20 focus:border-[#FF4622] outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 onchange="currentTable.people_count = parseInt(this.value, 10) || 1; this.value = currentTable.people_count; saveDB();">
                         </div>
                     </div>
@@ -233,7 +233,7 @@
                             <div class="relative flex-1 max-w-md">
                                 <i class="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
                                 <input type="text" id="search-products"
-                                    class="w-full pl-10 pr-10 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-800 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 outline-none transition-all"
+                                    class="w-full pl-10 pr-10 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-800 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-[#FF4622]/30 focus:border-[#FF4622] outline-none transition-all"
                                     placeholder="Buscar producto...">
                                 <button type="button" id="search-products-clear" onclick="clearProductSearch()"
                                     class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hidden">
@@ -254,12 +254,12 @@
                     {{-- Tabs Resumen | Cobro (Cobro oculto para Mozo) --}}
                     <div class="flex w-full shrink-0 border-b border-gray-200 dark:border-gray-700">
                         <button type="button" id="tab-resumen" onclick="switchAsideTab('resumen')"
-                            class="flex-1 py-3 px-4 text-sm font-bold transition-colors rounded-tl-2xl bg-brand-500 text-white">
+                            class="flex-1 py-3 px-4 text-sm font-bold transition-colors rounded-tl-2xl bg-[#FF4622] text-white">
                             Resumen
                         </button>
                         @if($canCharge ?? true)
                             <button type="button" id="tab-cobro" onclick="switchAsideTab('cobro')"
-                                class="flex-1 py-3 px-4 text-sm font-bold transition-colors bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-orange-100 dark:hover:bg-orange-900/30 hover:text-orange-600 dark:hover:text-orange-400">
+                                class="flex-1 py-3 px-4 text-sm font-bold transition-colors bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-orange-100 dark:hover:bg-orange-900/30 hover:text-[#FF4622] dark:hover:text-[#FF4622]">
                                 Cobro
                             </button>
                         @endif
@@ -269,32 +269,32 @@
                     <div id="aside-resumen" class="flex flex-col flex-1 min-h-0 overflow-hidden">
                         {{-- Datos Delivery --}}
                         <div id="delivery-info-container"
-                            class="hidden p-3 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-800 space-y-2 overflow-hidden">
+                            class="hidden p-3 bg-[#FF4622]/5 dark:bg-[#FF4622]/10 border-b border-[#FF4622]/20 dark:border-[#FF4622]/30 space-y-2 overflow-hidden">
                             <div class="flex flex-col gap-2">
                                 <div class="flex-1 min-w-0">
                                     <label
-                                        class="block text-[10px] font-bold uppercase text-blue-600 dark:text-blue-400 mb-1">Dirección
+                                        class="block text-[10px] font-bold uppercase text-[#FF4622] dark:text-[#FF4622] mb-1">Dirección
                                         de Entrega</label>
                                     <input type="text" id="delivery-address" oninput="updateDeliveryInfo()"
                                         placeholder="Av. Siempre Viva 123"
-                                        class="w-full py-1.5 px-2 text-xs rounded border border-blue-200 focus:ring-1 focus:ring-blue-400 outline-none">
+                                        class="w-full py-1.5 px-2 text-xs rounded border border-[#FF4622]/30 focus:ring-1 focus:ring-[#FF4622] outline-none">
                                 </div>
                                 <div class="flex gap-2">
                                     <div class="flex-1 min-w-0">
                                         <label
-                                            class="block text-[10px] font-bold uppercase text-blue-600 dark:text-blue-400 mb-1">Teléfono
+                                            class="block text-[10px] font-bold uppercase text-[#FF4622] dark:text-[#FF4622] mb-1">Teléfono
                                             Contacto</label>
                                         <input type="text" id="delivery-phone" oninput="updateDeliveryInfo()"
                                             placeholder="999..."
-                                            class="w-full py-1.5 px-2 text-xs rounded border border-blue-200 focus:ring-1 focus:ring-blue-400 outline-none">
+                                            class="w-full py-1.5 px-2 text-xs rounded border border-[#FF4622]/30 focus:ring-1 focus:ring-[#FF4622] outline-none">
                                     </div>
                                     <div class="w-24">
                                         <label
-                                            class="block text-[10px] font-bold uppercase text-blue-600 dark:text-blue-400 mb-1">Costo
+                                            class="block text-[10px] font-bold uppercase text-[#FF4622] dark:text-[#FF4622] mb-1">Costo
                                             Delivery</label>
                                         <input type="number" step="0.5" id="delivery-amount" oninput="updateDeliveryInfo()"
                                             placeholder="0.00"
-                                            class="w-full py-1.5 px-2 text-xs rounded border border-blue-200 focus:ring-1 focus:ring-blue-400 outline-none">
+                                            class="w-full py-1.5 px-2 text-xs rounded border border-[#FF4622]/30 focus:ring-1 focus:ring-[#FF4622] outline-none">
                                     </div>
                                 </div>
                             </div>
@@ -382,7 +382,7 @@
                                 <div class="flex justify-between items-center">
                                     <span class="text-base sm:text-lg font-bold text-slate-800 dark:text-white">Total a
                                         Pagar</span>
-                                    <span class="text-xl sm:text-2xl font-black text-blue-600 dark:text-blue-400"
+                                    <span class="text-xl sm:text-2xl font-black text-[#FF4622] dark:text-[#FF4622]"
                                         id="ticket-total">$0.00</span>
                                 </div>
                             </div>
@@ -420,7 +420,7 @@
                                             input-id="order_client_search" class="w-full" />
                                     </div>
                                     <button type="button"
-                                        class="inline-flex shrink-0 items-center justify-center h-9 w-9 rounded-lg bg-white border border-gray-200 text-gray-400 hover:bg-brand-50 hover:text-brand-600 hover:border-brand-300 shadow-sm transition-colors"
+                                        class="inline-flex shrink-0 items-center justify-center h-9 w-9 rounded-lg bg-white border border-gray-200 text-gray-400 hover:bg-[#FF4622]/10 hover:text-[#C43B25] hover:border-[#FF4622]/30 shadow-sm transition-colors"
                                         @click="$dispatch('open-person-modal')" title="Nuevo cliente">
                                         <i class="ri-user-add-line text-base"></i>
                                     </button>
@@ -460,7 +460,7 @@
                                             class="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Métodos
                                             de pago</label>
                                         <button type="button" onclick="addCobroPaymentMethod()"
-                                            class="inline-flex items-center gap-1.5 rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-brand-600 active:scale-95 transition-colors shrink-0">
+                                            class="inline-flex items-center gap-1.5 rounded-lg bg-[#FF4622] px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-[#C43B25] active:scale-95 transition-colors shrink-0">
                                             <i class="ri-add-line text-sm"></i> Agregar
                                         </button>
                                     </div>
@@ -483,11 +483,11 @@
                     <div
                         class="shrink-0 p-4 sm:p-5 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
                         {{-- Footer Resumen: solo Guardar y Precuenta --}}
-                        <div id="footer-resumen" class="flex justify-between">
-                            <x-ui.button id="btn-precuenta" type="button" variant="secondary" size="sm" class="hidden" style="display: none;">
+                        <div id="footer-resumen" class="flex justify-between items-center gap-3">
+                            <button type="button" id="btn-precuenta" class="hidden py-2.5 px-4 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs sm:text-sm border border-slate-200 hover:bg-slate-200 active:scale-95 transition-all flex justify-center items-center gap-2" style="display: none;">
                                 <i class="ri-save-line text-base"></i>
                                 <span>Precuenta</span>
-                            </x-ui.button>
+                            </button>
                             <button type="button" id="btn-guardar" onclick="processOrder()"
                                 class="py-2.5 px-4 rounded-xl bg-gray-500 text-white font-bold text-xs sm:text-sm shadow-lg hover:bg-gray-600 active:scale-95 transition-all flex justify-center items-center gap-2">
                                 <i class="ri-send-plane-2-line text-base"></i>
@@ -498,7 +498,7 @@
                         @if($canCharge ?? true)
                             <div id="footer-cobro" class="hidden justify-end">
                                 <button type="button" onclick="processOrderPayment()"
-                                    class="py-2.5 px-4 rounded-xl bg-brand-500 text-white font-bold text-xs sm:text-sm shadow-lg hover:bg-brand-600 active:scale-95 transition-all flex justify-center items-center gap-2">
+                                    class="py-2.5 px-4 rounded-xl bg-[#FF4622] text-white font-bold text-xs sm:text-sm shadow-lg hover:bg-[#C43B25] active:scale-95 transition-all flex justify-center items-center gap-2">
                                     <i class="ri-bank-card-line text-base"></i>
                                     <span>Cobrar</span>
                                 </button>
@@ -521,7 +521,7 @@
 
                     <div class="mb-8 flex flex-col items-center text-center">
                         <div
-                            class="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400 mb-4 shadow-sm">
+                            class="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#FF4622]/10 text-[#FF4622] dark:bg-[#FF4622]/20 dark:text-[#FF4622] mb-4 shadow-sm">
                             <i class="ri-user-add-line text-3xl"></i>
                         </div>
                         <div>
@@ -549,7 +549,7 @@
                                 Cancelar
                             </button>
                             <button type="submit"
-                                class="px-5 py-2.5 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 shadow-lg shadow-blue-500/30 transition-all">
+                                class="px-5 py-2.5 rounded-xl bg-[#FF4622] text-white font-semibold hover:bg-[#C43B25] shadow-lg shadow-[#FF4622]/30 transition-all">
                                 <i class="ri-save-line mr-1"></i> Guardar Cliente
                             </button>
                         </div>
@@ -2302,8 +2302,8 @@
                             'inline-flex items-center gap-2 px-2.5 py-1.5 rounded-full text-xs sm:text-sm font-semibold',
                             'border transition-all duration-150 whitespace-nowrap cursor-pointer shrink-0',
                             selectedCategoryId === CATEGORY_FAVORITES_ID
-                                ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                                : 'bg-white dark:bg-slate-800 text-gray-700 border-gray-300 dark:border-slate-600 hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400'
+                                ? 'bg-[#FF4622] text-white border-[#FF4622] shadow-sm'
+                                : 'bg-white dark:bg-slate-800 text-gray-700 border-gray-300 dark:border-slate-600 hover:border-[#FF4622] hover:text-[#FF4622] dark:hover:text-[#FF4622]'
                         ].join(' ');
                         favBtn.onclick = function (e) {
                             e.preventDefault();
@@ -2320,8 +2320,8 @@
                             'inline-flex items-center gap-2 px-2.5 py-1.5 rounded-full text-xs sm:text-sm font-semibold',
                             'border transition-all duration-150 whitespace-nowrap cursor-pointer shrink-0',
                             selectedCategoryId === CATEGORY_ALL_ID
-                                ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                                : 'bg-white dark:bg-slate-800 text-gray-700 border-gray-300 dark:border-slate-600 hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400'
+                                ? 'bg-[#FF4622] text-white border-[#FF4622] shadow-sm'
+                                : 'bg-white dark:bg-slate-800 text-gray-700 border-gray-300 dark:border-slate-600 hover:border-[#FF4622] hover:text-[#FF4622] dark:hover:text-[#FF4622]'
                         ].join(' ');
                         allBtn.onclick = function (e) {
                             e.preventDefault();
@@ -2351,8 +2351,8 @@
                             'inline-flex items-center gap-2 px-2.5 py-1.5 rounded-full text-xs sm:text-sm font-semibold',
                             'border transition-all duration-150 whitespace-nowrap cursor-pointer shrink-0',
                             isFavActive
-                                ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                                : 'bg-white dark:bg-slate-800 text-gray-700 border-gray-300 dark:border-slate-600 hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400'
+                                ? 'bg-[#FF4622] text-white border-[#FF4622] shadow-sm'
+                                : 'bg-white dark:bg-slate-800 text-gray-700 border-gray-300 dark:border-slate-600 hover:border-[#FF4622] hover:text-[#FF4622] dark:hover:text-[#FF4622]'
                         ].join(' ');
                         favBtn.onclick = function (e) {
                             e.preventDefault();
@@ -2371,8 +2371,8 @@
                             'inline-flex items-center gap-2 px-2.5 py-1.5 rounded-full text-xs sm:text-sm font-semibold',
                             'border transition-all duration-150 whitespace-nowrap cursor-pointer shrink-0',
                             isAllActive
-                                ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                                : 'bg-white dark:bg-slate-800 text-gray-700 border-gray-300 dark:border-slate-600 hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400'
+                                ? 'bg-[#FF4622] text-white border-[#FF4622] shadow-sm'
+                                : 'bg-white dark:bg-slate-800 text-gray-700 border-gray-300 dark:border-slate-600 hover:border-[#FF4622] hover:text-[#FF4622] dark:hover:text-[#FF4622]'
                         ].join(' ');
                         allBtn.onclick = function (e) {
                             e.preventDefault();
@@ -2400,8 +2400,8 @@
                                 'inline-flex items-center gap-2 px-2.5 py-1.5 rounded-full text-xs sm:text-sm font-semibold',
                                 'border transition-all duration-150 whitespace-nowrap cursor-pointer shrink-0',
                                 isActive
-                                    ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                                    : 'bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-slate-600 hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400'
+                                    ? 'bg-[#FF4622] text-white border-[#FF4622] shadow-sm'
+                                    : 'bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-slate-600 hover:border-[#FF4622] hover:text-[#FF4622] dark:hover:text-[#FF4622]'
                             ].join(' ');
 
                             el.onclick = function (e) {
@@ -2413,7 +2413,7 @@
 
                             el.innerHTML = `
                                                                                                                                                                                             <img src="${imageUrl}" alt="${categoryName}"
-                                                                                                                                                                                                class="w-6 h-6 rounded-full object-cover shrink-0 border ${isActive ? 'border-blue-300' : 'border-gray-200 dark:border-slate-600'}"
+                                                                                                                                                                                                class="w-6 h-6 rounded-full object-cover shrink-0 border ${isActive ? 'border-[#FF4622]/30' : 'border-gray-200 dark:border-slate-600'}"
                                                                                                                                                                                                 onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22200%22%3E%3Crect fill=%22%23e5e7eb%22 width=%22200%22 height=%22200%22/%3E%3C/svg%3E'">
                                                                                                                                                                                             <span>${categoryName}</span>
                                                                                                                                                                                         `;
@@ -2490,8 +2490,8 @@
                             const stockText = !isNaN(stockVal) ? stockVal.toFixed(2) : '0.00';
 
                             el.innerHTML = `
-                                                                                                                                                                                            <div class="rounded-2xl overflow-hidden p-4 sm:p-5 bg-white dark:bg-slate-800/60 border-2 border-blue-200 dark:border-blue-500/40 hover:border-blue-400 dark:hover:border-blue-400 transition-all duration-200 hover:-translate-y-0.5 flex flex-col items-center text-center h-full w-full">
-                                <div class="hidden sm:flex w-20 h-20 rounded-full bg-blue-500 items-center justify-center shrink-0 overflow-hidden mb-3">
+                                                                                                                                                                                            <div class="rounded-2xl overflow-hidden p-4 sm:p-5 bg-white dark:bg-slate-800/60 border-2 border-[#FF4622]/20 dark:border-[#FF4622]/40 hover:border-[#FF4622] dark:hover:border-[#FF4622] transition-all duration-200 hover:-translate-y-0.5 flex flex-col items-center text-center h-full w-full">
+                                <div class="hidden sm:flex w-20 h-20 rounded-full bg-[#FF4622] items-center justify-center shrink-0 overflow-hidden mb-3">
                                     ${hasImg
                                     ? `<img src="${imageUrl}" alt="${productName}" class="w-full h-full object-contain rounded-full object-cover object-center" loading="lazy" onerror="this.parentElement.innerHTML='<i class=\\'ri-restaurant-2-line text-2xl sm:text-3xl text-white\\'></i>'">`
                                     : `<i class="ri-restaurant-2-line text-2xl sm:text-3xl text-white"></i>`
@@ -2500,7 +2500,7 @@
                                                                                                                                                                                                 <h4 class="font-semibold text-gray-900 dark:text-white text-sm sm:text-base line-clamp-2 leading-tight mb-1 min-h-[2.5rem]">
                                                                                                                                                                                                     ${productName}
                                                                                                                                                                                                 </h4>
-                                                                                                                                                                                                <span class="text-base sm:text-lg font-bold text-blue-600 dark:text-blue-400">
+                                                                                                                                                                                                <span class="text-base sm:text-lg font-bold text-[#FF4622] dark:text-[#FF4622]">
                                                                                                                                                                                                     ${priceFormatted}
                                                                                                                                                                                                 </span>
                                                                                                                                                                                                 <span class="mt-1 text-xs font-medium text-gray-500 dark:text-gray-400">Stock: ` + stockText + `</span>
@@ -2869,7 +2869,7 @@
                             const isTakeAway = st === 'TAKE_AWAY';
 
                             let serviceLabel = '🏠 En Mesa';
-                            let serviceColor = 'bg-blue-100/50 text-blue-700 border-blue-200';
+                            let serviceColor = 'bg-[#FF4622]/5 text-[#FF4622] border-[#FF4622]/20';
                             if (isTakeAway) {
                                 serviceLabel = '🥡 Para Llevar';
                                 serviceColor = 'bg-orange-100 text-orange-700 border-orange-200';
@@ -2925,10 +2925,10 @@
                                 const statusLabel = isDelivered ? 'Entregado' : (itemIsComandado ? (pendingQty > 0 ? `Parcial ${commandedQty}/${itemQty}` : 'Comandado') : 'Pendiente');
                                 const statusClass = isDelivered
                                     ? 'bg-emerald-500/20 text-emerald-600 border border-emerald-500/35 dark:text-emerald-400 dark:border-emerald-500/40'
-                                    : (itemIsComandado ? (pendingQty > 0 ? 'bg-amber-500/15 text-amber-700 border border-amber-500/35 dark:text-amber-300 dark:border-amber-500/40' : 'bg-sky-500/15 text-sky-700 border border-sky-500/35 dark:text-sky-300 dark:border-sky-500/40') : 'bg-zinc-200/90 text-zinc-600 border border-zinc-300 dark:bg-zinc-700/60 dark:text-zinc-300 dark:border-zinc-600');
+                                    : (itemIsComandado ? (pendingQty > 0 ? 'bg-amber-500/15 text-amber-700 border border-amber-500/35 dark:text-amber-300 dark:border-amber-500/40' : 'bg-[#FF4622]/15 text-[#C43B25] border border-[#FF4622]/35 dark:text-[#FF4622] dark:border-[#FF4622]/40') : 'bg-zinc-200/90 text-zinc-600 border border-zinc-300 dark:bg-zinc-700/60 dark:text-zinc-300 dark:border-zinc-600');
                                 const commandSummary = itemIsComandado
                                     ? `<div class="mt-1 flex flex-wrap items-center gap-1.5">
-                                            <span class="inline-flex items-center gap-1 rounded-full bg-sky-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sky-700 dark:bg-sky-500/15 dark:text-sky-300">
+                                            <span class="inline-flex items-center gap-1 rounded-full bg-[#FF4622]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#C43B25] dark:bg-[#FF4622]/15 dark:text-[#FF4622]">
                                                 <i class="ri-printer-line"></i> Comandado x${commandedQty}
                                             </span>
                                             ${pendingQty > 0 ? `<span class="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700 dark:bg-amber-500/15 dark:text-amber-300"><i class="ri-time-line"></i> Nuevo x${pendingQty}</span>` : ''}
@@ -2997,11 +2997,11 @@
                                                                                                                                                                                                     </div>
 
                                                                                                                                                                                                     <div class="flex flex-wrap items-center gap-x-2 gap-y-1.5 border-t border-slate-200 pt-2.5 dark:border-zinc-700/60">
-                                                                                                                                                                                                        <button type="button" onclick="toggleDelivered(${index})" class="inline-flex shrink-0 items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-500 dark:text-sky-400 dark:hover:text-sky-300 transition-colors">
+                                                                                                                                                                                                        <button type="button" onclick="toggleDelivered(${index})" class="inline-flex shrink-0 items-center gap-1.5 text-sm font-medium text-[#FF4622] hover:text-[#C43B25] dark:text-[#FF4622] dark:hover:text-[#FF4622]/80 transition-colors">
                                                                                                                                                                                                             <i class="${isDelivered ? 'ri-check-double-line' : 'ri-checkbox-blank-circle-line'}"></i>
                                                                                                                                                                                                             ${isDelivered ? 'Entregado' : 'Pendiente'}
                                                                                                                                                                                                         </button>
-                                                                                                                                                                                                        <button type="button" onclick="toggleNoteInput(${index})" class="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-colors ${noteBtnActive ? 'bg-blue-50 text-blue-700 dark:bg-sky-500/15 dark:text-sky-300' : 'text-slate-500 hover:bg-slate-100 hover:text-blue-600 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-sky-400'}">
+                                                                                                                                                                                                        <button type="button" onclick="toggleNoteInput(${index})" class="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-colors ${noteBtnActive ? 'bg-[#FF4622]/10 text-[#C43B25] dark:bg-[#FF4622]/15 dark:text-[#FF4622]' : 'text-slate-500 hover:bg-slate-100 hover:text-[#FF4622] dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-[#FF4622]'}">
                                                                                                                                                                                                             <i class="${hasNote ? 'ri-chat-1-fill' : 'ri-chat-1-line'}"></i> ${hasNote ? 'Editar nota' : 'Nota'}
                                                                                                                                                                                                         </button>
                                                                                                                                                                                                         <button type="button" onclick="toggleCourtesyInput(${index})" class="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-colors ${courtesyBtnActive ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300' : 'text-slate-500 hover:bg-slate-100 hover:text-emerald-600 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-emerald-400'}">
@@ -3013,7 +3013,7 @@
                                                                                                                                                                                                     </div>
 
                                                                                                                                                                                                     <div id="note-box-${index}" class="${showNoteBox ? '' : 'hidden'}">
-                                                                                                                                                                                                        <textarea rows="2" onblur="saveNote(${index}, this.value)" placeholder="Ej: Sin cebolla, término medio..." class="w-full min-h-[3.25rem] resize-y rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-600 dark:bg-zinc-900/80 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-sky-500">${itemNote}</textarea>
+                                                                                                                                                                                                        <textarea rows="2" onblur="saveNote(${index}, this.value)" placeholder="Ej: Sin cebolla, término medio..." class="w-full min-h-[3.25rem] resize-y rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:border-[#FF4622] focus:outline-none focus:ring-2 focus:ring-[#FF4622]/20 dark:border-zinc-600 dark:bg-zinc-900/80 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-[#FF4622]">${itemNote}</textarea>
                                                                                                                                                                                                     </div>
 
                                                                                                                                                                                                     <div id="courtesy-box-${index}" class="${showCourtesyBox ? '' : 'hidden'}">
@@ -3661,7 +3661,7 @@
                                 text: `Total a cobrar: S/ ${total.toFixed(2)}. ¿Deseas proceder?`,
                                 icon: 'question',
                                 showCancelButton: true,
-                                confirmButtonColor: '#3085d6',
+                                confirmButtonColor: '#FF4622',
                                 cancelButtonColor: '#d33',
                                 confirmButtonText: 'Sí, cobrar',
                                 cancelButtonText: 'Cancelar'
@@ -3919,10 +3919,10 @@
                             cobro?.classList.add('flex');
                             footerResumen?.classList.add('hidden');
                             footerCobro?.classList.remove('hidden');
-                            btnResumen?.classList.remove('bg-brand-500', 'text-white');
+                            btnResumen?.classList.remove('bg-[#FF4622]', 'text-white');
                             btnResumen?.classList.add('bg-gray-200', 'dark:bg-gray-700', 'text-gray-700', 'dark:text-gray-300');
                             btnCobro?.classList.remove('bg-gray-100', 'dark:bg-gray-800', 'text-gray-500', 'dark:text-gray-400');
-                            btnCobro?.classList.add('bg-brand-500', 'text-white');
+                            btnCobro?.classList.add('bg-[#FF4622]', 'text-white');
                             // Deshabilitar agregar/modificar productos mientras se está en Cobro
                             if (productsGrid) {
                                 productsGrid.classList.add('pointer-events-none', 'opacity-60');
@@ -3940,10 +3940,10 @@
                             resumen?.classList.remove('hidden');
                             footerCobro?.classList.add('hidden');
                             footerResumen?.classList.remove('hidden');
-                            btnCobro?.classList.remove('bg-brand-500', 'text-white');
+                            btnCobro?.classList.remove('bg-[#FF4622]', 'text-white');
                             btnCobro?.classList.add('bg-gray-100', 'dark:bg-gray-800', 'text-gray-500', 'dark:text-gray-400');
                             btnResumen?.classList.remove('bg-gray-200', 'dark:bg-gray-700', 'text-gray-700', 'dark:text-gray-300');
-                            btnResumen?.classList.add('bg-brand-500', 'text-white');
+                            btnResumen?.classList.add('bg-[#FF4622]', 'text-white');
                             // Volver a habilitar productos al regresar a Resumen
                             if (productsGrid) {
                                 productsGrid.classList.remove('pointer-events-none', 'opacity-60');

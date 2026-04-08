@@ -94,7 +94,7 @@
             <button 
                 type="button" 
                 @click="$dispatch('{{ $iconClickEvent }}')"
-                class="absolute inset-y-0 left-1 my-auto flex h-9 w-9 items-center justify-center rounded-md text-gray-400 hover:bg-[#244BB3]/10 hover:text-[#244BB3] focus:outline-none transition-colors z-10"
+                class="absolute inset-y-0 left-1 my-auto flex h-9 w-9 items-center justify-center rounded-md text-gray-400 hover:bg-[#C43B25]/10 hover:text-[#C43B25] focus:outline-none transition-colors z-10"
                 title="Acción"
             >
                 <i class="{{ $icon }} text-[18px]"></i>
@@ -115,7 +115,7 @@
             @keydown.escape="closeDropdown()"
             @keydown.enter.prevent="if(filteredOptions.length > 0) selectOption(filteredOptions[0])"
             placeholder="{{ $placeholder }}"
-            class="h-11 w-full rounded-lg border border-gray-200 bg-white pl-11 pr-10 text-sm text-gray-800 placeholder-gray-400 focus:border-[#244BB3] focus:ring-1 focus:ring-[#244BB3] dark:border-gray-700 dark:bg-dark-900 dark:text-white/90 transition-all"
+            class="h-11 w-full rounded-lg border border-gray-200 bg-white pl-11 pr-10 text-sm text-gray-800 placeholder-gray-400 focus:border-[#C43B25] focus:ring-1 focus:ring-[#C43B25] dark:border-gray-700 dark:bg-dark-900 dark:text-white/90 transition-all"
             autocomplete="off"
         >
 
@@ -135,7 +135,7 @@
             <ul class="py-1">
                 <template x-for="item in filteredOptions" :key="item.id">
                     <li @click="selectOption(item)"
-                        class="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-[#244BB3]/5 hover:text-[#244BB3] font-medium transition-colors">
+                        class="cursor-pointer px-4 py-2 text-sm text-gray-700 hover:bg-[#C43B25]/5 hover:text-[#C43B25] font-medium transition-colors">
                         <span x-text="item[displayField]"></span>
                     </li>
                 </template>

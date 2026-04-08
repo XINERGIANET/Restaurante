@@ -4,8 +4,8 @@
 @import 'prismjs/themes/prism.min.css';
 @import 'tailwindcss';
 
-#turbo-progress-bar {
-  display: none !important;
+.turbo-progress-bar {
+  background-color: #FF4622 !important;
 }
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
