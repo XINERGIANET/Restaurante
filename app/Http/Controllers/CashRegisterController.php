@@ -19,8 +19,17 @@ class CashRegisterController extends Controller
                 }),
             ],
         ]);
-        session(['cash_register_id' => $request->cash_register_id]);
-        $caja = CashRegister::find($request->cash_register_id);
+        $caja = CashRegister::query()
+            ->where('id', $request->cash_register_id)
+            ->where('branch_id', $branchId)
+            ->firstOrFail();
+
+        session([
+            'cash_register_id' => $caja->id,
+            'cash_register_name' => $caja->number,
+            'cash_register_number' => $caja->number,
+            'force_cash_register_modal' => false,
+        ]);
         
         return back()->with('success', "Caja cambiada a: {$caja->number}");
     }

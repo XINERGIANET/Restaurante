@@ -16,128 +16,133 @@
             margin: 0;
         }
 
-        html, body {
+        html,
+        body {
             margin: 0;
             padding: 0;
-            width: 80mm;
+            width: 100%;
             background: #fff;
         }
 
         body {
-            font-size: 14px;
-            line-height: 1.08;
-            display: flex;
-            justify-content: center;
+            font-size: 10.5px;
+            line-height: 1.18;
         }
 
         .ticket {
-            width: 75.5mm;
-            margin: 0 auto;
-            padding: 2mm 0 2mm;
+            width: 100%;
+            padding: 2.2mm 2.6mm 3mm;
         }
 
         .center {
             text-align: center;
         }
 
+        .logo-wrap {
+            margin-bottom: 1.5mm;
+        }
+
         .logo {
             display: block;
-            max-width: 44mm;
-            max-height: 18mm;
-            margin: 0 auto 2mm;
+            max-width: 38mm;
+            max-height: 16mm;
+            margin: 0 auto;
             object-fit: contain;
         }
 
         .company {
             margin: 0;
-            font-size: 17px;
+            font-size: 6.2mm;
             font-weight: 800;
-            letter-spacing: .3px;
+            line-height: 1;
         }
 
         .subhead {
-            margin: 0;
-            font-size: 12px;
+            margin: 0.4mm 0 0;
+            font-size: 3.8mm;
+            line-height: 1.05;
         }
 
         .doc-code {
-            margin: 1mm 0 1.2mm;
-            font-size: 16px;
+            margin: 1.2mm 0 0;
+            font-size: 4.9mm;
             font-weight: 800;
-            letter-spacing: .2px;
+            line-height: 1.05;
         }
 
         .separator {
-            border-top: 1px dashed #9fb5d4;
-            margin: 1.6mm 0;
+            border-top: 0.3mm dashed #7ea1d4;
+            margin: 1.8mm 0;
         }
 
-        .info-table,
-        .items-table,
-        .totals-table,
-        .footer-table {
+        table {
             width: 100%;
             border-collapse: collapse;
+            table-layout: fixed;
         }
 
         .info-table td {
+            padding: 0.2mm 0;
             vertical-align: top;
-            padding: 0;
+            font-size: 3.05mm;
+            line-height: 1.08;
         }
 
         .info-label {
-            width: 16mm;
+            width: 21mm;
             font-weight: 800;
-            padding-right: .8mm;
+            padding-right: 1mm;
             white-space: nowrap;
         }
 
         .info-value {
             word-break: break-word;
+            overflow-wrap: anywhere;
         }
 
         .items-table th,
         .items-table td {
-            padding: .45mm 0;
+            padding: 0.55mm 0;
+            font-size: 2.95mm;
         }
 
-        .items-table thead th {
-            font-size: 12px;
+        .items-table th {
             font-weight: 800;
-            border-bottom: 1px solid #b7b7b7;
+            border-bottom: 0.2mm solid #bdbdbd;
         }
 
-        .items-table tbody tr:last-child td {
-            padding-bottom: .8mm;
+        .items-table td {
+            vertical-align: top;
         }
 
         .col-product {
-            width: 45%;
+            width: 42%;
             text-align: left;
+            padding-left: 1.4mm;
+            padding-right: 1mm;
+            word-break: break-word;
+            overflow-wrap: anywhere;
         }
 
         .col-qty {
-            width: 12%;
+            width: 15%;
             text-align: right;
+            padding-right: 1.4mm;
         }
 
         .col-unit {
-            width: 20%;
+            width: 19%;
             text-align: right;
         }
 
         .col-subtotal {
-            width: 23%;
+            width: 24%;
             text-align: right;
         }
 
-        .product-text {
-            word-break: break-word;
-        }
-
         .totals-table td {
-            padding: .4mm 0;
-            font-size: 13px;
+            padding: 0.45mm 0;
+            font-size: 3.2mm;
         }
 
         .totals-label {
@@ -150,30 +155,41 @@
         }
 
         .grand-total td {
-            border-top: 1px solid #9fb5d4;
-            padding-top: 1mm;
-            font-size: 15px;
+            border-top: 0.25mm solid #7ea1d4;
+            padding-top: 1.1mm;
+            font-size: 4.55mm;
             font-weight: 800;
         }
 
         .notes {
-            margin-top: 1mm;
-            font-size: 12px;
+            font-size: 3mm;
+            line-height: 1.15;
         }
 
         .notes strong {
             font-weight: 800;
         }
 
-        .footer {
-            margin-top: 1.2mm;
-            font-size: 11px;
+        .qr-wrap {
             text-align: center;
+            margin-top: 1.6mm;
         }
 
-        .footer .thanks {
-            margin-top: .8mm;
-            font-size: 12px;
+        .qr-wrap img {
+            width: 24mm;
+            height: 24mm;
+            object-fit: contain;
+        }
+
+        .footer {
+            text-align: center;
+            font-size: 2.7mm;
+            line-height: 1.15;
+        }
+
+        .thanks {
+            margin-top: 0.6mm;
+            font-size: 3mm;
         }
     </style>
 </head>
@@ -185,12 +201,23 @@
     $ticketSubtotal = (float) ($sale->salesMovement?->subtotal ?? $sale->orderMovement?->subtotal ?? 0);
     $ticketTax = (float) ($sale->salesMovement?->tax ?? $sale->orderMovement?->tax ?? 0);
     $ticketTotal = (float) ($sale->salesMovement?->total ?? $sale->orderMovement?->total ?? 0);
+    $customerName = trim((string) ($sale->person_name ?? ''));
+    $customerLower = mb_strtolower($customerName, 'UTF-8');
+    $customerDocument = trim((string) ($sale->person?->document_number ?? ''));
+    if ($customerName === '' || $customerLower === 'sin cliente') {
+        $customerName = 'CLIENTES VARIOS';
+    }
+    if ($customerDocument === '' || $customerDocument === '-') {
+        $customerDocument = '0';
+    }
 @endphp
 
 <div class="ticket">
     <div class="center">
         @if(!empty($logoFileUrl) || !empty($logoUrl))
-            <img src="{{ $logoFileUrl ?: $logoUrl }}" alt="Logo sucursal" class="logo">
+            <div class="logo-wrap">
+                <img src="{{ $logoFileUrl ?: $logoUrl }}" alt="Logo sucursal" class="logo">
+            </div>
         @endif
         <p class="company">{{ strtoupper($branchForLogo->legal_name ?? 'SUCURSAL') }}</p>
         <p class="subhead">RUC: {{ $branchForLogo->ruc ?? '-' }}</p>
@@ -207,7 +234,7 @@
         </tr>
         <tr>
             <td class="info-label">Cliente:</td>
-            <td class="info-value">{{ $sale->person_name ?? 'CLIENTES VARIOS' }}</td>
+            <td class="info-value">{{ $customerName }}</td>
         </tr>
         <tr>
             <td class="info-label">Dir.:</td>
@@ -215,7 +242,7 @@
         </tr>
         <tr>
             <td class="info-label">RUC/DNI:</td>
-            <td class="info-value">{{ $sale->person?->document_number ?? '-' }}</td>
+            <td class="info-value">{{ $customerDocument }}</td>
         </tr>
         <tr>
             <td class="info-label">Forma pago:</td>
@@ -227,12 +254,12 @@
 
     <table class="items-table">
         <thead>
-            <tr>
-                <th class="col-product">Prod.</th>
-                <th class="col-qty">Cant</th>
-                <th class="col-unit">P.Unit.</th>
-                <th class="col-subtotal">Subt.</th>
-            </tr>
+        <tr>
+            <th class="col-qty">CANT.</th>
+            <th class="col-product">&nbsp;&nbsp;DESCRIPCION</th>
+            <th class="col-unit">PRECIO</th>
+            <th class="col-subtotal">IMPORTE</th>
+        </tr>
         </thead>
         <tbody>
         @foreach($details as $detail)
@@ -242,8 +269,8 @@
                 $unitPrice = $qty > 0 ? ($lineTotal / $qty) : 0;
             @endphp
             <tr>
-                <td class="col-product product-text">{{ \Illuminate\Support\Str::limit($detail->description ?? $detail->product?->description ?? '-', 40) }}</td>
                 <td class="col-qty">{{ number_format($qty, 2) }}</td>
+                <td class="col-product">&nbsp;&nbsp;{{ $detail->description ?? $detail->product?->description ?? '-' }}</td>
                 <td class="col-unit">{{ number_format($unitPrice, 2) }}</td>
                 <td class="col-subtotal">{{ number_format($lineTotal, 2) }}</td>
             </tr>
@@ -271,6 +298,13 @@
     @if($sale->comment)
         <div class="separator"></div>
         <div class="notes"><strong>Notas:</strong> {{ $sale->comment }}</div>
+    @endif
+
+    @if(!empty($qrImageUrl))
+        <div class="separator"></div>
+        <div class="qr-wrap">
+            <img src="{{ $qrImageUrl }}" alt="QR del comprobante">
+        </div>
     @endif
 
     <div class="separator"></div>

@@ -127,6 +127,7 @@ Route::middleware('auth')->group(function () {
         ->parameters(['ventas' => 'sale'])
         ->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
     Route::get('/admin/ventas/pdf', [SalesController::class, 'exportPdf'])->name('admin.sales.pdf');
+    Route::get('/admin/ventas/excel', [SalesController::class, 'exportExcel'])->name('admin.sales.excel');
     Route::get('/admin/ventas/pdf/{sale}', [SalesController::class, 'printPdf'])->name('admin.sales.print.pdf');
     Route::get('/admin/ventas/ticket/{sale}', [SalesController::class, 'printTicket'])->name('admin.sales.print.ticket');
     Route::post('/admin/ventas/ticket-termica', [SalesController::class, 'printTicketThermalNetwork'])
@@ -210,6 +211,27 @@ Route::middleware('auth')->group(function () {
         ->name('orders.pdf');
     Route::post('/Pedidos/procesar', [OrderController::class, 'processOrder'])
         ->name('orders.process')
+        ->middleware('active.shift');
+    Route::post('/Pedidos/imprimir-comanda', [OrderController::class, 'printKitchenTicketThermal'])
+        ->name('orders.print.kitchen.thermal')
+        ->middleware('active.shift');
+    Route::post('/Pedidos/imprimir-comanda/pdf', [OrderController::class, 'printKitchenTicketPdf'])
+        ->name('orders.print.kitchen.pdf')
+        ->middleware('active.shift');
+    Route::post('/Pedidos/imprimir-comanda/pdf-link', [OrderController::class, 'createKitchenTicketPdfLink'])
+        ->name('orders.print.kitchen.pdf.link')
+        ->middleware('active.shift');
+    Route::post('/Pedidos/imprimir-precuenta', [OrderController::class, 'printPreAccountThermal'])
+        ->name('orders.print.preaccount.thermal')
+        ->middleware('active.shift');
+    Route::post('/Pedidos/imprimir-precuenta/pdf', [OrderController::class, 'printPreAccountPdf'])
+        ->name('orders.print.preaccount.pdf')
+        ->middleware('active.shift');
+    Route::post('/Pedidos/imprimir-precuenta/pdf-link', [OrderController::class, 'createPreAccountPdfLink'])
+        ->name('orders.print.preaccount.pdf.link')
+        ->middleware('active.shift');
+    Route::get('/Pedidos/imprimir-ticket/pdf/{token}', [OrderController::class, 'showStoredTextTicketPdf'])
+        ->name('orders.print.ticket.pdf.show')
         ->middleware('active.shift');
 
     Route::post('/Pedidos/procesar-pago', [OrderController::class, 'processOrderPayment'])
@@ -401,9 +423,10 @@ Route::middleware('auth')->group(function () {
     //Caja chica
     Route::get('/caja/caja-chica', [PettyCashController::class, 'redirectBase'])
         ->name('petty-cash.base');
-    Route::get('/caja/caja-chica/{cash_register_id}/{movement}', [PettyCashController::class, 'show'])->name('petty-cash.show');
     Route::group(['prefix' => 'caja/caja-chica/{cash_register_id}', 'as' => 'petty-cash.'], function () {
         Route::get('/', [PettyCashController::class, 'index'])->name('index');
+        Route::get('/cierre', [PettyCashController::class, 'cierre'])->name('cierre');
+        Route::get('/{movement}', [PettyCashController::class, 'show'])->name('show');
         Route::post('/', [PettyCashController::class, 'store'])->name('store');
         Route::get('/{movement}/edit', [PettyCashController::class, 'edit'])->name('edit');
         Route::put('/{movement}', [PettyCashController::class, 'update'])->name('update');

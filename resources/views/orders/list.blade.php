@@ -64,120 +64,133 @@
 
         <x-common.component-card title="Listado de pedidos" desc="Gestiona los pedidos registrados.">
             <div class="flex flex-col gap-4">
-                <form method="GET" class="flex flex-col gap-3">
+                <form method="GET" class="flex flex-col gap-4">
                     @if ($viewId)
                         <input type="hidden" name="view_id" value="{{ $viewId }}">
                     @endif
-
-                    <div class="flex flex-col sm:flex-row sm:items-center gap-3">
-                        <div class="w-full sm:w-24">
-                            <select name="per_page"
-                                class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-3 py-2.5 text-sm text-gray-800 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90">
-                                @foreach ([10, 20, 50, 100] as $size)
-                                    <option value="{{ $size }}" @selected($perPage == $size)>{{ $size }} /
-                                        pagina</option>
-                                @endforeach
-                            </select>
+                
+                    <div class="rounded-xl border border-gray-200/90 bg-gradient-to-b from-slate-50/90 to-white p-4 shadow-sm dark:border-gray-800 dark:from-gray-900/50 dark:to-gray-900/30 sm:p-5 space-y-4">
+                
+                        {{-- Fila 1: Per page + Buscar + Botones --}}
+                        <div class="flex flex-col sm:flex-row sm:items-end gap-3">
+                            <div class="w-full sm:w-28 shrink-0">
+                                <label class="mb-1.5 block text-xs font-medium text-gray-600 dark:text-gray-400">Por página</label>
+                                <select name="per_page"
+                                    class="h-11 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-2 focus:ring-brand-500/10 dark:border-gray-600 dark:bg-gray-900 dark:text-white/90">
+                                    @foreach ([10, 20, 50, 100] as $size)
+                                        <option value="{{ $size }}" @selected($perPage == $size)>{{ $size }} / página</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="relative flex-1">
+                                <label class="mb-1.5 block text-xs font-medium text-gray-600 dark:text-gray-400">Buscar</label>
+                                <span class="absolute left-3 top-[calc(100%-2.3rem)] text-gray-400 pointer-events-none">
+                                    <i class="ri-search-line"></i>
+                                </span>
+                                <input type="text" name="search" value="{{ $search }}"
+                                    placeholder="Buscar por numero, persona o usuario"
+                                    class="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 pl-10 text-sm text-gray-800 placeholder:text-gray-400 shadow-theme-xs focus:border-brand-300 focus:ring-3 focus:ring-brand-500/10 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30" />
+                            </div>
+                            <div class="flex gap-2 shrink-0 items-end">
+                                <x-ui.button size="md" variant="primary" type="submit"
+                                    class="h-11 px-5 shadow-sm hover:shadow-md transition-all duration-200 active:scale-95"
+                                    style="background-color: #244BB3; border-color: #244BB3;">
+                                    <i class="ri-search-line text-gray-100"></i>
+                                    <span class="font-medium text-gray-100">Buscar</span>
+                                </x-ui.button>
+                                <x-ui.link-button size="md" variant="outline"
+                                    href="{{ route('orders.list', $viewId ? ['view_id' => $viewId] : []) }}"
+                                    class="h-11 px-5 border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200">
+                                    <i class="ri-refresh-line"></i>
+                                    <span class="font-medium">Limpiar</span>
+                                </x-ui.link-button>
+                            </div>
                         </div>
-                        <div class="relative flex-1">
-                            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-                                <i class="ri-search-line"></i>
-                            </span>
-                            <input type="text" name="search" value="{{ $search }}"
-                                placeholder="Buscar por numero, persona o usuario"
-                                class="dark:bg-dark-900 shadow-theme-xs focus:border-brand-300 focus:ring-brand-500/10 dark:focus:border-brand-800 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 pl-12 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30" />
-                        </div>
-                        <div class="flex flex-wrap gap-2">
-                            <x-ui.button size="md" variant="primary" type="submit"
-                                class="flex-1 sm:flex-none h-11 px-6 shadow-sm hover:shadow-md transition-all duration-200 active:scale-95"
-                                style="background-color: #244BB3; border-color: #244BB3;">
-                                <i class="ri-search-line text-gray-100"></i>
-                                <span class="font-medium text-gray-100">Buscar</span>
-                            </x-ui.button>
-                            <x-ui.link-button size="md" variant="outline"
-                                href="{{ route('orders.list', $viewId ? ['view_id' => $viewId] : []) }}"
-                                class="flex-1 sm:flex-none h-11 px-6 border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200">
-                                <i class="ri-refresh-line"></i>
-                                <span class="font-medium">Limpiar</span>
-                            </x-ui.link-button>
-                        </div>
-                    </div>
-                    <div class="flex flex-wrap items-end justify-between gap-3 w-full">
-                        <div class="flex flex-wrap items-end gap-3 justify-between">
-                            <div
-                                class="w-[150px] shrink-0 [&_label]:mb-1 [&_label]:text-xs [&_label]:font-medium [&_label]:text-gray-600 dark:[&_label]:text-gray-400 flex-1">
+                
+                        {{-- Fila 2: Filtros + PDF --}}
+                        <div class="grid grid-cols-2 gap-3 border-t border-gray-100 pt-4 dark:border-gray-700/80 md:grid-cols-4 lg:grid-cols-8 md:items-end">
+                
+                            @php $selectClass = 'h-11 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-2 focus:ring-brand-500/10 dark:border-gray-600 dark:bg-gray-900 dark:text-white/90'; $labelClass = 'mb-1.5 block text-xs font-medium text-gray-600 dark:text-gray-400'; @endphp
+                
+                            <div class="col-span-1 [&_label]:mb-1 [&_label]:text-xs [&_label]:font-medium [&_label]:text-gray-600 dark:[&_label]:text-gray-400">
                                 <x-form.date-picker name="date_from" label="Desde" :defaultDate="$dateFrom" dateFormat="Y-m-d" class="w-full" />
                             </div>
-                            <div
-                                class="w-[150px] shrink-0 [&_label]:mb-1 [&_label]:text-xs [&_label]:font-medium [&_label]:text-gray-600 dark:[&_label]:text-gray-400 flex-1">
+                            <div class="col-span-1 [&_label]:mb-1 [&_label]:text-xs [&_label]:font-medium [&_label]:text-gray-600 dark:[&_label]:text-gray-400">
                                 <x-form.date-picker name="date_to" label="Hasta" :defaultDate="$dateTo" dateFormat="Y-m-d" class="w-full" />
                             </div>
-                            <div class="w-[150px] shrink-0 flex-1">
-                                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Método de
-                                    pago</label>
-                                <select name="payment_method_id"
-                                    class="h-11 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-2 focus:ring-brand-500/10 dark:border-gray-600 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800">
+                            <div class="col-span-1">
+                                <label class="{{ $labelClass }}">Método de pago</label>
+                                <select name="payment_method_id" class="{{ $selectClass }}">
                                     <option value="">Todos</option>
                                     @foreach ($paymentMethods ?? [] as $pm)
-                                        <option value="{{ $pm->id }}" @selected(($paymentMethodId ?? '') == $pm->id)>
-                                            {{ $pm->description ?? $pm->id }}</option>
+                                        <option value="{{ $pm->id }}" @selected(($paymentMethodId ?? '') == $pm->id)>{{ $pm->description ?? $pm->id }}</option>
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="w-[150px] shrink-0 flex-1">
-                                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Tipo de
-                                    documento</label>
-                                <select name="document_type_id"
-                                    class="h-11 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-2 focus:ring-brand-500/10 dark:border-gray-600 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800">
+                            <div class="col-span-1">
+                                <label class="{{ $labelClass }}">Tipo documento</label>
+                                <select name="document_type_id" class="{{ $selectClass }}">
                                     <option value="">Todos</option>
                                     @foreach ($documentTypes ?? [] as $dt)
-                                        <option value="{{ $dt->id }}" @selected(($documentTypeId ?? '') == $dt->id)>{{ $dt->name }}
-                                        </option>
+                                        <option value="{{ $dt->id }}" @selected(($documentTypeId ?? '') == $dt->id)>{{ $dt->name }}</option>
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="w-[100px] shrink-0 flex-1">
-                                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Caja</label>
-                                <select name="cash_register_id"
-                                    class="h-11 w-full rounded-lg border border-gray-300 bg-white px-5 py-2 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-2 focus:ring-brand-500/10 dark:border-gray-600 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800">
-                                    <option value="">Todas</option>
+                            <div class="col-span-1">
+                                <label class="{{ $labelClass }}">Caja</label>
+                                <select name="cash_register_id" class="{{ $selectClass }}" disabled>
                                     @foreach ($cashRegisters ?? [] as $cr)
-                                        <option value="{{ $cr->id }}" @selected(($cashRegisterId ?? '') == $cr->id)>
-                                            {{ $cr->number ?? $cr->id }}</option>
+                                        <option value="{{ $cr->id }}" @selected(($cashRegisterId ?? '') == $cr->id)>{{ $cr->number ?? $cr->id }}</option>
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="w-[120px] shrink-0 flex-1">
-                                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Estado</label>
-                                <select name="status"
-                                    class="h-11 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-2 focus:ring-brand-500/10 dark:border-gray-600 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800">
+                            <div class="col-span-1 lg:col-span-2">
+                                <label class="{{ $labelClass }}">Turno</label>
+                                <select name="cash_shift_relation_id" class="{{ $selectClass }}">
                                     <option value="">Todos</option>
-                                    <option value="CANCELADO" @selected(($status ?? '') == 'CANCELADO')>Cancelado</option>
-                                    <option value="PENDIENTE" @selected(($status ?? '') == 'PENDIENTE')>Pendiente</option>
+                                    @foreach ($cashShiftSessions ?? [] as $csr)
+                                        @php
+                                            $shiftName = $csr->cashMovementStart?->shift?->name ?? 'Turno';
+                                            $started = $csr->started_at ? \Illuminate\Support\Carbon::parse($csr->started_at)->format('Y-m-d H:i:s') : '';
+                                            $csrStatus = (string) ($csr->status ?? '');
+                                            $statusLabel = $csrStatus === '1' ? 'En curso' : 'Cerrado';
+                                            $csrLabel = $shiftName . ($started ? ' | ' . $started : '') . ' (' . $statusLabel . ')';
+                                        @endphp
+                                        <option value="{{ $csr->id }}" @selected(($cashShiftRelationId ?? '') == $csr->id)>{{ $csrLabel }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-span-1">
+                                <label class="{{ $labelClass }}">Estado</label>
+                                <select name="status" class="{{ $selectClass }}">
+                                    <option value="">Todos</option>
+                                    <option value="CANCELADO"  @selected(($status ?? '') == 'CANCELADO')>Cancelado</option>
+                                    <option value="PENDIENTE"  @selected(($status ?? '') == 'PENDIENTE')>Pendiente</option>
                                     <option value="FINALIZADO" @selected(($status ?? '') == 'FINALIZADO')>Finalizado</option>
                                 </select>
                             </div>
+                
+                            {{-- Botón PDF alineado al fondo --}}
+                            <div class="col-span-1 flex items-end">
+                                <button type="button"
+                                    class="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-orange-600 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+                                    onclick="window.location.href='{{ route('orders.pdf', array_filter([
+                                        'view_id'                => $viewId ?? null,
+                                        'date_from'              => $dateFrom,
+                                        'date_to'                => $dateTo,
+                                        'search'                 => $search,
+                                        'document_type_id'       => $documentTypeId ?? null,
+                                        'payment_method_id'      => $paymentMethodId ?? null,
+                                        'cash_register_id'       => $cashRegisterId ?? null,
+                                        'cash_shift_relation_id' => $cashShiftRelationId ?? null,
+                                        'status'                 => $status ?? null,
+                                    ])) }}'">
+                                    <i class="ri-file-pdf-line text-base"></i>
+                                    <span>PDF</span>
+                                </button>
+                            </div>
                         </div>
-                        <div class="shrink-0">
-                            <button type="button"
-                                class="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-orange-600 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
-                                onclick="window.location.href='{{ route(
-                                    'orders.pdf',
-                                    array_filter([
-                                        'view_id' => $viewId ?? null,
-                                        'date_from' => $dateFrom,
-                                        'date_to' => $dateTo,
-                                        'search' => $search,
-                                        'document_type_id' => $documentTypeId ?? null,
-                                        'payment_method_id' => $paymentMethodId ?? null,
-                                        'cash_register_id' => $cashRegisterId ?? null,
-                                        'status' => $status ?? null,
-                                    ]),
-                                ) }}'">
-                                <i class="ri-file-pdf-line text-base"></i>
-                                <span>Descargar PDF</span>
-                            </button>
-                        </div>
+                
                     </div>
                 </form>
             </div>

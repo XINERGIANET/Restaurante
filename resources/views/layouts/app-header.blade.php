@@ -107,10 +107,25 @@
                                 </span>
                             </a>
                         @endforeach
+
+                        <a
+                            href="https://www.youtube.com/"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="relative flex items-center justify-center transition-all bg-white/5 border border-white/10 rounded-full hover:text-white h-11 w-11 hover:bg-white/10 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white group"
+                            aria-label="Videos tutoriales"
+                        >
+                            <i class="ri-youtube-line text-lg text-white"></i>
+                            <span
+                                class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-white px-2 py-1 text-[10px] font-medium text-gray-900 opacity-0 shadow-lg transition-opacity group-hover:opacity-100 z-50">
+                                Videos tutoriales
+                            </span>
+                        </a>
                     </div>
                 @endif
 
-                <div x-data="{ openCashModal: false }" class="flex items-center gap-2">
+                @if(($cashRegisterSelectionEnabled ?? true))
+                <div x-data="{ openCashModal: @js((bool) ($forceCashRegisterModal ?? false)), cashSelectionRequired: @js((bool) ($cashSelectionRequired ?? false)) }" class="flex items-center gap-2">
 
                     <button type="button" 
                         @click="openCashModal = true"
@@ -137,7 +152,7 @@
                         x-transition:leave-end="opacity-0">
 
                         <div class="w-full max-w-md bg-white border border-gray-200 shadow-2xl rounded-2xl dark:bg-gray-900 dark:border-gray-700"
-                            @click.away="openCashModal = false"
+                            @click.away="if (!cashSelectionRequired) openCashModal = false"
                             x-transition:enter="transition ease-out duration-300"
                             x-transition:enter-start="opacity-0 scale-95"
                             x-transition:enter-end="opacity-100 scale-100"
@@ -149,15 +164,27 @@
                                 <h3 class="text-lg font-semibold text-gray-800 dark:text-white">
                                     Seleccionar Caja
                                 </h3>
-                                <button @click="openCashModal = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
-                                    <i class="ri-close-line text-xl"></i>
-                                </button>
+                                <template x-if="!cashSelectionRequired">
+                                    <button @click="openCashModal = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
+                                        <i class="ri-close-line text-xl"></i>
+                                    </button>
+                                </template>
                             </div>
 
                             <div class="p-6">
                                 <p class="mb-4 text-sm text-gray-500 dark:text-gray-400">
-                                    Seleccione la caja en la que desea operar actualmente.
+                                    @if(($cashSelectionRequired ?? false) || ($forceCashRegisterModal ?? false))
+                                        Selecciona la caja de trabajo para esta sesión. Todo el sistema operará con esa caja hasta que la cambies.
+                                    @else
+                                        Seleccione la caja en la que desea operar actualmente.
+                                    @endif
                                 </p>
+
+                                @if(!empty($selectedCashRegister))
+                                    <div class="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-300">
+                                        Caja actual: <span class="font-semibold">{{ $selectedCashRegister->number }}</span>
+                                    </div>
+                                @endif
 
                                 <div class="grid gap-3">
                                     @if(isset($cashRegisters) && $cashRegisters->count() > 0)
@@ -207,7 +234,7 @@
                                         @endforeach
                                     @else
                                         <div class="text-center py-4 text-gray-500">
-                                            No hay cajas registradas.
+                                            No hay cajas registradas para esta sucursal.
                                         </div>
                                     @endif
                                 </div>
@@ -216,6 +243,7 @@
                         </div>
                     </div>
                 </div>
+                @endif
 
                
             </div>

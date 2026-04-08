@@ -26,15 +26,19 @@ use App\Models\Product;
 use App\Models\ProductBranch;
 use App\Models\ProductType;
 use App\Models\Profile;
+use App\Models\Role;
 use App\Models\SalesMovement;
+use App\Models\SalesMovementDetail;
 use App\Models\Shift;
 use App\Models\Table;
 use App\Models\Unit;
 use App\Models\User;
+use App\Services\ThermalNetworkPrintService;
 use App\Support\InsensitiveSearch;
 use App\Support\LocalNetworkClient;
 use Barryvdh\Snappy\Facades\SnappyPdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -94,6 +98,52 @@ class OrderController extends Controller
         $currentProfileId = $profileId !== null && $profileId !== '' ? (int) $profileId : null;
 
         return $currentProfileId !== $mozoId;
+    }
+
+    private function clienteRoleId(): ?int
+    {
+        $id = Role::query()
+            ->whereNull('deleted_at')
+            ->whereRaw('LOWER(TRIM(name)) = ?', ['cliente'])
+            ->value('id');
+
+        return $id ? (int) $id : null;
+    }
+
+    private function resolveOrCreateClientPerson(?int $branchId, ?Branch $branch, ?int $clientPersonId, ?string $clientName): ?Person
+    {
+        if ($clientPersonId) {
+            $person = Person::find($clientPersonId);
+            if ($person) {
+                return $person;
+            }
+        }
+
+        $name = trim((string) $clientName);
+        if ($name === '' || mb_strtolower($name) === 'público general' || mb_strtolower($name) === 'publico general') {
+            return null;
+        }
+
+        $person = Person::create([
+            'first_name' => $name,
+            'last_name' => '',
+            'person_type' => 'DNI',
+            'document_number' => '0',
+            'address' => '',
+            'phone' => null,
+            'email' => null,
+            'location_id' => $branch?->location_id,
+            'branch_id' => $branchId,
+        ]);
+
+        $clienteRoleId = $this->clienteRoleId();
+        if ($clienteRoleId) {
+            $person->roles()->syncWithoutDetaching([
+                $clienteRoleId => ['branch_id' => $branchId],
+            ]);
+        }
+
+        return $person;
     }
 
     /**
@@ -171,7 +221,7 @@ class OrderController extends Controller
         $profileId = $request->session()->get('profile_id') ?? $request->user()?->profile_id;
         $documentTypeId = $request->input('document_type_id');
         $paymentMethodId = $request->input('payment_method_id');
-        $cashRegisterId = $request->input('cash_register_id');
+        $cashRegisterId = effective_cash_register_id($branchId ? (int) $branchId : null);
         $documentTypes = DocumentType::query()
             ->orderBy('name')
             ->tap(fn ($q) => InsensitiveSearch::whereInsensitiveLikePattern($q, 'name', '%venta%'))
@@ -181,7 +231,13 @@ class OrderController extends Controller
             ->restrictedToBranch($branchId ? (int) $branchId : null)
             ->orderBy('order_num')
             ->get(['id', 'description']);
-        $cashRegisters = CashRegister::query()->orderBy('number')->get(['id', 'number']);
+        $effectiveCashRegisterId = $cashRegisterId;
+        $cashShiftRelationId = $request->input('cash_shift_relation_id');
+
+        $cashRegisters = CashRegister::query()
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->orderBy('number')
+            ->get(['id', 'number']);
         $operaciones = collect();
         if ($viewId && $branchId && $profileId) {
             $operaciones = Operation::query()
@@ -207,7 +263,36 @@ class OrderController extends Controller
                 ->get();
         }
 
-        $orders = OrderMovement::query()
+        // Sesiones (turnos) por caja para filtrar el listado y "limpiar" al abrir una nueva
+        $cashShiftSessions = collect();
+        if ($branchId && $effectiveCashRegisterId) {
+            $cashShiftSessions = \App\Models\CashShiftRelation::query()
+                ->where('branch_id', $branchId)
+                ->whereHas('cashMovementStart', function ($q) use ($effectiveCashRegisterId) {
+                    $q->where('cash_register_id', $effectiveCashRegisterId);
+                })
+                ->with(['cashMovementStart.shift', 'cashMovementEnd'])
+                ->orderByDesc('id')
+                ->limit(50)
+                ->get();
+        }
+
+        // Por defecto: filtrar por el turno actual (o último) de la caja seleccionada/en sesión
+        if (($cashShiftRelationId === null || $cashShiftRelationId === '') && $branchId && $effectiveCashRegisterId) {
+            $lastShift = \App\Models\CashShiftRelation::query()
+                ->where('branch_id', $branchId)
+                ->whereHas('cashMovementStart', function ($q) use ($effectiveCashRegisterId) {
+                    $q->where('cash_register_id', $effectiveCashRegisterId);
+                })
+                ->latest('id')
+                ->first();
+
+            if ($lastShift) {
+                $cashShiftRelationId = (string) $lastShift->id;
+            }
+        }
+
+        $ordersQuery = OrderMovement::query()
             ->with([
                 'movement.branch',
                 'movement.person',
@@ -273,8 +358,33 @@ class OrderController extends Controller
                         ->whereNull('cm.deleted_at')
                         ->whereNull('cmd.deleted_at');
                 });
-            })
-            ->orderByDesc('id')
+            });
+
+        // Filtro por turno (CashShiftRelation): ventana temporal por movimientos
+        if ($cashShiftRelationId !== null && $cashShiftRelationId !== '' && $branchId && $effectiveCashRegisterId) {
+            $csrApplied = \App\Models\CashShiftRelation::query()
+                ->with(['cashMovementStart', 'cashMovementEnd'])
+                ->where('branch_id', $branchId)
+                ->where('id', (int) $cashShiftRelationId)
+                ->whereHas('cashMovementStart', function ($q) use ($effectiveCashRegisterId) {
+                    $q->where('cash_register_id', $effectiveCashRegisterId);
+                })
+                ->first();
+
+            if ($csrApplied && $csrApplied->cashMovementStart) {
+                $startMid = $csrApplied->cashMovementStart->movement_id;
+                $ordersQuery->whereHas('movement', function ($q) use ($startMid, $csrApplied) {
+                    $q->where('movements.id', '>=', $startMid);
+                    if ($csrApplied->cashMovementEnd) {
+                        $q->where('movements.id', '<=', $csrApplied->cashMovementEnd->movement_id);
+                    }
+                });
+            } else {
+                $ordersQuery->whereRaw('1 = 0');
+            }
+        }
+
+        $orders = $ordersQuery->orderByDesc('id')
             ->paginate($perPage)
             ->withQueryString();
 
@@ -287,11 +397,13 @@ class OrderController extends Controller
             'dateTo' => $dateTo,
             'documentTypes' => $documentTypes,
             'paymentMethods' => $paymentMethods,
+            'documentTypeId' => $documentTypeId,
+            'paymentMethodId' => $paymentMethodId,
+            'cashRegisterId' => $effectiveCashRegisterId,
             'cashRegisters' => $cashRegisters,
-            'documentTypeId' => $request->input('document_type_id'),
-            'paymentMethodId' => $request->input('payment_method_id'),
-            'cashRegisterId' => $request->input('cash_register_id'),
-            'status' => $request->input('status'),
+            'cashShiftRelationId' => $cashShiftRelationId,
+            'cashShiftSessions' => $cashShiftSessions,
+            'status' => $status,
         ]);
     }
 
@@ -466,8 +578,9 @@ class OrderController extends Controller
         $search = $request->input('search');
         $documentTypeId = $request->input('document_type_id');
         $paymentMethodId = $request->input('payment_method_id');
-        $cashRegisterId = $request->input('cash_register_id');
+        $cashRegisterId = effective_cash_register_id($branchId ? (int) $branchId : null);
         $status = $request->input('status');
+        $cashShiftRelationId = $request->input('cash_shift_relation_id');
         $branchId = $request->session()->get('branch_id');
 
         $branch = $branchId ? Branch::with('company')->find($branchId) : null;
@@ -520,9 +633,34 @@ class OrderController extends Controller
             })
             ->when($status, function ($query) use ($status) {
                 $query->where('status', $status);
-            })
-            ->orderByDesc('id')
-            ->get();
+            });
+
+        // Filtro por turno (CashShiftRelation): ventana temporal por movimientos
+        $effectiveCR = $cashRegisterId;
+        if ($cashShiftRelationId !== null && $cashShiftRelationId !== '' && $branchId && $effectiveCR) {
+            $csrApplied = \App\Models\CashShiftRelation::query()
+                ->with(['cashMovementStart', 'cashMovementEnd'])
+                ->where('branch_id', $branchId)
+                ->where('id', (int) $cashShiftRelationId)
+                ->whereHas('cashMovementStart', function ($q) use ($effectiveCR) {
+                    $q->where('cash_register_id', $effectiveCR);
+                })
+                ->first();
+
+            if ($csrApplied && $csrApplied->cashMovementStart) {
+                $startMid = $csrApplied->cashMovementStart->movement_id;
+                $orders->whereHas('movement', function ($q) use ($startMid, $csrApplied) {
+                    $q->where('movements.id', '>=', $startMid);
+                    if ($csrApplied->cashMovementEnd) {
+                        $q->where('movements.id', '<=', $csrApplied->cashMovementEnd->movement_id);
+                    }
+                });
+            } else {
+                $orders->whereRaw('1 = 0');
+            }
+        }
+
+        $orders = $orders->orderByDesc('id')->get();
 
         $filters = [];
         $filters['Desde'] = $dateFrom ? \Carbon\Carbon::parse($dateFrom)->format('d/m/Y') : null;
@@ -541,6 +679,10 @@ class OrderController extends Controller
         if ($cashRegisterId) {
             $cr = CashRegister::find($cashRegisterId);
             $filters['Caja'] = $cr ? ($cr->number ?? $cr->id) : "ID {$cashRegisterId}";
+        }
+        if ($cashShiftRelationId && isset($csrApplied) && $csrApplied) {
+            $shiftLabel = ($csrApplied->cashMovementStart?->shift?->name ?? 'Turno') . ' (' . $csrApplied->id . ')';
+            $filters['Turno'] = $shiftLabel;
         }
         if ($status) {
             $filters['Estado'] = $status;
@@ -690,6 +832,7 @@ class OrderController extends Controller
 
         // Clientes del selector: rol «Cliente» → sin usuario → todos de la sucursal (fallbacks).
         $people = $this->resolveClientPeople($branchId);
+        $waiters = $this->resolveWaiters($branchId);
 
         // Mismo criterio que Ventas: solo productos vendibles (sin tipo o tipo con behavior SELLABLE/BOTH), con product_branch y categoría en la sucursal.
         $products = Product::where('type', 'PRODUCT')
@@ -729,6 +872,7 @@ class OrderController extends Controller
                     'img' => $imageUrl,
                     'category' => $product->category ? $product->category->description : 'Sin categoría',
                     'category_id' => $product->category_id,
+                    'detail_options' => collect($product->detail_options ?? [])->map(fn ($item) => trim((string) $item))->filter()->values()->all(),
                     'table_id' => $tableId,
                     'branch_id' => $branchId,
                 ];
@@ -780,7 +924,7 @@ class OrderController extends Controller
                         'tax_rate' => $taxRatePct,
                         'favorite' => ($productBranch->favorite ?? 'N'),
                         // compat (1 impresora)
-                        'qz_printer_name' => $printerNames[0] ?? null,
+                        'qz_printer_name' => request()->ip() === '127.0.0.1' || request()->ip() === '::1' ? ($printerNames[0] ?? null) : 'BARRA2',
                         // recomendado (varias impresoras por pivote)
                         'qz_printer_names' => $printerNames,
                         // recomendado: info completa para formateo por ticketera
@@ -849,12 +993,21 @@ class OrderController extends Controller
                         'delivered' => $status === 'E',
                         'courtesyQty' => $courtesyQty,
                         'takeawayQty' => $takeawayQty,
+                        'complements' => collect($d->complements ?? [])->map(fn ($item) => trim((string) $item))->filter()->values()->all(),
                     ];
                 })->values()->all()
             : [];
 
         // Agrupar mismo producto en un solo ítem (ej. PB x5 + PB x1 → PB x6)
-        $pendingItems = collect($pendingItemsRaw)->groupBy('pId')->map(function ($group) {
+        $pendingItems = collect($pendingItemsRaw)->groupBy(function ($item) {
+            $complements = collect($item['complements'] ?? [])->map(fn ($value) => trim((string) $value))->filter()->values()->all();
+            sort($complements);
+            return implode('|', [
+                (int) ($item['pId'] ?? 0),
+                md5(json_encode($complements)),
+                trim((string) ($item['note'] ?? '')),
+            ]);
+        })->map(function ($group) {
             $first = $group->first();
 
             $sumQty = $group->sum('qty');
@@ -871,6 +1024,7 @@ class OrderController extends Controller
                 'delivered' => $group->contains('delivered', true),
                 'courtesyQty' => $group->sum('courtesyQty'),
                 'takeawayQty' => min($sumTakeaway, $sumQty),
+                'complements' => $first['complements'] ?? [],
             ];
         })->values()->all();
 
@@ -881,12 +1035,18 @@ class OrderController extends Controller
                 'description' => $d->description ?? 'Producto',
                 'quantity' => (float) $d->quantity,
                 'comment' => $d->comment ?? '',
+                'complements' => collect($d->complements ?? [])->map(fn ($item) => trim((string) $item))->filter()->values()->all(),
             ]))
-                ->groupBy('product_id')
+                ->groupBy(function ($item) {
+                    $complements = collect($item['complements'] ?? [])->map(fn ($value) => trim((string) $value))->filter()->values()->all();
+                    sort($complements);
+                    return implode('|', [(int) ($item['product_id'] ?? 0), md5(json_encode($complements))]);
+                })
                 ->map(fn ($group) => [
                     'description' => $group->first()['description'],
                     'quantity' => $group->sum('quantity'),
                     'comment' => $group->first()['comment'],
+                    'complements' => $group->first()['complements'] ?? [],
                 ])
                 ->values()
                 ->all()
@@ -907,6 +1067,7 @@ class OrderController extends Controller
             ->orderBy('name')
             ->whereIn('movement_type_id', ! empty($saleOrOrderTypeIds) ? $saleOrOrderTypeIds : [2])
             ->get(['id', 'name']);
+        $defaultDocumentTypeId = effective_default_sale_document_type_id($branchId, ! empty($saleOrOrderTypeIds) ? $saleOrOrderTypeIds : [2]);
         $paymentMethods = PaymentMethod::query()
             ->where('status', true)
             ->restrictedToBranch($branchId)
@@ -948,12 +1109,15 @@ class OrderController extends Controller
             'productBranches' => $productBranches,
             'categories' => $categories,
             'people' => $people,
+            'waiters' => $waiters,
             'units' => $units,
             'startFresh' => $startFresh,
             'pendingOrderMovementId' => $pendingOrder?->id,
             'pendingMovementId' => $pendingOrder?->movement_id,
             'pendingClientId' => $pendingClientId,
             'pendingClientName' => $pendingClientName,
+            'pendingWaiterId' => $pendingOrder?->movement?->person_id ?? session('waiter_person_id'),
+            'pendingWaiterName' => $pendingOrder?->movement?->responsible_name ?? session('waiter_name'),
             'pendingPeopleCount' => (int) ($pendingOrder?->people_count ?: ($table->capacity ?? 1)),
             'pendingCancelledDetails' => $pendingCancelledDetails,
             'pendingItems' => $pendingItems,
@@ -963,6 +1127,7 @@ class OrderController extends Controller
             'pendingDeliveryAmount' => $pendingOrder?->delivery_amount ?? 0,
             'pendingTakeawayDisposableAmount' => (float) ($pendingOrder?->takeaway_disposable_amount ?? 0),
             'documentTypes' => $documentTypes,
+            'defaultDocumentTypeId' => $defaultDocumentTypeId,
             'paymentMethods' => $paymentMethods,
             'paymentGateways' => $paymentGateways,
             'cards' => $cards,
@@ -1006,6 +1171,7 @@ class OrderController extends Controller
             ->orderBy('name')
             ->whereIn('movement_type_id', ! empty($saleOrOrderTypeIds) ? $saleOrOrderTypeIds : [2])
             ->get(['id', 'name']);
+        $defaultDocumentTypeId = effective_default_sale_document_type_id($branchIdForPm ?: null, ! empty($saleOrOrderTypeIds) ? $saleOrOrderTypeIds : [2]);
 
         $branchIdForPm = (int) session('branch_id');
 
@@ -1121,6 +1287,7 @@ class OrderController extends Controller
 
         return view('orders.charge', [
             'documentTypes' => $documentTypes,
+            'defaultDocumentTypeId' => $defaultDocumentTypeId,
             'paymentMethods' => $paymentMethods,
             'paymentGateways' => $paymentGateways,
             'cards' => $cards,
@@ -1219,21 +1386,46 @@ class OrderController extends Controller
         $items = $request->input('items', []);
         $cancellations = (array) $request->input('cancellations', []);
         $branchId = session('branch_id');
+        $branch = Branch::findOrFail($branchId);
+
         $user = $request->user();
         $profileId = session('profile_id') ?? $user?->profile_id;
         $waiterPinEnabled = $this->shouldRequireWaiterPin($branchId ? (int) $branchId : null, $profileId);
-        $waiterPersonId = $waiterPinEnabled ? (int) $request->session()->get('waiter_person_id') : (int) ($user?->person?->id ?? 0);
-        $waiterName = $waiterPinEnabled ? (string) $request->session()->get('waiter_name') : trim(($user?->person?->first_name ?? '').' '.($user?->person?->last_name ?? ''));
-        // responsible_name = empleado que insertó el PIN (Person), nunca el usuario (User)
-        if ($waiterPersonId) {
+        $isMozoProfile = ! $this->canCharge($profileId);
+        $waiterIdFrontend = $request->input('waiter_id');
+        $responsibleId = $user?->id; // default
+        if ($isMozoProfile) {
+            $waiterPersonId = (int) ($user?->person?->id ?? 0);
+            $waiterName = trim(($user?->person?->first_name ?? '') . ' ' . ($user?->person?->last_name ?? ''));
+            if ($waiterName === '') {
+                $waiterName = $user?->name ?? 'Mozo';
+            }
+        } elseif ($waiterIdFrontend) {
+            $waiterPersonId = (int) $waiterIdFrontend;
             $waiterPerson = Person::find($waiterPersonId);
-            $resolvedName = $waiterPerson ? trim(($waiterPerson->first_name ?? '').' '.($waiterPerson->last_name ?? '')) : '';
-            $waiterName = $resolvedName !== '' ? $resolvedName : ($waiterPerson ? 'Mozo' : $waiterName);
+            $waiterName = $waiterPerson ? trim(($waiterPerson->first_name ?? '') . ' ' . ($waiterPerson->last_name ?? '')) : 'Mozo';
+            $responsibleUser = User::where('person_id', $waiterPersonId)->first();
+            if ($responsibleUser) {
+                $responsibleId = $responsibleUser->id;
+            }
+        } else {
+            $waiterPersonId = $waiterPinEnabled ? (int) $request->session()->get('waiter_person_id') : (int) ($user?->person?->id ?? 0);
+            $waiterName = $waiterPinEnabled ? (string) $request->session()->get('waiter_name') : trim(($user?->person?->first_name ?? '') . ' ' . ($user?->person?->last_name ?? ''));
+            // responsible_name = empleado que insertó el PIN (Person), nunca el usuario (User)
+            if ($waiterPersonId) {
+                $waiterPerson = Person::find($waiterPersonId);
+                $resolvedName = $waiterPerson ? trim(($waiterPerson->first_name ?? '') . ' ' . ($waiterPerson->last_name ?? '')) : '';
+                $waiterName = $resolvedName !== '' ? $resolvedName : ($waiterPerson ? 'Mozo' : $waiterName);
+                $responsibleUser = User::where('person_id', $waiterPersonId)->first();
+                if ($responsibleUser) {
+                    $responsibleId = $responsibleUser->id;
+                }
+            }
+            if (trim((string) $waiterName) === '' && !$waiterPinEnabled) {
+                $waiterName = $user?->name ?? 'Sistema';
+            }
         }
-        if (trim((string) $waiterName) === '' && ! $waiterPinEnabled) {
-            $waiterName = $user?->name ?? 'Sistema';
-        }
-        if ($waiterPinEnabled && ! $waiterPersonId) {
+        if ($waiterPinEnabled && ! $isMozoProfile && ! $waiterPersonId) {
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,
@@ -1302,9 +1494,8 @@ class OrderController extends Controller
         }
 
         $clientPersonId = $request->filled('client_id') ? (int) $request->client_id : null;
-        $clientPerson = $clientPersonId ? Person::find($clientPersonId) : null;
-        // Si hay persona encontrada, usar siempre su nombre (ignora lo que mande el front en client_name)
         $clientNameFromRequest = $request->filled('client_name') ? trim((string) $request->client_name) : null;
+        $clientPerson = $this->resolveOrCreateClientPerson($branchId ? (int) $branchId : null, $branch, $clientPersonId, $clientNameFromRequest);
         $clientName = $clientPerson
             ? trim(($clientPerson->first_name ?? '').' '.($clientPerson->last_name ?? ''))
             : ($clientNameFromRequest ?: 'Público General');
@@ -1408,7 +1599,7 @@ class OrderController extends Controller
                     'user_name' => $user?->name ?? 'Sistema',
                     'person_id' => $clientPerson?->id,
                     'person_name' => $clientName,
-                    'responsible_id' => $user?->id,
+                    'responsible_id' => $responsibleId,
 
                     'responsible_name' => $waiterName ?: (($user?->person?->first_name ?? '').' '.($user?->person?->last_name ?? '-')),
                 ]);
@@ -1447,7 +1638,7 @@ class OrderController extends Controller
                     'user_name' => $user?->name ?? 'Sistema',
                     'person_id' => $clientPerson?->id,
                     'person_name' => $clientName,
-                    'responsible_id' => $user?->id,
+                    'responsible_id' => $responsibleId,
                     'responsible_name' => $waiterName ?: (($user?->person?->first_name ?? '').' '.($user?->person?->last_name ?? '-')),
                     'comment' => 'Pedido desde punto de venta',
                     'status' => 'A',
@@ -1510,8 +1701,25 @@ class OrderController extends Controller
                 $code = $rawItem['code'] ?? ($product?->code ?? (string) $productId);
                 $description = $rawItem['description'] ?? ($product?->description ?? ($rawItem['name'] ?? 'Producto'));
 
+                // Validar stock disponible si no se permite vender sin stock
+                $productBranch = ProductBranch::where('product_id', $productId)
+                    ->where('branch_id', $branchId)
+                    ->first();
+                $currentStock = (float) ($productBranch->stock ?? 0);
+                if (!$branch->allow_zero_stock_sales && $currentStock < $qty) {
+                    throw new \Exception(
+                        "Stock insuficiente para el producto \"{$description}\". " .
+                        "Stock disponible: {$currentStock}, Cantidad solicitada: {$qty}"
+                    );
+                }
+
                 $rawNote = trim((string) ($rawItem['note'] ?? ''));
                 $comment = $rawNote !== '' ? $rawNote : null;
+                $complements = collect($rawItem['complements'] ?? [])
+                    ->map(fn ($item) => trim((string) $item))
+                    ->filter()
+                    ->values()
+                    ->all();
                 $commandTime = $rawItem['commandTime'] ?? null;
                 $commandedAt = null;
                 if ($commandTime && preg_match('/^\\d{1,2}:\\d{2}(?::\\d{2})?/', $commandTime)) {
@@ -1537,6 +1745,7 @@ class OrderController extends Controller
                     'amount' => $amount,
                     'branch_id' => $branchId,
                     'comment' => $comment,
+                    'complements' => $complements,
                     'commanded_at' => $commandedAt,
                     'status' => $delivered ? 'E' : 'A',
                 ]);
@@ -1567,6 +1776,11 @@ class OrderController extends Controller
                 if (! is_array($productSnapshot) && $product) {
                     $productSnapshot = $product->toArray();
                 }
+                $cancelComplements = collect($rawCancel['complements'] ?? [])
+                    ->map(fn ($item) => trim((string) $item))
+                    ->filter()
+                    ->values()
+                    ->all();
 
                 OrderMovementDetail::create([
                     'order_movement_id' => $orderMovement->id,
@@ -1582,6 +1796,7 @@ class OrderController extends Controller
                     'amount' => $amount,
                     'branch_id' => $branchId,
                     'comment' => $rawCancel['cancel_reason'] ?? null,
+                    'complements' => $cancelComplements,
                     'status' => 'C',
                 ]);
             }
@@ -1594,6 +1809,8 @@ class OrderController extends Controller
                     'message' => 'Pedido guardado correctamente',
                     'movement_id' => $movement->id,
                     'order_movement_id' => $orderMovement->id,
+                    'client_person_id' => $clientPerson?->id,
+                    'client_name' => $clientName,
                 ]);
             }
         } catch (\Throwable $e) {
@@ -1614,8 +1831,340 @@ class OrderController extends Controller
         }
     }
 
+    public function printKitchenTicketThermal(Request $request)
+    {
+        if (! config('local_network.thermal_print_enabled', true)) {
+            abort(404);
+        }
+
+        if (! LocalNetworkClient::isOnLocalNetwork($request)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'La impresión por red desde el servidor solo está permitida dentro de la red del local.',
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'ticket_text' => ['required', 'string'],
+            'printer_name' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $branchId = (int) session('branch_id');
+        if (! $branchId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Sin sucursal en sesión.',
+            ], 422);
+        }
+
+        $printerBaseQuery = PrinterBranch::query()
+            ->where('branch_id', $branchId)
+            ->where('status', 'E');
+
+        $host = strtolower(trim($request->getHost() ?: ''));
+        $isLocalhost = in_array($host, ['localhost', '127.0.0.1', '::1']);
+        $defaultPrinterName = $isLocalhost ? 'barra' : 'barra2';
+
+        $requestedName = trim((string) ($validated['printer_name'] ?? '')) ?: $defaultPrinterName;
+        $printer = (clone $printerBaseQuery)
+            ->whereRaw('LOWER(TRIM(name)) = ?', [mb_strtolower($requestedName)])
+            ->first();
+
+        if (! $printer) {
+            $printer = (clone $printerBaseQuery)
+                ->whereRaw('LOWER(TRIM(name)) LIKE ?', ['barra%'])
+                ->first();
+        }
+        if (! $printer) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No hay una ticketera de barra configurada para la precuenta.',
+            ], 422);
+        }
+
+        $payload = $this->buildKitchenEscPosPayload((string) $validated['ticket_text']);
+        $printerService = app(ThermalNetworkPrintService::class);
+        $timeout = (int) config('local_network.thermal_timeout_seconds', 4);
+
+        try {
+            if (filled((string) $printer->ip)) {
+                $printerService->sendRaw(
+                    (string) $printer->ip,
+                    (int) config('local_network.thermal_port', 9100),
+                    $payload,
+                    $timeout
+                );
+            } else {
+                if (! config('local_network.thermal_windows_local_enabled', true)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'La ticketera no tiene IP y la impresión USB local está deshabilitada.',
+                    ], 422);
+                }
+
+                $printerService->sendRawToWindowsPrinter((string) $printer->name, $payload, $timeout + 4);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Impresión comanda térmica: '.$e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => config('app.debug') ? (string) $e->getMessage() : 'No se pudo imprimir la comanda.',
+            ], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Comanda enviada a "'.($printer->name ?? 'Ticketera').'"',
+        ]);
+    }
+
+    public function printPreAccountThermal(Request $request)
+    {
+        if (! config('local_network.thermal_print_enabled', true)) {
+            abort(404);
+        }
+
+        if (! LocalNetworkClient::isOnLocalNetwork($request)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'La impresión por red desde el servidor solo está permitida dentro de la red del local.',
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'ticket_text' => ['required', 'string'],
+            'printer_name' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $branchId = (int) session('branch_id');
+        if (! $branchId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Sin sucursal en sesión.',
+            ], 422);
+        }
+
+        $printerBaseQuery = PrinterBranch::query()
+            ->where('branch_id', $branchId)
+            ->where('status', 'E');
+
+        $host = strtolower(trim($request->getHost() ?: ''));
+        $isLocalhost = in_array($host, ['localhost', '127.0.0.1', '::1']);
+        $defaultPrinterName = $isLocalhost ? 'barra' : 'barra2';
+
+        $requestedName = trim((string) ($validated['printer_name'] ?? '')) ?: $defaultPrinterName;
+        $printer = (clone $printerBaseQuery)
+            ->whereRaw('LOWER(TRIM(name)) = ?', [mb_strtolower($requestedName)])
+            ->first();
+
+        if (! $printer) {
+            $printer = (clone $printerBaseQuery)
+                ->whereRaw('LOWER(TRIM(name)) LIKE ?', ['barra%'])
+                ->first();
+        }
+
+        if (! $printer) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No hay una ticketera de barra configurada para la precuenta.',
+            ], 422);
+        }
+
+        $payload = $this->buildKitchenEscPosPayload((string) $validated['ticket_text']);
+        $printerService = app(ThermalNetworkPrintService::class);
+        $timeout = (int) config('local_network.thermal_timeout_seconds', 4);
+
+        try {
+            if (filled((string) $printer->ip)) {
+                $printerService->sendRaw(
+                    (string) $printer->ip,
+                    (int) config('local_network.thermal_port', 9100),
+                    $payload,
+                    $timeout
+                );
+            } else {
+                if (! config('local_network.thermal_windows_local_enabled', true)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'La ticketera no tiene IP y la impresión USB local está deshabilitada.',
+                    ], 422);
+                }
+
+                $printerService->sendRawToWindowsPrinter((string) $printer->name, $payload, $timeout + 4);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Impresión precuenta térmica: '.$e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => config('app.debug') ? (string) $e->getMessage() : 'No se pudo imprimir la precuenta.',
+            ], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Precuenta enviada a "'.($printer->name ?? 'Ticketera').'"',
+        ]);
+    }
+
+    public function printKitchenTicketPdf(Request $request)
+    {
+        $validated = $request->validate([
+            'ticket_text' => ['required', 'string'],
+            'paper_width' => ['nullable', 'integer', 'in:58,80'],
+            'title' => ['nullable', 'string', 'max:120'],
+        ]);
+
+        return $this->renderTextTicketPdfResponse(
+            (string) $validated['ticket_text'],
+            (int) ($validated['paper_width'] ?? 58),
+            (string) ($validated['title'] ?? 'Comanda'),
+            'comanda'
+        );
+    }
+
+    public function createKitchenTicketPdfLink(Request $request)
+    {
+        $validated = $request->validate([
+            'ticket_text' => ['required', 'string'],
+            'paper_width' => ['nullable', 'integer', 'in:58,80'],
+            'title' => ['nullable', 'string', 'max:120'],
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'url' => $this->storeTextTicketPdfPayload(
+                (string) $validated['ticket_text'],
+                (int) ($validated['paper_width'] ?? 58),
+                (string) ($validated['title'] ?? 'Comanda'),
+                'comanda'
+            ),
+        ]);
+    }
+
+    public function printPreAccountPdf(Request $request)
+    {
+        $validated = $request->validate([
+            'ticket_text' => ['required', 'string'],
+            'paper_width' => ['nullable', 'integer', 'in:58,80'],
+            'title' => ['nullable', 'string', 'max:120'],
+        ]);
+
+        return $this->renderTextTicketPdfResponse(
+            (string) $validated['ticket_text'],
+            (int) ($validated['paper_width'] ?? 58),
+            (string) ($validated['title'] ?? 'Precuenta'),
+            'precuenta'
+        );
+    }
+
+    public function createPreAccountPdfLink(Request $request)
+    {
+        $validated = $request->validate([
+            'ticket_text' => ['required', 'string'],
+            'paper_width' => ['nullable', 'integer', 'in:58,80'],
+            'title' => ['nullable', 'string', 'max:120'],
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'url' => $this->storeTextTicketPdfPayload(
+                (string) $validated['ticket_text'],
+                (int) ($validated['paper_width'] ?? 58),
+                (string) ($validated['title'] ?? 'Precuenta'),
+                'precuenta'
+            ),
+        ]);
+    }
+
+    public function showStoredTextTicketPdf(string $token)
+    {
+        $payload = Cache::get('text-ticket-pdf:'.$token);
+        abort_unless(is_array($payload), 404);
+
+        return $this->renderTextTicketPdfResponse(
+            (string) ($payload['ticket_text'] ?? ''),
+            (int) ($payload['paper_width'] ?? 58),
+            (string) ($payload['title'] ?? 'Ticket'),
+            (string) ($payload['file_prefix'] ?? 'ticket')
+        );
+    }
+
+    private function renderTextTicketPdfResponse(string $ticketText, int $paperWidth, string $title, string $filePrefix)
+    {
+        $paperWidth = $paperWidth === 80 ? 80 : 58;
+        $normalizedText = str_replace(["\r\n", "\r"], "\n", trim($ticketText));
+        $lineCount = max(1, count(explode("\n", $normalizedText)));
+        $heightMm = min(500, max(60, (int) ceil(($paperWidth === 80 ? 22 : 18) + ($lineCount * ($paperWidth === 80 ? 4.0 : 3.7)))));
+
+        $pdf = SnappyPdf::loadView('orders.print.text_ticket_pdf', [
+            'title' => $title,
+            'ticketText' => $normalizedText,
+            'paperWidth' => $paperWidth,
+        ]);
+
+        $pdf->setOption('page-width', $paperWidth.'mm')
+            ->setOption('page-height', $heightMm.'mm')
+            ->setOption('margin-top', 0)
+            ->setOption('margin-right', 0)
+            ->setOption('margin-bottom', 0)
+            ->setOption('margin-left', 0)
+            ->setOption('encoding', 'utf-8')
+            ->setOption('print-media-type', true)
+            ->setOption('disable-smart-shrinking', true)
+            ->setOption('enable-local-file-access', true)
+            ->setOption('dpi', 203);
+
+        $output = $pdf->output();
+
+        return response($output, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="'.$filePrefix.'_'.now()->format('Ymd_His').'.pdf"',
+            'Content-Length' => strlen($output),
+        ]);
+    }
+
+    private function storeTextTicketPdfPayload(string $ticketText, int $paperWidth, string $title, string $filePrefix): string
+    {
+        $token = bin2hex(random_bytes(20));
+
+        Cache::put('text-ticket-pdf:'.$token, [
+            'ticket_text' => $ticketText,
+            'paper_width' => $paperWidth === 80 ? 80 : 58,
+            'title' => $title,
+            'file_prefix' => $filePrefix,
+        ], now()->addMinutes(10));
+
+        return route('orders.print.ticket.pdf.show', ['token' => $token]);
+    }
+
+    private function buildKitchenEscPosPayload(string $plainText): string
+    {
+        $normalized = $this->normalizeKitchenAscii($plainText);
+
+        return
+            "\x1B\x40".     // init
+            "\x1B\x74\x02". // codepage PC850
+            $normalized.
+            "\n\n".
+            "\x1D\x56\x42\x10"; // cut
+    }
+
+    private function normalizeKitchenAscii(string $text): string
+    {
+        $value = str_replace(
+            ['á', 'Á', 'é', 'É', 'í', 'Í', 'ó', 'Ó', 'ú', 'Ú', 'ü', 'Ü', 'ñ', 'Ñ', '¿', '¡'],
+            ['a', 'A', 'e', 'E', 'i', 'I', 'o', 'O', 'u', 'U', 'u', 'U', 'n', 'N', '?', '!'],
+            $text
+        );
+
+        return str_replace("\r\n", "\n", (string) $value);
+    }
+
     public function processOrderPayment(Request $request)
     {
+        
         $profileId = session('profile_id') ?? $request->user()?->profile_id;
         if (! $this->canCharge($profileId)) {
             return response()->json([
@@ -1629,8 +2178,9 @@ class OrderController extends Controller
         $branchId = (int) session('branch_id');
         $user = $request->user();
         $clientPersonId = $request->input('client_id');
-        $clientPerson = $clientPersonId ? Person::find((int) $clientPersonId) : null;
         $clientNameFromRequest = $request->filled('client_name') ? trim((string) $request->client_name) : null;
+        $branch = $branchId ? Branch::find($branchId) : null;
+        $clientPerson = $this->resolveOrCreateClientPerson($branchId ?: null, $branch, $clientPersonId ? (int) $clientPersonId : null, $clientNameFromRequest);
         $clientName = $clientNameFromRequest
             ?: ($clientPerson
                 ? trim(($clientPerson->first_name ?? '').' '.($clientPerson->last_name ?? ''))
@@ -1651,10 +2201,13 @@ class OrderController extends Controller
         }
 
         // ── Validar caja ANTES de tocar la base de datos ──────────────────────
-        $requestCashRegisterId = $request->input('cash_register_id');
-        $cashRegisterId = ($requestCashRegisterId && CashRegister::find((int) $requestCashRegisterId))
-            ? (int) $requestCashRegisterId
-            : $this->resolveActiveCashRegisterId($branchId);
+        $cashRegisterId = effective_cash_register_id($branchId);
+        if (! $cashRegisterId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Seleccione una caja de trabajo antes de cobrar el pedido.',
+            ], 422);
+        }
 
         try {
             $this->assertCashRegisterIsOpen($cashRegisterId, $branchId);
@@ -1689,13 +2242,97 @@ class OrderController extends Controller
                     ];
                     if ($clientPerson) {
                         $updateData['person_id'] = $clientPerson->id;
+                    }
+                    if ($clientName) {
                         $updateData['person_name'] = $clientName;
                     }
                     $requestDocumentTypeId = $request->input('document_type_id');
-                    if ($requestDocumentTypeId && DocumentType::where('id', $requestDocumentTypeId)->exists()) {
-                        $updateData['document_type_id'] = (int) $requestDocumentTypeId;
+                    $defaultDocumentTypeId = effective_default_sale_document_type_id($branchId, [2]);
+                    $resolvedDocumentTypeId = ($requestDocumentTypeId && DocumentType::where('id', $requestDocumentTypeId)->exists())
+                        ? (int) $requestDocumentTypeId
+                        : $defaultDocumentTypeId;
+                    if ($resolvedDocumentTypeId && DocumentType::where('id', $resolvedDocumentTypeId)->exists()) {
+                        $updateData['document_type_id'] = (int) $resolvedDocumentTypeId;
                     }
                     $orderBaseMovement->update($updateData);
+
+                    // --- INTEGRACIÓN CON VENTAS: Cada pedido cobrado figura ahora en ventas ---
+                    if (!SalesMovement::where('movement_id', $orderBaseMovement->id)->exists()) {
+                        $branch = Branch::find($branchId);
+                        
+                        // Determinar el tipo de movimiento para Ventas (tipo 2 por defecto, pero resolvemos dinámicamente)
+                        $salesMovementType = MovementType::where('description', 'like', '%venta%')
+                            ->orWhere('description', 'like', '%sale%')
+                            ->orWhere('description', 'like', '%Venta%')
+                            ->first();
+                        
+                        if ($salesMovementType) {
+                            $orderBaseMovement->update(['movement_type_id' => $salesMovementType->id]);
+                        }
+
+                        // Crear el registro de SalesMovement
+                        $salesMovement = SalesMovement::create([
+                            'branch_snapshot' => [
+                                'id' => $branch->id,
+                                'legal_name' => $branch->legal_name,
+                            ],
+                            'series' => '001',
+                            'year' => now()->year,
+                            'detail_type' => 'DETALLADO',
+                            'consumption' => 'N',
+                            'payment_type' => 'CONTADO',
+                            'status' => 'N',
+                            'sale_type' => 'MINORISTA',
+                            'currency' => 'PEN',
+                            'exchange_rate' => 1.0,
+                            'subtotal' => $orderMovement->subtotal,
+                            'tax' => $orderMovement->tax,
+                            'total' => $orderMovement->total,
+                            'movement_id' => $orderBaseMovement->id,
+                            'branch_id' => $branchId,
+                        ]);
+
+                        // Crear detalles de venta a partir de los detalles del pedido
+                        foreach ($orderMovement->details as $orderDetail) {
+                            if (($orderDetail->status ?? 'A') === 'C') {
+                                continue;
+                            }
+
+                            // Calcular subtotal (original_amount) si es posible
+                            $qty = (float) $orderDetail->quantity;
+                            $totalDetail = (float) $orderDetail->amount;
+                            $taxRateVal = 0;
+                            if ($orderDetail->tax_rate_snapshot && isset($orderDetail->tax_rate_snapshot['tax_rate'])) {
+                                $taxRateVal = (float) $orderDetail->tax_rate_snapshot['tax_rate'] / 100;
+                            } else {
+                                $taxRateVal = 0.10; // Fallback al 10% según processOrder
+                            }
+                            
+                            $subtotalDetail = $taxRateVal > 0 ? ($totalDetail / (1 + $taxRateVal)) : $totalDetail;
+
+                            SalesMovementDetail::create([
+                                'detail_type' => 'DETAILED',
+                                'sales_movement_id' => $salesMovement->id,
+                                'code' => $orderDetail->code,
+                                'description' => $orderDetail->description,
+                                'product_id' => $orderDetail->product_id,
+                                'product_snapshot' => $orderDetail->product_snapshot,
+                                'unit_id' => $orderDetail->unit_id,
+                                'tax_rate_id' => $orderDetail->tax_rate_id,
+                                'tax_rate_snapshot' => $orderDetail->tax_rate_snapshot,
+                                'quantity' => $orderDetail->quantity,
+                                'courtesy_quantity' => (int) $orderDetail->courtesy_quantity,
+                                'amount' => $orderDetail->amount,
+                                'discount_percentage' => 0,
+                                'original_amount' => $subtotalDetail,
+                                'comment' => $orderDetail->comment,
+                                'complements' => $orderDetail->complements ?? [],
+                                'status' => 'A',
+                                'branch_id' => $branchId,
+                            ]);
+                        }
+                    }
+                    // --------------------------------------------------------------------------
                 }
 
                 $paymentConcept = $this->resolveOrderPaymentConcept();
@@ -1889,11 +2526,18 @@ class OrderController extends Controller
                 default => 'CAST(movements.number AS UNSIGNED)',
             };
 
+            $regexNumericExpr = match ($driver) {
+                'pgsql' => "movements.number ~ '^[0-9]+$'",
+                'sqlite' => "movements.number GLOB '[0-9]*' AND movements.number NOT GLOB '*[^0-9]*'",
+                default => "movements.number REGEXP '^[0-9]+$'",
+            };
+
             // lockForUpdate() no es compatible con MAX() en PostgreSQL.
             // La serialización ya la garantiza el advisory lock de arriba.
             $maxNumber = DB::table('order_movements')
                 ->join('movements', 'movements.id', '=', 'order_movements.movement_id')
                 ->where('movements.branch_id', $branchId)
+                ->whereRaw($regexNumericExpr)
                 ->max(DB::raw($castExpr));
 
             $next = (int) ($maxNumber ?? 0) + 1;
@@ -2181,5 +2825,23 @@ class OrderController extends Controller
             });
 
         return $q->get(['id', 'first_name', 'last_name', 'document_number']);
+    }
+
+    private function resolveWaiters(?int $branchId): \Illuminate\Support\Collection
+    {
+        $mozoProfileId = $this->mozoProfileId();
+        if ($mozoProfileId === null) {
+            return collect();
+        }
+
+        return Person::query()
+            ->where('branch_id', $branchId)
+            ->whereHas('user', function ($q) use ($mozoProfileId) {
+                $q->where('profile_id', $mozoProfileId)
+                    ->whereNull('deleted_at');
+            })
+            ->orderBy('first_name')
+            ->orderBy('last_name')
+            ->get(['id', 'first_name', 'last_name', 'pin']);
     }
 }

@@ -3,417 +3,350 @@
 @section('title', 'Punto de Venta')
 
 @section('content')
-    @php
-        $viewId = request('view_id');
-        $salesIndexUrl = route('sales.index', $viewId ? ['view_id' => $viewId] : []);
-        $personName = $person
-            ? trim(($person->first_name ?? '') . ' ' . ($person->last_name ?? ''))
-            : 'Público General';
-        if ($personName === '') {
-            $personName = 'Público General';
-        }
-        $peopleCollection = $people ?? collect();
-        $clientOptions = $peopleCollection->map(function ($p) {
-            $name = trim(($p->first_name ?? '') . ' ' . ($p->last_name ?? ''));
-            if ($name === '' && !empty($p->document_number)) {
-                $name = $p->document_number;
+    <div class="px-4 md:px-6 pt-4 pb-2">
+
+        <x-common.page-breadcrumb :crumbs="[['label' => 'Ventas', 'url' => route('sales.index')], ['label' => 'Nueva venta', 'url' => route('sales.create')]]" pageTitle="Nueva Venta" />
+
+        @php
+            $viewId = request('view_id');
+            $salesIndexUrl = route('sales.index', $viewId ? ['view_id' => $viewId] : []);
+            $personName = $person
+                ? trim(($person->first_name ?? '') . ' ' . ($person->last_name ?? ''))
+                : 'Público General';
+            if ($personName === '') {
+                $personName = 'Público General';
             }
+            $peopleCollection = $people ?? collect();
+            $clientOptions = $peopleCollection
+                ->map(function ($p) {
+                    $name = trim(($p->first_name ?? '') . ' ' . ($p->last_name ?? ''));
+                    if ($name === '' && !empty($p->document_number)) {
+                        $name = $p->document_number;
+                    }
 
-            return ['id' => $p->id, 'description' => $name];
-        })->values()->all();
-    @endphp
-    <script>
-        window.__salesClientOptions = @json($clientOptions);
-    </script>
+                    return ['id' => $p->id, 'description' => $name];
+                })
+                ->values()
+                ->all();
+        @endphp
+        <script>
+            window.__salesClientOptions = @json($clientOptions);
+        </script>
 
-    <div class="flex flex-col h-full bg-gray-50 dark:bg-gray-950">
-        {{-- Misma estructura visual que orders/create (sin mesa, mozo, personas, delivery/llevar) --}}
-        <div data-turbo-cache="false" class="flex flex-col flex-1 min-h-0">
-            <header
-                class="relative flex-none bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 min-h-[4rem] sm:h-18 flex flex-wrap items-center gap-2 sm:gap-3 px-3 sm:px-6 py-2 z-50 sticky top-0 backdrop-blur-md shadow-sm overflow-visible">
-                <div class="order-1 flex shrink-0 items-center gap-2 sm:gap-3 sm:mr-2">
-                    <a href="{{ $salesIndexUrl }}" id="back-to-sales-link" title="Volver atrás"
-                        class="h-9 w-9 sm:h-10 sm:w-10 rounded-full bg-white border border-gray-200 text-gray-500 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 transition-all flex items-center justify-center shadow-sm shrink-0">
-                        <i class="ri-arrow-left-line text-lg sm:text-xl"></i>
-                    </a>
-                    <div class="flex flex-col justify-center min-w-0 max-w-[40vw] sm:max-w-none">
-                        <h2 class="text-sm sm:text-base font-bold text-slate-800 dark:text-white leading-tight truncate">
-                            Nueva venta
-                        </h2>
-                        <p class="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate"><i
-                                class="ri-circle-fill" style="color: #00C950;"></i> Punto de venta</p>
-                    </div>
-                </div>
-
-                {{-- Una sola franja con scroll horizontal (móvil/tablet): buscador + vendedor + cliente --}}
-                <div
-                    class="order-3 basis-full w-full min-w-0 flex items-center overflow-x-auto overflow-y-hidden overscroll-x-contain touch-pan-x [-webkit-overflow-scrolling:touch] [scrollbar-width:thin] pb-0.5 sm:order-2 sm:basis-auto sm:w-auto sm:flex-1">
+        <div class="mx-4 md:mx-6 flex flex-col h-full dark:bg-gray-950 overflow-hidden rounded-t-2xl">
+            {{-- Misma estructura visual que orders/create (sin mesa, mozo, personas, delivery/llevar) --}}
+            <div data-turbo-cache="false" class="flex flex-col flex-1 min-h-0">
+                {{-- lg:items-start: el aside NO se estira a toda la altura del panel productos (evita hueco enorme abajo)
+                --}}
+                <div class="flex-1 flex flex-col lg:flex-row min-h-0 bg-gray-50/50 dark:bg-gray-950/50 gap-3 p-3">
                     <div
-                        class="flex w-max min-h-full items-center gap-3 sm:gap-4 lg:gap-5 text-sm font-medium pr-1 shrink-0">
-                        <div class="flex items-center gap-1.5 shrink-0 bg-white dark:bg-gray-900 p-1 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
-                            <div class="w-28 sm:w-36 md:w-44 xl:w-56 relative">
-                                <input type="text" id="search-products" placeholder="Buscar producto..." autocomplete="off"
-                                    class="w-full pl-8 pr-3 py-1.5 text-xs sm:text-sm bg-transparent border-transparent rounded-lg focus:ring-0 focus:border-transparent outline-none dark:text-white">
-                                <i
-                                    class="fas fa-search absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
-                            </div>
-                            <x-ui.button size="xs" variant="outline" onclick="clearProductSearch()" class="!px-2 h-7"
-                                id="search-products-clear" type="button">
-                                <i class="ri-close-line"></i>
-                            </x-ui.button>
-                        </div>
-
-                        <div class="h-6 w-px bg-gray-300 dark:bg-slate-600 shrink-0"></div>
-
-                        <div class="flex items-center gap-1.5 shrink-0">
-                            <span class="text-gray-500 dark:text-gray-400 text-xs sm:text-sm whitespace-nowrap">Vendedor:</span>
-                            <span
-                                class="max-w-[8rem] sm:max-w-[12rem] py-1.5 px-2 bg-white dark:bg-slate-700/80 border border-gray-200 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 font-semibold text-xs sm:text-sm truncate">
-                                {{ $user?->name ?? 'Sin asignar' }}
-                            </span>
-                        </div>
-
-                        <div class="h-6 w-px bg-gray-300 dark:bg-slate-600 shrink-0"></div>
-                    </div>
-                </div>
-
-                <div class="order-2 w-full flex shrink-0 items-center justify-end gap-1.5 overflow-visible sm:order-3 sm:w-auto sm:pl-2 sm:ml-0">
-                    <span class="text-gray-500 dark:text-gray-400 text-xs sm:text-sm whitespace-nowrap">Cliente:</span>
-                    <div class="relative z-[70] flex items-center gap-1 min-w-[220px] sm:min-w-0 overflow-visible" id="sales-client-picker" x-data="{
-                            person_id: {{ $person?->id ? (int) $person->id : 'null' }},
-                            init() {
-                                this.$nextTick(() => {
-                                    if (typeof currentSale !== 'undefined' && currentSale.person_id) {
-                                        this.person_id = currentSale.person_id;
-                                    }
-                                });
-                                this.$watch('person_id', () => {
-                                    const opts = window.__salesClientOptions || [];
-                                    const selected = opts.find(o => String(o.id) === String(this.person_id));
-                                    const name = selected ? selected.description : 'Público General';
-                                    if (typeof currentSale !== 'undefined') {
-                                        currentSale.person_id = this.person_id ? parseInt(this.person_id, 10) : null;
-                                        currentSale.clientName = name;
-                                        if (typeof saveDB === 'function') {
-                                            saveDB();
-                                        }
-                                    }
-                                    const cobroInput = document.getElementById('cobro-client-input');
-                                    if (cobroInput) {
-                                        cobroInput.value = name;
-                                    }
-                                });
-                            }
-                        }">
-                            <x-form.select.combobox :options="$clientOptions" x-model="person_id"
-                                name="header_client_id" placeholder="Buscar cliente..."
-                                :compact="true"
-                                class="w-32 sm:w-40 md:w-48" />
-                            @if ($branch ?? null)
-                                <button type="button"
-                                    class="inline-flex items-center justify-center h-8 w-8 rounded-lg bg-white border border-gray-200 text-gray-500 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 shadow-sm transition-colors dark:bg-gray-900 dark:border-gray-700"
-                                    onclick="window.dispatchEvent(new CustomEvent('open-person-modal'))"
-                                    title="Nuevo cliente">
-                                    <i class="ri-user-add-line text-sm sm:text-base"></i>
-                                </button>
-                            @endif
-                        </div>
-                    </div>
-            </header>
-
-            {{-- lg:items-start: el aside NO se estira a toda la altura del panel productos (evita hueco enorme abajo) --}}
-            <div
-                class="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden bg-gray-50/50 dark:bg-gray-950/50 gap-3 p-3">
-                <div
-                    class="flex-1 min-w-0 w-full min-h-[320px] lg:min-h-0 lg:overflow-hidden p-3 sm:p-4 bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 flex flex-col min-h-0">
-                    <div class="flex flex-col flex-1 min-h-0 min-w-0 overflow-hidden">
-                        <div class="shrink-0 border-gray-300 px-2 sm:px-4 pt-3 pb-4">
-                            <div id="categories-grid"
-                                class="flex flex-row flex-wrap gap-1.5 sm:gap-2 overflow-x-auto pb-3 overscroll-x-contain">
-                            </div>
-                        </div>
-                        <div class="flex-1 overflow-y-auto pt-2 sm:pt-3 min-h-0">
-                            <div id="products-grid"
-                                class="px-2 sm:px-4 md:px-5 p-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2 sm:gap-4 content-start pb-6">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <aside
-                class="lg:w-[450px] w-full md:w-[350px] lg:shrink-0 mx-auto lg:mx-0 flex-none bg-white dark:bg-gray-900 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-800 flex flex-col min-h-0 lg:h-full z-0 rounded-2xl shadow-sm"                >
-                <div class="flex w-full shrink-0 border-b border-gray-200 dark:border-gray-700">
-                        <button type="button" id="tab-resumen" onclick="switchAsideTab('resumen')"
-                            class="flex-1 py-3 px-4 text-sm font-bold transition-colors rounded-tl-2xl bg-brand-500 text-white">
-                            Resumen
-                        </button>
-                        <button type="button" id="tab-cobro" onclick="switchAsideTab('cobro')"
-                            class="flex-1 py-3 px-4 text-sm font-bold transition-colors bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-orange-100 dark:hover:bg-orange-900/30 hover:text-orange-600 dark:hover:text-orange-400">
-                            Cobro
-                        </button>
-                    </div>
-
-                    <div id="aside-resumen" class="flex flex-col flex-1 min-h-0 overflow-hidden">
-                        <div id="cart-container"
-                            class="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-5 space-y-2 sm:space-y-3 bg-white dark:bg-gray-900 min-h-0 overscroll-contain"
-                            style="-webkit-overflow-scrolling: touch;"></div>
-                        <div class="shrink-0 w-full min-w-0 p-4 sm:p-5 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
-                            <div class="w-full min-w-0 space-y-2 sm:space-y-3 text-xs sm:text-sm">
-                                <div class="flex w-full min-w-0 items-baseline justify-between gap-3 text-gray-500 font-medium">
-                                    <span class="shrink-0">Subtotal</span>
-                                    <span class="shrink-0 text-right tabular-nums text-slate-700 dark:text-slate-300 whitespace-nowrap" id="ticket-subtotal">S/ 0.00</span>
-                                </div>
-                                <div class="flex w-full min-w-0 items-baseline justify-between gap-3 text-gray-500 font-medium">
-                                    <span class="shrink-0">Impuestos</span>
-                                    <span class="shrink-0 text-right tabular-nums text-slate-700 dark:text-slate-300 whitespace-nowrap" id="ticket-tax">S/ 0.00</span>
-                                </div>
-                                <div class="border-t border-dashed border-gray-300 dark:border-gray-600 my-2"></div>
-                                <div class="flex w-full min-w-0 items-center justify-between gap-3">
-                                    <span class="min-w-0 text-base sm:text-lg font-bold text-slate-800 dark:text-white leading-tight">Total a pagar</span>
-                                    <span class="shrink-0 text-right text-xl sm:text-2xl font-black tabular-nums text-blue-600 dark:text-blue-400 whitespace-nowrap"
-                                        id="ticket-total">S/ 0.00</span>
+                        class="flex-1 min-w-0 w-full lg:min-h-0 lg:overflow-hidden p-3 sm:p-4 bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 flex flex-col min-h-0">
+                        <div class="flex flex-col flex-1 min-h-0 min-w-0 overflow-hidden">
+                            <div class="shrink-0 border-gray-300 px-2 sm:px-4 pt-3 pb-4">
+                                <div id="categories-grid"
+                                    class="flex flex-row flex-wrap gap-1.5 sm:gap-2 overflow-x-auto pb-3 overscroll-x-contain">
                                 </div>
                             </div>
-                        </div>
-                    </div>
 
-                    <div id="aside-cobro" class="hidden flex-col flex-1 min-h-0 overflow-y-auto p-4 sm:p-5">
-                        <div class="space-y-4">
-                            <div>
-                                <label
-                                    class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">Cliente</label>
+                            <!---Buscador de productos-->
+                            <div class="px-2 sm:px-4 md:px-5 pt-3 pb-4">
                                 <div class="relative">
-                                    <input type="text" id="cobro-client-input" readonly value="{{ $personName }}"
-                                        class="w-full pl-3 pr-8 py-2.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-slate-700 dark:text-slate-200 text-sm">
-                                    <button type="button" onclick="clearCobroClient()"
-                                        class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                                        <i class="ri-close-line text-lg"></i>
-                                    </button>
+                                    <i class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 fas fa-search"></i>
+                                    <input type="text" id="product-search"
+                                        class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-transparent dark:bg-gray-800 dark:border-gray-700 dark:text-white"
+                                        placeholder="Buscar producto">
                                 </div>
                             </div>
-                            <div class="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label
-                                        class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">Documento</label>
-                                    <select id="cobro-document-type"
-                                        class="w-full py-2.5 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-slate-700 dark:text-slate-200 text-sm">
-                                        @forelse(($documentTypes ?? []) as $dt)
-                                            <option value="{{ $dt?->id }}">{{ $dt?->name ?? '' }}</option>
-                                        @empty
-                                            <option value="">Sin documentos</option>
-                                        @endforelse
-                                    </select>
-                                </div>
-                                <div>
-                                    <label
-                                        class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">Caja</label>
-                                    <select id="cobro-cash-register"
-                                        class="w-full py-2.5 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-slate-700 dark:text-slate-200 text-sm">
-                                        @forelse(($cashRegisters ?? []) as $cr)
-                                            <option value="{{ $cr?->id }}">
-                                                {{ $cr?->number ?? 'Caja ' . ($cr?->id ?? '') }}
-                                            </option>
-                                        @empty
-                                            <option value="">Sin cajas</option>
-                                        @endforelse
-                                    </select>
+                            <div class="flex-1 overflow-y-auto pt-2 sm:pt-3 min-h-0">
+                                <div id="products-grid"
+                                    class="px-2 sm:px-4 md:px-5 p-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2 sm:gap-4 content-start pb-6">
                                 </div>
                             </div>
-                            @if (!empty($clientOnLocalNetwork) && ($thermalPrinters ?? collect())->isNotEmpty())
-                                <div
-                                    class="rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50/90 dark:bg-emerald-900/20 px-3 py-2.5">
-                                    <p class="text-[11px] font-semibold text-emerald-900 dark:text-emerald-100 mb-1.5">
-                                        <i class="ri-wifi-line align-middle"></i> WiFi del local: al cobrar se envía
-                                        copia a la ticketera en red.
-                                    </p>
-                                    @if (($thermalPrinters ?? collect())->count() > 1)
-                                        <label
-                                            class="block text-[10px] font-bold uppercase tracking-wider text-emerald-800/80 dark:text-emerald-200/90 mb-1">Ticketera</label>
-                                        <select id="cobro-thermal-printer"
-                                            class="w-full py-2 px-3 rounded-lg border border-emerald-200 dark:border-emerald-700 bg-white dark:bg-gray-800 text-slate-700 dark:text-slate-200 text-xs">
-                                            <option value="">Predeterminada (primera en lista)</option>
-                                            @foreach ($thermalPrinters as $tp)
-                                                <option value="{{ $tp->id }}">{{ $tp->name }} — {{ $tp->ip }}
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                    @endif
-                                </div>
-                            @endif
-                            <div>
-                                <div class="flex items-center justify-between mb-2">
-                                    <label
-                                        class="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Métodos
-                                        de pago</label>
-                                    <button type="button" onclick="addCobroPaymentMethod()"
-                                        class="inline-flex items-center gap-1.5 rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-brand-600 active:scale-95 transition-colors shrink-0">
-                                        <i class="ri-add-line text-sm"></i> Agregar
-                                    </button>
-                                </div>
-                                <div id="cobro-payment-methods-list" class="space-y-3 max-h-48 overflow-y-auto pr-1">
-                                </div>
-                                <div
-                                    class="mt-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-100 dark:bg-gray-800/80 px-3 py-2.5">
-                                    <div class="flex justify-between items-center">
-                                        <span class="text-xs font-semibold text-gray-600 dark:text-gray-300">Total
-                                            pagado</span>
-                                        <span class="text-base font-bold text-slate-800 dark:text-white tabular-nums"
-                                            id="cobro-total-paid">S/ 0.00</span>
+                        </div>
+                    </div>
+                    <aside
+                        class="lg:w-[450px] w-full md:w-[350px] lg:shrink-0 mx-auto lg:mx-0 flex-none bg-white dark:bg-gray-900 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-800 flex flex-col min-h-[450px] rounded-2xl shadow-sm">
+                        <div class="flex w-full shrink-0 border-b border-gray-200 dark:border-gray-700">
+                            <button type="button" id="tab-resumen" onclick="switchAsideTab('resumen')"
+                                class="flex-1 py-3 px-4 text-sm font-bold transition-colors rounded-tl-2xl bg-brand-500 text-white">
+                                Resumen
+                            </button>
+                            <button type="button" id="tab-cobro" onclick="switchAsideTab('cobro')"
+                                class="flex-1 py-3 px-4 text-sm font-bold transition-colors bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-orange-100 dark:hover:bg-orange-900/30 hover:text-orange-600 dark:hover:text-orange-400">
+                                Cobro
+                            </button>
+                        </div>
+
+                        <div id="aside-resumen" class="flex flex-col flex-1 min-h-0 overflow-hidden">
+                            <div id="cart-container"
+                                class="flex-1 overflow-y-auto min-h-200 overflow-x-hidden p-3 sm:p-5 space-y-2 sm:space-y-3 bg-white dark:bg-gray-900 min-h-0">
+                            </div>
+                            <div
+                                class="shrink-0 w-full min-w-0 p-4 sm:p-5 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+                                <div class="w-full min-w-0 space-y-2 sm:space-y-3 text-xs sm:text-sm">
+                                    <div
+                                        class="flex w-full min-w-0 items-baseline justify-between gap-3 text-gray-500 font-medium">
+                                        <span class="shrink-0">Subtotal</span>
+                                        <span
+                                            class="shrink-0 text-right tabular-nums text-slate-700 dark:text-slate-300 whitespace-nowrap"
+                                            id="ticket-subtotal">S/ 0.00</span>
+                                    </div>
+                                    <div
+                                        class="flex w-full min-w-0 items-baseline justify-between gap-3 text-gray-500 font-medium">
+                                        <span class="shrink-0">Impuestos</span>
+                                        <span
+                                            class="shrink-0 text-right tabular-nums text-slate-700 dark:text-slate-300 whitespace-nowrap"
+                                            id="ticket-tax">S/ 0.00</span>
+                                    </div>
+                                    <div class="border-t border-dashed border-gray-300 dark:border-gray-600 my-2"></div>
+                                    <div class="flex w-full min-w-0 items-center justify-between gap-3">
+                                        <span
+                                            class="min-w-0 text-base sm:text-lg font-bold text-slate-800 dark:text-white leading-tight">Total
+                                            a pagar</span>
+                                        <span
+                                            class="shrink-0 text-right text-xl sm:text-2xl font-black tabular-nums text-blue-600 dark:text-blue-400 whitespace-nowrap"
+                                            id="ticket-total">S/ 0.00</span>
                                     </div>
                                 </div>
                             </div>
                         </div>
+
+                        <div id="aside-cobro" class="hidden flex-col flex-1 min-h-0 overflow-y-auto p-4 sm:p-5">
+                            <div class="space-y-4">
+                                <div>
+                                    <label
+                                        class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">Cliente</label>
+                                    <div class="relative">
+                                        <div
+                                            class="order-2 w-full flex shrink-0 items-center justify-center gap-1.5 overflow-visible sm:order-3 sm:w-auto sm:pl-2 sm:ml-0">
+                                            <div class="relative z-[70] flex items-center gap-1 min-w-[220px] sm:min-w-0 overflow-visible"
+                                                id="sales-client-picker"
+                                                x-data="{
+                                                                                                                                                                                                person_id: {{ $person?->id ? (int) $person->id : 'null' }},
+                                                                                                                                                                                                init() {
+                                                                                                                                                                                                    this.$nextTick(() => {
+                                                                                                                                                                                                        if (typeof currentSale !== 'undefined' && currentSale.person_id) {
+                                                                                                                                                                                                            this.person_id = currentSale.person_id;
+                                                                                                                                                                                                        }
+                                                                                                                                                                                                    });
+                                                                                                                                                                                                    this.$watch('person_id', () => {
+                                                                                                                                                                                                        const opts = window.__salesClientOptions || [];
+                                                                                                                                                                                                        const selected = opts.find(o => String(o.id) === String(this.person_id));
+                                                                                                                                                                                                        const name = selected ? selected.description : 'Público General';
+                                                                                                                                                                                                        if (typeof currentSale !== 'undefined') {
+                                                                                                                                                                                                            currentSale.person_id = this.person_id ? parseInt(this.person_id, 10) : null;
+                                                                                                                                                                                                            currentSale.clientName = name;
+                                                                                                                                                                                                            if (typeof saveDB === 'function') {
+                                                                                                                                                                                                                saveDB();
+                                                                                                                                                                                                            }
+                                                                                                                                                                                                        }
+                                                                                                                                                                                                        const cobroInput = document.getElementById('cobro-client-input');
+                                                                                                                                                                                                        if (cobroInput) {
+                                                                                                                                                                                                            cobroInput.value = name;
+                                                                                                                                                                                                        }
+                                                                                                                                                                                                    });
+                                                                                                                                                                                                }
+                                                                                                                                                                                            }">
+                                                <x-form.select.combobox :options="$clientOptions" x-model="person_id"
+                                                    name="header_client_id" placeholder="Buscar cliente..." :compact="true"
+                                                    class="w-full" />
+                                                @if ($branch ?? null)
+                                                    <button type="button"
+                                                        class="inline-flex items-center justify-center h-8 w-8 rounded-lg bg-white border border-gray-200 text-gray-500 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 shadow-sm transition-colors dark:bg-gray-900 dark:border-gray-700"
+                                                        onclick="window.dispatchEvent(new CustomEvent('open-person-modal'))">
+                                                        <i class="ri-user-add-line text-sm sm:text-base"></i>
+                                                    </button>
+                                                @endif
+                                            </div>
+                                        </div>
+                                        <button type="button" onclick="clearCobroClient()"
+                                            class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label
+                                            class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">Documento</label>
+                                        <select id="cobro-document-type"
+                                            class="w-full py-2.5 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-slate-700 dark:text-slate-200 text-sm">
+                                            @forelse(($documentTypes ?? []) as $dt)
+                                                <option value="{{ $dt?->id }}" @selected((int) ($defaultDocumentTypeId ?? 0) === (int) ($dt?->id ?? 0))>{{ $dt?->name ?? '' }}</option>
+                                            @empty
+                                                <option value="">Sin documentos</option>
+                                            @endforelse
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label
+                                            class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">Caja</label>
+                                        <select id="cobro-cash-register"
+                                            disabled
+                                            class="w-full py-2.5 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-100 dark:bg-gray-800/70 text-slate-700 dark:text-slate-200 text-sm cursor-not-allowed">
+                                            @forelse(($cashRegisters ?? []) as $cr)
+                                                <option value="{{ $cr?->id }}" @selected((int) session('cash_register_id') === (int) $cr?->id)>
+                                                    {{ $cr?->number ?? 'Caja ' . ($cr?->id ?? '') }}
+                                                </option>
+                                            @empty
+                                                <option value="">Sin cajas</option>
+                                            @endforelse
+                                        </select>
+                                    </div>
+                                </div>
+                                @if (!empty($clientOnLocalNetwork) && ($thermalPrinters ?? collect())->isNotEmpty())
+                                    <div
+                                        class="rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50/90 dark:bg-emerald-900/20 px-3 py-2.5">
+                                        <p class="text-[11px] font-semibold text-emerald-900 dark:text-emerald-100 mb-1.5">
+                                            <i class="ri-wifi-line align-middle"></i> WiFi del local: al cobrar se envía
+                                            copia a la ticketera en red.
+                                        </p>
+                                        @if (($thermalPrinters ?? collect())->count() > 1)
+                                            <label
+                                                class="block text-[10px] font-bold uppercase tracking-wider text-emerald-800/80 dark:text-emerald-200/90 mb-1">Ticketera</label>
+                                            <select id="cobro-thermal-printer"
+                                                class="w-full py-2 px-3 rounded-lg border border-emerald-200 dark:border-emerald-700 bg-white dark:bg-gray-800 text-slate-700 dark:text-slate-200 text-xs">
+                                                <option value="">Predeterminada (primera en lista)</option>
+                                                @foreach ($thermalPrinters as $tp)
+                                                    <option value="{{ $tp->id }}">{{ $tp->name }} —
+                                                        {{ $tp->ip }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                        @endif
+                                    </div>
+                                @endif
+                                <div>
+                                    <div class="flex items-center justify-between mb-2">
+                                        <label
+                                            class="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Métodos
+                                            de pago</label>
+                                        <button type="button" onclick="addCobroPaymentMethod()"
+                                            class="inline-flex items-center gap-1.5 rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-brand-600 active:scale-95 transition-colors shrink-0">
+                                            <i class="ri-add-line text-sm"></i> Agregar
+                                        </button>
+                                    </div>
+                                    <div id="cobro-payment-methods-list" class="space-y-3 max-h-48 overflow-y-auto pr-1">
+                                    </div>
+                                    <div
+                                        class="mt-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-100 dark:bg-gray-800/80 px-3 py-2.5">
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-xs font-semibold text-gray-600 dark:text-gray-300">Total
+                                                pagado</span>
+                                            <span class="text-base font-bold text-slate-800 dark:text-white tabular-nums"
+                                                id="cobro-total-paid">S/ 0.00</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div
+                            class="shrink-0 p-4 sm:p-5 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+                            <div id="footer-resumen" class="flex justify-end">
+                                <x-ui.button type="button" variant="secondary" size="sm" onclick="clearCart()"
+                                    class="!gap-1.5 !max-w-full" title="Vaciar orden">
+                                    <i class="ri-delete-bin-line text-base shrink-0"></i>
+                                    <span class="sm:hidden">Vaciar</span>
+                                    <span class="hidden sm:inline">Vaciar orden</span>
+                                </x-ui.button>
+                            </div>
+                            <div id="footer-cobro" class="hidden flex justify-end">
+                                <button type="button" id="checkout-button" onclick="processSale()"
+                                    class="py-2.5 px-4 rounded-xl bg-brand-500 text-white font-bold text-xs sm:text-sm shadow-lg hover:bg-brand-600 active:scale-95 transition-all flex justify-center items-center gap-2">
+                                    <i class="ri-bank-card-line text-base"></i>
+                                    <span>Cobrar</span>
+                                </button>
+                            </div>
+                        </div>
+                    </aside>
+                </div>
+            </div>
+        </div>
+
+        @if ($branch ?? null)
+            <x-ui.modal x-data="{ open: false }" @open-person-modal.window="open = true"
+                @close-person-modal.window="open = false" :isOpen="false" :showCloseButton="false" class="max-w-4xl z-[100]">
+                <div class="p-6 sm:p-8 bg-white dark:bg-gray-800">
+                    <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div class="flex items-center gap-4">
+                            <div
+                                class="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400">
+                                <i class="ri-user-add-line text-2xl"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold text-gray-900 dark:text-white">Registrar / Editar Cliente</h3>
+                                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Ingresa DNI y nombre de la persona.
+                                </p>
+                            </div>
+                        </div>
+                        <button type="button" @click="open = false"
+                            class="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600 transition-colors">
+                            <i class="ri-close-line text-xl"></i>
+                        </button>
                     </div>
 
-                    <div
-                        class="shrink-0 p-4 sm:p-5 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
-                        <div id="footer-resumen" class="flex justify-end">
-                            <x-ui.button type="button" variant="secondary" size="sm" onclick="clearCart()"
-                                class="!gap-1.5 !max-w-full" title="Vaciar orden">
-                                <i class="ri-delete-bin-line text-base shrink-0"></i>
-                                <span class="sm:hidden">Vaciar</span>
-                                <span class="hidden sm:inline">Vaciar orden</span>
-                            </x-ui.button>
-                        </div>
-                        <div id="footer-cobro" class="hidden flex justify-end">
-                            <button type="button" id="checkout-button" onclick="processSale()"
-                                class="py-2.5 px-4 rounded-xl bg-brand-500 text-white font-bold text-xs sm:text-sm shadow-lg hover:bg-brand-600 active:scale-95 transition-all flex justify-center items-center gap-2">
-                                <i class="ri-bank-card-line text-base"></i>
-                                <span>Cobrar</span>
+                    <form method="POST" data-quick-client-form data-client-combobox-name="header_client_id"
+                        action="{{ route('admin.companies.branches.people.store', [$branch->company_id ?? '0', $branch->id ?? '0']) }}"
+                        class="space-y-6">
+                        @csrf
+                        <input type="hidden" name="redirect_to" value="{{ request()->fullUrl() }}">
+                        <input type="hidden" name="location_id" value="{{ $branch->location_id ?? '' }}">
+                        <input type="hidden" name="from_pos" value="1">
+                        <input type="hidden" name="document_number" value="00000000">
+                        @include('branches.people._form', ['person' => null, 'hidePinAndRoles' => true])
+
+                        <div class="flex flex-wrap gap-3 justify-end pt-4 border-t border-gray-100 dark:border-gray-700">
+                            <button type="button" @click="open = false"
+                                class="px-5 py-2.5 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700 transition-colors">
+                                Cancelar
+                            </button>
+                            <button type="submit"
+                                class="px-5 py-2.5 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 shadow-lg shadow-blue-500/30 transition-all">
+                                <i class="ri-save-line mr-1"></i> Guardar Cliente
                             </button>
                         </div>
-                    </div>
-                </aside>
-            </div>
-        </div>
-    </div>
-
-    @if ($branch ?? null)
-        <x-ui.modal x-data="{ open: false }" @open-person-modal.window="open = true"
-            @close-person-modal.window="open = false" :isOpen="false" :showCloseButton="false"
-            class="max-w-4xl z-[100]">
-            <div class="p-6 sm:p-8 bg-white dark:bg-gray-800">
-                <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div class="flex items-center gap-4">
-                        <div
-                            class="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400">
-                            <i class="ri-user-add-line text-2xl"></i>
-                        </div>
-                        <div>
-                            <h3 class="text-lg font-bold text-gray-900 dark:text-white">Registrar / Editar Cliente</h3>
-                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Ingresa DNI y nombre de la persona.
-                            </p>
-                        </div>
-                    </div>
-                    <button type="button" @click="open = false"
-                        class="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600 transition-colors">
-                        <i class="ri-close-line text-xl"></i>
-                    </button>
+                    </form>
                 </div>
+            </x-ui.modal>
+        @endif
 
-                <form method="POST" data-quick-client-form data-client-combobox-name="header_client_id"
-                    action="{{ route('admin.companies.branches.people.store', [$branch->company_id ?? '0', $branch->id ?? '0']) }}"
-                    class="space-y-6">
-                    @csrf
-                    <input type="hidden" name="redirect_to" value="{{ request()->fullUrl() }}">
-                    <input type="hidden" name="location_id" value="{{ $branch->location_id ?? '' }}">
-                    <input type="hidden" name="from_pos" value="1">
-                    <input type="hidden" name="document_number" value="00000000">
-                    @include('branches.people._form', ['person' => null, 'hidePinAndRoles' => true])
+        <div id="notification"
+            class="fixed top-24 right-8 z-50 max-w-sm opacity-0 pointer-events-none transition-opacity duration-300"
+            aria-live="polite"></div>
 
-                    <div class="flex flex-wrap gap-3 justify-end pt-4 border-t border-gray-100 dark:border-gray-700">
-                        <button type="button" @click="open = false"
-                            class="px-5 py-2.5 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700 transition-colors">
-                            Cancelar
-                        </button>
-                        <button type="submit"
-                            class="px-5 py-2.5 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 shadow-lg shadow-blue-500/30 transition-all">
-                            <i class="ri-save-line mr-1"></i> Guardar Cliente
-                        </button>
-                    </div>
-                </form>
+        {{-- NOTIFICACIONES TOAST --}}
+        <div id="toast-container"
+            class="fixed top-20 left-1/2 -translate-x-1/2 z-50 pointer-events-none flex flex-col gap-2 w-auto max-w-sm">
+            {{-- Stock Error --}}
+            <div id="stock-error-notification"
+                class="transform transition-all duration-300 -translate-y-10 opacity-0 pointer-events-none bg-white dark:bg-gray-800 border-l-4 border-red-500 shadow-2xl rounded-r-lg p-4 flex items-center gap-3 min-w-[300px]">
+                <div class="text-red-500"><i class="ri-error-warning-fill text-xl"></i></div>
+                <div>
+                    <p class="text-xs font-bold text-gray-900 dark:text-white uppercase">Stock Insuficiente</p>
+                    <p id="stock-error-message" class="text-sm text-gray-600 dark:text-gray-300">Mensaje de error</p>
+                </div>
             </div>
-        </x-ui.modal>
-    @endif
 
-    <div id="notification"
-        class="fixed top-24 right-8 z-50 max-w-sm opacity-0 pointer-events-none transition-opacity duration-300"
-        aria-live="polite"></div>
-
-    {{-- NOTIFICACIONES TOAST --}}
-    <div id="toast-container"
-        class="fixed top-20 left-1/2 -translate-x-1/2 z-50 pointer-events-none flex flex-col gap-2 w-auto max-w-sm">
-        {{-- Stock Error --}}
-        <div id="stock-error-notification"
-            class="transform transition-all duration-300 -translate-y-10 opacity-0 pointer-events-none bg-white dark:bg-gray-800 border-l-4 border-red-500 shadow-2xl rounded-r-lg p-4 flex items-center gap-3 min-w-[300px]">
-            <div class="text-red-500"><i class="ri-error-warning-fill text-xl"></i></div>
-            <div>
-                <p class="text-xs font-bold text-gray-900 dark:text-white uppercase">Stock Insuficiente</p>
-                <p id="stock-error-message" class="text-sm text-gray-600 dark:text-gray-300">Mensaje de error</p>
-            </div>
-        </div>
-
-        {{-- Success Add --}}
-        <div id="add-to-cart-notification"
-            class="transform transition-all duration-300 -translate-y-10 opacity-0 pointer-events-none bg-slate-800 text-white shadow-2xl rounded-full px-6 py-3 flex items-center gap-3 min-w-[200px]">
-            <i class="ri-check-line text-green-400 text-xl"></i>
-            <div>
-                <p class="text-[10px] uppercase font-bold text-gray-400">Agregado</p>
-                <p id="notification-product-name" class="text-sm font-bold text-white truncate max-w-[180px]">Producto</p>
+            {{-- Success Add --}}
+            <div id="add-to-cart-notification"
+                class="transform transition-all duration-300 -translate-y-10 opacity-0 pointer-events-none bg-slate-800 text-white shadow-2xl rounded-full px-6 py-3 flex items-center gap-3 min-w-[200px]">
+                <i class="ri-check-line text-green-400 text-xl"></i>
+                <div>
+                    <p class="text-[10px] uppercase font-bold text-gray-400">Agregado</p>
+                    <p id="notification-product-name" class="text-sm font-bold text-white truncate max-w-[180px]">Producto
+                    </p>
+                </div>
             </div>
         </div>
     </div>
 
     {{-- ESTILOS CSS --}}
-    <style>
-        /* Ocultar scrollbar estándar */
-        .no-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
 
-        .no-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
-
-        /* Scrollbar personalizada */
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 5px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #E5E7EB;
-            border-radius: 20px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #D1D5DB;
-        }
-
-        .dark .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #374151;
-        }
-
-        .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #4B5563;
-        }
-
-        .notification-show {
-            transform: translateY(0) !important;
-            opacity: 1 !important;
-        }
-
-        .tabular-nums {
-            font-variant-numeric: tabular-nums;
-        }
-    </style>
 
     {{-- LÓGICA JS --}}
     <script>
-        (function() {
+        (function () {
             // --- 1. CARGA DE DATOS (DATA LOGIC) ---
             const productsRaw = @json($products ?? []);
             const productBranchesRaw = @json($productBranches ?? ($productsBranches ?? []));
@@ -466,6 +399,18 @@
             const salesProcessUrl = @json(route('sales.process'));
             const salesIndexUrl = @json($salesIndexUrl ?? route('sales.index'));
             const salesThermalPrintUrl = @json(route('sales.print.ticket.thermal'));
+            const salesTicketPrintBaseUrl = @json(route('admin.sales.print.ticket', ['sale' => '__SALE__']));
+
+            function openSaleTicketPdfTab(movementId) {
+                if (!movementId) return;
+                let ticketUrl = salesTicketPrintBaseUrl.replace('__SALE__', movementId);
+                const currentUrl = new URL(window.location.href);
+                const viewId = currentUrl.searchParams.get('view_id');
+                if (viewId) {
+                    ticketUrl += (ticketUrl.includes('?') ? '&' : '?') + 'view_id=' + encodeURIComponent(viewId);
+                }
+                window.open(ticketUrl, '_blank', 'noopener,noreferrer');
+            }
 
             function escapeHtml(text) {
                 if (!text) return '';
@@ -503,14 +448,15 @@
                 if (imgUrl && String(imgUrl).trim() !== '') return imgUrl;
                 return 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y5ZmFmYiIvPjwvc3ZnPg==';
             }
+
             function setSaleType(value) {
-                        const sel = document.getElementById('header-sale-type');
-                        if (!sel) return;
-                        sel.value = value;
-                        sel.dispatchEvent(new Event('change', {
-                            bubbles: true
-                        }));
-                    }
+                const sel = document.getElementById('header-sale-type');
+                if (!sel) return;
+                sel.value = value;
+                sel.dispatchEvent(new Event('change', {
+                    bubbles: true
+                }));
+            }
 
             // --- STORAGE ---
             // - Recargar pestaña (F5): se mantiene el carrito (localStorage + misma clave).
@@ -534,7 +480,7 @@
                         localStorage.setItem('restaurantDB', JSON.stringify(dbClean));
                     }
                     localStorage.removeItem(ACTIVE_SALE_KEY_STORAGE);
-                } catch (_) {}
+                } catch (_) { }
             }
 
             /** Turbo 8 puede enviar detail.url como string o como URL */
@@ -554,7 +500,7 @@
 
             if (!window.__salesCreateTurboLeaveBound) {
                 window.__salesCreateTurboLeaveBound = true;
-                document.addEventListener('turbo:before-visit', function(e) {
+                document.addEventListener('turbo:before-visit', function (e) {
                     if (!isVentasCreatePath(window.location.pathname)) {
                         return;
                     }
@@ -578,7 +524,7 @@
                  * Botón "atrás" del navegador: puede restaurar /ventas/create desde bfcache
                  * con el carrito en memoria aunque ya se hubiera limpiado localStorage.
                  */
-                window.addEventListener('pageshow', function(event) {
+                window.addEventListener('pageshow', function (event) {
                     if (!event.persisted || !isVentasCreatePath(window.location.pathname)) {
                         return;
                     }
@@ -595,7 +541,7 @@
                  * No limpiar si esta descarga es por RECARGAR (F5): el tipo de navegación suele ser "reload".
                  * Nota: si el usuario recargó y luego sale, el tipo puede seguir "reload" y no se limpia (caso raro).
                  */
-                window.addEventListener('pagehide', function() {
+                window.addEventListener('pagehide', function () {
                     if (!isVentasCreatePath(window.location.pathname)) {
                         return;
                     }
@@ -604,7 +550,7 @@
                         if (nav && nav.type === 'reload') {
                             return;
                         }
-                    } catch (_) {}
+                    } catch (_) { }
                     clearIncompleteSalesCartStorage();
                 });
             }
@@ -654,10 +600,13 @@
 
                 const q = String(searchQuery || '').trim().toLowerCase();
                 if (q.length > 0) {
+                    const queryWords = q.split(/\s+/).filter(word => word.length > 0);
                     productsToShow = productsToShow.filter(p => {
                         const name = String(p.name || '').toLowerCase();
-                        const category = String(p.category || '').toLowerCase();
-                        return name.includes(q) || category.includes(q);
+                        const categoryName = String(p.category || '').toLowerCase();
+                        const combined = name + " " + categoryName;
+                        // Debe contener TODAS las palabras ingresadas (AND search)
+                        return queryWords.every(word => combined.includes(word));
                     });
                 }
 
@@ -677,44 +626,44 @@
                     const el = document.createElement('div');
                     el.className =
                         'group cursor-pointer transition-transform duration-200 hover:scale-105 h-full flex';
-                    el.addEventListener('click', function() {
+                    el.addEventListener('click', function () {
                         addToCart(prod, price);
                     });
 
                     el.innerHTML =
                         `
-                                    <div class="rounded-2xl overflow-hidden p-4 sm:p-5 bg-white dark:bg-slate-800/60 border-2 border-blue-200 dark:border-blue-500/40 hover:border-blue-400 dark:hover:border-blue-400 transition-all duration-200 hover:-translate-y-0.5 flex flex-col items-center text-center h-full w-full">
-                                        <div class="w-20 h-16 sm:w-20 sm:h-20 rounded-full bg-blue-500 flex items-center justify-center shrink-0 overflow-hidden mb-3">
-                                            ${hasImg
+                                                                                                                                                                                    <div class="rounded-2xl overflow-hidden p-4 sm:p-5 bg-white dark:bg-slate-800/60 border-2 border-blue-200 dark:border-blue-500/40 hover:border-blue-400 dark:hover:border-blue-400 transition-all duration-200 hover:-translate-y-0.5 flex flex-col items-center text-center h-full w-full">
+                        <div class="hidden sm:flex w-20 h-20 rounded-full bg-blue-500 items-center justify-center shrink-0 overflow-hidden mb-3">
+                        ${hasImg
                             ? `<img src="${imageUrl}" alt="${safeName}" class="w-full h-full object-contain rounded-full object-cover object-center" loading="lazy" onerror="this.parentElement.innerHTML='<i class=\\'ri-restaurant-2-line text-2xl sm:text-3xl text-white\\'></i>'">`
                             : `<i class="ri-restaurant-2-line text-2xl sm:text-3xl text-white"></i>`
                         }
-                                        </div>
-                                        <h4 class="font-semibold text-gray-900 dark:text-white text-sm sm:text-base line-clamp-2 leading-tight mb-1 min-h-[2.5rem]">${safeName}</h4>
-                                        <span class="text-base sm:text-lg font-bold text-blue-600 dark:text-blue-400">S/ ${safePrice}</span>
-                                        <span class="mt-1 text-xs font-medium text-gray-500 dark:text-gray-400">Stock: ` +
+                        </div>
+                                                                                                                                                                                        <h4 class="font-semibold text-gray-900 dark:text-white text-sm sm:text-base line-clamp-2 leading-tight mb-1 min-h-[2.5rem]">${safeName}</h4>
+                                                                                                                                                                                        <span class="text-base sm:text-lg font-bold text-blue-600 dark:text-blue-400">S/ ${safePrice}</span>
+                                                                                                                                                                                        <span class="mt-1 text-xs font-medium text-gray-500 dark:text-gray-400">Stock: ` +
                         stockText + `</span>
-                                    </div>
-                                `;
+                                                                                                                                                                                    </div>
+                                                                                                                                                                                `;
 
                     grid.appendChild(el);
                     rendered++;
                 });
 
                 if (rendered === 0) {
-                    const emptyMsg = (q.length > 0)
-                        ? 'No se encontraron productos'
-                        : (selectedCategoryId === CATEGORY_FAVORITES_ID
-                            ? 'No hay productos favoritos en esta sucursal. Marca favoritos en el producto o elige Todos.'
-                            : 'No se encontraron productos');
+                    const emptyMsg = (q.length > 0) ?
+                        'No se encontraron productos' :
+                        (selectedCategoryId === CATEGORY_FAVORITES_ID ?
+                            'No hay productos favoritos en esta sucursal. Marca favoritos en el producto o elige Todos.' :
+                            'No se encontraron productos');
                     grid.innerHTML = `
-                                    <div class="col-span-full flex flex-col items-center justify-center py-20 text-gray-400 px-4 text-center">
-                                        <div class="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-3">
-                                            <i class="ri-search-line text-2xl opacity-50"></i>
-                                        </div>
-                                        <p class="text-sm font-medium">${emptyMsg}</p>
-                                    </div>
-                                `;
+                                                                                                                                                                                    <div class="col-span-full flex flex-col items-center justify-center py-20 text-gray-400 px-4 text-center">
+                                                                                                                                                                                        <div class="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-3">
+                                                                                                                                                                                            <i class="ri-search-line text-2xl opacity-50"></i>
+                                                                                                                                                                                        </div>
+                                                                                                                                                                                        <p class="text-sm font-medium">${emptyMsg}</p>
+                                                                                                                                                                                    </div>
+                                                                                                                                                                                `;
                 }
             }
 
@@ -723,6 +672,10 @@
                 const container = document.getElementById('categories-grid');
                 if (!container) return;
                 container.innerHTML = '';
+                const mobileOnlyQuickFilters = window.matchMedia('(max-width: 767.98px)').matches;
+                if (mobileOnlyQuickFilters && selectedCategoryId !== CATEGORY_ALL_ID && selectedCategoryId !== CATEGORY_FAVORITES_ID) {
+                    selectedCategoryId = CATEGORY_ALL_ID;
+                }
 
                 // Favoritos (predeterminado)
                 const favBtn = document.createElement('button');
@@ -732,10 +685,10 @@
                     'inline-flex items-center gap-2 px-2.5 py-1.5 rounded-full text-xs sm:text-sm font-semibold',
                     'border transition-all duration-150 whitespace-nowrap cursor-pointer shrink-0',
                     isFavActive ?
-                    'bg-blue-600 text-white border-blue-600 shadow-sm' :
-                    'bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-slate-600 hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400'
+                        'bg-blue-600 text-white border-blue-600 shadow-sm' :
+                        'bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-slate-600 hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400'
                 ].join(' ');
-                favBtn.onclick = function() {
+                favBtn.onclick = function () {
                     selectedCategoryId = CATEGORY_FAVORITES_ID;
                     renderCategoryFilters();
                     renderProducts();
@@ -751,10 +704,10 @@
                     'inline-flex items-center gap-2 px-2.5 py-1.5 rounded-full text-xs sm:text-sm font-semibold',
                     'border transition-all duration-150 whitespace-nowrap cursor-pointer shrink-0',
                     isAllActive ?
-                    'bg-blue-600 text-white border-blue-600 shadow-sm' :
-                    'bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-slate-600 hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400'
+                        'bg-blue-600 text-white border-blue-600 shadow-sm' :
+                        'bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-slate-600 hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400'
                 ].join(' ');
-                allBtn.onclick = function() {
+                allBtn.onclick = function () {
                     selectedCategoryId = CATEGORY_ALL_ID;
                     renderCategoryFilters();
                     renderProducts();
@@ -762,7 +715,7 @@
                 allBtn.innerHTML = `<i class="ri-apps-line text-lg"></i><span>Todos</span>`;
                 container.appendChild(allBtn);
 
-                if (!serverCategories || serverCategories.length === 0) {
+                if (mobileOnlyQuickFilters || !serverCategories || serverCategories.length === 0) {
                     renderProducts();
                     return;
                 }
@@ -777,20 +730,20 @@
                         'inline-flex items-center gap-2 px-2.5 py-1.5 rounded-full text-xs sm:text-sm font-semibold',
                         'border transition-all duration-150 whitespace-nowrap cursor-pointer shrink-0',
                         isActive ?
-                        'bg-blue-600 text-white border-blue-600 shadow-sm' :
-                        'bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-slate-600 hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400'
+                            'bg-blue-600 text-white border-blue-600 shadow-sm' :
+                            'bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-slate-600 hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400'
                     ].join(' ');
-                    el.onclick = function() {
+                    el.onclick = function () {
                         selectedCategoryId = cat.id;
                         renderCategoryFilters();
                         renderProducts();
                     };
                     el.innerHTML = `
-                                    <img src="${imageUrl}" alt="${categoryName}"
-                                        class="w-6 h-6 rounded-full object-cover shrink-0 border ${isActive ? 'border-blue-300' : 'border-gray-200 dark:border-slate-600'}"
-                                        onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22200%22%3E%3Crect fill=%22%23e5e7eb%22 width=%22200%22 height=%22200%22/%3E%3C/svg%3E'">
-                                    <span>${categoryName}</span>
-                                `;
+                                                                                                                                                                                    <img src="${imageUrl}" alt="${categoryName}"
+                                                                                                                                                                                        class="w-6 h-6 rounded-full object-cover shrink-0 border ${isActive ? 'border-blue-300' : 'border-gray-200 dark:border-slate-600'}"
+                                                                                                                                                                                        onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22200%22%3E%3Crect fill=%22%23e5e7eb%22 width=%22200%22 height=%22200%22/%3E%3C/svg%3E'">
+                                                                                                                                                                                    <span>${categoryName}</span>
+                                                                                                                                                                                `;
                     container.appendChild(el);
                 });
             }
@@ -805,10 +758,10 @@
 
                 if (!currentSale.items || currentSale.items.length === 0) {
                     container.innerHTML = `
-                                    <div class="flex flex-col items-center justify-center text-gray-300 opacity-60">
-                                        <i class="fas fa-utensils text-3xl mb-2"></i>
-                                        <p class="font-medium text-sm">Sin productos</p>
-                                    </div>`;
+                                                                                                                                                                                    <div class="flex flex-col items-center justify-center text-gray-300 opacity-60">
+                                                                                                                                                                                        <i class="fas fa-utensils text-3xl mb-2"></i>
+                                                                                                                                                                                        <p class="font-medium text-sm">Sin productos</p>
+                                                                                                                                                                                    </div>`;
                 } else {
                     const ticketSavedTime = sessionStorage.getItem('last_saved_time') || '';
                     currentSale.items.forEach((item, index) => {
@@ -834,78 +787,83 @@
 
                         const hasCourtesy = (parseFloat(item.courtesyQty) || 0) > 0;
                         const showNoteBox = item.noteOpen === true || (item.noteOpen === undefined && hasNote);
-                        const showCourtesyBox = item.courtesyOpen === true || (item.courtesyOpen === undefined && hasCourtesy);
+                        const showCourtesyBox = item.courtesyOpen === true || (item.courtesyOpen ===
+                            undefined && hasCourtesy);
                         const noteBtnActive = hasNote || showNoteBox;
                         const courtesyBtnActive = hasCourtesy || showCourtesyBox;
                         const courtesyMinusDisabled = courtesyQty <= 0 ? ' disabled' : '';
-                        const courtesyMinusClass = courtesyQty <= 0 ? ' opacity-30 cursor-not-allowed' : ' hover:bg-slate-100 dark:hover:bg-zinc-700 font-bold';
-                        const courtesyMinusOnclick = courtesyQty > 0 ? `onclick="changeCourtesyQty(${index}, -1)"` : '';
+                        const courtesyMinusClass = courtesyQty <= 0 ? ' opacity-30 cursor-not-allowed' :
+                            ' hover:bg-slate-100 dark:hover:bg-zinc-700 font-bold';
+                        const courtesyMinusOnclick = courtesyQty > 0 ?
+                            `onclick="changeCourtesyQty(${index}, -1)"` : '';
                         const courtesyPlusDisabled = courtesyQty >= itemQty ? ' disabled' : '';
-                        const courtesyPlusClass = courtesyQty >= itemQty ? ' opacity-30 cursor-not-allowed' : ' hover:bg-slate-100 dark:hover:bg-zinc-700 font-bold';
-                        const courtesyPlusOnclick = courtesyQty < itemQty ? `onclick="changeCourtesyQty(${index}, 1)"` : '';
+                        const courtesyPlusClass = courtesyQty >= itemQty ? ' opacity-30 cursor-not-allowed' :
+                            ' hover:bg-slate-100 dark:hover:bg-zinc-700 font-bold';
+                        const courtesyPlusOnclick = courtesyQty < itemQty ?
+                            `onclick="changeCourtesyQty(${index}, 1)"` : '';
 
                         const row = document.createElement('div');
                         row.className =
                             'cart-item-row group relative mb-3 rounded-xl overflow-hidden border border-slate-200 bg-white text-slate-900 shadow-md dark:border-zinc-600/50 dark:bg-[#252526] dark:text-zinc-100 dark:shadow-lg dark:shadow-black/40';
 
                         row.innerHTML = `
-                                <div class="flex flex-col gap-3 p-4 sm:p-4">
-                                        <div class="flex items-start justify-between gap-2">
-                                            <div class="min-w-0 flex-1">
-                                                <h3 class="font-bold text-[15px] sm:text-base leading-snug tracking-tight text-slate-900 dark:text-white">${productName}</h3>
-                                                <p class="mt-1 text-[11px] sm:text-xs text-slate-500 dark:text-zinc-400 font-medium tabular-nums">${ticketSavedTime ? ticketSavedTime + ' · ' : ''}S/ ${itemPrice.toFixed(2)} <span class="text-slate-400 dark:text-zinc-500 font-normal">c/u</span></p>
-                                            </div>
-                                            <span class="shrink-0 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wide ${statusClass}">${statusLabel}</span>
-                                        </div>
+                                                                                                                                                                                <div class="flex flex-col gap-3 p-4 sm:p-4">
+                                                                                                                                                                                        <div class="flex items-start justify-between gap-2">
+                                                                                                                                                                                            <div class="min-w-0 flex-1">
+                                                                                                                                                                                                <h3 class="font-bold text-[15px] sm:text-base leading-snug tracking-tight text-slate-900 dark:text-white">${productName}</h3>
+                                                                                                                                                                                                <p class="mt-1 text-[11px] sm:text-xs text-slate-500 dark:text-zinc-400 font-medium tabular-nums">${ticketSavedTime ? ticketSavedTime + ' · ' : ''}S/ ${itemPrice.toFixed(2)} <span class="text-slate-400 dark:text-zinc-500 font-normal">c/u</span></p>
+                                                                                                                                                                                            </div>
+                                                                                                                                                                                            <span class="shrink-0 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wide ${statusClass}">${statusLabel}</span>
+                                                                                                                                                                                        </div>
 
-                                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-lg bg-slate-50 border border-slate-200 px-2.5 py-2.5 dark:bg-zinc-900/50 dark:border-zinc-600/50">
-                                            <div class="flex justify-center items-center gap-0.5 rounded-lg bg-white px-0.5 py-0.5 border border-slate-200 dark:bg-zinc-800/80 dark:border-zinc-600/60">
-                                                <button type="button" ${qtyMinusOnclick} class="w-9 h-9 flex items-center justify-center rounded-md transition-all text-slate-600 dark:text-zinc-300 ${qtyMinusClass}">
-                                                    <i class="ri-subtract-line text-base"></i>
-                                                </button>
-                                                <input type="number" value="${item.qty}" min="1" onchange="setQtyFromInput(${index}, this)" class="w-11 h-9 text-center text-sm font-bold bg-transparent border-none focus:ring-0 focus:outline-none tabular-nums text-slate-900 dark:text-white p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
-                                                <button type="button" onclick="updateQty(${index}, 1)" class="w-9 h-9 flex items-center justify-center rounded-md hover:bg-slate-100 dark:hover:bg-zinc-700 text-slate-600 dark:text-zinc-300 transition-all font-bold">
-                                                    <i class="ri-add-line text-base"></i>
-                                                </button>
-                                            </div>
-                                            <div class="text-center sm:text-right flex flex-col justify-center">
-                                                <span class="text-[10px] text-slate-500 dark:text-zinc-500 uppercase font-bold tracking-wider leading-none mb-0.5">Subtotal</span>
-                                                <span class="text-lg font-bold tabular-nums leading-none text-slate-900 dark:text-white">S/ ${itemTotal.toFixed(2)}</span>
-                                            </div>
-                                        </div>
+                                                                                                                                                                                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-lg bg-slate-50 border border-slate-200 px-2.5 py-2.5 dark:bg-zinc-900/50 dark:border-zinc-600/50">
+                                                                                                                                                                                            <div class="flex justify-center items-center gap-0.5 rounded-lg bg-white px-0.5 py-0.5 border border-slate-200 dark:bg-zinc-800/80 dark:border-zinc-600/60">
+                                                                                                                                                                                                <button type="button" ${qtyMinusOnclick} class="w-9 h-9 flex items-center justify-center rounded-md transition-all text-slate-600 dark:text-zinc-300 ${qtyMinusClass}">
+                                                                                                                                                                                                    <i class="ri-subtract-line text-base"></i>
+                                                                                                                                                                                                </button>
+                                                                                                                                                                                                <input type="number" value="${item.qty}" min="1" onchange="setQtyFromInput(${index}, this)" class="w-11 h-9 text-center text-sm font-bold bg-transparent border-none focus:ring-0 focus:outline-none tabular-nums text-slate-900 dark:text-white p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
+                                                                                                                                                                                                <button type="button" onclick="updateQty(${index}, 1)" class="w-9 h-9 flex items-center justify-center rounded-md hover:bg-slate-100 dark:hover:bg-zinc-700 text-slate-600 dark:text-zinc-300 transition-all font-bold">
+                                                                                                                                                                                                    <i class="ri-add-line text-base"></i>
+                                                                                                                                                                                                </button>
+                                                                                                                                                                                            </div>
+                                                                                                                                                                                            <div class="text-center sm:text-right flex flex-col justify-center">
+                                                                                                                                                                                                <span class="text-[10px] text-slate-500 dark:text-zinc-500 uppercase font-bold tracking-wider leading-none mb-0.5">Subtotal</span>
+                                                                                                                                                                                                <span class="text-lg font-bold tabular-nums leading-none text-slate-900 dark:text-white">S/ ${itemTotal.toFixed(2)}</span>
+                                                                                                                                                                                            </div>
+                                                                                                                                                                                        </div>
 
-                                        <div class="flex flex-wrap items-center gap-x-2 gap-y-1.5 border-t border-slate-200 pt-2.5 dark:border-zinc-700/60">
-                                            <button type="button" onclick="toggleNoteInput(${index})" class="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-colors ${noteBtnActive ? 'bg-blue-50 text-blue-700 dark:bg-sky-500/15 dark:text-sky-300' : 'text-slate-500 hover:bg-slate-100 hover:text-blue-600 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-sky-400'}">
-                                                <i class="${hasNote ? 'ri-chat-1-fill' : 'ri-chat-1-line'}"></i> ${hasNote ? 'Editar nota' : 'Nota'}
-                                            </button>
-                                            <button type="button" onclick="toggleCourtesyInput(${index})" class="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-colors ${courtesyBtnActive ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300' : 'text-slate-500 hover:bg-slate-100 hover:text-emerald-600 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-emerald-400'}">
-                                                <i class="${courtesyBtnActive ? 'ri-star-fill' : 'ri-star-line'}"></i> Cortesía
-                                            </button>
-                                            <button type="button" onclick="removeFromCart(${index})" class="ml-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-red-500/10 hover:text-red-500 dark:text-zinc-500 dark:hover:text-red-400" title="Eliminar">
-                                                <i class="ri-delete-bin-line text-lg"></i>
-                                            </button>
-                                        </div>
+                                                                                                                                                                                        <div class="flex flex-wrap items-center gap-x-2 gap-y-1.5 border-t border-slate-200 pt-2.5 dark:border-zinc-700/60">
+                                                                                                                                                                                            <button type="button" onclick="toggleNoteInput(${index})" class="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-colors ${noteBtnActive ? 'bg-blue-50 text-blue-700 dark:bg-sky-500/15 dark:text-sky-300' : 'text-slate-500 hover:bg-slate-100 hover:text-blue-600 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-sky-400'}">
+                                                                                                                                                                                                <i class="${hasNote ? 'ri-chat-1-fill' : 'ri-chat-1-line'}"></i> ${hasNote ? 'Editar nota' : 'Nota'}
+                                                                                                                                                                                            </button>
+                                                                                                                                                                                            <button type="button" onclick="toggleCourtesyInput(${index})" class="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-colors ${courtesyBtnActive ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300' : 'text-slate-500 hover:bg-slate-100 hover:text-emerald-600 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-emerald-400'}">
+                                                                                                                                                                                                <i class="${courtesyBtnActive ? 'ri-star-fill' : 'ri-star-line'}"></i> Cortesía
+                                                                                                                                                                                            </button>
+                                                                                                                                                                                            <button type="button" onclick="removeFromCart(${index})" class="ml-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-red-500/10 hover:text-red-500 dark:text-zinc-500 dark:hover:text-red-400" title="Eliminar">
+                                                                                                                                                                                                <i class="ri-delete-bin-line text-lg"></i>
+                                                                                                                                                                                            </button>
+                                                                                                                                                                                        </div>
 
-                                        <div id="note-box-${index}" class="${showNoteBox ? '' : 'hidden'}">
-                                            <textarea rows="2" onblur="saveNote(${index}, this.value)" placeholder="Ej: Sin cebolla, término medio..." class="w-full min-h-[3.25rem] resize-y rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-600 dark:bg-zinc-900/80 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-sky-500">${itemNote}</textarea>
-                                        </div>
+                                                                                                                                                                                        <div id="note-box-${index}" class="${showNoteBox ? '' : 'hidden'}">
+                                                                                                                                                                                            <textarea rows="2" onblur="saveNote(${index}, this.value)" placeholder="Ej: Sin cebolla, término medio..." class="w-full min-h-[3.25rem] resize-y rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-600 dark:bg-zinc-900/80 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-sky-500">${itemNote}</textarea>
+                                                                                                                                                                                        </div>
 
-                                        <div id="courtesy-box-${index}" class="${showCourtesyBox ? '' : 'hidden'}">
-                                            <div class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 dark:border-zinc-600/50 dark:bg-zinc-900/40">
-                                                <span class="text-[11px] font-semibold text-slate-700 dark:text-zinc-300">Cortesía <span class="font-normal text-slate-500 dark:text-zinc-500">(sin cargo)</span></span>
-                                                <div class="flex items-center gap-0.5 rounded-lg bg-white px-0.5 py-0.5 border border-slate-200 dark:bg-zinc-800/90 dark:border-zinc-600/60">
-                                                    <button type="button" ${courtesyMinusOnclick} class="w-8 h-8 flex items-center justify-center rounded-md transition-all text-slate-700 dark:text-zinc-200${courtesyMinusClass}"${courtesyMinusDisabled}>
-                                                        <i class="ri-subtract-line text-sm"></i>
-                                                    </button>
-                                                    <input type="number" min="0" max="${itemQty}" value="${courtesyQty}" onchange="setCourtesyQty(${index}, this)" class="w-10 h-8 text-center text-sm font-bold bg-transparent border-none focus:ring-0 focus:outline-none tabular-nums text-slate-900 dark:text-white p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
-                                                    <button type="button" ${courtesyPlusOnclick} class="w-8 h-8 flex items-center justify-center rounded-md transition-all text-slate-700 dark:text-zinc-200${courtesyPlusClass}"${courtesyPlusDisabled}>
-                                                        <i class="ri-add-line text-sm"></i>
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                </div>
-                            `;
+                                                                                                                                                                                        <div id="courtesy-box-${index}" class="${showCourtesyBox ? '' : 'hidden'}">
+                                                                                                                                                                                            <div class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 dark:border-zinc-600/50 dark:bg-zinc-900/40">
+                                                                                                                                                                                                <span class="text-[11px] font-semibold text-slate-700 dark:text-zinc-300">Cortesía <span class="font-normal text-slate-500 dark:text-zinc-500">(sin cargo)</span></span>
+                                                                                                                                                                                                <div class="flex items-center gap-0.5 rounded-lg bg-white px-0.5 py-0.5 border border-slate-200 dark:bg-zinc-800/90 dark:border-zinc-600/60">
+                                                                                                                                                                                                    <button type="button" ${courtesyMinusOnclick} class="w-8 h-8 flex items-center justify-center rounded-md transition-all text-slate-700 dark:text-zinc-200${courtesyMinusClass}"${courtesyMinusDisabled}>
+                                                                                                                                                                                                        <i class="ri-subtract-line text-sm"></i>
+                                                                                                                                                                                                    </button>
+                                                                                                                                                                                                    <input type="number" min="0" max="${itemQty}" value="${courtesyQty}" onchange="setCourtesyQty(${index}, this)" class="w-10 h-8 text-center text-sm font-bold bg-transparent border-none focus:ring-0 focus:outline-none tabular-nums text-slate-900 dark:text-white p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
+                                                                                                                                                                                                    <button type="button" ${courtesyPlusOnclick} class="w-8 h-8 flex items-center justify-center rounded-md transition-all text-slate-700 dark:text-zinc-200${courtesyPlusClass}"${courtesyPlusDisabled}>
+                                                                                                                                                                                                        <i class="ri-add-line text-sm"></i>
+                                                                                                                                                                                                    </button>
+                                                                                                                                                                                                </div>
+                                                                                                                                                                                            </div>
+                                                                                                                                                                                        </div>
+                                                                                                                                                                                </div>
+                                                                                                                                                                            `;
                         container.appendChild(row);
                     });
                 }
@@ -1082,13 +1040,14 @@
             function setupQuickClientCreate() {
                 const form = document.querySelector('form[data-quick-client-form]');
                 if (!form) return;
-                form.addEventListener('submit', async function(e) {
+                form.addEventListener('submit', async function (e) {
                     e.preventDefault();
                     const submitBtn = form.querySelector('button[type="submit"]');
                     const originalText = submitBtn ? submitBtn.innerHTML : '';
                     if (submitBtn) {
                         submitBtn.disabled = true;
-                        submitBtn.innerHTML = '<i class="ri-loader-4-line animate-spin mr-1"></i> Guardando...';
+                        submitBtn.innerHTML =
+                            '<i class="ri-loader-4-line animate-spin mr-1"></i> Guardando...';
                     }
                     try {
                         const fd = new FormData(form);
@@ -1102,14 +1061,15 @@
                         });
                         const data = await res.json().catch(() => ({}));
                         if (!res.ok || !data?.success || !data?.id) {
-                            const validation = data?.errors && typeof data.errors === 'object'
-                                ? Object.values(data.errors).flat().join('\n')
-                                : '';
+                            const validation = data?.errors && typeof data.errors === 'object' ?
+                                Object.values(data.errors).flat().join('\n') :
+                                '';
                             throw new Error(validation || data?.message || 'No se pudo crear el cliente.');
                         }
 
                         const comboName = form.dataset.clientComboboxName || 'header_client_id';
-                        const label = [data.name, data.document_number].filter(Boolean).join(' - ') || 'Cliente';
+                        const label = [data.name, data.document_number].filter(Boolean).join(' - ') ||
+                            'Cliente';
                         const newOpts = [...(window.__salesClientOptions || [])];
                         if (!newOpts.some(o => String(o.id) === String(data.id))) {
                             newOpts.push({
@@ -1356,44 +1316,44 @@
                 row.className =
                     'cobro-pm-row rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50 p-3 space-y-2';
                 row.innerHTML = `
-                                <div class="flex gap-2 items-end flex-wrap">
-                                    <div class="flex-1 min-w-[120px]">
-                                        <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Método</label>
-                                        <select class="cobro-pm-method w-full py-2 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm" onchange="toggleCobroExtraFields(this.closest('.cobro-pm-row'))">${opts}</select>
-                                    </div>
-                                    <div class="w-24 shrink-0">
-                                        <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Monto</label>
-                                        <input type="number" step="0.01" min="0" value="${autoAmount > 0 ? autoAmount.toFixed(2) : '0.00'}" placeholder="0.00"
-                                            class="w-full py-2 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm tabular-nums cobro-pm-amount"
-                                            oninput="updateCobroTotalPaid()" onfocus="autocompleteCobroAmount(this)">
-                                    </div>
-                                    <button type="button" onclick="this.closest('.cobro-pm-row').remove(); updateCobroTotalPaid();" class="p-2 h-9 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors shrink-0" title="Eliminar">
-                                        <i class="ri-delete-bin-line text-lg"></i>
-                                    </button>
-                                </div>
-                                <div class="cobro-pm-card-group hidden flex gap-2 items-end flex-wrap">
-                                    <div class="flex-1 min-w-[100px]">
-                                        <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Pasarela</label>
-                                        <select class="cobro-pm-gateway w-full py-2 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm">${buildCobroGatewayOptions()}</select>
-                                    </div>
-                                    <div class="flex-1 min-w-[100px]">
-                                        <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Tarjeta</label>
-                                        <select class="cobro-pm-card w-full py-2 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm">${buildCobroCardOptions()}</select>
-                                    </div>
-                                </div>
-                                <div class="cobro-pm-wallet-group hidden flex gap-2 items-end flex-wrap">
-                                    <div class="flex-1 min-w-[120px]">
-                                        <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Billetera</label>
-                                        <select class="cobro-pm-wallet w-full py-2 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm">${buildCobroWalletOptions()}</select>
-                                    </div>
-                                </div>
-                                <div class="cobro-pm-bank-group hidden flex gap-2 items-end flex-wrap">
-                                    <div class="flex-1 min-w-[120px]">
-                                        <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Banco destino</label>
-                                        <select class="cobro-pm-bank w-full py-2 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm">${buildCobroBankOptions()}</select>
-                                    </div>
-                                </div>
-                            `;
+                                                                                                                                                                                <div class="flex gap-2 items-end flex-wrap">
+                                                                                                                                                                                    <div class="flex-1 min-w-[120px]">
+                                                                                                                                                                                        <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Método</label>
+                                                                                                                                                                                        <select class="cobro-pm-method w-full py-2 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm" onchange="toggleCobroExtraFields(this.closest('.cobro-pm-row'))">${opts}</select>
+                                                                                                                                                                                    </div>
+                                                                                                                                                                                    <div class="w-24 shrink-0">
+                                                                                                                                                                                        <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Monto</label>
+                                                                                                                                                                                        <input type="number" step="0.01" min="0" value="${autoAmount > 0 ? autoAmount.toFixed(2) : '0.00'}" placeholder="0.00"
+                                                                                                                                                                                            class="w-full py-2 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm tabular-nums cobro-pm-amount"
+                                                                                                                                                                                            oninput="updateCobroTotalPaid()" onfocus="autocompleteCobroAmount(this)">
+                                                                                                                                                                                    </div>
+                                                                                                                                                                                    <button type="button" onclick="this.closest('.cobro-pm-row').remove(); updateCobroTotalPaid();" class="p-2 h-9 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors shrink-0" title="Eliminar">
+                                                                                                                                                                                        <i class="ri-delete-bin-line text-lg"></i>
+                                                                                                                                                                                    </button>
+                                                                                                                                                                                </div>
+                                                                                                                                                                                <div class="cobro-pm-card-group hidden flex gap-2 items-end flex-wrap">
+                                                                                                                                                                                    <div class="flex-1 min-w-[100px]">
+                                                                                                                                                                                        <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Pasarela</label>
+                                                                                                                                                                                        <select class="cobro-pm-gateway w-full py-2 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm">${buildCobroGatewayOptions()}</select>
+                                                                                                                                                                                    </div>
+                                                                                                                                                                                    <div class="flex-1 min-w-[100px]">
+                                                                                                                                                                                        <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Tarjeta</label>
+                                                                                                                                                                                        <select class="cobro-pm-card w-full py-2 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm">${buildCobroCardOptions()}</select>
+                                                                                                                                                                                    </div>
+                                                                                                                                                                                </div>
+                                                                                                                                                                                <div class="cobro-pm-wallet-group hidden flex gap-2 items-end flex-wrap">
+                                                                                                                                                                                    <div class="flex-1 min-w-[120px]">
+                                                                                                                                                                                        <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Billetera</label>
+                                                                                                                                                                                        <select class="cobro-pm-wallet w-full py-2 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm">${buildCobroWalletOptions()}</select>
+                                                                                                                                                                                    </div>
+                                                                                                                                                                                </div>
+                                                                                                                                                                                <div class="cobro-pm-bank-group hidden flex gap-2 items-end flex-wrap">
+                                                                                                                                                                                    <div class="flex-1 min-w-[120px]">
+                                                                                                                                                                                        <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Banco destino</label>
+                                                                                                                                                                                        <select class="cobro-pm-bank w-full py-2 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm">${buildCobroBankOptions()}</select>
+                                                                                                                                                                                    </div>
+                                                                                                                                                                                </div>
+                                                                                                                                                                            `;
                 list.appendChild(row);
                 toggleCobroExtraFields(row);
                 updateCobroTotalPaid();
@@ -1454,18 +1414,55 @@
                 if (!notification) return;
                 const isError = type === 'error';
                 notification.innerHTML = `
-                                <div class="rounded-xl border p-4 shadow-lg ${isError ? 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800' : 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800'}">
-                                    <div class="flex items-start gap-3">
-                                        <div class="${isError ? 'text-red-500' : 'text-green-500'}"><i class="fas fa-${isError ? 'exclamation-circle' : 'check-circle'} text-xl"></i></div>
-                                        <div>
-                                            <h3 class="font-semibold ${isError ? 'text-red-800 dark:text-red-200' : 'text-green-800 dark:text-green-200'}">${title}</h3>
-                                            <p class="text-sm mt-1 ${isError ? 'text-red-700 dark:text-red-300' : 'text-green-700 dark:text-green-300'}">${message}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            `;
+                                                                                                                                                                                <div class="rounded-xl border p-4 shadow-lg ${isError ? 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800' : 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800'}">
+                                                                                                                                                                                    <div class="flex items-start gap-3">
+                                                                                                                                                                                        <div class="${isError ? 'text-red-500' : 'text-green-500'}"><i class="fas fa-${isError ? 'exclamation-circle' : 'check-circle'} text-xl"></i></div>
+                                                                                                                                                                                        <div>
+                                                                                                                                                                                            <h3 class="font-semibold ${isError ? 'text-red-800 dark:text-red-200' : 'text-green-800 dark:text-green-200'}">${title}</h3>
+                                                                                                                                                                                            <p class="text-sm mt-1 ${isError ? 'text-red-700 dark:text-red-300' : 'text-green-700 dark:text-green-300'}">${message}</p>
+                                                                                                                                                                                        </div>
+                                                                                                                                                                                    </div>
+                                                                                                                                                                                </div>
+                                                                                                                                                                            `;
                 notification.classList.remove('opacity-0', 'pointer-events-none');
                 setTimeout(() => notification.classList.add('opacity-0', 'pointer-events-none'), 3500);
+            }
+
+            function isQzTrayAvailable() {
+                try {
+                    if (window.sessionStorage?.getItem('qzTrayUnavailable') === '1') {
+                        return false;
+                    }
+                } catch (e) {
+                    // Ignorar restricciones de sessionStorage.
+                }
+                return typeof window.qz !== 'undefined' && window.qz !== null;
+            }
+
+            function markQzTrayUnavailable() {
+                try {
+                    window.sessionStorage?.setItem('qzTrayUnavailable', '1');
+                } catch (e) {
+                    // Ignorar restricciones de sessionStorage.
+                }
+            }
+
+            async function ensureQzTrayConnected(qzApi) {
+                if (!qzApi || !isQzTrayAvailable()) {
+                    return false;
+                }
+                return qzApi.websocket.isActive();
+            }
+
+            function resolveStrictLocalPrinterName() {
+                const host = String(window.location.hostname || '').trim().toLowerCase();
+                const isLocalhost = ['localhost', '127.0.0.1', '::1'].includes(host);
+                return isLocalhost ? 'BARRA' : 'BARRA2';
+            }
+
+            function requiresStrictLocalQz(printerName) {
+                const target = String(printerName || '').trim().toLowerCase();
+                return target === 'barra2' || target.startsWith('barra2');
             }
 
             async function sendThermalTicketAfterSale(movementId, saleResponse) {
@@ -1474,60 +1471,96 @@
                 const sel = document.getElementById('cobro-thermal-printer');
                 const printerId = sel && sel.value ? parseInt(sel.value, 10) : null;
                 const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-                const body = { movement_id: movementId };
+                const preferredPrinterName = resolveStrictLocalPrinterName();
+                const strictLocalQz = requiresStrictLocalQz(preferredPrinterName);
+                const body = {
+                    movement_id: movementId
+                };
                 if (printerId) body.printer_id = printerId;
 
-                // Si QZ Tray está activo, obtener el payload del servidor e imprimir por QZ (USB o red)
-                if (qzApi) {
+                // Si QZ Tray está activo y conectado, obtener el payload del servidor e imprimir por QZ (USB o red)
+                if (qzApi && await ensureQzTrayConnected(qzApi)) {
                     try {
                         const tr = await fetch(salesThermalPrintUrl, {
                             method: 'POST',
-                            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrf,
+                                'Accept': 'application/json'
+                            },
                             credentials: 'same-origin',
-                            body: JSON.stringify({ ...body, mode: 'qz' })
+                            body: JSON.stringify({
+                                ...body,
+                                mode: 'qz'
+                            })
                         });
-                        const td = tr.headers.get('content-type')?.includes('application/json') ? await tr.json() : null;
+                        const td = tr.headers.get('content-type')?.includes('application/json') ? await tr.json() :
+                            null;
                         if (!tr.ok || !td?.success || !td?.payload_b64) {
-                            showCobroNotification('Impresión', td?.message || 'No se pudo obtener el ticket del servidor.', 'error');
+                            openSaleTicketPdfTab(movementId);
                             return;
                         }
-                        if (!qzApi.websocket.isActive()) await qzApi.websocket.connect();
-                        let printerName = td.printer_name || '';
+                        let printerName = preferredPrinterName || td.printer_name || '';
                         if (!printerName) printerName = await qzApi.printers.getDefault();
                         if (!printerName) {
-                            showCobroNotification('Impresión', 'No se encontró ninguna impresora en QZ Tray.', 'error');
+                            openSaleTicketPdfTab(movementId);
                             return;
                         }
                         const paperMm = (parseInt(td.paper_width) || 58) === 80 ? 80 : 58;
-                        const config = qzApi.configs.create(printerName, { units: 'mm', size: { width: paperMm, height: 200 }, scaleContent: false });
-                        await qzApi.print(config, [{ type: 'raw', format: 'base64', data: td.payload_b64 }]);
+                        const config = qzApi.configs.create(printerName, {
+                            units: 'mm',
+                            size: {
+                                width: paperMm,
+                                height: 200
+                            },
+                            scaleContent: false
+                        });
+                        await qzApi.print(config, [{
+                            type: 'raw',
+                            format: 'base64',
+                            data: td.payload_b64
+                        }]);
                         showCobroNotification('Impresión', 'Ticket enviado a "' + printerName + '".', 'success');
                     } catch (e) {
+                        markQzTrayUnavailable();
                         console.warn('QZ Ticket:', e);
-                        showCobroNotification('Impresión', 'Error al imprimir con QZ Tray: ' + (e?.message || e), 'error');
+                        if (strictLocalQz) {
+                            openSaleTicketPdfTab(movementId);
+                            return;
+                        }
+                        openSaleTicketPdfTab(movementId);
                     }
                     return;
                 }
 
                 // Fallback: impresión TCP por red (requiere red local e IP en impresora)
+                if (strictLocalQz) {
+                    openSaleTicketPdfTab(movementId);
+                    return;
+                }
+
                 try {
                     const tr = await fetch(salesThermalPrintUrl, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrf,
+                            'Accept': 'application/json'
+                        },
                         credentials: 'same-origin',
                         body: JSON.stringify(body)
                     });
-                    const td = tr.headers.get('content-type')?.includes('application/json') ? await tr.json() : null;
+                    const td = tr.headers.get('content-type')?.includes('application/json') ? await tr.json() :
+                        null;
                     if (tr.ok && td?.success) {
-                        showCobroNotification('Impresión', td.message || 'Ticket enviado a la ticketera.', 'success');
+                        showCobroNotification('Impresión', td.message || 'Ticket enviado a la ticketera.',
+                            'success');
                     } else {
-                        const msg = td?.message || 'No se pudo enviar el ticket a la ticketera.';
-                        console.warn('Ticketera red:', msg);
-                        showCobroNotification('Impresión', msg, 'error');
+                        openSaleTicketPdfTab(movementId);
                     }
                 } catch (e) {
                     console.warn('Ticketera red:', e);
-                    showCobroNotification('Impresión', 'Error de red al conectar con la ticketera.', 'error');
+                    openSaleTicketPdfTab(movementId);
                 }
             }
 
@@ -1687,6 +1720,13 @@
                 document.getElementById('add-to-cart-notification')?.classList.remove('notification-show');
             }
 
+            function clearProductSearch() {
+                const searchEl = document.getElementById('product-search');
+                if (searchEl) searchEl.value = '';
+                searchQuery = '';
+                renderProducts();
+            }
+
             // --- INICIALIZACIÓN ---
             function init() {
                 renderCategoryFilters();
@@ -1698,10 +1738,10 @@
                 if (document.getElementById('cobro-payment-methods-list')?.children.length === 0) {
                     addCobroPaymentMethod();
                 }
-                const searchEl = document.getElementById('search-products');
+                const searchEl = document.getElementById('product-search');
                 if (searchEl) {
-                    searchEl.addEventListener('input', function(e) {
-                        searchQuery = (e.target.value || '').trim();
+                    searchEl.addEventListener('input', function (e) {
+                        searchQuery = (e.target.value || '').toLowerCase();
                         renderProducts();
                     });
                 }

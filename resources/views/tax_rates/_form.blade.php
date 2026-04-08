@@ -28,6 +28,7 @@
         <input
             type="number"
             name="tax_rate"
+            step="0.1"
             value="{{ old('tax_rate', $taxRate->tax_rate ?? '') }}"
             required
             placeholder="Ingrese la tasa de impuesto"

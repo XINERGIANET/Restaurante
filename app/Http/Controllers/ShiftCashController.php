@@ -26,19 +26,16 @@ class ShiftCashController extends Controller
     public function redirectBase(Request $request)
     {
         $branchId = \effective_branch_id();
-        $query = CashRegister::where('status', '1');
-        if ($branchId !== null) {
-            $query->where('branch_id', $branchId);
-        }
-        $firstBox = $query->first();
-        if ($firstBox) {
-            $params = ['cash_register_id' => $firstBox->id];
+        $selectedBoxId = effective_cash_register_id($branchId);
+        if ($selectedBoxId) {
+            $params = ['cash_register_id' => $selectedBoxId];
             if ($request->filled('view_id')) {
                 $params['view_id'] = $request->input('view_id');
             }
             return redirect()->route('shift-cash.index', $params);
         }
-        abort(404, 'No hay cajas registradas');
+
+        abort(422, 'Seleccione una caja de trabajo antes de gestionar turnos.');
     }
 
     public function index(Request $request, $cash_register_id = null)
@@ -50,21 +47,10 @@ class ShiftCashController extends Controller
         }
         $cashRegisters = $cashRegistersQuery->orderBy('number', 'asc')->get();
 
-        if (empty($cash_register_id)) {
-            if ($cashRegisters->isNotEmpty()) {
-                $defaultId = $cashRegisters->first()->id;                
-                $params = ['cash_register_id' => $defaultId];
-                if ($request->filled('view_id')) {
-                    $params['view_id'] = $request->input('view_id');
-                }
-                
-                return redirect()->route('shift-cash.index', $params);
-            } else {
-                abort(404, 'No hay cajas registradas');
-            }
+        $selectedBoxId = effective_cash_register_id($branchId);
+        if (! $selectedBoxId) {
+            abort(422, 'Seleccione una caja de trabajo antes de gestionar turnos.');
         }
-
-        $selectedBoxId = $cash_register_id;
 
         $search = $request->input('search');
         $perPage = (int) $request->input('per_page', 10);
@@ -102,9 +88,19 @@ class ShiftCashController extends Controller
                 ->get();
         }
 
-        $selectedBoxId = $request->input('cash_register_id') ?? $cash_register_id;
-        if (empty($selectedBoxId) && $cashRegisters->isNotEmpty()) {
-            $selectedBoxId = $cashRegisters->first()->id;
+        if ($cash_register_id !== null && (int) $cash_register_id !== (int) $selectedBoxId) {
+            $params = ['cash_register_id' => $selectedBoxId];
+            if ($request->filled('view_id')) {
+                $params['view_id'] = $request->input('view_id');
+            }
+            if ($request->filled('search')) {
+                $params['search'] = $request->input('search');
+            }
+            if ($request->filled('per_page')) {
+                $params['per_page'] = $request->input('per_page');
+            }
+
+            return redirect()->route('shift-cash.index', $params);
         }
 
         $shift_cash = CashShiftRelation::query()

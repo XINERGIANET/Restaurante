@@ -54,19 +54,34 @@ class AppServiceProvider extends ServiceProvider
 
         View::composer('*', function ($view) {
             if (Auth::check()) {
+                $isMozoProfile = current_user_is_mozo();
                 $query = CashRegister::where('status', '1')->orderBy('number', 'asc');
                 $branchId = session('branch_id');
                 if ($branchId) {
                     $query->where('branch_id', $branchId);
                 }
                 $cajas = $query->get();
-                $currentCajaId = session('cash_register_id');
-                if ($cajas->isNotEmpty()) {
-                    if (!$currentCajaId || ($branchId && !$cajas->contains('id', $currentCajaId))) {
-                        session(['cash_register_id' => $cajas->first()->id]);
-                    }
+                $currentCajaId = effective_cash_register_id($branchId ? (int) $branchId : null);
+                $currentCaja = $currentCajaId ? $cajas->firstWhere('id', $currentCajaId) : null;
+
+                if (! $currentCaja && session()->has('cash_register_id')) {
+                    session()->forget(['cash_register_id', 'cash_register_name', 'cash_register_number']);
                 }
-                $view->with('cashRegisters', $cajas);
+
+                $cashSelectionRequired = $isMozoProfile
+                    ? false
+                    : cash_register_selection_required($branchId ? (int) $branchId : null);
+                $forceCashRegisterModal = $isMozoProfile
+                    ? false
+                    : ($cashSelectionRequired || (bool) session('force_cash_register_modal', false));
+
+                $view->with([
+                    'cashRegisters' => $cajas,
+                    'selectedCashRegister' => $currentCaja,
+                    'cashSelectionRequired' => $cashSelectionRequired,
+                    'forceCashRegisterModal' => $forceCashRegisterModal,
+                    'cashRegisterSelectionEnabled' => ! $isMozoProfile,
+                ]);
             }
         });
     }

@@ -165,8 +165,7 @@
                             </div>
                             <div class="{{ $filterClass }}">
                                 <label class="{{ $labelClass }}">Caja</label>
-                                <select name="cash_register_id" class="{{ $inputClass }}">
-                                    <option value="">Todas</option>
+                                <select name="cash_register_id" class="{{ $inputClass }}" disabled>
                                     @foreach ($cashRegisters ?? [] as $cr)
                                         <option value="{{ $cr->id }}" @selected(($cashRegisterId ?? '') == $cr->id)>
                                             {{ $cr->number ?? $cr->id }}</option>
@@ -201,7 +200,7 @@
                                 </select>
                             </div>
                         </div>
-                        <div class="shrink-0">
+                        <div class="shrink-0 flex flex-wrap items-center gap-2">
                             <button type="button" onclick="descargarPdf()"
                                 data-pdf-url="{{ route(
                                     'admin.sales.pdf',
@@ -220,6 +219,25 @@
                                 class="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-orange-600 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2">
                                 <i class="ri-file-pdf-line text-base"></i>
                                 <span>Descargar PDF</span>
+                            </button>
+                            <button type="button" onclick="descargarExcel()"
+                                data-excel-url="{{ route(
+                                    'admin.sales.excel',
+                                    array_filter([
+                                        'view_id' => $viewId ?? null,
+                                        'date_from' => $dateFrom,
+                                        'date_to' => $dateTo,
+                                        'search' => $search,
+                                        'document_type_id' => $documentTypeId ?? null,
+                                        'payment_method_id' => $paymentMethodId ?? null,
+                                        'cash_register_id' => $cashRegisterId ?? null,
+                                        'cash_shift_relation_id' => $cashShiftRelationId ?? null,
+                                        'sale_type' => $saleType ?? null,
+                                    ]),
+                                ) }}"
+                                class="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2">
+                                <i class="ri-file-excel-2-line text-base"></i>
+                                <span>Descargar Excel</span>
                             </button>
                         </div>
                     </div>
@@ -434,10 +452,32 @@
                                                     class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50"
                                                     style="transition-delay: 0.5s;">Editar</span>
                                             </div>
+                                            @php
+                                                $linkedOrderMovement = $sale->orderMovement ?? $sale->movement?->orderMovement;
+                                                $linkedTable = $linkedOrderMovement?->table;
+                                                $tableHasOtherPendingOrder = false;
+                                                if ($linkedOrderMovement && $linkedTable) {
+                                                    $tableHasOtherPendingOrder = \App\Models\OrderMovement::query()
+                                                        ->where('table_id', $linkedTable->id)
+                                                        ->where('id', '!=', $linkedOrderMovement->id)
+                                                        ->whereIn('status', ['PENDIENTE', 'P'])
+                                                        ->exists();
+                                                }
+
+                                                $deleteMessage = "Se eliminara la venta {$sale->number}. Esta accion no se puede deshacer.";
+                                                if ($linkedOrderMovement && $linkedTable) {
+                                                    $deleteMessage .= " El pedido asociado se volvera a cargar en la mesa {$linkedTable->name}.";
+                                                    if ($tableHasOtherPendingOrder) {
+                                                        $deleteMessage .= ' La mesa ya tiene otro pedido pendiente, por lo que conservara su estado actual.';
+                                                    } else {
+                                                        $deleteMessage .= ' La mesa volvera a estado ocupada.';
+                                                    }
+                                                }
+                                            @endphp
                                             <form method="POST"
                                                 action="{{ route('sales.destroy', array_merge([$sale], $viewId ? ['view_id' => $viewId] : [])) }}"
                                                 class="relative group js-swal-delete" data-swal-title="Eliminar venta?"
-                                                data-swal-text="Se eliminara la venta {{ $sale->number }}. Esta accion no se puede deshacer."
+                                                data-swal-text="{{ $deleteMessage }}"
                                                 data-swal-confirm="Si, eliminar" data-swal-cancel="Cancelar"
                                                 data-swal-confirm-color="#ef4444" data-swal-cancel-color="#6b7280">
                                                 @csrf
@@ -582,6 +622,19 @@
                 const url = new URL(baseUrl, window.location.origin);
                 const dfVal = document.querySelector('[name="date_from"]')?.value;
                 const dtVal = document.querySelector('[name="date_to"]')?.value;
+                if (dfVal) url.searchParams.set('date_from', dfVal);
+                if (dtVal) url.searchParams.set('date_to', dtVal);
+
+                window.open(url.toString(), '_blank');
+            }
+
+            function descargarExcel() {
+                const btn = document.querySelector('[data-excel-url]');
+                const baseUrl = btn ? btn.dataset.excelUrl : "{{ route('admin.sales.excel') }}";
+
+                const url = new URL(baseUrl, window.location.origin);
+                const dfVal = document.querySelector('[name=\"date_from\"]')?.value;
+                const dtVal = document.querySelector('[name=\"date_to\"]')?.value;
                 if (dfVal) url.searchParams.set('date_from', dfVal);
                 if (dtVal) url.searchParams.set('date_to', dtVal);
 

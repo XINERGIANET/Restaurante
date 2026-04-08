@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\SalesExport;
 use App\Models\Bank;
 use App\Models\Branch;
 use App\Models\Card;
@@ -14,6 +15,7 @@ use App\Models\DocumentType;
 use App\Models\Movement;
 use App\Models\MovementType;
 use App\Models\Operation;
+use App\Models\OrderMovement;
 use App\Models\PaymentConcept;
 use App\Models\PaymentGateways;
 use App\Models\PaymentMethod;
@@ -26,6 +28,7 @@ use App\Models\SalesMovement;
 use App\Models\SalesMovementDetail;
 use App\Models\Shift;
 use App\Models\TaxRate;
+use App\Models\Table;
 use App\Models\User;
 use App\Services\ThermalNetworkPrintService;
 use App\Support\InsensitiveSearch;
@@ -38,6 +41,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\Process\Process;
 
 class SalesController extends Controller
@@ -53,7 +57,7 @@ class SalesController extends Controller
         $personId = $request->input('person_id');
         $documentTypeId = $request->input('document_type_id');
         $paymentMethodId = $request->input('payment_method_id');
-        $cashRegisterId = $request->input('cash_register_id');
+        $cashRegisterId = effective_cash_register_id($branchId ? (int) $branchId : null);
         $cashShiftRelationId = $request->input('cash_shift_relation_id');
         $saleType = $request->input('sale_type');
         $perPage = (int) $request->input('per_page', 10);
@@ -101,7 +105,7 @@ class SalesController extends Controller
             ? CashRegister::query()->where('branch_id', $branchId)->orderBy('number')->get(['id', 'number'])
             : CashRegister::query()->whereRaw('1 = 0')->get(['id', 'number']);
 
-        $effectiveCashRegisterId = $cashRegisterId ?: session('cash_register_id');
+        $effectiveCashRegisterId = $cashRegisterId;
 
         // Sesiones (turnos) por caja para filtrar el listado y "limpiar" al abrir una nueva
         $cashShiftSessions = collect();
@@ -117,25 +121,22 @@ class SalesController extends Controller
                 ->get();
         }
 
-        // Por defecto: filtrar por el turno actual (abierto) de la caja seleccionada/en sesión
+        // Por defecto: filtrar por el turno actual (o último) de la caja seleccionada/en sesión
         if (($cashShiftRelationId === null || $cashShiftRelationId === '') && $branchId && $effectiveCashRegisterId) {
-            $activeShift = CashShiftRelation::query()
+            $lastShift = CashShiftRelation::query()
                 ->where('branch_id', $branchId)
-                ->where('status', '1')
-                ->whereNull('ended_at')
-                ->whereNull('cash_movement_end_id')
                 ->whereHas('cashMovementStart', function ($q) use ($effectiveCashRegisterId) {
                     $q->where('cash_register_id', $effectiveCashRegisterId);
                 })
                 ->latest('id')
                 ->first();
-            if ($activeShift) {
-                $cashShiftRelationId = (string) $activeShift->id;
+            if ($lastShift) {
+                $cashShiftRelationId = (string) $lastShift->id;
             }
         }
 
         $query = Movement::query()
-            ->with(['branch', 'person', 'movementType', 'documentType', 'salesMovement'])
+            ->with(['branch', 'person', 'movementType', 'documentType', 'salesMovement', 'orderMovement.table', 'movement.orderMovement.table'])
             ->where('movement_type_id', 2)
             ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
             ->when(! $branchId, fn ($q) => $q->whereRaw('1 = 0'))
@@ -186,7 +187,7 @@ class SalesController extends Controller
             });
         }
 
-        // Filtro por turno (CashShiftRelation): ventana temporal por started_at/ended_at
+        // Filtro por turno (CashShiftRelation): ventana temporal por movimientos
         if ($cashShiftRelationId !== null && $cashShiftRelationId !== '' && $branchId && $effectiveCashRegisterId) {
             $csrApplied = CashShiftRelation::query()
                 ->with(['cashMovementStart', 'cashMovementEnd'])
@@ -197,12 +198,12 @@ class SalesController extends Controller
                 })
                 ->first();
 
-            if ($csrApplied && $csrApplied->started_at) {
-                $from = \Illuminate\Support\Carbon::parse($csrApplied->started_at)->startOfSecond();
-                $to = $csrApplied->ended_at
-                    ? \Illuminate\Support\Carbon::parse($csrApplied->ended_at)->endOfSecond()
-                    : now()->endOfSecond();
-                $query->whereBetween('moved_at', [$from, $to]);
+            if ($csrApplied && $csrApplied->cashMovementStart) {
+                $startMid = $csrApplied->cashMovementStart->movement_id;
+                $query->where('movements.id', '>=', $startMid);
+                if ($csrApplied->cashMovementEnd) {
+                    $query->where('movements.id', '<=', $csrApplied->cashMovementEnd->movement_id);
+                }
             } else {
                 $query->whereRaw('1 = 0');
             }
@@ -266,7 +267,7 @@ class SalesController extends Controller
     // Obtener caja desde sesión
     public function getSessionCashRegister(Request $request)
     {
-        $cashRegisterId = session('cash_register_id');
+        $cashRegisterId = effective_cash_register_id(session('branch_id') ? (int) session('branch_id') : null);
 
         return response()->json([
             'success' => true,
@@ -389,6 +390,7 @@ class SalesController extends Controller
             ->orderBy('name')
             ->where('movement_type_id', 2)
             ->get(['id', 'name']);
+        $defaultDocumentTypeId = effective_default_sale_document_type_id($branchId, [2]);
 
         $paymentMethods = PaymentMethod::query()
             ->where('status', true)
@@ -443,6 +445,7 @@ class SalesController extends Controller
             'categories' => $categories,
             'people' => $people,
             'documentTypes' => $documentTypes,
+            'defaultDocumentTypeId' => $defaultDocumentTypeId,
             'paymentMethods' => $paymentMethods,
             'paymentGateways' => $paymentGateways,
             'cards' => $cards,
@@ -469,6 +472,7 @@ class SalesController extends Controller
             ->get(['id', 'name']);
 
         $branchId = session('branch_id');
+        $defaultDocumentTypeId = effective_default_sale_document_type_id($branchId ? (int) $branchId : null, [2]);
 
         $paymentMethods = PaymentMethod::query()
             ->where('status', true)
@@ -590,6 +594,7 @@ class SalesController extends Controller
 
         return view('sales.charge', [
             'documentTypes' => $documentTypes,
+            'defaultDocumentTypeId' => $defaultDocumentTypeId,
             'paymentMethods' => $paymentMethods,
             'paymentGateways' => $paymentGateways,
             'cards' => $cards,
@@ -654,7 +659,7 @@ class SalesController extends Controller
 
         // ── Validar caja ANTES de iniciar la transacción ──────────────────────
         $branchIdForCheck = (int) session('branch_id');
-        $cashRegisterId = $request->input('cash_register_id') ?: session('cash_register_id');
+        $cashRegisterId = effective_cash_register_id($branchIdForCheck);
 
         if (! $cashRegisterId) {
             return response()->json(['success' => false, 'message' => 'Selecciona una caja antes de registrar la venta.'], 422);
@@ -897,12 +902,14 @@ class SalesController extends Controller
                 $quantityToSell = (int) $item['qty'];
                 $currentStock = (int) ($productBranch->stock ?? 0);
 
-                // if ($currentStock < $quantityToSell) {
-                //     throw new \Exception(
-                //         "Stock insuficiente para el producto {$product->description}. " .
-                //         "Stock disponible: {$currentStock}, Cantidad solicitada: {$quantityToSell}"
-                //     );
-                // }
+                // Validar stock disponible si no se permite vender sin stock
+                if (!$branch->allow_zero_stock_sales && $currentStock < $quantityToSell) {
+                    throw new \Exception(
+                        "Stock insuficiente para el producto \"{$product->description}\". " .
+                        "Stock disponible: {$currentStock}, Cantidad solicitada: {$quantityToSell}"
+                    );
+                }
+
 
                 $unit = $product->baseUnit;
                 if (! $unit) {
@@ -1420,11 +1427,59 @@ class SalesController extends Controller
 
     public function destroy(Movement $sale)
     {
-        $sale->delete();
+        DB::transaction(function () use ($sale) {
+            $linkedOrderMovement = $this->resolveLinkedOrderMovementForSale($sale);
+
+            if ($linkedOrderMovement) {
+                $linkedOrderMovement->status = 'PENDIENTE';
+                $linkedOrderMovement->finished_at = null;
+                $linkedOrderMovement->save();
+
+                $orderBaseMovement = $linkedOrderMovement->movement;
+                if ($orderBaseMovement) {
+                    $orderBaseMovement->status = 'P';
+                    $orderBaseMovement->save();
+                }
+
+                $tableId = $linkedOrderMovement->table_id;
+                if ($tableId && ! $this->tableHasAnotherPendingOrder($tableId, $linkedOrderMovement->id)) {
+                    Table::where('id', $tableId)->update([
+                        'situation' => 'ocupada',
+                        'opened_at' => now(),
+                    ]);
+                }
+            }
+
+            $sale->delete();
+        });
 
         return redirect()
             ->route('sales.index', request()->filled('view_id') ? ['view_id' => request()->input('view_id')] : [])
             ->with('status', 'Venta eliminada correctamente.');
+    }
+
+    private function resolveLinkedOrderMovementForSale(Movement $sale): ?OrderMovement
+    {
+        $sale->loadMissing(['orderMovement.table', 'movement.orderMovement.table']);
+
+        if ($sale->orderMovement) {
+            return $sale->orderMovement;
+        }
+
+        if ($sale->movement?->orderMovement) {
+            return $sale->movement->orderMovement;
+        }
+
+        return null;
+    }
+
+    private function tableHasAnotherPendingOrder(int $tableId, int $excludedOrderMovementId): bool
+    {
+        return OrderMovement::query()
+            ->where('table_id', $tableId)
+            ->where('id', '!=', $excludedOrderMovementId)
+            ->whereIn('status', ['PENDIENTE', 'P'])
+            ->exists();
     }
 
     private function validateSale(Request $request): array
@@ -1491,14 +1546,21 @@ class SalesController extends Controller
     {
         $sale = $this->resolvePrintableForTicket($sale);
         $printData = $this->buildSalePrintData($sale, $request);
+        if ($request->boolean('direct_print')) {
+            $printData['autoPrint'] = true;
+
+            return view('sales.print.ticket', $printData);
+        }
+
         $printData['autoPrint'] = false;
 
         $html = view('sales.print.ticket', $printData)->render();
+        $pageHeight = $this->estimateSaleTicketHeight($sale);
         $pdfBinary = $this->renderPdfWithWkhtmltopdf($html, null, [
             '--page-width',
             '80mm',
             '--page-height',
-            '95mm',
+            $pageHeight,
             '--margin-top',
             '0',
             '--margin-right',
@@ -1509,8 +1571,6 @@ class SalesController extends Controller
             '0',
             '--print-media-type',
             '--disable-smart-shrinking',
-            '--zoom',
-            '1.06',
             '--dpi',
             '203',
         ]);
@@ -1527,6 +1587,37 @@ class SalesController extends Controller
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="'.$docName.'-ticket.pdf"',
         ]);
+    }
+
+    private function estimateSaleTicketHeight(Movement $sale): string
+    {
+        $details = $this->ticketDetailsForMovement($sale);
+        $lineWidth = 20;
+        $detailLines = 0;
+
+        foreach ($details as $detail) {
+            $description = trim((string) ($detail->description ?? $detail->product?->description ?? 'Producto'));
+            $detailLines += max(1, (int) ceil(mb_strlen($description) / $lineWidth));
+        }
+
+        $customerNameLines = max(1, (int) ceil(mb_strlen((string) ($sale->person_name ?? 'CLIENTES VARIOS')) / 24));
+        $addressLines = max(1, (int) ceil(mb_strlen((string) ($sale->person?->address ?? '-')) / 24));
+        $documentLines = max(1, (int) ceil(mb_strlen((string) ($sale->person?->document_number ?? '-')) / 24));
+        $paymentLines = max(1, (int) ceil(mb_strlen((string) $this->resolveSalePaymentLabel($sale)) / 24));
+        $notesLines = 0;
+        if (filled((string) $sale->comment)) {
+            $notesLines = max(1, (int) ceil(mb_strlen((string) $sale->comment) / 26));
+        }
+
+        $baseHeight = 106;
+        $itemsHeight = $detailLines * 8;
+        $metaHeight = ($customerNameLines + $addressLines + $documentLines + $paymentLines) * 4;
+        $notesHeight = $notesLines * 5;
+        $footerSafety = 18;
+
+        $height = max(120, min(900, $baseHeight + $itemsHeight + $metaHeight + $notesHeight + $footerSafety));
+
+        return $height.'mm';
     }
 
     /**
@@ -1554,6 +1645,7 @@ class SalesController extends Controller
             $validated = $request->validate([
                 'movement_id' => ['required', 'integer', 'exists:movements,id'],
                 'printer_id' => ['nullable', 'integer', 'exists:printers_branch,id'],
+                'ticket_text' => ['nullable', 'string'],
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
@@ -1579,22 +1671,24 @@ class SalesController extends Controller
 
         $movement = $this->resolvePrintableForTicket($movement);
 
-        $printerQuery = PrinterBranch::query()
-            ->where('branch_id', $branchId)
-            ->where('status', 'E');
-
-        // En modo TCP requerimos IP; en modo QZ no (puede ser USB identificado por nombre)
-        if (! $qzMode) {
-            $printerQuery->whereNotNull('ip')->where('ip', '!=', '');
-        }
+        $printer = null;
 
         if (! empty($validated['printer_id'])) {
-            $printer = (clone $printerQuery)->where('id', $validated['printer_id'])->first();
-        } else {
-            $printer = $printerQuery->orderBy('id')->first();
+            $printer = PrinterBranch::query()
+                ->where('id', $validated['printer_id'])
+                ->where('branch_id', $branchId)
+                ->where('status', 'E')
+                ->first();
         }
 
-        $plain = $this->buildThermalTicketPlainText($movement, $request);
+        if (! $printer) {
+            $printer = $this->resolveBranchThermalPrinter($branchId);
+        }
+
+        $ticketText = $validated['ticket_text'] ?? null;
+        $plain = $ticketText !== null
+            ? (string) $ticketText
+            : $this->buildThermalTicketPlainTextApproved($movement, $request, $printer);
         $payload = $this->wrapEscPosPlainPayload($plain);
 
         // Modo QZ: devolver payload en base64 para que QZ Tray lo envíe (USB o red)
@@ -1610,29 +1704,105 @@ class SalesController extends Controller
         if (! $printer) {
             return response()->json([
                 'success' => false,
-                'message' => 'No hay ticketera con IP configurada para esta sucursal.',
+                'message' => 'No hay ticketera activa configurada para esta sucursal.',
             ], 422);
         }
 
+        $printerService = app(ThermalNetworkPrintService::class);
+        $hasNetworkIp = filled((string) $printer->ip);
+
         try {
-            app(ThermalNetworkPrintService::class)->sendRaw(
-                (string) $printer->ip,
-                (int) config('local_network.thermal_port', 9100),
+            if ($hasNetworkIp) {
+                $printerService->sendRaw(
+                    (string) $printer->ip,
+                    (int) config('local_network.thermal_port', 9100),
+                    $payload,
+                    (int) config('local_network.thermal_timeout_seconds', 4)
+                );
+
+                return response()->json(['success' => true, 'message' => 'Ticket enviado a la ticketera de red.']);
+            }
+
+            if (! config('local_network.thermal_windows_local_enabled', true)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'La ticketera seleccionada no tiene IP y la impresión USB local está deshabilitada.',
+                ], 422);
+            }
+
+            $printerService->sendRawToWindowsPrinter(
+                (string) $printer->name,
                 $payload,
-                (int) config('local_network.thermal_timeout_seconds', 4)
+                (int) config('local_network.thermal_timeout_seconds', 4) + 4
             );
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Ticket enviado a la ticketera USB local.',
+            ]);
         } catch (\Throwable $e) {
-            Log::warning('Impresión térmica red: '.$e->getMessage());
+            Log::warning('Impresión térmica: '.$e->getMessage());
+            $safeMessage = $this->normalizeUtf8ForJson((string) $e->getMessage());
 
             return response()->json([
                 'success' => false,
                 'message' => config('app.debug')
-                    ? $e->getMessage()
-                    : 'No se pudo enviar el ticket a la ticketera. Comprueba IP, cable/red y que el servidor alcance la impresora.',
+                    ? ($safeMessage !== '' ? $safeMessage : 'Error interno al imprimir ticket.')
+                    : 'No se pudo enviar el ticket a la ticketera. Verifica IP o nombre de impresora local en Windows.',
             ], 500);
         }
+    }
 
-        return response()->json(['success' => true, 'message' => 'Ticket enviado a la ticketera.']);
+    private function resolveBranchThermalPrinter(int $branchId): ?PrinterBranch
+    {
+        $printerBaseQuery = PrinterBranch::query()
+            ->where('branch_id', $branchId)
+            ->where('status', 'E');
+
+        $host = strtolower(trim(request()->getHost() ?: ''));
+        $isLocalhost = in_array($host, ['localhost', '127.0.0.1', '::1']);
+        $printerName = $isLocalhost ? 'barra' : 'barra2';
+
+        $printer = (clone $printerBaseQuery)
+            ->whereRaw('LOWER(TRIM(name)) = ?', [$printerName])
+            ->first();
+        if ($printer) {
+            return $printer;
+        }
+
+        $printer = (clone $printerBaseQuery)
+            ->whereRaw('LOWER(name) LIKE ?', ['%' . $printerName . '%'])
+            ->first();
+        if ($printer) {
+            return $printer;
+        }
+
+        $printer = (clone $printerBaseQuery)
+            ->whereNotNull('ip')
+            ->where('ip', '!=', '')
+            ->orderBy('id')
+            ->first();
+        if ($printer) {
+            return $printer;
+        }
+
+        return (clone $printerBaseQuery)->orderBy('id')->first();
+    }
+
+    private function normalizeUtf8ForJson(string $text): string
+    {
+        $value = trim($text);
+        if ($value === '') {
+            return '';
+        }
+
+        $encoded = @mb_convert_encoding($value, 'UTF-8', 'UTF-8, Windows-1252, ISO-8859-1');
+        if (! is_string($encoded) || $encoded === '') {
+            $encoded = @iconv('Windows-1252', 'UTF-8//IGNORE', $value);
+        }
+
+        $normalized = is_string($encoded) && $encoded !== '' ? $encoded : $value;
+        return preg_replace('/[^\P{C}\r\n\t]/u', '', $normalized) ?? $normalized;
     }
 
     private function resolveWkhtmltopdfBinary(): ?string
@@ -1747,19 +1917,29 @@ class SalesController extends Controller
             'orderMovement.details.product',
         ]);
 
+        $userBranchId = (int) (auth()->user()?->person?->branch_id ?? 0);
         $sessionBranchId = (int) session('branch_id');
+        $userBranch = $userBranchId ? Branch::find($userBranchId) : null;
         $sessionBranch = $sessionBranchId ? Branch::find($sessionBranchId) : null;
-        $branchForLogo = $sessionBranch ?: $sale->branch;
+        $branchForLogo = $userBranch ?: $sessionBranch ?: $sale->branch;
 
         $logoUrl = null;
         $logoFileUrl = null;
         if ($branchForLogo?->logo) {
-            $logoUrl = str_starts_with($branchForLogo->logo, 'http')
-                ? $branchForLogo->logo
-                : asset('storage/'.ltrim((string) $branchForLogo->logo, '/'));
+            $rawLogo = trim((string) $branchForLogo->logo);
 
-            if (! str_starts_with((string) $branchForLogo->logo, 'http')) {
-                $localLogoPath = storage_path('app/public/'.ltrim((string) $branchForLogo->logo, '/'));
+            if (str_starts_with($rawLogo, 'http://') || str_starts_with($rawLogo, 'https://')) {
+                $logoUrl = $rawLogo;
+            } else {
+                $publicLogoPath = '/'.ltrim($rawLogo, '/');
+                if (! str_starts_with($publicLogoPath, '/storage/')) {
+                    $publicLogoPath = '/storage/'.ltrim($publicLogoPath, '/');
+                }
+
+                $logoUrl = asset(ltrim($publicLogoPath, '/'));
+
+                $storageRelativePath = preg_replace('#^/storage/#', '', $publicLogoPath) ?: '';
+                $localLogoPath = storage_path('app/public/'.ltrim($storageRelativePath, '/'));
                 if (file_exists($localLogoPath)) {
                     $normalized = str_replace('\\', '/', $localLogoPath);
                     $logoFileUrl = 'file:///'.ltrim($normalized, '/');
@@ -1780,8 +1960,61 @@ class SalesController extends Controller
             'logoFileUrl' => $logoFileUrl,
             'printedAt' => now(),
             'paymentLabel' => $this->resolveSalePaymentLabel($sale),
+            'qrPayload' => $this->buildSaleQrPayload($sale, $branchForLogo),
+            'qrImageUrl' => $this->buildSaleQrImageUrl($sale, $branchForLogo),
             'viewId' => $request->input('view_id'),
         ];
+    }
+
+    private function buildSaleQrPayload(Movement $sale, ?Branch $branchForLogo): ?string
+    {
+        $docName = mb_strtolower(trim((string) ($sale->documentType?->name ?? '')), 'UTF-8');
+        $documentCode = null;
+
+        if (str_contains($docName, 'factura')) {
+            $documentCode = '01';
+        } elseif (str_contains($docName, 'boleta')) {
+            $documentCode = '03';
+        }
+
+        if (! $documentCode) {
+            return null;
+        }
+
+        $series = $this->ticketSeriesForMovement($sale);
+        $correlative = (string) ($sale->number ?? '');
+        $tax = number_format((float) ($sale->salesMovement?->tax ?? $sale->orderMovement?->tax ?? 0), 2, '.', '');
+        $total = number_format((float) ($sale->salesMovement?->total ?? $sale->orderMovement?->total ?? 0), 2, '.', '');
+        $issueDate = optional($sale->moved_at)->format('Y-m-d') ?? now()->format('Y-m-d');
+        $customerDocument = trim((string) ($sale->person?->document_number ?? ''));
+        $customerDocument = ($customerDocument === '' || $customerDocument === '-') ? '0' : $customerDocument;
+        $customerDocumentType = strlen($customerDocument) === 11 ? '6' : (strlen($customerDocument) === 8 ? '1' : '0');
+        $ruc = trim((string) ($branchForLogo?->ruc ?? ''));
+        if ($ruc === '') {
+            $ruc = '0';
+        }
+
+        return implode('|', [
+            $ruc,
+            $documentCode,
+            $series,
+            $correlative,
+            $tax,
+            $total,
+            $issueDate,
+            $customerDocumentType,
+            $customerDocument,
+        ]);
+    }
+
+    private function buildSaleQrImageUrl(Movement $sale, ?Branch $branchForLogo): ?string
+    {
+        $payload = $this->buildSaleQrPayload($sale, $branchForLogo);
+        if (! $payload) {
+            return null;
+        }
+
+        return 'https://api.qrserver.com/v1/create-qr-code/?size=170x170&margin=0&data='.rawurlencode($payload);
     }
 
     /**
@@ -1907,9 +2140,10 @@ class SalesController extends Controller
         $dateTo = $request->input('date_to');
         $documentTypeId = $request->input('document_type_id');
         $paymentMethodId = $request->input('payment_method_id');
-        $cashRegisterId = $request->input('cash_register_id');
+        $cashRegisterId = effective_cash_register_id($branchId ? (int) $branchId : null);
         $personId = $request->input('person_id');
         $saleType = $request->input('sale_type');
+        $cashShiftRelationId = $request->input('cash_shift_relation_id');
 
         $branch = $branchId ? Branch::with('company')->find($branchId) : null;
         $companyName = $branch?->company?->legal_name;
@@ -1966,6 +2200,29 @@ class SalesController extends Controller
             });
         }
 
+        // Filtro por turno (CashShiftRelation): ventana temporal por movimientos
+        $effectiveCR = $cashRegisterId;
+        if ($cashShiftRelationId !== null && $cashShiftRelationId !== '' && $branchId && $effectiveCR) {
+            $csrApplied = CashShiftRelation::query()
+                ->with(['cashMovementStart', 'cashMovementEnd'])
+                ->where('branch_id', $branchId)
+                ->where('id', (int) $cashShiftRelationId)
+                ->whereHas('cashMovementStart', function ($q) use ($effectiveCR) {
+                    $q->where('cash_register_id', $effectiveCR);
+                })
+                ->first();
+
+            if ($csrApplied && $csrApplied->cashMovementStart) {
+                $startMid = $csrApplied->cashMovementStart->movement_id;
+                $query->where('movements.id', '>=', $startMid);
+                if ($csrApplied->cashMovementEnd) {
+                    $query->where('movements.id', '<=', $csrApplied->cashMovementEnd->movement_id);
+                }
+            } else {
+                $query->whereRaw('1 = 0');
+            }
+        }
+
         $sales = $query->orderBy('moved_at', 'desc')->get();
 
         $filters = [];
@@ -1982,12 +2239,16 @@ class SalesController extends Controller
             $pm = PaymentMethod::find($paymentMethodId);
             $filters['Método de pago'] = $pm ? ($pm->description ?? $pm->id) : "ID {$paymentMethodId}";
         }
+        if ($saleType) {
+            $filters['Tipo de venta'] = $saleType;
+        }
+        if ($cashShiftRelationId && isset($csrApplied) && $csrApplied) {
+            $shiftLabel = ($csrApplied->cashMovementStart?->shift?->name ?? 'Turno') . ' (' . $csrApplied->id . ')';
+            $filters['Turno'] = $shiftLabel;
+        }
         if ($cashRegisterId) {
             $cr = CashRegister::find($cashRegisterId);
             $filters['Caja'] = $cr ? ($cr->number ?? $cr->id) : "ID {$cashRegisterId}";
-        }
-        if ($saleType) {
-            $filters['Tipo de venta'] = $saleType;
         }
 
         try {
@@ -2024,6 +2285,99 @@ class SalesController extends Controller
                 ->back()
                 ->with('error', 'No se pudo generar el PDF de ventas.');
         }
+    }
+
+    public function exportExcel(Request $request)
+    {
+        $branchId = session('branch_id');
+        $search = $request->input('search');
+        $dateFrom = $request->input('date_from');
+        $dateTo = $request->input('date_to');
+        $documentTypeId = $request->input('document_type_id');
+        $paymentMethodId = $request->input('payment_method_id');
+        $cashRegisterId = effective_cash_register_id($branchId ? (int) $branchId : null);
+        $saleType = $request->input('sale_type');
+        $cashShiftRelationId = $request->input('cash_shift_relation_id');
+
+        $query = Movement::query()
+            ->with(['branch', 'person', 'movementType', 'documentType', 'salesMovement'])
+            ->where('movement_type_id', 2)
+            ->where('branch_id', $branchId)
+            ->whereHas('salesMovement');
+
+        if ($documentTypeId && is_numeric($documentTypeId)) {
+            $query->where('document_type_id', (int) $documentTypeId);
+        }
+        if ($search) {
+            $query->where(function ($inner) use ($search) {
+                $inner->where('number', 'like', "%{$search}%")
+                    ->orWhere('person_name', 'like', "%{$search}%")
+                    ->orWhere('user_name', 'like', "%{$search}%");
+            });
+        }
+        if ($dateFrom) {
+            $query->where('moved_at', '>=', $dateFrom.' 00:00:00');
+        }
+        if ($dateTo) {
+            $query->where('moved_at', '<=', $dateTo.' 23:59:59');
+        }
+        if ($paymentMethodId) {
+            $query->whereExists(function ($sub) use ($paymentMethodId) {
+                $sub->select(DB::raw(1))
+                    ->from('movements as m')
+                    ->join('cash_movements as cm', 'cm.movement_id', '=', 'm.id')
+                    ->join('cash_movement_details as cmd', 'cmd.cash_movement_id', '=', 'cm.id')
+                    ->whereColumn('m.parent_movement_id', 'movements.id')
+                    ->where('cmd.payment_method_id', $paymentMethodId)
+                    ->whereNull('cm.deleted_at')
+                    ->whereNull('cmd.deleted_at');
+            });
+        }
+        if ($cashRegisterId) {
+            $query->whereExists(function ($sub) use ($cashRegisterId) {
+                $sub->select(DB::raw(1))
+                    ->from('movements as m')
+                    ->join('cash_movements as cm', 'cm.movement_id', '=', 'm.id')
+                    ->whereColumn('m.parent_movement_id', 'movements.id')
+                    ->where('cm.cash_register_id', $cashRegisterId)
+                    ->whereNull('cm.deleted_at');
+            });
+        }
+        if ($saleType) {
+            $query->whereHas('salesMovement', function ($sub) use ($saleType) {
+                $sub->where('detail_type', $saleType);
+            });
+        }
+
+        $effectiveCR = $cashRegisterId;
+        if ($cashShiftRelationId !== null && $cashShiftRelationId !== '' && $branchId && $effectiveCR) {
+            $csrApplied = CashShiftRelation::query()
+                ->with(['cashMovementStart', 'cashMovementEnd'])
+                ->where('branch_id', $branchId)
+                ->where('id', (int) $cashShiftRelationId)
+                ->whereHas('cashMovementStart', function ($q) use ($effectiveCR) {
+                    $q->where('cash_register_id', $effectiveCR);
+                })
+                ->first();
+
+            if ($csrApplied && $csrApplied->cashMovementStart) {
+                $startMid = $csrApplied->cashMovementStart->movement_id;
+                $query->where('movements.id', '>=', $startMid);
+                if ($csrApplied->cashMovementEnd) {
+                    $query->where('movements.id', '<=', $csrApplied->cashMovementEnd->movement_id);
+                }
+            } else {
+                $query->whereRaw('1 = 0');
+            }
+        }
+
+        $sales = $query->orderBy('moved_at', 'desc')->get();
+        $timestamp = now()->format('Ymd_His');
+
+        return Excel::download(
+            new SalesExport($sales),
+            "reporte_ventas_{$timestamp}.xlsx"
+        );
     }
 
     /**
@@ -2183,7 +2537,7 @@ class SalesController extends Controller
         return (int) $movementTypeId;
     }
 
-    private function buildThermalTicketPlainText(Movement $sale, Request $request): string
+    private function buildThermalTicketPlainText(Movement $sale, Request $request, ?PrinterBranch $printer = null): string
     {
         $printData = $this->buildSalePrintData($sale, $request);
         $sale = $printData['sale'];
@@ -2191,7 +2545,9 @@ class SalesController extends Controller
         $branch = $printData['branchForLogo'];
         $paymentLabel = $printData['paymentLabel'];
 
-        $w = 32;
+        // Ancho dinámico según impresora configurada (80mm → 48 chars, 58mm → 32 chars)
+        $printerWidthMm = (int) ($printer?->width ?? 58);
+        $w = $printerWidthMm >= 80 ? 48 : 32;
         $sep = str_repeat('=', $w);
         $lines = [];
 
@@ -2204,8 +2560,11 @@ class SalesController extends Controller
         $lines[] = $sep;
         $lines[] = 'Fecha: '.optional($sale->moved_at)->format('d/m/Y H:i');
         $lines[] = 'Cliente: '.Str::ascii($sale->person_name ?? 'CLIENTES VARIOS');
+        $lines[] = 'Dir.: '.Str::ascii($sale->person?->address ?? '-');
+        $lines[] = 'RUC/DNI: '.Str::ascii($sale->person?->document_number ?? '-');
         $lines[] = 'Forma pago: '.Str::ascii($paymentLabel);
         $lines[] = $sep;
+        $lines[] = 'Prod.         Cant P.Unit  Subt';
 
         foreach ($details as $detail) {
             $qty = (float) $detail->quantity;
@@ -2241,6 +2600,125 @@ class SalesController extends Controller
         $lines[] = $sep;
         $lines[] = $this->thermalPadCenter('Gracias por su preferencia', $w);
         $lines[] = 'Impreso: '.now()->format('d/m/Y H:i:s');
+
+        return implode("\n", $lines);
+    }
+
+    private function buildThermalTicketPlainTextApproved(Movement $sale, Request $request, ?PrinterBranch $printer = null): string
+    {
+        $printData = $this->buildSalePrintData($sale, $request);
+        $sale = $printData['sale'];
+        $details = $printData['details'];
+        $branch = $printData['branchForLogo'];
+        $paymentLabel = $printData['paymentLabel'];
+
+        $printerWidthMm = (int) ($printer?->width ?? 58);
+        $lineWidth = $printerWidthMm >= 80 ? 48 : 32;
+        $colQty = $printerWidthMm >= 80 ? 5 : 4;
+        $colPrice = $printerWidthMm >= 80 ? 9 : 7;
+        $colAmount = $printerWidthMm >= 80 ? 9 : 7;
+        $colGap = 2;
+        $colName = max(8, $lineWidth - $colQty - $colGap - $colPrice - $colAmount);
+        $sep = str_repeat('=', $lineWidth);
+
+        $wrapText = function (string $text, int $length): array {
+            $clean = trim(Str::ascii($text));
+            if ($clean === '') {
+                return ['-'];
+            }
+
+            $words = preg_split('/\s+/', $clean) ?: [];
+            $wrapped = [];
+            $current = '';
+
+            foreach ($words as $word) {
+                $candidate = $current !== '' ? $current.' '.$word : $word;
+                if (strlen($candidate) <= $length) {
+                    $current = $candidate;
+                    continue;
+                }
+                if ($current !== '') {
+                    $wrapped[] = $current;
+                }
+                $current = strlen($word) > $length ? substr($word, 0, $length) : $word;
+            }
+
+            if ($current !== '') {
+                $wrapped[] = $current;
+            }
+
+            return $wrapped ?: ['-'];
+        };
+
+        $formatQty = function (float $qty): string {
+            return floor($qty) === $qty ? (string) (int) $qty : number_format($qty, 2, '.', '');
+        };
+
+        $docSubtotal = (float) ($sale->salesMovement?->subtotal ?? $sale->orderMovement?->subtotal ?? 0);
+        $docTax = (float) ($sale->salesMovement?->tax ?? $sale->orderMovement?->tax ?? 0);
+        $docTotal = (float) ($sale->salesMovement?->total ?? $sale->orderMovement?->total ?? 0);
+        $docCode = strtoupper(substr($sale->documentType?->name ?? 'T', 0, 1)).$this->ticketSeriesForMovement($sale).'-'.$sale->number;
+
+        $lines = [];
+        $lines[] = $this->thermalPadCenter(strtoupper(Str::ascii($branch->legal_name ?? 'SUCURSAL')), $lineWidth);
+        $lines[] = $this->thermalPadCenter('RUC: '.Str::ascii($branch->ruc ?? '-'), $lineWidth);
+        $lines[] = $this->thermalPadCenter(strtoupper(Str::ascii($sale->documentType?->name ?? 'TICKET')), $lineWidth);
+        $lines[] = $this->thermalPadCenter(Str::ascii($docCode), $lineWidth);
+        $lines[] = $sep;
+        $lines[] = 'Fecha: '.optional($sale->moved_at)->format('d/m/Y H:i');
+        $lines[] = 'Cliente: '.Str::ascii($sale->person_name ?? 'CLIENTES VARIOS');
+        $lines[] = 'Dir.: '.Str::ascii($sale->person?->address ?? '-');
+        $lines[] = 'RUC/DNI: '.Str::ascii($sale->person?->document_number ?? '-');
+        $lines[] = 'Forma pago: '.Str::ascii($paymentLabel);
+        $lines[] = $sep;
+        $lines[] = $this->thermalPadEnd('Cant.', $colQty)
+            .str_repeat(' ', $colGap)
+            .$this->thermalPadEnd('Descr.', $colName)
+            .$this->thermalPadStart('P.Unit.', $colPrice)
+            .$this->thermalPadStart('Subt.', $colAmount);
+        $lines[] = $sep;
+
+        $detailCount = $details->count();
+        foreach ($details as $index => $detail) {
+            $qty = (float) $detail->quantity;
+            $lineTotal = (float) $detail->amount;
+            $unitPrice = $qty > 0 ? ($lineTotal / $qty) : 0.0;
+            $descLines = $wrapText((string) ($detail->description ?? $detail->product?->description ?? '-'), $colName);
+
+            $lines[] = $this->thermalPadEnd($formatQty($qty), $colQty)
+                .str_repeat(' ', $colGap)
+                .$this->thermalPadEnd($descLines[0], $colName)
+                .$this->thermalPadStart(number_format($unitPrice, 2, '.', ''), $colPrice)
+                .$this->thermalPadStart(number_format($lineTotal, 2, '.', ''), $colAmount);
+
+            for ($i = 1; $i < count($descLines); $i++) {
+                $lines[] = $this->thermalPadEnd('', $colQty)
+                    .str_repeat(' ', $colGap)
+                    .$this->thermalPadEnd($descLines[$i], $colName)
+                    .$this->thermalPadStart('', $colPrice)
+                    .$this->thermalPadStart('', $colAmount);
+            }
+
+            if ($index < ($detailCount - 1)) {
+                $lines[] = $sep;
+            }
+        }
+
+        $lines[] = $sep;
+        $lines[] = $this->thermalPadEnd('Subtotal', $lineWidth - 12)
+            .$this->thermalPadStart(number_format($docSubtotal, 2, '.', ''), 12);
+        $lines[] = $this->thermalPadEnd('IGV', $lineWidth - 12)
+            .$this->thermalPadStart(number_format($docTax, 2, '.', ''), 12);
+        $lines[] = $this->thermalPadEnd('TOTAL', $lineWidth - 12)
+            .$this->thermalPadStart(number_format($docTotal, 2, '.', ''), 12);
+
+        if ($sale->comment) {
+            $lines[] = 'Notas: '.Str::ascii(Str::limit((string) $sale->comment, 120));
+        }
+
+        $lines[] = '';
+        $lines[] = 'Impreso: '.now()->format('d/m/Y H:i:s');
+        $lines[] = $this->thermalPadCenter('Gracias por su preferencia', $lineWidth);
 
         return implode("\n", $lines);
     }
