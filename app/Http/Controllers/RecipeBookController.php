@@ -32,7 +32,6 @@ class RecipeBookController extends Controller
                             ->where('company_id', $companyId)
                             ->whereNull('deleted_at');
             })
-            ->distinct() 
             ->orderBy('description')
             ->get();
 
@@ -201,7 +200,6 @@ class RecipeBookController extends Controller
                             ->where('id', '!=', $recipe->id)
                             ->whereNull('deleted_at'); 
             })
-            ->distinct()
             ->orderBy('description')
             ->get();
         $branches = Branch::where('company_id', Auth::user()->company_id)->get();
@@ -333,7 +331,6 @@ class RecipeBookController extends Controller
                             ->where('id', '!=', $recipe->id)
                             ->whereNull('deleted_at'); 
             })
-            ->distinct()
             ->orderBy('description')
             ->get();
         $branches = Branch::where('company_id', Auth::user()->company_id)->get();
