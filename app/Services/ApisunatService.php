@@ -335,43 +335,6 @@ class ApisunatService
                     ],
                 ],
             ],
-            'cac:TaxTotal' => [
-                'cbc:TaxAmount' => [
-                    '_attributes' => ['currencyID' => 'PEN'],
-                    '_text' => round((float) $totals['tax'], 2),
-                ],
-                'cac:TaxSubtotal' => [
-                    'cbc:TaxableAmount' => [
-                        '_attributes' => ['currencyID' => 'PEN'],
-                        '_text' => round((float) $totals['subtotal'], 2),
-                    ],
-                    'cbc:TaxAmount' => [
-                        '_attributes' => ['currencyID' => 'PEN'],
-                        '_text' => round((float) $totals['tax'], 2),
-                    ],
-                    'cac:TaxCategory' => [
-                        'cac:TaxScheme' => [
-                            'cbc:ID' => ['_text' => '1000'],
-                            'cbc:Name' => ['_text' => 'IGV'],
-                            'cbc:TaxTypeCode' => ['_text' => 'VAT'],
-                        ],
-                    ],
-                ],
-            ],
-            'cac:LegalMonetaryTotal' => [
-                'cbc:LineExtensionAmount' => [
-                    '_attributes' => ['currencyID' => 'PEN'],
-                    '_text' => round((float) $totals['subtotal'], 2),
-                ],
-                'cbc:TaxInclusiveAmount' => [
-                    '_attributes' => ['currencyID' => 'PEN'],
-                    '_text' => round((float) $totals['total'], 2),
-                ],
-                'cbc:PayableAmount' => [
-                    '_attributes' => ['currencyID' => 'PEN'],
-                    '_text' => round((float) $totals['total'], 2),
-                ],
-            ],
             'cac:InvoiceLine' => [],
         ];
 
@@ -383,6 +346,9 @@ class ApisunatService
         }
 
         $lineIndex = 1;
+        $headerSubtotal = 0.0;
+        $headerTax = 0.0;
+        $headerTotal = 0.0;
         foreach ($details as $detail) {
             $qty = (float) ($detail->quantity ?? 0);
             $courtesyQty = (float) ($detail->courtesy_quantity ?? 0);
@@ -463,8 +429,61 @@ class ApisunatService
                 ],
             ];
 
+            $headerSubtotal += $lineSubtotal;
+            $headerTax += $lineIgv;
+            $headerTotal += $lineTotal;
+
             $lineIndex++;
         }
+
+        $headerSubtotal = round($headerSubtotal, 2);
+        $headerTax = round($headerTax, 2);
+        $headerTotal = round($headerTotal, 2);
+
+        if ($headerTotal <= 0) {
+            $headerSubtotal = round((float) ($totals['subtotal'] ?? 0), 2);
+            $headerTax = round((float) ($totals['tax'] ?? 0), 2);
+            $headerTotal = round((float) ($totals['total'] ?? 0), 2);
+        }
+
+        $documentBody['cac:TaxTotal'] = [
+            'cbc:TaxAmount' => [
+                '_attributes' => ['currencyID' => 'PEN'],
+                '_text' => $headerTax,
+            ],
+            'cac:TaxSubtotal' => [
+                'cbc:TaxableAmount' => [
+                    '_attributes' => ['currencyID' => 'PEN'],
+                    '_text' => $headerSubtotal,
+                ],
+                'cbc:TaxAmount' => [
+                    '_attributes' => ['currencyID' => 'PEN'],
+                    '_text' => $headerTax,
+                ],
+                'cac:TaxCategory' => [
+                    'cac:TaxScheme' => [
+                        'cbc:ID' => ['_text' => '1000'],
+                        'cbc:Name' => ['_text' => 'IGV'],
+                        'cbc:TaxTypeCode' => ['_text' => 'VAT'],
+                    ],
+                ],
+            ],
+        ];
+
+        $documentBody['cac:LegalMonetaryTotal'] = [
+            'cbc:LineExtensionAmount' => [
+                '_attributes' => ['currencyID' => 'PEN'],
+                '_text' => $headerSubtotal,
+            ],
+            'cbc:TaxInclusiveAmount' => [
+                '_attributes' => ['currencyID' => 'PEN'],
+                '_text' => $headerTotal,
+            ],
+            'cbc:PayableAmount' => [
+                '_attributes' => ['currencyID' => 'PEN'],
+                '_text' => $headerTotal,
+            ],
+        ];
 
         return $documentBody;
     }
