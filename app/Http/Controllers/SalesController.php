@@ -1714,14 +1714,51 @@ class SalesController extends Controller
             : $this->buildThermalTicketPlainTextApproved($movement, $request, $printer);
         $payload = $this->wrapEscPosPlainPayload($plain);
 
-        // Modo QZ: devolver payload en base64 para que QZ Tray lo envíe (USB o red)
+        // Modo QZ: mismo ticket maquetado que la vista/PDF manual (wkhtmltopdf); fallback RAW si no hay PDF.
         if ($qzMode) {
-            return response()->json([
+            $paperWidthMm = (int) ($printer?->width ?? 80);
+            if (! in_array($paperWidthMm, [58, 80], true)) {
+                $paperWidthMm = 80;
+            }
+
+            $printData = $this->buildSalePrintData($movement, $request);
+            $printData['autoPrint'] = false;
+            $printData['ticketPageWidthMm'] = $paperWidthMm;
+
+            $html = view('sales.print.ticket', $printData)->render();
+            $pageHeight = $this->estimateSaleTicketHeight($movement);
+            $pdfBinary = $this->renderPdfWithWkhtmltopdf($html, null, [
+                '--page-width',
+                $paperWidthMm.'mm',
+                '--page-height',
+                $pageHeight,
+                '--margin-top',
+                '0',
+                '--margin-right',
+                '0',
+                '--margin-bottom',
+                '0',
+                '--margin-left',
+                '0',
+                '--print-media-type',
+                '--disable-smart-shrinking',
+                '--dpi',
+                '203',
+            ]);
+
+            $response = [
                 'success' => true,
                 'payload_b64' => base64_encode($payload),
                 'printer_name' => $printer?->name ?? null,
-                'paper_width' => (int) ($printer?->width ?? 58),
-            ]);
+                'paper_width' => $paperWidthMm,
+            ];
+
+            if ($pdfBinary !== null && $pdfBinary !== '') {
+                $response['ticket_pdf_b64'] = base64_encode($pdfBinary);
+                $response['qz_print_format'] = 'pdf';
+            }
+
+            return response()->json($response);
         }
 
         if (! $printer) {

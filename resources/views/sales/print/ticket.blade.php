@@ -12,7 +12,7 @@
         }
 
         @page {
-            size: 80mm auto;
+            size: {{ (int) ($ticketPageWidthMm ?? 80) }}mm auto;
             margin: 0;
         }
 
@@ -30,8 +30,12 @@
         }
 
         .ticket {
-            width: 100%;
-            padding: 2.2mm 2.6mm 3mm;
+            width: 90%;
+            max-width: 90%;
+            padding: 2.2mm 1.2mm 3mm;
+            margin-left: 0;
+            margin-right: auto;
+            overflow: visible;
         }
 
         .center {
@@ -102,8 +106,8 @@
 
         .items-table th,
         .items-table td {
-            padding: 0.55mm 0;
-            font-size: 2.95mm;
+            padding: 0.45mm 0.15mm;
+            font-size: 2.85mm;
         }
 
         .items-table th {
@@ -116,49 +120,111 @@
         }
 
         .col-product {
-            width: 42%;
+            width: 38%;
             text-align: left;
-            padding-left: 1.4mm;
-            padding-right: 1mm;
+            padding-left: 0.35mm;
+            padding-right: 0.35mm;
             word-break: break-word;
             overflow-wrap: anywhere;
         }
 
         .col-qty {
-            width: 15%;
+            width: 13%;
             text-align: right;
-            padding-right: 1.4mm;
+            padding-right: 0.35mm;
         }
 
         .col-unit {
-            width: 19%;
+            width: 21%;
             text-align: right;
+            padding-right: 0.2mm;
         }
 
         .col-subtotal {
-            width: 24%;
+            width: 28%;
             text-align: right;
+            padding-right: 0;
+        }
+
+        .totals-table {
+            table-layout: fixed;
+            width: 100%;
         }
 
         .totals-table td {
             padding: 0.45mm 0;
-            font-size: 3.2mm;
+            font-size: 3.05mm;
+            vertical-align: top;
         }
 
         .totals-label {
+            width: 52%;
             font-weight: 800;
+            padding-right: 1mm;
         }
 
         .totals-value {
+            width: 48%;
             text-align: right;
             white-space: nowrap;
+            font-variant-numeric: tabular-nums;
         }
 
         .grand-total td {
             border-top: 0.25mm solid #7ea1d4;
             padding-top: 1.1mm;
-            font-size: 4.55mm;
+            font-size: 4.1mm;
             font-weight: 800;
+        }
+
+        /* Rollo 58 mm: menos ancho útil; tipografía y columnas más compactas */
+        body.ticket-paper-58 .ticket {
+            padding: 1.8mm 1mm 2.5mm;
+        }
+
+        body.ticket-paper-58 .items-table th,
+        body.ticket-paper-58 .items-table td {
+            font-size: 2.45mm;
+            padding: 0.35mm 0.1mm;
+        }
+
+        body.ticket-paper-58 .col-qty {
+            width: 12%;
+        }
+
+        body.ticket-paper-58 .col-product {
+            width: 36%;
+            padding-left: 0.2mm;
+            padding-right: 0.2mm;
+        }
+
+        body.ticket-paper-58 .col-unit {
+            width: 22%;
+        }
+
+        body.ticket-paper-58 .col-subtotal {
+            width: 30%;
+        }
+
+        body.ticket-paper-58 .info-label {
+            width: 17mm;
+            font-size: 2.75mm;
+        }
+
+        body.ticket-paper-58 .info-table td {
+            font-size: 2.65mm;
+        }
+
+        body.ticket-paper-58 .grand-total td {
+            font-size: 3.5mm;
+        }
+
+        body.ticket-paper-58 .company {
+            font-size: 5.2mm;
+        }
+
+        body.ticket-paper-58 .doc-code {
+            font-size: 4.2mm;
         }
 
         .notes {
@@ -193,7 +259,7 @@
         }
     </style>
 </head>
-<body>
+<body class="ticket-paper-{{ (int) ($ticketPageWidthMm ?? 80) === 58 ? '58' : '80' }}">
 @php
     $docName = strtoupper($sale->documentType?->name ?? 'TICKET DE VENTA');
     $ticketSeries = $sale->salesMovement?->series ?? '001';
@@ -259,7 +325,7 @@
         <thead>
         <tr>
             <th class="col-qty">CANT.</th>
-            <th class="col-product">&nbsp;&nbsp;DESCRIPCION</th>
+            <th class="col-product">DESCRIPCION</th>
             <th class="col-unit">PRECIO</th>
             <th class="col-subtotal">IMPORTE</th>
         </tr>
@@ -273,7 +339,7 @@
             @endphp
             <tr>
                 <td class="col-qty">{{ number_format($qty, 2) }}</td>
-                <td class="col-product">&nbsp;&nbsp;{{ $detail->description ?? $detail->product?->description ?? '-' }}</td>
+                <td class="col-product">{{ $detail->description ?? $detail->product?->description ?? '-' }}</td>
                 <td class="col-unit">{{ number_format($unitPrice, 2) }}</td>
                 <td class="col-subtotal">{{ number_format($lineTotal, 2) }}</td>
             </tr>
@@ -293,7 +359,7 @@
             <td class="totals-value">S/ {{ number_format($ticketTax, 2) }}</td>
         </tr>
         <tr class="grand-total">
-            <td>TOTAL:</td>
+            <td class="totals-label">TOTAL:</td>
             <td class="totals-value">S/ {{ number_format($ticketTotal, 2) }}</td>
         </tr>
     </table>

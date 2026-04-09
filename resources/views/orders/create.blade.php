@@ -1916,8 +1916,42 @@
                         if (!qzApi || !isQzTrayAvailable()) {
                             return false;
                         }
+                        try {
+                            if (qzApi.websocket.isActive()) {
+                                return true;
+                            }
+                            await qzApi.websocket.connect();
+                            return qzApi.websocket.isActive();
+                        } catch (e) {
+                            console.warn('QZ Tray: conexión no disponible.', e);
+                            return false;
+                        }
+                    }
 
-                        return qzApi.websocket.isActive();
+                    /**
+                     * Impresión de precuenta vía QZ (USB/local). Usado como principal o fallback si el servidor falla (p. ej. PowerShell USB).
+                     */
+                    async function tryPrintPrecuentaWithQz(qzApi, printerName, ticketText) {
+                        if (!qzApi || !isQzTrayAvailable()) {
+                            return false;
+                        }
+                        try {
+                            if (!await ensureQzTrayConnected(qzApi)) {
+                                return false;
+                            }
+                            let currentPrinterName = printerName ? String(printerName).trim() : '';
+                            if (!currentPrinterName) {
+                                currentPrinterName = await qzApi.printers.getDefault();
+                            }
+                            if (!currentPrinterName) {
+                                return false;
+                            }
+                            await printTicketWithQz(qzApi, currentPrinterName, ticketText);
+                            return true;
+                        } catch (e) {
+                            console.warn('Precuenta: impresión QZ Tray', e);
+                            return false;
+                        }
                     }
 
                     async function printPreAccountTicket() {
@@ -1990,10 +2024,24 @@
                             if (tr.ok && td?.success) {
                                 if (typeof showNotification === 'function') showNotification('Precuenta', td.message || 'Ticket enviado.', 'success');
                             } else {
-                                openPreAccountPdfTab();
+                                const qzOk = await tryPrintPrecuentaWithQz(qzApi, printerName, ticketText);
+                                if (qzOk) {
+                                    if (typeof showNotification === 'function') {
+                                        showNotification('Precuenta', 'Impreso con QZ Tray (el servidor no pudo usar la impresora USB).', 'success');
+                                    }
+                                } else {
+                                    openPreAccountPdfTab();
+                                }
                             }
                         } catch (e) {
-                            openPreAccountPdfTab();
+                            const qzOk = await tryPrintPrecuentaWithQz(qzApi, printerName, ticketText);
+                            if (qzOk) {
+                                if (typeof showNotification === 'function') {
+                                    showNotification('Precuenta', 'Impreso con QZ Tray (error al contactar el servidor).', 'success');
+                                }
+                            } else {
+                                openPreAccountPdfTab();
+                            }
                         }
                     }
 
@@ -3650,7 +3698,7 @@
                                     body: JSON.stringify({ ...body, mode: 'qz' })
                                 });
                                 const td = tr.headers.get('content-type')?.includes('application/json') ? await tr.json() : null;
-                                if (!tr.ok || !td?.success || !td?.payload_b64) {
+                                if (!tr.ok || !td?.success || (!td?.ticket_pdf_b64 && !td?.payload_b64)) {
                                     throw new Error(td?.message || 'No se pudo obtener el ticket del servidor.');
                                 }
                                 let currentPrinterName = printerName || td.printer_name || '';
@@ -3660,8 +3708,19 @@
                                     return;
                                 }
                                 const paperMm = (parseInt(td.paper_width) || 58) === 80 ? 80 : 58;
-                                const config = qzApi.configs.create(currentPrinterName, { units: 'mm', size: { width: paperMm, height: 200 }, scaleContent: false });
-                                await qzApi.print(config, [{ type: 'raw', format: 'base64', data: td.payload_b64 }]);
+                                const sizeOpts = { units: 'mm', size: { width: paperMm, height: 200 } };
+                                const configPdf = qzApi.configs.create(currentPrinterName, { ...sizeOpts, scaleContent: true });
+                                const configRaw = qzApi.configs.create(currentPrinterName, { ...sizeOpts, scaleContent: false });
+                                if (td.ticket_pdf_b64 && td.qz_print_format === 'pdf') {
+                                    try {
+                                        await qzApi.print(configPdf, [{ type: 'pixel', format: 'pdf', flavor: 'base64', data: td.ticket_pdf_b64 }]);
+                                    } catch (pdfErr) {
+                                        console.warn('QZ Tray: PDF ticket, reintento RAW', pdfErr);
+                                        await qzApi.print(configRaw, [{ type: 'raw', format: 'base64', data: td.payload_b64 }]);
+                                    }
+                                } else {
+                                    await qzApi.print(configRaw, [{ type: 'raw', format: 'base64', data: td.payload_b64 }]);
+                                }
                                 if (typeof showNotification === 'function')
                                     showNotification('Impresión', 'Comprobante enviado a "' + currentPrinterName + '".', 'success');
                                 return;

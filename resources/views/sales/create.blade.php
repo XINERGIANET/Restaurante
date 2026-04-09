@@ -1496,7 +1496,7 @@
                         });
                         const td = tr.headers.get('content-type')?.includes('application/json') ? await tr.json() :
                             null;
-                        if (!tr.ok || !td?.success || !td?.payload_b64) {
+                        if (!tr.ok || !td?.success || (!td?.ticket_pdf_b64 && !td?.payload_b64)) {
                             openSaleTicketPdfTab(movementId);
                             return;
                         }
@@ -1507,19 +1507,32 @@
                             return;
                         }
                         const paperMm = (parseInt(td.paper_width) || 58) === 80 ? 80 : 58;
-                        const config = qzApi.configs.create(printerName, {
-                            units: 'mm',
-                            size: {
-                                width: paperMm,
-                                height: 200
-                            },
-                            scaleContent: false
-                        });
-                        await qzApi.print(config, [{
-                            type: 'raw',
-                            format: 'base64',
-                            data: td.payload_b64
-                        }]);
+                        const sizeOpts = { units: 'mm', size: { width: paperMm, height: 200 } };
+                        const configPdf = qzApi.configs.create(printerName, { ...sizeOpts, scaleContent: true });
+                        const configRaw = qzApi.configs.create(printerName, { ...sizeOpts, scaleContent: false });
+                        if (td.ticket_pdf_b64 && td.qz_print_format === 'pdf') {
+                            try {
+                                await qzApi.print(configPdf, [{
+                                    type: 'pixel',
+                                    format: 'pdf',
+                                    flavor: 'base64',
+                                    data: td.ticket_pdf_b64
+                                }]);
+                            } catch (pdfErr) {
+                                console.warn('QZ Tray: PDF ticket, reintento RAW', pdfErr);
+                                await qzApi.print(configRaw, [{
+                                    type: 'raw',
+                                    format: 'base64',
+                                    data: td.payload_b64
+                                }]);
+                            }
+                        } else {
+                            await qzApi.print(configRaw, [{
+                                type: 'raw',
+                                format: 'base64',
+                                data: td.payload_b64
+                            }]);
+                        }
                         showCobroNotification('Impresión', 'Ticket enviado a "' + printerName + '".', 'success');
                     } catch (e) {
                         markQzTrayUnavailable();

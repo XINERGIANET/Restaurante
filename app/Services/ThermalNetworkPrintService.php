@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use RuntimeException;
+use Symfony\Component\Process\ExecutableFinder;
 use Symfony\Component\Process\Process;
 
 class ThermalNetworkPrintService
@@ -179,24 +180,44 @@ PS1;
         file_put_contents($scriptPathPs1, $psScript);
 
         try {
-            $process = new Process([
-                'powershell',
+            $argsBase = [
                 '-NoProfile',
                 '-ExecutionPolicy', 'Bypass',
                 '-File', $scriptPathPs1,
                 '-PrinterName', $printerName,
                 '-PayloadPath', $payloadPath,
                 '-TempDir', $tmpDir,
-            ]);
-            $process->setTimeout(max(1, $timeoutSeconds));
-            $process->run();
+            ];
 
-            if (! $process->isSuccessful()) {
+            $candidates = ['powershell'];
+            $finder = new ExecutableFinder();
+            $pwsh = $finder->find('pwsh.exe') ?? $finder->find('pwsh');
+            if (is_string($pwsh) && $pwsh !== '') {
+                $candidates[] = $pwsh;
+            }
+            $candidates = array_values(array_unique($candidates));
+
+            $lastDetail = '';
+            foreach ($candidates as $executable) {
+                $process = new Process(array_merge([$executable], $argsBase));
+                $process->setTimeout(max(1, $timeoutSeconds));
+                $process->run();
+
+                if ($process->isSuccessful()) {
+                    return;
+                }
+
                 $stderr = trim($process->getErrorOutput());
                 $stdout = trim($process->getOutput());
                 $detail = $stderr !== '' ? $stderr : $stdout;
-                throw new RuntimeException('No se pudo imprimir en USB local: '.($detail !== '' ? $this->normalizeOutputText($detail) : 'error desconocido'));
+                $lastDetail = $detail !== '' ? $this->normalizeOutputText($detail) : '';
+
+                if (stripos($detail, '8009001d') === false) {
+                    break;
+                }
             }
+
+            throw new RuntimeException('No se pudo imprimir en USB local: '.($lastDetail !== '' ? $lastDetail : 'error desconocido'));
         } finally {
             @unlink($payloadPath);
             @unlink($scriptPathPs1);

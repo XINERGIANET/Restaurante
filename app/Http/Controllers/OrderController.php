@@ -1684,7 +1684,7 @@ class OrderController extends Controller
                     'person_name' => $clientName,
                     'responsible_id' => $responsibleId,
                     'responsible_name' => $waiterName ?: (($user?->person?->first_name ?? '') . ' ' . ($user?->person?->last_name ?? '-')),
-                    'comment' => 'Pedido desde punto de venta',
+                    'comment' => 'Pedido ',
                     'status' => 'A',
                     'movement_type_id' => $movementType->id,
                     'document_type_id' => $documentType->id,
