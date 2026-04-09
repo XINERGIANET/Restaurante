@@ -83,7 +83,10 @@ export function configureQzSecurity() {
 }
 
 function initQzIfMetaPresent() {
-    if (!readMeta('qz-sign-url') || !readMeta('qz-certificate-url')) {
+    const cfg = window.__qzConfig || {};
+    const signUrl = readMeta('qz-sign-url') || cfg.signUrl || '';
+    const certUrl = readMeta('qz-certificate-url') || cfg.certificateUrl || '';
+    if (!signUrl || !certUrl) {
         return;
     }
     configureQzSecurity();

@@ -259,6 +259,19 @@
                                 <i class="ri-file-excel-2-line text-base"></i>
                                 <span>Descargar Excel</span>
                             </button>
+                            @if (!empty($thermalPrintEnabled) && ($thermalPrinters ?? collect())->count() > 1)
+                                <div class="flex w-full sm:w-auto flex-col gap-1">
+                                    <label class="text-[11px] font-medium text-gray-600 dark:text-gray-400">Ticketera
+                                        (reimpresión)</label>
+                                    <select id="sales-index-thermal-printer"
+                                        class="h-11 min-w-[200px] rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-800 shadow-theme-xs dark:border-gray-600 dark:bg-gray-900 dark:text-white/90">
+                                        <option value="">Predeterminada</option>
+                                        @foreach ($thermalPrinters as $tp)
+                                            <option value="{{ $tp->id }}">{{ $tp->name }} — {{ $tp->ip }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            @endif
                         </div>
                     </div>
                 </form>
@@ -380,6 +393,22 @@
                                                 <span
                                                     class="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-3 whitespace-nowrap rounded-md bg-gray-900 px-2.5 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-[100] shadow-xl">
                                                     Convertir a boleta/factura
+                                                    <span
+                                                        class="absolute top-full left-1/2 -ml-1 border-4 border-transparent border-t-gray-900"></span>
+                                                </span>
+                                            </div>
+                                        @endif
+                                        @if (!empty($thermalPrintEnabled))
+                                            <div class="relative group">
+                                                <button type="button"
+                                                    data-thermal-print-sale="{{ $sale->id }}"
+                                                    class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-teal-600 text-white shadow-sm transition hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500/40"
+                                                    aria-label="Imprimir comprobante en ticketera">
+                                                    <i class="ri-printer-line"></i>
+                                                </button>
+                                                <span
+                                                    class="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-3 whitespace-nowrap rounded-md bg-gray-900 px-2.5 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-[100] shadow-xl">
+                                                    Imprimir ticketera (mismo formato que cobro)
                                                     <span
                                                         class="absolute top-full left-1/2 -ml-1 border-4 border-transparent border-t-gray-900"></span>
                                                 </span>
@@ -704,8 +733,245 @@
     </div>
 
     @push('scripts')
+        @vite(['resources/js/qz-tray-init.js'])
         <script>
             (function() {
+                const salesThermalPrintUrl = @json(route('sales.print.ticket.thermal'));
+                const salesTicketPrintBaseUrl = @json(route('admin.sales.print.ticket', ['sale' => '__SALE__']));
+                const salesIndexViewId = @json($viewId ?? '');
+
+                function openSaleTicketPdfTab(movementId) {
+                    if (!movementId) return;
+                    let ticketUrl = salesTicketPrintBaseUrl.replace('__SALE__', movementId);
+                    if (salesIndexViewId) {
+                        ticketUrl += (ticketUrl.includes('?') ? '&' : '?') + 'view_id=' + encodeURIComponent(salesIndexViewId);
+                    }
+                    window.open(ticketUrl, '_blank', 'noopener,noreferrer');
+                }
+
+                function isQzTrayAvailable() {
+                    try {
+                        return typeof window.qz !== 'undefined' && window.qz !== null;
+                    } catch (e) {
+                        return false;
+                    }
+                }
+
+                async function ensureQzTrayConnected(qzApi) {
+                    if (!qzApi || !isQzTrayAvailable()) {
+                        return false;
+                    }
+                    try {
+                        if (qzApi.websocket.isActive()) {
+                            return true;
+                        }
+                        await qzApi.websocket.connect();
+                        return qzApi.websocket.isActive();
+                    } catch (e) {
+                        console.warn('QZ Tray: conexión no disponible.', e);
+                        return false;
+                    }
+                }
+
+                function resolveStrictLocalPrinterName() {
+                    const host = String(window.location.hostname || '').trim().toLowerCase();
+                    const isLocalhost = ['localhost', '127.0.0.1', '::1'].includes(host);
+                    return isLocalhost ? 'BARRA' : 'BARRA2';
+                }
+
+                function requiresStrictLocalQz(printerName) {
+                    const target = String(printerName || '').trim().toLowerCase();
+                    return target === 'barra2' || target.startsWith('barra2');
+                }
+
+                function thermalPrintToast(title, message, icon) {
+                    if (window.Swal) {
+                        Swal.fire({
+                            toast: true,
+                            position: 'bottom-end',
+                            icon: icon || 'success',
+                            title: title,
+                            text: message,
+                            showConfirmButton: false,
+                            timer: 3200,
+                            timerProgressBar: true,
+                        });
+                    } else {
+                        alert((title ? title + ': ' : '') + (message || ''));
+                    }
+                }
+
+                async function printThermalSaleReceipt(movementId) {
+                    if (!movementId) return;
+                    const qzApi = window.qz;
+                    const sel = document.getElementById('sales-index-thermal-printer');
+                    const printerId = sel && sel.value ? parseInt(sel.value, 10) : null;
+                    const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                    const preferredPrinterName = resolveStrictLocalPrinterName();
+                    const strictLocalQz = requiresStrictLocalQz(preferredPrinterName);
+                    const body = { movement_id: movementId };
+                    if (printerId) {
+                        body.printer_id = printerId;
+                    }
+
+                    if (qzApi && await ensureQzTrayConnected(qzApi)) {
+                        try {
+                            const tr = await fetch(salesThermalPrintUrl, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': csrf,
+                                    Accept: 'application/json',
+                                },
+                                credentials: 'same-origin',
+                                body: JSON.stringify({ ...body, mode: 'qz' }),
+                            });
+                            const td = tr.headers.get('content-type')?.includes('application/json') ? await tr.json() : null;
+                            if (!tr.ok || !td?.success || (!td?.ticket_pdf_b64 && !td?.payload_b64)) {
+                                throw new Error(td?.message || 'No se pudo obtener el ticket del servidor.');
+                            }
+                            let printerName = preferredPrinterName || td.printer_name || '';
+                            if (!printerName) {
+                                printerName = await qzApi.printers.getDefault();
+                            }
+                            if (!printerName) {
+                                openSaleTicketPdfTab(movementId);
+                                return;
+                            }
+                            const paperMm = (parseInt(td.paper_width, 10) || 58) === 80 ? 80 : 58;
+                            const sizeOpts = { units: 'mm', size: { width: paperMm, height: 200 } };
+                            const configPdf = qzApi.configs.create(printerName, { ...sizeOpts, scaleContent: true });
+                            const configRaw = qzApi.configs.create(printerName, { ...sizeOpts, scaleContent: false });
+                            if (td.ticket_pdf_b64 && td.qz_print_format === 'pdf') {
+                                try {
+                                    await qzApi.print(configPdf, [{
+                                        type: 'pixel',
+                                        format: 'pdf',
+                                        flavor: 'base64',
+                                        data: td.ticket_pdf_b64,
+                                    }]);
+                                } catch (pdfErr) {
+                                    console.warn('QZ Tray: PDF ticket, reintento RAW', pdfErr);
+                                    await qzApi.print(configRaw, [{
+                                        type: 'raw',
+                                        format: 'base64',
+                                        data: td.payload_b64,
+                                    }]);
+                                }
+                            } else {
+                                await qzApi.print(configRaw, [{
+                                    type: 'raw',
+                                    format: 'base64',
+                                    data: td.payload_b64,
+                                }]);
+                            }
+                            thermalPrintToast('Impresión', 'Comprobante enviado a "' + printerName + '".', 'success');
+                        } catch (e) {
+                            console.warn('QZ Ticket listado:', e);
+                            if (strictLocalQz) {
+                                openSaleTicketPdfTab(movementId);
+                                return;
+                            }
+                            try {
+                                const tr = await fetch(salesThermalPrintUrl, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'X-CSRF-TOKEN': csrf,
+                                        Accept: 'application/json',
+                                    },
+                                    credentials: 'same-origin',
+                                    body: JSON.stringify(body),
+                                });
+                                const td = tr.headers.get('content-type')?.includes('application/json') ? await tr.json() : null;
+                                if (tr.ok && td?.success) {
+                                    thermalPrintToast('Impresión', td.message || 'Enviado a la ticketera.', 'success');
+                                } else {
+                                    openSaleTicketPdfTab(movementId);
+                                }
+                            } catch (e2) {
+                                openSaleTicketPdfTab(movementId);
+                            }
+                        }
+                        return;
+                    }
+
+                    if (strictLocalQz) {
+                        openSaleTicketPdfTab(movementId);
+                        return;
+                    }
+
+                    try {
+                        const tr = await fetch(salesThermalPrintUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrf,
+                                Accept: 'application/json',
+                            },
+                            credentials: 'same-origin',
+                            body: JSON.stringify(body),
+                        });
+                        const td = tr.headers.get('content-type')?.includes('application/json') ? await tr.json() : null;
+                        if (tr.ok && td?.success) {
+                            thermalPrintToast('Impresión', td.message || 'Enviado a la ticketera.', 'success');
+                        } else {
+                            openSaleTicketPdfTab(movementId);
+                        }
+                    } catch (e) {
+                        openSaleTicketPdfTab(movementId);
+                    }
+                }
+
+                window.printThermalSaleReceipt = printThermalSaleReceipt;
+
+                document.addEventListener('click', function (e) {
+                    const btn = e.target.closest('[data-thermal-print-sale]');
+                    if (!btn) {
+                        return;
+                    }
+                    e.preventDefault();
+                    const id = parseInt(btn.getAttribute('data-thermal-print-sale'), 10);
+                    if (id) {
+                        printThermalSaleReceipt(id);
+                    }
+                });
+
+                function runThermalReprintFromQuery() {
+                    const params = new URLSearchParams(window.location.search);
+                    const idRaw = params.get('thermal_reprint');
+                    if (!idRaw) {
+                        return;
+                    }
+                    const id = parseInt(idRaw, 10);
+                    if (!id) {
+                        return;
+                    }
+                    const stripThermalParam = function () {
+                        params.delete('thermal_reprint');
+                        const qs = params.toString();
+                        const path = window.location.pathname + (qs ? '?' + qs : '');
+                        window.history.replaceState({}, '', path);
+                    };
+                    const doneKey = 'thermal_reprint_done_' + id;
+                    try {
+                        if (sessionStorage.getItem(doneKey) === '1') {
+                            stripThermalParam();
+                            return;
+                        }
+                        sessionStorage.setItem(doneKey, '1');
+                    } catch (err) {
+                        // ignore
+                    }
+                    stripThermalParam();
+                    setTimeout(function () {
+                        printThermalSaleReceipt(id);
+                    }, 500);
+                }
+
+                document.addEventListener('DOMContentLoaded', runThermalReprintFromQuery);
+                document.addEventListener('turbo:load', runThermalReprintFromQuery);
+
                 function showFlashToast() {
                     const msg = sessionStorage.getItem('flash_success_message');
                     if (!msg) return;

@@ -228,6 +228,16 @@ class SalesController extends Controller
             ->paginate($perPage)
             ->withQueryString();
 
+        $thermalPrintersIndex = $branchId
+            ? PrinterBranch::query()
+                ->where('branch_id', $branchId)
+                ->where('status', 'E')
+                ->whereNotNull('ip')
+                ->where('ip', '!=', '')
+                ->orderBy('id')
+                ->get(['id', 'name', 'ip', 'width'])
+            : collect();
+
         if ($request->wantsJson() || $request->ajax()) {
             return response()->json([
                 'success' => true,
@@ -263,6 +273,9 @@ class SalesController extends Controller
             'saleType' => $saleType,
             'cashShiftRelationId' => $cashShiftRelationId,
             'cashShiftSessions' => $cashShiftSessions,
+            'clientOnLocalNetwork' => LocalNetworkClient::isOnLocalNetwork($request),
+            'thermalPrinters' => $thermalPrintersIndex,
+            'thermalPrintEnabled' => (bool) config('local_network.thermal_print_enabled', true),
         ];
 
         return view('sales.index', $viewData);
@@ -2403,8 +2416,13 @@ class SalesController extends Controller
 
             DB::commit();
 
+            $indexParams = ['thermal_reprint' => $sale->id];
+            if ($request->filled('view_id')) {
+                $indexParams['view_id'] = $request->input('view_id');
+            }
+
             return redirect()
-                ->route('sales.index', $request->filled('view_id') ? ['view_id' => $request->input('view_id')] : [])
+                ->route('sales.index', $indexParams)
                 ->with('status', 'Ticket convertido y enviado correctamente a Apisunat.');
         } catch (\Throwable $e) {
             DB::rollBack();
