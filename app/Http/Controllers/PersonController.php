@@ -66,9 +66,14 @@ class PersonController extends Controller
             $res = $data['resultado'] ?? $data;
 
             return response()->json([
+                'id'               => $res['id'] ?? $dni,
                 'nombres'          => $res['nombres'] ?? '',
                 'apellido_paterno' => $res['apellido_paterno'] ?? '',
                 'apellido_materno' => $res['apellido_materno'] ?? '',
+                'nombre_completo'  => $res['nombre_completo'] ?? trim(($res['nombres'] ?? '').' '.($res['apellido_paterno'] ?? '').' '.($res['apellido_materno'] ?? '')),
+                'genero'           => $res['genero'] ?? '',
+                'fecha_nacimiento' => $res['fecha_nacimiento'] ?? '',
+                'codigo_verificacion' => $res['codigo_verificacion'] ?? '',
                 'documento'        => $res['documento'] ?? $dni,
                 'raw'              => $data
             ]);
@@ -123,11 +128,18 @@ class PersonController extends Controller
             $res = $data['resultado'] ?? $data;
 
             return response()->json([
+                'id'             => $res['id'] ?? $ruc,
                 'razon_social' => $res['razon_social'] ?? '',
                 'direccion'    => $res['direccion'] ?? '',
                 'estado'       => $res['estado'] ?? '',
                 'condicion'    => $res['condicion'] ?? '',
-                'documento'    => $res['ruc'] ?? $ruc,
+                'departamento' => $res['departamento'] ?? null,
+                'provincia'    => $res['provincia'] ?? null,
+                'distrito'     => $res['distrito'] ?? null,
+                'fecha_inscripcion' => $res['fecha_inscripcion'] ?? null,
+                'tipo'         => $res['tipo'] ?? '',
+                'nombre_comercial' => $res['nombre_comercial'] ?? '',
+                'documento'    => $res['ruc'] ?? $res['id'] ?? $ruc,
                 'raw'          => $data
             ]);
         } catch (\Exception $e) {
@@ -246,10 +258,17 @@ class PersonController extends Controller
         });
         if (($request->expectsJson() || $request->ajax()) && $request->boolean('from_pos')) {
             $fullName = trim(($person?->first_name ?? '').' '.($person?->last_name ?? ''));
+            if ($fullName === '') {
+                $fullName = trim((string) ($person?->first_name ?? ''));
+            }
+            $documentNumber = trim((string) ($person?->document_number ?? ''));
+            $description = trim($documentNumber !== '' ? ($documentNumber.' - '.$fullName) : $fullName);
             return response()->json([
                 'success' => true,
                 'id' => $person?->id,
+                'person_id' => $person?->id,
                 'name' => $fullName !== '' ? $fullName : ($person?->document_number ?? 'Cliente'),
+                'description' => $description !== '' ? $description : ($documentNumber ?: 'Cliente'),
                 'document_number' => $person?->document_number,
                 'message' => 'Cliente creado correctamente.',
             ]);
@@ -383,10 +402,12 @@ class PersonController extends Controller
     private function validatePerson(Request $request): array
     {
         $fromPos = $request->boolean('from_pos');
+        $personType = strtoupper(trim((string) $request->input('person_type')));
+        $isPosRuc = $fromPos && $personType === 'RUC';
 
         $data = $request->validate([
-            'first_name'      => ['required', 'string', 'max:255'],
-            'last_name'       => ['required', 'string', 'max:255'],
+            'first_name'      => $isPosRuc ? ['required', 'string', 'max:255'] : ['required', 'string', 'max:255'],
+            'last_name'       => $isPosRuc ? ['nullable', 'string', 'max:255'] : ['required', 'string', 'max:255'],
             'fecha_nacimiento' => ['nullable', 'date'],
             'genero'          => ['nullable', 'string', 'max:30'],
             // En el POS solo nombre y apellido son obligatorios

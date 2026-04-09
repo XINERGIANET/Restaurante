@@ -18,16 +18,45 @@
                 <div class="flex flex-col sm:flex-row justify-between items-center gap-4 w-full">
 
                     <template x-if="areas && areas.length > 0">
-                        <div class="w-full sm:w-auto overflow-x-auto overflow-y-hidden pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                            <div class="inline-flex min-w-max p-1 bg-gray-100 dark:bg-gray-800 rounded-xl">
-                            <template x-for="area in areas" :key="area.id">
-                                <button @click="switchArea(area)"
-                                    :class="currentAreaId === area.id ?
-                                        'bg-white dark:bg-gray-700 shadow-sm text-gray-800 dark:text-white' :
-                                        'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
-                                    class="shrink-0 whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium transition-all" x-text="area.name">
+                        <div class="w-full sm:w-auto">
+                            <div class="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    x-show="canScrollAreasLeft"
+                                    x-cloak
+                                    @click="scrollAreas('left')"
+                                    class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-sm transition hover:border-[#FF4622]/30 hover:text-[#FF4622] dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                                    title="Ver áreas anteriores"
+                                >
+                                    <i class="ri-arrow-left-s-line text-lg"></i>
                                 </button>
-                            </template>
+
+                                <div x-ref="areasScroller"
+                                    @scroll="updateAreaScrollState()"
+                                    class="w-full sm:w-auto overflow-x-auto overflow-y-hidden pb-1 scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                                    <div class="inline-flex min-w-max p-1 bg-gray-100 dark:bg-gray-800 rounded-xl">
+                                        <template x-for="area in areas" :key="area.id">
+                                            <button @click="switchArea(area)"
+                                                :class="currentAreaId === area.id ?
+                                                    'bg-white dark:bg-gray-700 shadow-sm text-gray-800 dark:text-white' :
+                                                    'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
+                                                class="shrink-0 whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium transition-all"
+                                                x-text="area.name">
+                                            </button>
+                                        </template>
+                                    </div>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    x-show="canScrollAreasRight"
+                                    x-cloak
+                                    @click="scrollAreas('right')"
+                                    class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-sm transition hover:border-[#FF4622]/30 hover:text-[#FF4622] dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                                    title="Ver más áreas"
+                                >
+                                    <i class="ri-arrow-right-s-line text-lg"></i>
+                                </button>
                             </div>
                         </div>
                     </template>
@@ -440,6 +469,8 @@
                     validateWaiterPinUrl: @json(route('orders.validateWaiterPin')),
                     filteredTables: safeFilteredTables,
                     waiter: null,
+                    canScrollAreasLeft: false,
+                    canScrollAreasRight: false,
 
                     getStoredWaiter() {
                         try {
@@ -569,6 +600,7 @@
                                 }
                             }
                             this.updateFilteredTables();
+                            this.$nextTick(() => this.updateAreaScrollState());
                         } catch (e) {
                             console.warn('No se pudo actualizar mesas:', e);
                         }
@@ -592,6 +624,32 @@
                         this.activeFilters = [];
                         this.searchQuery = '';
                         this.updateFilteredTables();
+                    },
+
+                    updateAreaScrollState() {
+                        const el = this.$refs.areasScroller;
+                        if (!el) {
+                            this.canScrollAreasLeft = false;
+                            this.canScrollAreasRight = false;
+                            return;
+                        }
+
+                        const maxScrollLeft = Math.max(0, el.scrollWidth - el.clientWidth);
+                        this.canScrollAreasLeft = el.scrollLeft > 4;
+                        this.canScrollAreasRight = el.scrollLeft < (maxScrollLeft - 4);
+                    },
+
+                    scrollAreas(direction) {
+                        const el = this.$refs.areasScroller;
+                        if (!el) return;
+
+                        const distance = Math.max(180, Math.floor(el.clientWidth * 0.55));
+                        const left = direction === 'left'
+                            ? Math.max(0, el.scrollLeft - distance)
+                            : el.scrollLeft + distance;
+
+                        el.scrollTo({ left, behavior: 'smooth' });
+                        window.setTimeout(() => this.updateAreaScrollState(), 220);
                     },
 
                     init() {
@@ -622,6 +680,9 @@
                         };
                         window.addEventListener('beforeunload', cleanup, { once: true });
                         document.addEventListener('turbo:before-cache', cleanup, { once: true });
+                        const handleResize = () => this.updateAreaScrollState();
+                        window.addEventListener('resize', handleResize);
+                        this.$nextTick(() => this.updateAreaScrollState());
                         const self = this;
                         window.__posRefreshTables = function() {
                             self.refreshTables();
@@ -721,6 +782,7 @@
 
                     switchArea(area) {
                         this.currentAreaId = Number(area.id);
+                        this.$nextTick(() => this.updateAreaScrollState());
                         window.scrollTo(0, 0);
                     },
 
