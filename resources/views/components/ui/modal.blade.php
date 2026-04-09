@@ -15,9 +15,28 @@
 
 <div
     x-data="{{ $xData }}"
+    x-init="
+        const unlockScroll = () => {
+            document.body.style.removeProperty('overflow');
+            document.documentElement.style.removeProperty('overflow');
+        };
+        window.addEventListener('turbo:before-cache', unlockScroll);
+        window.addEventListener('pagehide', unlockScroll);
+        $watch('open', () => {
+            requestAnimationFrame(() => {
+                const modals = Array.from(document.querySelectorAll('.modal'));
+                const anyOpen = modals.some(modal => modal.__x && modal.__x.$data && modal.__x.$data.open);
+                if (anyOpen) {
+                    document.body.style.setProperty('overflow', 'hidden');
+                    document.documentElement.style.setProperty('overflow', 'hidden');
+                } else {
+                    unlockScroll();
+                }
+            });
+        });
+    "
     x-show="open"
     x-cloak
-    x-effect="document.body.style.setProperty('overflow', open ? 'hidden' : 'unset')"
     class="modal fixed inset-0 z-99999 flex items-center justify-center overflow-y-auto p-4 sm:p-6"
     {{ $attributes->except(['class', 'x-data']) }}>
 

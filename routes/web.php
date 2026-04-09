@@ -134,6 +134,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/admin/ventas/{sale}/electronico/pdf-a4', [SalesController::class, 'redirectElectronicPdfA4'])->name('sales.electronic.pdf.a4');
     Route::get('/admin/ventas/{sale}/electronico/xml', [SalesController::class, 'redirectElectronicXml'])->name('sales.electronic.xml');
     Route::get('/admin/ventas/{sale}/electronico/cdr', [SalesController::class, 'redirectElectronicCdr'])->name('sales.electronic.cdr');
+    Route::post('/admin/ventas/{sale}/convertir-electronico', [SalesController::class, 'convertTicketToElectronic'])->name('sales.convert.electronic');
     Route::post('/admin/ventas/ticket-termica', [SalesController::class, 'printTicketThermalNetwork'])
         ->name('sales.print.ticket.thermal');
 

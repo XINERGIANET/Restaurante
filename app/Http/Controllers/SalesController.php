@@ -102,6 +102,15 @@ class SalesController extends Controller
             ->restrictedToBranch($branchId ? (int) $branchId : null)
             ->orderBy('order_num')
             ->get(['id', 'description']);
+        $branchClients = $this->branchClientsForBranch($branchId ? (int) $branchId : null);
+        $convertibleDocumentTypes = DocumentType::query()
+            ->where('movement_type_id', 2)
+            ->where(function ($query) {
+                $query->where('name', 'like', '%boleta%')
+                    ->orWhere('name', 'like', '%factura%');
+            })
+            ->orderBy('name')
+            ->get(['id', 'name']);
         $cashRegisters = $branchId
             ? CashRegister::query()->where('branch_id', $branchId)->orderBy('number')->get(['id', 'number'])
             : CashRegister::query()->whereRaw('1 = 0')->get(['id', 'number']);
@@ -244,6 +253,8 @@ class SalesController extends Controller
             'dateTo' => $dateTo,
             'documentTypeId' => $documentTypeId,
             'documentTypes' => $documentTypes,
+            'branchClients' => $branchClients,
+            'convertibleDocumentTypes' => $convertibleDocumentTypes,
             'paymentMethodId' => $paymentMethodId,
             'paymentMethods' => $paymentMethods,
             'cashRegisterId' => $effectiveCashRegisterId,
@@ -2257,6 +2268,114 @@ class SalesController extends Controller
         }
 
         return redirect()->away($url);
+    }
+
+    public function convertTicketToElectronic(Request $request, Movement $sale, ApisunatService $apisunatService)
+    {
+        $sale = $this->resolvePrintableForTicket($sale);
+
+        $validated = $request->validate([
+            'document_type_id' => ['required', 'integer', 'exists:document_types,id'],
+            'person_id' => ['nullable', 'integer', 'exists:people,id'],
+        ]);
+
+        $sale->loadMissing(['documentType', 'branch', 'salesMovement', 'person']);
+
+        if (! $sale->salesMovement) {
+            return back()->with('error', 'Solo se pueden convertir ventas reales.');
+        }
+
+        $currentDocumentName = mb_strtolower(trim((string) ($sale->documentType?->name ?? '')), 'UTF-8');
+        if (! str_contains($currentDocumentName, 'ticket')) {
+            return back()->with('error', 'Solo los tickets de venta pueden convertirse.');
+        }
+
+        $targetDocumentType = DocumentType::query()
+            ->where('movement_type_id', 2)
+            ->findOrFail((int) $validated['document_type_id']);
+
+        $targetDocumentName = mb_strtolower(trim((string) ($targetDocumentType->name ?? '')), 'UTF-8');
+        if (! str_contains($targetDocumentName, 'boleta') && ! str_contains($targetDocumentName, 'factura')) {
+            return back()->with('error', 'Solo se puede convertir a boleta o factura.');
+        }
+
+        $selectedPerson = null;
+        if (! empty($validated['person_id'])) {
+            $selectedPerson = Person::query()
+                ->where('id', (int) $validated['person_id'])
+                ->where('branch_id', $sale->branch_id)
+                ->whereNull('deleted_at')
+                ->first();
+
+            if (! $selectedPerson) {
+                return back()->with('error', 'El cliente seleccionado no pertenece a esta sucursal.');
+            }
+        }
+
+        if (str_contains($targetDocumentName, 'factura')) {
+            $document = preg_replace('/\D+/', '', (string) ($selectedPerson?->document_number ?? ''));
+            if (strlen($document) !== 11) {
+                return back()->with('error', 'La factura requiere un cliente con RUC válido.');
+            }
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $sale->forceFill([
+                'document_type_id' => (int) $targetDocumentType->id,
+                'person_id' => $selectedPerson?->id,
+                'person_name' => $selectedPerson
+                    ? trim(($selectedPerson->first_name ?? '') . ' ' . ($selectedPerson->last_name ?? ''))
+                    : 'CLIENTES VARIOS',
+                'electronic_invoice_provider' => null,
+                'electronic_invoice_status' => null,
+                'electronic_invoice_external_id' => null,
+                'electronic_invoice_series' => null,
+                'electronic_invoice_number' => null,
+                'electronic_invoice_file_name' => null,
+                'electronic_invoice_pdf_ticket_url' => null,
+                'electronic_invoice_pdf_a4_url' => null,
+                'electronic_invoice_xml_url' => null,
+                'electronic_invoice_cdr_url' => null,
+                'electronic_invoice_response' => null,
+            ])->save();
+
+            $sale->unsetRelation('documentType');
+            $sale->unsetRelation('person');
+            $sale->unsetRelation('branch');
+            $sale->unsetRelation('salesMovement');
+            $sale->refresh();
+
+            $result = $this->syncElectronicInvoiceForSale($sale, $apisunatService);
+            if (($result['status'] ?? null) !== 'SENT') {
+                DB::rollBack();
+
+                return redirect()
+                    ->route('sales.index', $request->filled('view_id') ? ['view_id' => $request->input('view_id')] : [])
+                    ->with('error', $result['message'] ?? 'No se pudo emitir el comprobante electrónico.');
+            }
+
+            $sale->refresh();
+            if ($sale->salesMovement && ! empty($sale->electronic_invoice_series)) {
+                $seriesDigits = preg_replace('/^[A-Z]+/i', '', (string) $sale->electronic_invoice_series) ?: $sale->salesMovement->series;
+                $sale->salesMovement->update([
+                    'series' => $seriesDigits,
+                ]);
+            }
+
+            DB::commit();
+
+            return redirect()
+                ->route('sales.index', $request->filled('view_id') ? ['view_id' => $request->input('view_id')] : [])
+                ->with('status', 'Ticket convertido y enviado correctamente a Apisunat.');
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            return redirect()
+                ->route('sales.index', $request->filled('view_id') ? ['view_id' => $request->input('view_id')] : [])
+                ->with('error', 'No se pudo convertir el ticket: '.$e->getMessage());
+        }
     }
 
     /**

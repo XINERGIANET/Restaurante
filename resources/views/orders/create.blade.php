@@ -874,6 +874,9 @@
                     }
 
                     function init() {
+                        document.body.style.removeProperty('overflow');
+                        document.documentElement.style.removeProperty('overflow');
+
                         // Si requiere PIN, pedirlo al abrir la mesa
                         if (waiterPinEnabled && !isMozoProfile) {
                             ensureWaiterPin();
@@ -4439,6 +4442,8 @@
 
                     // Fix scroll on page load
                     window.addEventListener('turbo:load', () => {
+                        document.body.style.removeProperty('overflow');
+                        document.documentElement.style.removeProperty('overflow');
                         setTimeout(fixScrollLayout, 50);
                     });
 

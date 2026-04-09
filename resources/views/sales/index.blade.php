@@ -9,6 +9,28 @@
             $operacionesCollection = collect($operaciones ?? []);
             $topOperations = $operacionesCollection->where('type', 'T');
             $rowOperations = $operacionesCollection->where('type', 'R');
+            $branchClientsCollection = collect($branchClients ?? []);
+            $convertibleDocumentTypesCollection = collect($convertibleDocumentTypes ?? []);
+            if ($convertibleDocumentTypesCollection->isEmpty()) {
+                $convertibleDocumentTypesCollection = collect($documentTypes ?? [])->filter(function ($documentType) {
+                    $name = mb_strtolower(trim((string) ($documentType->name ?? '')), 'UTF-8');
+                    return str_contains($name, 'boleta') || str_contains($name, 'factura');
+                })->values();
+            }
+            $convertClientOptions = $branchClientsCollection
+                ->map(function ($client) {
+                    $clientName = trim(($client->first_name ?? '') . ' ' . ($client->last_name ?? ''));
+                    $clientDocument = trim((string) ($client->document_number ?? ''));
+                    $clientLabel = trim(($clientDocument !== '' ? $clientDocument . ' - ' : '') . $clientName);
+
+                    return [
+                        'id' => $client->id,
+                        'description' => $clientLabel !== '' ? $clientLabel : 'Cliente',
+                    ];
+                })
+                ->values()
+                ->all();
+            $firstConvertibleDocumentTypeId = (int) ($convertibleDocumentTypesCollection->first()?->id ?? 0);
 
             $resolveActionUrl = function ($action, $model = null, $operation = null) use ($viewId) {
                 if (!$action) {
@@ -289,8 +311,14 @@
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
                                     <div>
+                                        @php
+                                            $displayNumber = trim((string) ($sale->electronic_invoice_number ?? ''));
+                                            if ($displayNumber === '') {
+                                                $displayNumber = strtoupper(substr($sale->documentType->name, 0, 1)) . ($sale->salesMovement->series ?? '') . '-' . $sale->number;
+                                            }
+                                        @endphp
                                         <p class="font-bold text-gray-800 text-theme-sm dark:text-white/90">
-                                            {{ strtoupper(substr($sale->documentType->name, 0, 1)) }}{{ $sale->salesMovement->series }}-{{ $sale->number }}
+                                            {{ $displayNumber }}
                                         </p>
                                         <p class="text-[11px] text-gray-500 dark:text-gray-400 uppercase font-medium">
                                             {{ $sale->documentType?->name ?? '-' }}
@@ -334,6 +362,29 @@
                                 </td>
                                 <td class="px-5 text-center py-4 sm:px-6">
                                     <div class="flex items-center justify-center gap-2">
+                                        @php
+                                            $documentName = mb_strtolower(trim((string) ($sale->documentType?->name ?? '')), 'UTF-8');
+                                            $canConvertTicket = str_contains($documentName, 'ticket');
+                                        @endphp
+                                        @if ($canConvertTicket)
+                                            <div class="relative group">
+                                                <button type="button"
+                                                    @click="$dispatch('open-convert-ticket-modal', {
+                                                        saleId: {{ $sale->id }},
+                                                        currentPersonId: {{ $sale->person_id ? (int) $sale->person_id : 'null' }}
+                                                    })"
+                                                    class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-violet-600 text-white shadow-sm transition hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-violet-500/40"
+                                                    aria-label="Convertir a boleta o factura">
+                                                    <i class="ri-file-transfer-line"></i>
+                                                </button>
+                                                <span
+                                                    class="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-3 whitespace-nowrap rounded-md bg-gray-900 px-2.5 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-[100] shadow-xl">
+                                                    Convertir a boleta/factura
+                                                    <span
+                                                        class="absolute top-full left-1/2 -ml-1 border-4 border-transparent border-t-gray-900"></span>
+                                                </span>
+                                            </div>
+                                        @endif
                                         @if ($rowOperations->isNotEmpty())
                                             @foreach ($rowOperations as $operation)
                                                 @php
@@ -588,6 +639,68 @@
                 </div>
             </div>
         </x-common.component-card>
+    </div>
+
+    <div x-data="{ open: false, saleId: null, personId: '', documentTypeId: '{{ $firstConvertibleDocumentTypeId }}' }"
+        x-on:open-convert-ticket-modal.window="
+            open = true;
+            saleId = $event.detail.saleId;
+            personId = $event.detail.currentPersonId ?? '';
+            documentTypeId = '{{ $firstConvertibleDocumentTypeId }}';
+        "
+        x-show="open" x-cloak
+        class="fixed inset-0 z-[120] items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm"
+        :class="{ 'flex': open }">
+        <div @click.outside="open = false"
+            class="w-full max-w-xl rounded-2xl bg-white shadow-2xl dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+            <div class="flex items-center justify-between border-b border-gray-200 px-5 py-4 dark:border-gray-700">
+                <h3 class="text-lg font-bold text-gray-900 dark:text-white">Convertir Ticket</h3>
+                <button type="button" @click="open = false"
+                    class="flex h-9 w-9 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200">
+                    <i class="ri-close-line text-xl"></i>
+                </button>
+            </div>
+
+            <form method="POST"
+                x-bind:action="saleId ? '{{ url('/admin/ventas') }}/' + saleId + '/convertir-electronico' : '#'"
+                class="space-y-4 p-5">
+                @csrf
+                @if ($viewId)
+                    <input type="hidden" name="view_id" value="{{ $viewId }}">
+                @endif
+
+                <div>
+                    <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Tipo de comprobante</label>
+                    <select name="document_type_id" x-model="documentTypeId"
+                        class="h-11 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-800 dark:border-gray-600 dark:bg-gray-800 dark:text-white">
+                        @foreach ($convertibleDocumentTypesCollection as $documentType)
+                            <option value="{{ $documentType->id }}">{{ $documentType->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div>
+                    <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Cliente</label>
+                    <x-form.select.combobox :options="$convertClientOptions" x-model="personId"
+                        name="person_id" placeholder="Buscar cliente..." :hide-icon="true"
+                        :clearable="true" class="w-full" />
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        Para factura debes elegir un cliente con RUC válido.
+                    </p>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-2">
+                    <button type="button" @click="open = false"
+                        class="rounded-xl border border-gray-300 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800">
+                        Cancelar
+                    </button>
+                    <button type="submit"
+                        class="rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-700">
+                        Convertir y emitir
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 
     @push('scripts')
