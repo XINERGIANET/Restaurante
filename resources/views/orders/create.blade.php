@@ -10,7 +10,10 @@
 @section('content')
     <div class="px-4 md:px-6 pt-4 pb-2">
         <div class="flex items-center justify-between"></div>
-        <x-common.page-breadcrumb pageTitle="Punto de Venta | Mesa {{ $table->name ?? $table->id }}" :breadcrumbs="[
+        @php
+            $breadcrumbAreaName = $table->area?->name ?? ($area?->name ?? 'Sin área');
+        @endphp
+        <x-common.page-breadcrumb pageTitle="{{ $breadcrumbAreaName }} | Mesa {{ $table->name ?? $table->id }}" :breadcrumbs="[
             ['label' => 'Salones', 'url' => route('orders.index')],
             ['label' => 'Mesa ' . ($table->name ?? $table->id), 'active' => true]
         ]" />
@@ -250,23 +253,25 @@
                     </div>
                 </div>
                 <aside
-                    class="lg:w-[450px] w-full md:w-[350px] lg:shrink-0 mx-auto lg:mx-0 flex-none bg-white dark:bg-gray-900 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-800 flex flex-col min-h-0 lg:h-full rounded-2xl shadow-sm">
+                    class="lg:w-[450px] w-full md:w-[350px] lg:shrink-0 mx-auto lg:mx-0 flex-none bg-white dark:bg-gray-900 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-800 flex flex-col min-h-0 lg:h-full rounded-2xl overflow-hidden shadow-sm">
                     {{-- Tabs Resumen | Cobro (Cobro oculto para Mozo) --}}
-                    <div class="flex w-full shrink-0 border-b border-gray-200 dark:border-gray-700">
-                        <button type="button" id="tab-resumen" onclick="switchAsideTab('resumen')"
-                            class="flex-1 py-3 px-4 text-sm font-bold transition-colors rounded-tl-2xl bg-[#FF4622] text-white">
-                            Resumen
-                        </button>
-                        @if($canCharge ?? true)
-                            <button type="button" id="tab-cobro" onclick="switchAsideTab('cobro')"
-                                class="flex-1 py-3 px-4 text-sm font-bold transition-colors bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-orange-100 dark:hover:bg-orange-900/30 hover:text-[#FF4622] dark:hover:text-[#FF4622]">
-                                Cobro
+                    <div class="w-full shrink-0 px-3 pt-3">
+                        <div class="grid grid-cols-2 gap-3">
+                            <button type="button" id="tab-resumen" onclick="switchAsideTab('resumen')"
+                                class="py-3 px-4 text-sm font-bold transition-all rounded-full bg-[#FF4622] text-white shadow-sm border border-[#FF4622]">
+                                Resumen
                             </button>
-                        @endif
+                            @if($canCharge ?? true)
+                                <button type="button" id="tab-cobro" onclick="switchAsideTab('cobro')"
+                                    class="py-3 px-4 text-sm font-bold transition-all rounded-full bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:border-[#FF4622]/30 hover:text-[#FF4622] dark:hover:text-[#FF4622]">
+                                    Cobro
+                                </button>
+                            @endif
+                        </div>
                     </div>
 
                     {{-- Contenido Resumen --}}
-                    <div id="aside-resumen" class="flex flex-col flex-1 min-h-0 overflow-hidden">
+                    <div id="aside-resumen" class="mt-3 flex flex-col flex-1 min-h-0 overflow-hidden">
                         {{-- Datos Delivery --}}
                         <div id="delivery-info-container"
                             class="hidden p-3 bg-[#FF4622]/5 dark:bg-[#FF4622]/10 border-b border-[#FF4622]/20 dark:border-[#FF4622]/30 space-y-2 overflow-hidden">
@@ -391,7 +396,7 @@
 
                     {{-- Contenido Cobro (oculto para Mozo) --}}
                     @if($canCharge ?? true)
-                        <div id="aside-cobro" class="hidden flex-col flex-1 min-h-0 overflow-y-auto p-4 sm:p-5">
+                        <div id="aside-cobro" class="hidden mt-3 flex-col flex-1 min-h-0 overflow-y-auto p-4 sm:p-5">
                             <div class="space-y-4">
                                 <div class="flex items-center justify-center gap-2 w-full">
                                     <div class="flex-1 min-w-0" id="order-client-picker"
@@ -483,7 +488,7 @@
 
                     {{-- Botones Guardar / Cobrar: visibles según pestaña activa --}}
                     <div
-                        class="shrink-0 p-4 sm:p-5 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+                        class="shrink-0 p-4 sm:p-5 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 rounded-b-2xl">
                         {{-- Footer Resumen: solo Guardar y Precuenta --}}
                         <div id="footer-resumen" class="flex justify-between items-center gap-3">
                             <button type="button" id="btn-precuenta" class="hidden py-2.5 px-4 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs sm:text-sm border border-slate-200 hover:bg-slate-200 active:scale-95 transition-all flex justify-center items-center gap-2" style="display: none;">
@@ -947,6 +952,7 @@
                         renderProducts();
                         renderTicket();
                         syncPreAccountVisibility();
+                        syncCobroTabState();
                         renderCancelledSection();
                         fixScrollLayout();
                         function updateSearchClearVisibility() {
@@ -992,7 +998,7 @@
                             addCobroPaymentMethod();
                         }
                         // Si viene con cobro=1 (desde botón Cobrar en mesas), abrir pestaña Cobro
-                        if (new URLSearchParams(window.location.search).get('cobro') === '1' && typeof switchAsideTab === 'function') {
+                        if (new URLSearchParams(window.location.search).get('cobro') === '1' && typeof switchAsideTab === 'function' && canAccessCobroTab()) {
                             setTimeout(() => switchAsideTab('cobro'), 100);
                         }
                         const btnPrecuenta = document.getElementById('btn-precuenta');
@@ -1048,6 +1054,39 @@
                         const shouldShow = hasCurrentSavedOrder && hasItems && hasCommandedItems;
                         btnPrecuenta.classList.toggle('hidden', !shouldShow);
                         btnPrecuenta.style.display = shouldShow ? '' : 'none';
+                    }
+
+                    function canAccessCobroTab() {
+                        const items = Array.isArray(currentTable?.items) ? currentTable.items : [];
+                        const hasItems = items.length > 0;
+                        const hasCommandedItems = hasItems && items.some(item => {
+                            const savedQty = parseFloat(item?.savedQty);
+                            return Number.isFinite(savedQty) && savedQty > 0;
+                        });
+                        const hasServerPendingOrder = !!serverOrderMovementId && !window.tableIsFree;
+                        const hasCurrentSavedOrder = hasServerPendingOrder
+                            && Number(currentTable?.order_movement_id || 0) > 0
+                            && Number(currentTable?.order_movement_id || 0) === Number(serverOrderMovementId || 0);
+                        return hasCurrentSavedOrder && hasItems && hasCommandedItems;
+                    }
+
+                    function syncCobroTabState() {
+                        const btnCobro = document.getElementById('tab-cobro');
+                        if (!btnCobro) return;
+                        const enabled = canAccessCobroTab();
+
+                        btnCobro.disabled = !enabled;
+                        btnCobro.classList.toggle('opacity-50', !enabled);
+                        btnCobro.classList.toggle('cursor-not-allowed', !enabled);
+                        btnCobro.classList.toggle('pointer-events-none', !enabled);
+                        btnCobro.title = enabled ? 'Cobro' : 'Disponible cuando el pedido ya fue enviado';
+
+                        if (!enabled) {
+                            const cobro = document.getElementById('aside-cobro');
+                            if (cobro && !cobro.classList.contains('hidden')) {
+                                switchAsideTab('resumen');
+                            }
+                        }
                     }
 
                     function escapeHtml(text) {
@@ -3459,6 +3498,7 @@
                                     saveDB();
                                     renderTicket();
                                     syncPreAccountVisibility();
+                                    syncCobroTabState();
                                     if (!kitchenPrintedOk && hasKitchenOutput && typeof showNotification === 'function') {
                                         showNotification('Pedido guardado', 'El pedido se guardó, pero la comanda salió por PDF de respaldo.', 'warning');
                                     }
@@ -3911,16 +3951,19 @@
                         const productsGrid = document.getElementById('products-grid');
                         const categoriesGrid = document.getElementById('categories-grid');
                         const searchInput = document.getElementById('search-products');
+                        if (tab === 'cobro' && !canAccessCobroTab()) {
+                            return;
+                        }
                         if (tab === 'cobro') {
                             resumen?.classList.add('hidden');
                             cobro?.classList.remove('hidden');
                             cobro?.classList.add('flex');
                             footerResumen?.classList.add('hidden');
                             footerCobro?.classList.remove('hidden');
-                            btnResumen?.classList.remove('bg-[#FF4622]', 'text-white');
-                            btnResumen?.classList.add('bg-gray-200', 'dark:bg-gray-700', 'text-gray-700', 'dark:text-gray-300');
-                            btnCobro?.classList.remove('bg-gray-100', 'dark:bg-gray-800', 'text-gray-500', 'dark:text-gray-400');
-                            btnCobro?.classList.add('bg-[#FF4622]', 'text-white');
+                            btnResumen?.classList.remove('bg-[#FF4622]', 'text-white', 'border-[#FF4622]');
+                            btnResumen?.classList.add('bg-white', 'dark:bg-gray-900', 'text-gray-500', 'dark:text-gray-400', 'border-gray-200', 'dark:border-gray-700');
+                            btnCobro?.classList.remove('bg-white', 'dark:bg-gray-900', 'text-gray-500', 'dark:text-gray-400', 'border-gray-200', 'dark:border-gray-700');
+                            btnCobro?.classList.add('bg-[#FF4622]', 'text-white', 'border-[#FF4622]');
                             // Deshabilitar agregar/modificar productos mientras se está en Cobro
                             if (productsGrid) {
                                 productsGrid.classList.add('pointer-events-none', 'opacity-60');
@@ -3938,10 +3981,10 @@
                             resumen?.classList.remove('hidden');
                             footerCobro?.classList.add('hidden');
                             footerResumen?.classList.remove('hidden');
-                            btnCobro?.classList.remove('bg-[#FF4622]', 'text-white');
-                            btnCobro?.classList.add('bg-gray-100', 'dark:bg-gray-800', 'text-gray-500', 'dark:text-gray-400');
-                            btnResumen?.classList.remove('bg-gray-200', 'dark:bg-gray-700', 'text-gray-700', 'dark:text-gray-300');
-                            btnResumen?.classList.add('bg-[#FF4622]', 'text-white');
+                            btnCobro?.classList.remove('bg-[#FF4622]', 'text-white', 'border-[#FF4622]');
+                            btnCobro?.classList.add('bg-white', 'dark:bg-gray-900', 'text-gray-500', 'dark:text-gray-400', 'border-gray-200', 'dark:border-gray-700');
+                            btnResumen?.classList.remove('bg-white', 'dark:bg-gray-900', 'text-gray-500', 'dark:text-gray-400', 'border-gray-200', 'dark:border-gray-700');
+                            btnResumen?.classList.add('bg-[#FF4622]', 'text-white', 'border-[#FF4622]');
                             // Volver a habilitar productos al regresar a Resumen
                             if (productsGrid) {
                                 productsGrid.classList.remove('pointer-events-none', 'opacity-60');
