@@ -147,6 +147,13 @@ class RecipeBookController extends Controller
                 'company_id'         => $companyId,
             ];
 
+            // Si existe una receta eliminada (soft-delete) con el mismo código,
+            // se elimina físicamente para evitar conflicto con la restricción de unicidad.
+            Recipe::withTrashed()
+                ->where('code', $baseProduct->code)
+                ->whereNotNull('deleted_at')
+                ->forceDelete();
+
             $recipe = Recipe::create($dataToInsert);
 
             $this->saveIngredients($recipe->id, $validated['ingredients']);
@@ -302,7 +309,9 @@ class RecipeBookController extends Controller
             if ($recipe->image && Storage::disk('public')->exists($recipe->image)) {
                 Storage::disk('public')->delete($recipe->image);
             }
-            $recipe->delete();
+            // forceDelete para eliminar físicamente y evitar conflictos
+            // de unicidad si se vuelve a crear la receta del mismo plato.
+            $recipe->forceDelete();
             return redirect()->route('recipe-book.index')->with('success', 'Eliminado');
         } catch (\Exception $e) {
             return back()->with('error', 'Error: ' . $e->getMessage());

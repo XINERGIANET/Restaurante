@@ -257,10 +257,10 @@
         <div class="p-5">
             <div class="flex flex-col gap-4">
                 <div class="flex flex-col gap-2">
-                    <x-form.select.combobox x-model="currentAreaId" label="Área" :options="$areaOptions" name="area_id" />
+                    <x-form.select.combobox x-model="currentAreaId" label="Área" :options="$areaOptions" name="area_id" :clearOnFocus="true" />
                 </div>
                 <div class="flex flex-col gap-2">
-                    <x-form.select.combobox x-model="tableId" label="Mesa" :options="$tableOptionsInitial" name="table_id" />
+                    <x-form.select.combobox x-model="tableId" label="Mesa" :options="$tableOptionsInitial" name="table_id" :clearOnFocus="true" />
                 </div>
             </div>
             <div class="mt-4">

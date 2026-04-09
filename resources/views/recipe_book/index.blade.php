@@ -289,7 +289,7 @@
                     <span class="category-badge {{ $recipe->category['class'] ?? '' }}">
                         {{ $recipe->category->description ?? '' }}
                     </span>
-                    <img src="{{ asset('storage/' . $recipe->image) }}" alt="Imagen de la receta">
+                    <img src="{{ asset('storage/' . $recipe->image) }}">
                 </div>
                 <div class="recipe-content">
                     <div class="recipe-meta">

@@ -189,7 +189,7 @@ class OrderController extends Controller
             ], 422);
         }
 
-        $name = trim(($person->first_name ?? '').' '.($person->last_name ?? ''));
+        $name = trim(($person->first_name ?? '') . ' ' . ($person->last_name ?? ''));
         if ($name === '') {
             $name = 'Mozo';
         }
@@ -226,7 +226,7 @@ class OrderController extends Controller
         $cashRegisterId = effective_cash_register_id($branchId ? (int) $branchId : null);
         $documentTypes = DocumentType::query()
             ->orderBy('name')
-            ->tap(fn ($q) => InsensitiveSearch::whereInsensitiveLikePattern($q, 'name', '%venta%'))
+            ->tap(fn($q) => InsensitiveSearch::whereInsensitiveLikePattern($q, 'name', '%venta%'))
             ->get(['id', 'name']);
         $paymentMethods = PaymentMethod::query()
             ->where('status', true)
@@ -237,7 +237,7 @@ class OrderController extends Controller
         $cashShiftRelationId = $request->input('cash_shift_relation_id');
 
         $cashRegisters = CashRegister::query()
-            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
             ->orderBy('number')
             ->get(['id', 'number']);
         $operaciones = collect();
@@ -308,12 +308,12 @@ class OrderController extends Controller
             })
             ->when($dateFrom, function ($query) use ($dateFrom) {
                 $query->whereHas('movement', function ($movementQuery) use ($dateFrom) {
-                    $movementQuery->where('moved_at', '>=', $dateFrom.' 00:00:00');
+                    $movementQuery->where('moved_at', '>=', $dateFrom . ' 00:00:00');
                 });
             })
             ->when($dateTo, function ($query) use ($dateTo) {
                 $query->whereHas('movement', function ($movementQuery) use ($dateTo) {
-                    $movementQuery->where('moved_at', '<=', $dateTo.' 23:59:59');
+                    $movementQuery->where('moved_at', '<=', $dateTo . ' 23:59:59');
                 });
             })
 
@@ -416,14 +416,14 @@ class OrderController extends Controller
         $waiterPinEnabled = $this->shouldRequireWaiterPin($branchId ? (int) $branchId : null, $profileId);
 
         $areas = Area::query()
-            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
             ->orderBy('id')
             ->get(['id', 'name']);
 
         // Cargar todas las mesas de la sucursal primero
         $tables = Table::query()
-            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
-            ->when(! $branchId, fn ($q) => $q->whereRaw('1 = 0'))
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+            ->when(! $branchId, fn($q) => $q->whereRaw('1 = 0'))
             ->orderBy('name')
             ->get(['id', 'name', 'area_id', 'capacity', 'situation', 'opened_at']);
 
@@ -433,7 +433,7 @@ class OrderController extends Controller
         } else {
             // Preferir la primera área que tenga mesas; si ninguna, usar la primera área
             $areaIdsWithTables = $tables->pluck('area_id')->unique()->filter()->values();
-            $firstAreaWithTables = $areas->firstWhere(fn ($a) => $areaIdsWithTables->contains($a->id));
+            $firstAreaWithTables = $areas->firstWhere(fn($a) => $areaIdsWithTables->contains($a->id));
             $selectedAreaId = $firstAreaWithTables?->id ?? $areas->first()?->id ?? null;
         }
 
@@ -463,11 +463,11 @@ class OrderController extends Controller
                     }
                     $minutes = (int) $opened->diffInMinutes(now());
                     if ($minutes < 60) {
-                        $elapsed = $minutes.' min';
+                        $elapsed = $minutes . ' min';
                     } else {
                         $h = (int) floor($minutes / 60);
                         $m = $minutes % 60;
-                        $elapsed = $h.'h '.$m.'m';
+                        $elapsed = $h . 'h ' . $m . 'm';
                     }
                 } catch (\Throwable $e) {
                     $elapsed = '--:--';
@@ -591,9 +591,9 @@ class OrderController extends Controller
 
         $orders = OrderMovement::query()
             ->with(['movement.documentType', 'movement.movementType', 'table', 'area'])
-            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
-            ->when($dateFrom, fn ($q) => $q->whereHas('movement', fn ($m) => $m->where('moved_at', '>=', $dateFrom.' 00:00:00')))
-            ->when($dateTo, fn ($q) => $q->whereHas('movement', fn ($m) => $m->where('moved_at', '<=', $dateTo.' 23:59:59')))
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+            ->when($dateFrom, fn($q) => $q->whereHas('movement', fn($m) => $m->where('moved_at', '>=', $dateFrom . ' 00:00:00')))
+            ->when($dateTo, fn($q) => $q->whereHas('movement', fn($m) => $m->where('moved_at', '<=', $dateTo . ' 23:59:59')))
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
                     $inner->whereHas('movement', function ($movementQuery) use ($search) {
@@ -609,7 +609,7 @@ class OrderController extends Controller
                 });
             })
             ->when($documentTypeId, function ($query) use ($documentTypeId) {
-                $query->whereHas('movement', fn ($m) => $m->where('document_type_id', $documentTypeId));
+                $query->whereHas('movement', fn($m) => $m->where('document_type_id', $documentTypeId));
             })
             ->when($cashRegisterId, function ($query) use ($cashRegisterId) {
                 $query->whereExists(function ($sub) use ($cashRegisterId) {
@@ -706,12 +706,12 @@ class OrderController extends Controller
     {
         $branchId = session('branch_id');
         $areas = Area::query()
-            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
             ->orderBy('id')
             ->get(['id', 'name']);
         $tables = Table::query()
-            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
-            ->when(! $branchId, fn ($q) => $q->whereRaw('1 = 0'))
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+            ->when(! $branchId, fn($q) => $q->whereRaw('1 = 0'))
             ->orderBy('name')
             ->get(['id', 'name', 'area_id', 'capacity', 'situation', 'opened_at']);
         $tablesPayload = $tables->map(function (Table $table) use ($branchId) {
@@ -724,11 +724,11 @@ class OrderController extends Controller
                     }
                     $minutes = (int) $opened->diffInMinutes(now());
                     if ($minutes < 60) {
-                        $elapsed = $minutes.' min';
+                        $elapsed = $minutes . ' min';
                     } else {
                         $h = (int) floor($minutes / 60);
                         $m = $minutes % 60;
-                        $elapsed = $h.'h '.$m.'m';
+                        $elapsed = $h . 'h ' . $m . 'm';
                     }
                 } catch (\Throwable $e) {
                     $elapsed = '--:--';
@@ -757,7 +757,7 @@ class OrderController extends Controller
             $productsText = '';
             if ($orderMovement && $orderMovement->relationLoaded('details') && $orderMovement->details->isNotEmpty()) {
                 $productsText = $orderMovement->details
-                    ->map(fn ($d) => $d->description ?? ($d->product_snapshot['description'] ?? $d->product_snapshot['name'] ?? ''))
+                    ->map(fn($d) => $d->description ?? ($d->product_snapshot['description'] ?? $d->product_snapshot['name'] ?? ''))
                     ->filter()
                     ->unique()
                     ->implode(' ');
@@ -800,7 +800,7 @@ class OrderController extends Controller
                 'orders_count' => $ordersCount,
             ];
         })->values();
-        $areasArray = $areas->map(fn ($area) => ['id' => (int) $area->id, 'name' => $area->name])->values();
+        $areasArray = $areas->map(fn($area) => ['id' => (int) $area->id, 'name' => $area->name])->values();
 
         return response()
             ->json(['tables' => $tablesPayload, 'areas' => $areasArray])
@@ -840,7 +840,7 @@ class OrderController extends Controller
         $products = Product::where('type', 'PRODUCT')
             ->where(function ($q) {
                 $q->whereNull('product_type_id')
-                    ->orWhereHas('productType', fn ($q2) => $q2->whereIn('behavior', [
+                    ->orWhereHas('productType', fn($q2) => $q2->whereIn('behavior', [
                         ProductType::BEHAVIOR_SELLABLE,
                         ProductType::BEHAVIOR_BOTH,
                     ]));
@@ -865,7 +865,7 @@ class OrderController extends Controller
             ->get()
             ->map(function ($product) use ($tableId, $branchId) {
                 $imageUrl = ($product->image && ! empty($product->image))
-                    ? asset('storage/'.$product->image)
+                    ? asset('storage/' . $product->image)
                     : null;
 
                 return [
@@ -874,7 +874,7 @@ class OrderController extends Controller
                     'img' => $imageUrl,
                     'category' => $product->category ? $product->category->description : 'Sin categoría',
                     'category_id' => $product->category_id,
-                    'detail_options' => collect($product->detail_options ?? [])->map(fn ($item) => trim((string) $item))->filter()->values()->all(),
+                    'detail_options' => collect($product->detail_options ?? [])->map(fn($item) => trim((string) $item))->filter()->values()->all(),
                     'table_id' => $tableId,
                     'branch_id' => $branchId,
                 ];
@@ -883,62 +883,62 @@ class OrderController extends Controller
         // Solo product_branches de esta sucursal cuyo producto es vendible (mismo criterio que Ventas).
         $productBranches = $branchId
             ? ProductBranch::where('branch_id', $branchId)
-                ->with(['product.productType', 'taxRate', 'printers'])
-                ->get()
-                ->filter(function ($productBranch) {
-                    if ($productBranch->product === null) {
-                        return false;
-                    }
-                    $pt = $productBranch->product->productType;
+            ->with(['product.productType', 'taxRate', 'printers'])
+            ->get()
+            ->filter(function ($productBranch) {
+                if ($productBranch->product === null) {
+                    return false;
+                }
+                $pt = $productBranch->product->productType;
 
-                    return $pt === null || $pt->isSellable();
-                })
-                ->map(function ($productBranch) {
-                    $taxRatePct = $productBranch->taxRate ? (float) $productBranch->taxRate->tax_rate : null;
-                    $printerNames = $productBranch->printers
-                        ->pluck('name')
-                        ->map(fn ($n) => trim((string) $n))
-                        ->filter(fn ($n) => $n !== '')
-                        ->values()
-                        ->all();
-                    $printers = $productBranch->printers
-                        ->map(function ($p) {
-                            $name = trim((string) ($p->name ?? ''));
-                            $widthRaw = trim((string) ($p->width ?? ''));
-                            if ($name === '') {
-                                return null;
-                            }
+                return $pt === null || $pt->isSellable();
+            })
+            ->map(function ($productBranch) {
+                $taxRatePct = $productBranch->taxRate ? (float) $productBranch->taxRate->tax_rate : null;
+                $printerNames = $productBranch->printers
+                    ->pluck('name')
+                    ->map(fn($n) => trim((string) $n))
+                    ->filter(fn($n) => $n !== '')
+                    ->values()
+                    ->all();
+                $printers = $productBranch->printers
+                    ->map(function ($p) {
+                        $name = trim((string) ($p->name ?? ''));
+                        $widthRaw = trim((string) ($p->width ?? ''));
+                        if ($name === '') {
+                            return null;
+                        }
 
-                            return [
-                                'name' => $name,
-                                'width' => $widthRaw !== '' ? $widthRaw : null,
-                            ];
-                        })
-                        ->filter()
-                        ->values()
-                        ->all();
+                        return [
+                            'name' => $name,
+                            'width' => $widthRaw !== '' ? $widthRaw : null,
+                        ];
+                    })
+                    ->filter()
+                    ->values()
+                    ->all();
 
-                    return [
-                        'id' => $productBranch->id,
-                        'product_id' => $productBranch->product_id,
-                        'price' => (float) $productBranch->price,
-                        'stock' => (float) ($productBranch->stock ?? 0),
-                        'tax_rate' => $taxRatePct,
-                        'favorite' => ($productBranch->favorite ?? 'N'),
-                        // compat (1 impresora)
-                        'qz_printer_name' => request()->ip() === '127.0.0.1' || request()->ip() === '::1' ? ($printerNames[0] ?? null) : 'BARRA2',
-                        // recomendado (varias impresoras por pivote)
-                        'qz_printer_names' => $printerNames,
-                        // recomendado: info completa para formateo por ticketera
-                        'qz_printers' => $printers,
-                    ];
-                })
-                ->values()
+                return [
+                    'id' => $productBranch->id,
+                    'product_id' => $productBranch->product_id,
+                    'price' => (float) $productBranch->price,
+                    'stock' => (float) ($productBranch->stock ?? 0),
+                    'tax_rate' => $taxRatePct,
+                    'favorite' => ($productBranch->favorite ?? 'N'),
+                    // compat (1 impresora)
+                    'qz_printer_name' => request()->ip() === '127.0.0.1' || request()->ip() === '::1' ? ($printerNames[0] ?? null) : 'BARRA2',
+                    // recomendado (varias impresoras por pivote)
+                    'qz_printer_names' => $printerNames,
+                    // recomendado: info completa para formateo por ticketera
+                    'qz_printers' => $printers,
+                ];
+            })
+            ->values()
             : collect();
 
         // Categorías asignadas a esta sucursal (category_branch).
         $categories = Category::query()
-            ->when($branchId, fn ($q) => $q->forBranchMenu($branchId, 'VENTAS_PEDIDOS'), function ($query) {
+            ->when($branchId, fn($q) => $q->forBranchMenu($branchId, 'VENTAS_PEDIDOS'), function ($query) {
                 $query->whereRaw('1 = 0'); // sin sucursal = no categorías
             })
             ->orderBy('description')
@@ -961,48 +961,48 @@ class OrderController extends Controller
         // Solo detalles activos (no cancelados). Mismo producto se agrupa (x5, etc.). Entregado = estado 'E'.
         $pendingItemsRaw = $pendingOrder
             ? ($pendingOrder->details ?? collect())
-                ->filter(fn ($d) => ($d->status ?? 'A') !== 'C')
-                ->map(function ($d) {
-                    $qty = (float) ($d->quantity ?? 0);
-                    $courtesyQty = (float) ($d->courtesy_quantity ?? 0);
-                    $amount = (float) ($d->amount ?? 0);
-                    // Precio efectivo por unidad pagada (opcional, solo para mostrar)
-                    $paidQty = max(0, $qty - $courtesyQty);
-                    $price = ($paidQty > 0)
-                        ? ($amount / $paidQty)
-                        : 0;
-                    $rawComment = trim((string) ($d->comment ?? ''));
-                    $note = $rawComment;
-                    if ($note !== '' && preg_match('/^\d{2}:\d{2}\s*-\s*/', $note) === 1) {
-                        $note = preg_replace('/^\d{2}:\d{2}(?:\s*[ap]\.?m\.?)?\s*-\s*/i', '', $note);
-                        $note = trim($note);
-                    }
-                    $commandTime = $d->commanded_at
-                        ? $d->commanded_at->format('H:i')
-                        : ($d->created_at ? $d->created_at->format('H:i') : null);
-                    $status = $d->status ?? 'A';
-                    $takeawayQty = (float) ($d->takeaway_quantity ?? 0);
-                    $takeawayQty = max(0, min($takeawayQty, $qty));
+            ->filter(fn($d) => ($d->status ?? 'A') !== 'C')
+            ->map(function ($d) {
+                $qty = (float) ($d->quantity ?? 0);
+                $courtesyQty = (float) ($d->courtesy_quantity ?? 0);
+                $amount = (float) ($d->amount ?? 0);
+                // Precio efectivo por unidad pagada (opcional, solo para mostrar)
+                $paidQty = max(0, $qty - $courtesyQty);
+                $price = ($paidQty > 0)
+                    ? ($amount / $paidQty)
+                    : 0;
+                $rawComment = trim((string) ($d->comment ?? ''));
+                $note = $rawComment;
+                if ($note !== '' && preg_match('/^\d{2}:\d{2}\s*-\s*/', $note) === 1) {
+                    $note = preg_replace('/^\d{2}:\d{2}(?:\s*[ap]\.?m\.?)?\s*-\s*/i', '', $note);
+                    $note = trim($note);
+                }
+                $commandTime = $d->commanded_at
+                    ? $d->commanded_at->format('H:i')
+                    : ($d->created_at ? $d->created_at->format('H:i') : null);
+                $status = $d->status ?? 'A';
+                $takeawayQty = (float) ($d->takeaway_quantity ?? 0);
+                $takeawayQty = max(0, min($takeawayQty, $qty));
 
-                    return [
-                        'pId' => (int) ($d->product_id ?? 0),
-                        'name' => $d->description ?? '',
-                        'qty' => $qty,
-                        'price' => round($price, 6),
-                        'tax_rate' => 10,
-                        'note' => $note,
-                        'commandTime' => $commandTime,
-                        'delivered' => $status === 'E',
-                        'courtesyQty' => $courtesyQty,
-                        'takeawayQty' => $takeawayQty,
-                        'complements' => collect($d->complements ?? [])->map(fn ($item) => trim((string) $item))->filter()->values()->all(),
-                    ];
-                })->values()->all()
+                return [
+                    'pId' => (int) ($d->product_id ?? 0),
+                    'name' => $d->description ?? '',
+                    'qty' => $qty,
+                    'price' => round($price, 6),
+                    'tax_rate' => 10,
+                    'note' => $note,
+                    'commandTime' => $commandTime,
+                    'delivered' => $status === 'E',
+                    'courtesyQty' => $courtesyQty,
+                    'takeawayQty' => $takeawayQty,
+                    'complements' => collect($d->complements ?? [])->map(fn($item) => trim((string) $item))->filter()->values()->all(),
+                ];
+            })->values()->all()
             : [];
 
         // Agrupar mismo producto en un solo ítem (ej. PB x5 + PB x1 → PB x6)
         $pendingItems = collect($pendingItemsRaw)->groupBy(function ($item) {
-            $complements = collect($item['complements'] ?? [])->map(fn ($value) => trim((string) $value))->filter()->values()->all();
+            $complements = collect($item['complements'] ?? [])->map(fn($value) => trim((string) $value))->filter()->values()->all();
             sort($complements);
             return implode('|', [
                 (int) ($item['pId'] ?? 0),
@@ -1032,26 +1032,26 @@ class OrderController extends Controller
 
         // Detalles cancelados: agrupar mismo producto en uno solo (ej. PB x5 + PB x1 → PB x6)
         $pendingCancelledDetails = $pendingOrder
-            ? collect($pendingOrder->details->where('status', 'C')->map(fn ($d) => [
+            ? collect($pendingOrder->details->where('status', 'C')->map(fn($d) => [
                 'product_id' => (int) ($d->product_id ?? 0),
                 'description' => $d->description ?? 'Producto',
                 'quantity' => (float) $d->quantity,
                 'comment' => $d->comment ?? '',
-                'complements' => collect($d->complements ?? [])->map(fn ($item) => trim((string) $item))->filter()->values()->all(),
+                'complements' => collect($d->complements ?? [])->map(fn($item) => trim((string) $item))->filter()->values()->all(),
             ]))
-                ->groupBy(function ($item) {
-                    $complements = collect($item['complements'] ?? [])->map(fn ($value) => trim((string) $value))->filter()->values()->all();
-                    sort($complements);
-                    return implode('|', [(int) ($item['product_id'] ?? 0), md5(json_encode($complements))]);
-                })
-                ->map(fn ($group) => [
-                    'description' => $group->first()['description'],
-                    'quantity' => $group->sum('quantity'),
-                    'comment' => $group->first()['comment'],
-                    'complements' => $group->first()['complements'] ?? [],
-                ])
-                ->values()
-                ->all()
+            ->groupBy(function ($item) {
+                $complements = collect($item['complements'] ?? [])->map(fn($value) => trim((string) $value))->filter()->values()->all();
+                sort($complements);
+                return implode('|', [(int) ($item['product_id'] ?? 0), md5(json_encode($complements))]);
+            })
+            ->map(fn($group) => [
+                'description' => $group->first()['description'],
+                'quantity' => $group->sum('quantity'),
+                'comment' => $group->first()['comment'],
+                'complements' => $group->first()['complements'] ?? [],
+            ])
+            ->values()
+            ->all()
             : [];
 
         $saleOrOrderTypeIds = MovementType::query()
@@ -1097,7 +1097,7 @@ class OrderController extends Controller
             ->get(['id', 'number']);
 
         $deliveryAreaId = Area::query()
-            ->tap(fn ($q) => InsensitiveSearch::whereInsensitiveLikePattern($q, 'name', '%delivery%'))
+            ->tap(fn($q) => InsensitiveSearch::whereInsensitiveLikePattern($q, 'name', '%delivery%'))
             ->value('id');
         $departments = Location::query()
             ->where('type', 'department')
@@ -1249,7 +1249,7 @@ class OrderController extends Controller
                     'items' => $details->map(function ($detail) {
                         return [
                             'pId' => $detail->product_id,
-                            'name' => $detail->description ?? 'Producto #'.$detail->product_id,
+                            'name' => $detail->description ?? 'Producto #' . $detail->product_id,
                             'qty' => (float) $detail->quantity,
                             'price' => $detail->quantity > 0 ? (float) $detail->amount / (float) $detail->quantity : 0,
                             'note' => $detail->comment ?? '',
@@ -1279,7 +1279,7 @@ class OrderController extends Controller
                     'items' => $movement->salesMovement->details->map(function ($detail) {
                         return [
                             'pId' => $detail->product_id,
-                            'name' => $detail->product->description ?? 'Producto #'.$detail->product_id,
+                            'name' => $detail->product->description ?? 'Producto #' . $detail->product_id,
                             'qty' => (float) $detail->quantity,
                             'price' => (float) $detail->original_amount / (float) $detail->quantity,
                             'note' => $detail->comment ?? '',
@@ -1384,7 +1384,7 @@ class OrderController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Pedido movido a la mesa '.($destTable->name ?? $destTableId),
+                'message' => 'Pedido movido a la mesa ' . ($destTable->name ?? $destTableId),
                 'new_table_id' => $destTableId,
             ]);
         } catch (\Throwable $e) {
@@ -1513,7 +1513,7 @@ class OrderController extends Controller
         $clientNameFromRequest = $request->filled('client_name') ? trim((string) $request->client_name) : null;
         $clientPerson = $this->resolveOrCreateClientPerson($branchId ? (int) $branchId : null, $branch, $clientPersonId, $clientNameFromRequest);
         $clientName = $clientPerson
-            ? trim(($clientPerson->first_name ?? '').' '.($clientPerson->last_name ?? ''))
+            ? trim(($clientPerson->first_name ?? '') . ' ' . ($clientPerson->last_name ?? ''))
             : ($clientNameFromRequest ?: 'Público General');
 
         DB::beginTransaction();
@@ -1617,7 +1617,7 @@ class OrderController extends Controller
                     'person_name' => $clientName,
                     'responsible_id' => $responsibleId,
 
-                    'responsible_name' => $waiterName ?: (($user?->person?->first_name ?? '').' '.($user?->person?->last_name ?? '-')),
+                    'responsible_name' => $waiterName ?: (($user?->person?->first_name ?? '') . ' ' . ($user?->person?->last_name ?? '-')),
                 ]);
 
                 // Eliminar detalles antiguos ACTIVOS y crear los nuevos (mantener histórico de cancelaciones status='C')
@@ -1655,7 +1655,7 @@ class OrderController extends Controller
                     'person_id' => $clientPerson?->id,
                     'person_name' => $clientName,
                     'responsible_id' => $responsibleId,
-                    'responsible_name' => $waiterName ?: (($user?->person?->first_name ?? '').' '.($user?->person?->last_name ?? '-')),
+                    'responsible_name' => $waiterName ?: (($user?->person?->first_name ?? '') . ' ' . ($user?->person?->last_name ?? '-')),
                     'comment' => 'Pedido desde punto de venta',
                     'status' => 'A',
                     'movement_type_id' => $movementType->id,
@@ -1736,21 +1736,21 @@ class OrderController extends Controller
                 if (!$branch->allow_zero_stock_sales && $currentStock < $qty) {
                     throw new \Exception(
                         "Stock insuficiente para el producto \"{$description}\". " .
-                        "Stock disponible: {$currentStock}, Cantidad solicitada: {$qty}"
+                            "Stock disponible: {$currentStock}, Cantidad solicitada: {$qty}"
                     );
                 }
 
                 $rawNote = trim((string) ($rawItem['note'] ?? ''));
                 $comment = $rawNote !== '' ? $rawNote : null;
                 $complements = collect($rawItem['complements'] ?? [])
-                    ->map(fn ($item) => trim((string) $item))
+                    ->map(fn($item) => trim((string) $item))
                     ->filter()
                     ->values()
                     ->all();
                 $commandTime = $rawItem['commandTime'] ?? null;
                 $commandedAt = null;
                 if ($commandTime && preg_match('/^\\d{1,2}:\\d{2}(?::\\d{2})?/', $commandTime)) {
-                    $commandedAt = \Carbon\Carbon::parse('today '.$commandTime);
+                    $commandedAt = \Carbon\Carbon::parse('today ' . $commandTime);
                 }
                 if (! $commandedAt) {
                     $commandedAt = now();
@@ -1804,7 +1804,7 @@ class OrderController extends Controller
                     $productSnapshot = $product->toArray();
                 }
                 $cancelComplements = collect($rawCancel['complements'] ?? [])
-                    ->map(fn ($item) => trim((string) $item))
+                    ->map(fn($item) => trim((string) $item))
                     ->filter()
                     ->values()
                     ->all();
@@ -1932,7 +1932,7 @@ class OrderController extends Controller
                 $printerService->sendRawToWindowsPrinter((string) $printer->name, $payload, $timeout + 4);
             }
         } catch (\Throwable $e) {
-            Log::warning('Impresión comanda térmica: '.$e->getMessage());
+            Log::warning('Impresión comanda térmica: ' . $e->getMessage());
 
             return response()->json([
                 'success' => false,
@@ -1942,7 +1942,7 @@ class OrderController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Comanda enviada a "'.($printer->name ?? 'Ticketera').'"',
+            'message' => 'Comanda enviada a "' . ($printer->name ?? 'Ticketera') . '"',
         ]);
     }
 
@@ -2021,7 +2021,7 @@ class OrderController extends Controller
                 $printerService->sendRawToWindowsPrinter((string) $printer->name, $payload, $timeout + 4);
             }
         } catch (\Throwable $e) {
-            Log::warning('Impresión precuenta térmica: '.$e->getMessage());
+            Log::warning('Impresión precuenta térmica: ' . $e->getMessage());
 
             return response()->json([
                 'success' => false,
@@ -2031,7 +2031,7 @@ class OrderController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Precuenta enviada a "'.($printer->name ?? 'Ticketera').'"',
+            'message' => 'Precuenta enviada a "' . ($printer->name ?? 'Ticketera') . '"',
         ]);
     }
 
@@ -2107,7 +2107,7 @@ class OrderController extends Controller
 
     public function showStoredTextTicketPdf(string $token)
     {
-        $payload = Cache::get('text-ticket-pdf:'.$token);
+        $payload = Cache::get('text-ticket-pdf:' . $token);
         abort_unless(is_array($payload), 404);
 
         return $this->renderTextTicketPdfResponse(
@@ -2131,8 +2131,8 @@ class OrderController extends Controller
             'paperWidth' => $paperWidth,
         ]);
 
-        $pdf->setOption('page-width', $paperWidth.'mm')
-            ->setOption('page-height', $heightMm.'mm')
+        $pdf->setOption('page-width', $paperWidth . 'mm')
+            ->setOption('page-height', $heightMm . 'mm')
             ->setOption('margin-top', 0)
             ->setOption('margin-right', 0)
             ->setOption('margin-bottom', 0)
@@ -2147,7 +2147,7 @@ class OrderController extends Controller
 
         return response($output, 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="'.$filePrefix.'_'.now()->format('Ymd_His').'.pdf"',
+            'Content-Disposition' => 'inline; filename="' . $filePrefix . '_' . now()->format('Ymd_His') . '.pdf"',
             'Content-Length' => strlen($output),
         ]);
     }
@@ -2156,7 +2156,7 @@ class OrderController extends Controller
     {
         $token = bin2hex(random_bytes(20));
 
-        Cache::put('text-ticket-pdf:'.$token, [
+        Cache::put('text-ticket-pdf:' . $token, [
             'ticket_text' => $ticketText,
             'paper_width' => $paperWidth === 80 ? 80 : 58,
             'title' => $title,
@@ -2171,10 +2171,10 @@ class OrderController extends Controller
         $normalized = $this->normalizeKitchenAscii($plainText);
 
         return
-            "\x1B\x40".     // init
-            "\x1B\x74\x02". // codepage PC850
-            $normalized.
-            "\n\n".
+            "\x1B\x40" .     // init
+            "\x1B\x74\x02" . // codepage PC850
+            $normalized .
+            "\n\n" .
             "\x1D\x56\x42\x10"; // cut
     }
 
@@ -2191,7 +2191,7 @@ class OrderController extends Controller
 
     public function processOrderPayment(Request $request)
     {
-        
+
         $profileId = session('profile_id') ?? $request->user()?->profile_id;
         if (! $this->canCharge($profileId)) {
             return response()->json([
@@ -2210,7 +2210,7 @@ class OrderController extends Controller
         $clientPerson = $this->resolveOrCreateClientPerson($branchId ?: null, $branch, $clientPersonId ? (int) $clientPersonId : null, $clientNameFromRequest);
         $clientName = $clientNameFromRequest
             ?: ($clientPerson
-                ? trim(($clientPerson->first_name ?? '').' '.($clientPerson->last_name ?? ''))
+                ? trim(($clientPerson->first_name ?? '') . ' ' . ($clientPerson->last_name ?? ''))
                 : null);
         $paymentMethods = collect($request->input('payment_methods', []));
 
@@ -2286,13 +2286,13 @@ class OrderController extends Controller
                     // --- INTEGRACIÓN CON VENTAS: Cada pedido cobrado figura ahora en ventas ---
                     if (!SalesMovement::where('movement_id', $orderBaseMovement->id)->exists()) {
                         $branch = Branch::find($branchId);
-                        
+
                         // Determinar el tipo de movimiento para Ventas (tipo 2 por defecto, pero resolvemos dinámicamente)
                         $salesMovementType = MovementType::where('description', 'like', '%venta%')
                             ->orWhere('description', 'like', '%sale%')
                             ->orWhere('description', 'like', '%Venta%')
                             ->first();
-                        
+
                         if ($salesMovementType) {
                             $orderBaseMovement->update(['movement_type_id' => $salesMovementType->id]);
                         }
@@ -2338,7 +2338,7 @@ class OrderController extends Controller
                             } else {
                                 $taxRateVal = 0.10; // Fallback al 10% según processOrder
                             }
-                            
+
                             $subtotalDetail = $taxRateVal > 0 ? ($totalDetail / (1 + $taxRateVal)) : $totalDetail;
 
                             SalesMovementDetail::create([
@@ -2386,8 +2386,8 @@ class OrderController extends Controller
                         'person_id' => $orderBaseMovement?->person_id,
                         'person_name' => $orderBaseMovement?->person_name ?? 'Publico General',
                         'responsible_id' => $user?->id,
-                        'responsible_name' => $user?->person ? trim(($user->person->first_name ?? '').' '.($user->person->last_name ?? '')) : ($user?->name ?? 'Sistema'),
-                        'comment' => 'Cobro de pedido '.($orderBaseMovement?->number ?? ''),
+                        'responsible_name' => $user?->person ? trim(($user->person->first_name ?? '') . ' ' . ($user->person->last_name ?? '')) : ($user?->name ?? 'Sistema'),
+                        'comment' => 'Cobro de pedido ' . ($orderBaseMovement?->number ?? ''),
                         'status' => '1',
                         'movement_type_id' => $cashMovementTypeId,
                         'document_type_id' => $cashDocumentTypeId,
@@ -2397,7 +2397,7 @@ class OrderController extends Controller
                 } else {
                     $cashEntryMovement->update([
                         'moved_at' => now(),
-                        'comment' => 'Cobro de pedido '.($orderBaseMovement?->number ?? ''),
+                        'comment' => 'Cobro de pedido ' . ($orderBaseMovement?->number ?? ''),
                         'status' => '1',
                     ]);
                 }
@@ -2474,7 +2474,7 @@ class OrderController extends Controller
                             'payment_gateway_id' => $paymentGateway?->id,
                             'payment_gateway' => $paymentGateway?->description,
                             'amount' => (float) ($paymentMethodData['amount'] ?? 0),
-                            'comment' => $request->input('notes') ?: 'Cobro de pedido '.($orderBaseMovement?->number ?? ''),
+                            'comment' => $request->input('notes') ?: 'Cobro de pedido ' . ($orderBaseMovement?->number ?? ''),
                             'status' => 'A',
                             'branch_id' => $branchId,
                             'created_at' => now(),
@@ -2669,7 +2669,7 @@ class OrderController extends Controller
     {
         $documentTypeId = DocumentType::query()
             ->where('movement_type_id', $cashMovementTypeId)
-            ->tap(fn ($q) => InsensitiveSearch::whereInsensitiveLikePattern($q, 'name', '%ingreso%'))
+            ->tap(fn($q) => InsensitiveSearch::whereInsensitiveLikePattern($q, 'name', '%ingreso%'))
             ->orderBy('id')
             ->value('id');
 
@@ -2745,7 +2745,7 @@ class OrderController extends Controller
             ->first();
 
         if (! $activeShift) {
-            throw new \Exception('La caja "'.$cashRegister->number.'" no tiene un turno abierto. Realice una Apertura de Caja primero.');
+            throw new \Exception('La caja "' . $cashRegister->number . '" no tiene un turno abierto. Realice una Apertura de Caja primero.');
         }
     }
 

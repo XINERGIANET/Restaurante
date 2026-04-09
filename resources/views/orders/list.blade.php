@@ -466,6 +466,20 @@
         async function printThermalTicket(movementId) {
             if (!movementId) return;
             const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+            const fallbackUrl = @json(route('admin.sales.print.ticket', ['sale' => '__SALE__'])).replace('__SALE__', movementId);
+
+            const askForPdf = (msg) => {
+                if (confirm(msg + '\n\n¿Desea abrir el ticket en formato PDF?')) {
+                    const currentUrl = new URL(window.location.href);
+                    const viewId = currentUrl.searchParams.get('view_id');
+                    let finalUrl = fallbackUrl;
+                    if (viewId) {
+                        finalUrl += (finalUrl.includes('?') ? '&' : '?') + 'view_id=' + encodeURIComponent(viewId);
+                    }
+                    window.open(finalUrl, '_blank', 'noopener,noreferrer');
+                }
+            };
+
             try {
                 const r = await fetch(@json(route('sales.print.ticket.thermal')), {
                     method: 'POST',
@@ -481,24 +495,18 @@
                 const data = r.headers.get('content-type')?.includes('application/json') ? await r.json() : null;
                 if (!r.ok || !data?.success) {
                     const msg = data?.message || 'No se pudo enviar el ticket a la ticketera.';
-                    if (typeof showNotification === 'function') {
-                        showNotification('Impresión', msg, 'error');
-                    } else {
-                        alert(msg);
-                    }
+                    askForPdf(msg);
                     return;
                 }
                 const okMsg = data?.message || 'Ticket enviado a la ticketera.';
                 if (typeof showNotification === 'function') {
                     showNotification('Impresión', okMsg, 'success');
+                } else {
+                    alert(okMsg);
                 }
             } catch (e) {
-                const msg = (e && e.message) ? e.message : 'Error de red al imprimir.';
-                if (typeof showNotification === 'function') {
-                    showNotification('Impresión', msg, 'error');
-                } else {
-                    alert(msg);
-                }
+                const msg = (e && e.message) ? e.message : 'Error de red al conectar con la ticketera.';
+                askForPdf(msg);
             }
         }
     </script>

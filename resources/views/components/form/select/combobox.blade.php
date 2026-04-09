@@ -11,6 +11,7 @@
     'displayField' => 'description',
     'value' => null,
     'disabled' => false,
+    'clearOnFocus' => false,
 ])
 
 <div x-data="{
@@ -117,6 +118,7 @@
             type="text"
             x-model="query"
             @focus="open = true"
+            @click="open = true; {{ $clearOnFocus ? 'query = \'\'' : '' }}"
             @input="open = true"
             @dblclick="$el.select()"
             @keydown.escape="closeDropdown()"

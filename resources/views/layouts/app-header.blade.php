@@ -1,7 +1,5 @@
-<header
-    style="height: 55px; background: linear-gradient(150deg, #FF4622 0%, #C43B25 100%) !important;"
-    class="sticky top-0 flex w-full z-99999 dark:border-gray-800 dark:bg-gray-900"
-    x-data="{
+<header style="height: 55px; background: linear-gradient(150deg, #FF4622 0%, #C43B25 100%) !important;"
+    class="sticky top-0 flex w-full z-99999 dark:border-gray-800 dark:bg-gray-900" x-data="{
         isApplicationMenuOpen: false,
         toggleApplicationMenu() {
             this.isApplicationMenuOpen = !this.isApplicationMenuOpen;
@@ -13,23 +11,23 @@
 
             <!-- Desktop Sidebar Toggle Button (oculto para Mozo) -->
             @if(($showSidebar ?? true) && !($isMozo ?? false))
-            <button
-                class="hidden xl:flex items-center justify-center w-10 h-10 text-white border border-white/10 rounded-xl hover:bg-white/10 hover:text-white transition-all duration-200 lg:h-11 lg:w-11"
-                :class="{ 'bg-white/10 text-white': !$store.sidebar.isExpanded }"
-                @click="$store.sidebar.toggleExpanded()" aria-label="Toggle Sidebar">
-                <svg x-show="!$store.sidebar.isMobileOpen" width="16" height="12" viewBox="0 0 16 12" fill="none"
-                    xmlns="http://www.w3.org/2000/svg">
-                    <path fill-rule="evenodd" clip-rule="evenodd"
-                        d="M0.583252 1C0.583252 0.585788 0.919038 0.25 1.33325 0.25H14.6666C15.0808 0.25 15.4166 0.585786 15.4166 1C15.4166 1.41421 15.0808 1.75 14.6666 1.75L1.33325 1.75C0.919038 1.75 0.583252 1.41422 0.583252 1ZM0.583252 11C0.583252 10.5858 0.919038 10.25 1.33325 10.25L14.6666 10.25C15.0808 10.25 15.4166 10.5858 15.4166 11C15.4166 11.4142 15.0808 11.75 14.6666 11.75L1.33325 11.75C0.919038 11.75 0.583252 11.4142 0.583252 11ZM1.33325 5.25C0.919038 5.25 0.583252 5.58579 0.583252 6C0.583252 6.41421 0.919038 6.75 1.33325 6.75L7.99992 6.75C8.41413 6.75 8.74992 6.41421 8.74992 6C8.74992 5.58579 8.41413 5.25 7.99992 5.25L1.33325 5.25Z"
-                        fill="white"></path>
-                </svg>
-                <svg x-show="$store.sidebar.isMobileOpen" class="fill-current" width="24" height="24" viewBox="0 0 24 24"
-                    fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path fill-rule="evenodd" clip-rule="evenodd"
-                        d="M6.21967 7.28131C5.92678 6.98841 5.92678 6.51354 6.21967 6.22065C6.51256 5.92775 6.98744 5.92775 7.28033 6.22065L11.999 10.9393L16.7176 6.22078C17.0105 5.92789 17.4854 5.92788 17.7782 6.22078C18.0711 6.51367 18.0711 6.98855 17.7782 7.28144L13.0597 12L17.7782 16.7186C18.0711 17.0115 18.0711 17.4863 17.7782 17.7792C17.4854 18.0721 17.0105 18.0721 16.7176 17.7792L11.999 13.0607L7.28033 17.7794C6.98744 18.0722 6.51256 18.0722 6.21967 17.7794C5.92678 17.4865 5.92678 17.0116 6.21967 16.7187L10.9384 12L6.21967 7.28131Z"
-                        fill="" />
-                </svg>
-            </button>
+                <button
+                    class="hidden xl:flex items-center justify-center w-10 h-10 text-white border border-white/10 rounded-xl hover:bg-white/10 hover:text-white transition-all duration-200 lg:h-11 lg:w-11"
+                    :class="{ 'bg-white/10 text-white': !$store.sidebar.isExpanded }"
+                    @click="$store.sidebar.toggleExpanded()" aria-label="Toggle Sidebar">
+                    <svg x-show="!$store.sidebar.isMobileOpen" width="16" height="12" viewBox="0 0 16 12" fill="none"
+                        xmlns="http://www.w3.org/2000/svg">
+                        <path fill-rule="evenodd" clip-rule="evenodd"
+                            d="M0.583252 1C0.583252 0.585788 0.919038 0.25 1.33325 0.25H14.6666C15.0808 0.25 15.4166 0.585786 15.4166 1C15.4166 1.41421 15.0808 1.75 14.6666 1.75L1.33325 1.75C0.919038 1.75 0.583252 1.41422 0.583252 1ZM0.583252 11C0.583252 10.5858 0.919038 10.25 1.33325 10.25L14.6666 10.25C15.0808 10.25 15.4166 10.5858 15.4166 11C15.4166 11.4142 15.0808 11.75 14.6666 11.75L1.33325 11.75C0.919038 11.75 0.583252 11.4142 0.583252 11ZM1.33325 5.25C0.919038 5.25 0.583252 5.58579 0.583252 6C0.583252 6.41421 0.919038 6.75 1.33325 6.75L7.99992 6.75C8.41413 6.75 8.74992 6.41421 8.74992 6C8.74992 5.58579 8.41413 5.25 7.99992 5.25L1.33325 5.25Z"
+                            fill="white"></path>
+                    </svg>
+                    <svg x-show="$store.sidebar.isMobileOpen" class="fill-current" width="24" height="24"
+                        viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path fill-rule="evenodd" clip-rule="evenodd"
+                            d="M6.21967 7.28131C5.92678 6.98841 5.92678 6.51354 6.21967 6.22065C6.51256 5.92775 6.98744 5.92775 7.28033 6.22065L11.999 10.9393L16.7176 6.22078C17.0105 5.92789 17.4854 5.92788 17.7782 6.22078C18.0711 6.51367 18.0711 6.98855 17.7782 7.28144L13.0597 12L17.7782 16.7186C18.0711 17.0115 18.0711 17.4863 17.7782 17.7792C17.4854 18.0721 17.0105 18.0721 16.7176 17.7792L11.999 13.0607L7.28033 17.7794C6.98744 18.0722 6.51256 18.0722 6.21967 17.7794C5.92678 17.4865 5.92678 17.0116 6.21967 16.7187L10.9384 12L6.21967 7.28131Z"
+                            fill="" />
+                    </svg>
+                </button>
             @endif
 
             @php
@@ -41,23 +39,23 @@
 
             <!-- Mobile Menu Toggle Button (oculto para Mozo) -->
             @if(($showSidebar ?? true) && !($isMozo ?? false))
-            <button
-                class="flex xl:hidden items-center justify-center w-10 h-10 text-white rounded-lg hover:bg-white/10 hover:text-white transition-all duration-200 lg:h-11 lg:w-11"
-                :class="{ 'bg-white/10 text-white': $store.sidebar.isMobileOpen }"
-                @click="$store.sidebar.toggleMobileOpen()" aria-label="Toggle Mobile Menu">
-                <svg x-show="!$store.sidebar.isMobileOpen" width="16" height="12" viewBox="0 0 16 12" fill="none"
-                    xmlns="http://www.w3.org/2000/svg">
-                    <path fill-rule="evenodd" clip-rule="evenodd"
-                        d="M0.583252 1C0.583252 0.585788 0.919038 0.25 1.33325 0.25H14.6666C15.0808 0.25 15.4166 0.585786 15.4166 1C15.4166 1.41421 15.0808 1.75 14.6666 1.75L1.33325 1.75C0.919038 1.75 0.583252 1.41422 0.583252 1ZM0.583252 11C0.583252 10.5858 0.919038 10.25 1.33325 10.25L14.6666 10.25C15.0808 10.25 15.4166 10.5858 15.4166 11C15.4166 11.4142 15.0808 11.75 14.6666 11.75L1.33325 11.75C0.919038 11.75 0.583252 11.4142 0.583252 11ZM1.33325 5.25C0.919038 5.25 0.583252 5.58579 0.583252 6C0.583252 6.41421 0.919038 6.75 1.33325 6.75L7.99992 6.75C8.41413 6.75 8.74992 6.41421 8.74992 6C8.74992 5.58579 8.41413 5.25 7.99992 5.25L1.33325 5.25Z"
-                        fill="white"></path>
-                </svg>
-                <svg x-show="$store.sidebar.isMobileOpen" class="fill-current" width="24" height="24" viewBox="0 0 24 24"
-                    fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path fill-rule="evenodd" clip-rule="evenodd"
-                        d="M6.21967 7.28131C5.92678 6.98841 5.92678 6.51354 6.21967 6.22065C6.51256 5.92775 6.98744 5.92775 7.28033 6.22065L11.999 10.9393L16.7176 6.22078C17.0105 5.92789 17.4854 5.92788 17.7782 6.22078C18.0711 6.51367 18.0711 6.98855 17.7782 7.28144L13.0597 12L17.7782 16.7186C18.0711 17.0115 18.0711 17.4863 17.7782 17.7792C17.4854 18.0721 17.0105 18.0721 16.7176 17.7792L11.999 13.0607L7.28033 17.7794C6.98744 18.0722 6.51256 18.0722 6.21967 17.7794C5.92678 17.4865 5.92678 17.0116 6.21967 16.7187L10.9384 12L6.21967 7.28131Z"
-                        fill="" />
-                </svg>
-            </button>
+                <button
+                    class="flex xl:hidden items-center justify-center w-10 h-10 text-white rounded-lg hover:bg-white/10 hover:text-white transition-all duration-200 lg:h-11 lg:w-11"
+                    :class="{ 'bg-white/10 text-white': $store.sidebar.isMobileOpen }"
+                    @click="$store.sidebar.toggleMobileOpen()" aria-label="Toggle Mobile Menu">
+                    <svg x-show="!$store.sidebar.isMobileOpen" width="16" height="12" viewBox="0 0 16 12" fill="none"
+                        xmlns="http://www.w3.org/2000/svg">
+                        <path fill-rule="evenodd" clip-rule="evenodd"
+                            d="M0.583252 1C0.583252 0.585788 0.919038 0.25 1.33325 0.25H14.6666C15.0808 0.25 15.4166 0.585786 15.4166 1C15.4166 1.41421 15.0808 1.75 14.6666 1.75L1.33325 1.75C0.919038 1.75 0.583252 1.41422 0.583252 1ZM0.583252 11C0.583252 10.5858 0.919038 10.25 1.33325 10.25L14.6666 10.25C15.0808 10.25 15.4166 10.5858 15.4166 11C15.4166 11.4142 15.0808 11.75 14.6666 11.75L1.33325 11.75C0.919038 11.75 0.583252 11.4142 0.583252 11ZM1.33325 5.25C0.919038 5.25 0.583252 5.58579 0.583252 6C0.583252 6.41421 0.919038 6.75 1.33325 6.75L7.99992 6.75C8.41413 6.75 8.74992 6.41421 8.74992 6C8.74992 5.58579 8.41413 5.25 7.99992 5.25L1.33325 5.25Z"
+                            fill="white"></path>
+                    </svg>
+                    <svg x-show="$store.sidebar.isMobileOpen" class="fill-current" width="24" height="24"
+                        viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path fill-rule="evenodd" clip-rule="evenodd"
+                            d="M6.21967 7.28131C5.92678 6.98841 5.92678 6.51354 6.21967 6.22065C6.51256 5.92775 6.98744 5.92775 7.28033 6.22065L11.999 10.9393L16.7176 6.22078C17.0105 5.92789 17.4854 5.92788 17.7782 6.22078C18.0711 6.51367 18.0711 6.98855 17.7782 7.28144L13.0597 12L17.7782 16.7186C18.0711 17.0115 18.0711 17.4863 17.7782 17.7792C17.4854 18.0721 17.0105 18.0721 16.7176 17.7792L11.999 13.0607L7.28033 17.7794C6.98744 18.0722 6.51256 18.0722 6.21967 17.7794C5.92678 17.4865 5.92678 17.0116 6.21967 16.7187L10.9384 12L6.21967 7.28131Z"
+                            fill="" />
+                    </svg>
+                </button>
             @endif
 
             @if ($branchName)
@@ -68,7 +66,8 @@
 
             <!-- Logo (mobile only) -->
             <a href="/" class="xl:hidden">
-                <img class="brightness-0 invert opacity-90" src="/images/logo/Xinergia.png" alt="Logo" width="130" height="35" />
+                <img class="brightness-0 invert opacity-90" src="/images/logo/Xinergia.png" alt="Logo" width="130"
+                    height="35" />
             </a>
 
             <!-- Application Menu Toggle -->
@@ -86,7 +85,6 @@
 
         <!-- Application Menu (mobile) and Right Side Actions (desktop) -->
         <div :class="isApplicationMenuOpen ? 'flex' : 'hidden'"
-            
             class="items-center justify-between w-full gap-4 px-5 py-4 xl:flex shadow-theme-md xl:justify-end xl:px-0 xl:shadow-none border-t border-white/5 xl:border-0">
             <div class="flex items-center gap-2 2xsm:gap-3">
                 @if (!($isMozo ?? false) && !empty($quickOptions) && $quickOptions->count())
@@ -95,11 +93,9 @@
                             @php
                                 $quickUrl = \App\Helpers\MenuHelper::appendViewIdToPath(route($option->action), $option->view_id);
                             @endphp
-                            <a
-                                href="{{ $quickUrl }}"
+                            <a href="{{ $quickUrl }}"
                                 class="relative flex items-center justify-center transition-all bg-white/5 border border-white/10 rounded-full hover:text-white h-11 w-11 hover:bg-white/10 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white group"
-                                aria-label="{{ $option->name }}"
-                            >
+                                aria-label="{{ $option->name }}">
                                 <i class="{{ $option->icon }} text-lg text-white"></i>
                                 <span
                                     class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-white px-2 py-1 text-[10px] font-medium text-gray-900 opacity-0 shadow-lg transition-opacity group-hover:opacity-100 z-50">
@@ -108,13 +104,9 @@
                             </a>
                         @endforeach
 
-                        <a
-                            href="https://www.youtube.com/"
-                            target="_blank"
-                            rel="noopener noreferrer"
+                        <a href="https://www.youtube.com/" target="_blank" rel="noopener noreferrer"
                             class="relative flex items-center justify-center transition-all bg-white/5 border border-white/10 rounded-full hover:text-white h-11 w-11 hover:bg-white/10 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white group"
-                            aria-label="Videos tutoriales"
-                        >
+                            aria-label="Videos tutoriales">
                             <i class="ri-youtube-line text-lg text-white"></i>
                             <span
                                 class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-white px-2 py-1 text-[10px] font-medium text-gray-900 opacity-0 shadow-lg transition-opacity group-hover:opacity-100 z-50">
@@ -125,129 +117,125 @@
                 @endif
 
                 @if(($cashRegisterSelectionEnabled ?? true))
-                <div x-data="{ openCashModal: @js((bool) ($forceCashRegisterModal ?? false)), cashSelectionRequired: @js((bool) ($cashSelectionRequired ?? false)) }" class="flex items-center gap-2">
+                    <div x-data="{ openCashModal: @js((bool) ($forceCashRegisterModal ?? false)), cashSelectionRequired: @js((bool) ($cashSelectionRequired ?? false)) }"
+                        class="flex items-center gap-2">
 
-                    <button type="button" 
-                        @click="openCashModal = true"
-                        title="Cambiar Caja"
-                        class="relative flex items-center justify-center text-white transition-all bg-white/5 border border-white/10 rounded-full hover:text-white h-11 w-11 hover:bg-white/10 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white">
-                        
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M5 11h14v-3a1 1 0 0 0-1-1H6a1 1 0 0 0-1 1v3z"/>
-                            <path d="M17.5 11l-1.5 10h-8L6.5 11"/>
-                            <path d="M6 7V5a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v2"/>
-                            <path d="M9 16h6"/>
-                            <path d="M12 4V2"/>
-                        </svg>
-                    </button>
+                        <button type="button" @click="openCashModal = true" title="Cambiar Caja"
+                            class="relative flex items-center justify-center text-white transition-all bg-white/5 border border-white/10 rounded-full hover:text-white h-11 w-11 hover:bg-white/10 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white">
 
-                    <div x-show="openCashModal" 
-                        style="display: none;" 
-                        class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm"
-                        x-transition:enter="transition ease-out duration-300"
-                        x-transition:enter-start="opacity-0"
-                        x-transition:enter-end="opacity-100"
-                        x-transition:leave="transition ease-in duration-200"
-                        x-transition:leave-start="opacity-100"
-                        x-transition:leave-end="opacity-0">
+                            <i class="ri-safe-3-fill text-lg text-white"></i>
+                        </button>
 
-                        <div class="w-full max-w-md bg-white border border-gray-200 shadow-2xl rounded-2xl dark:bg-gray-900 dark:border-gray-700"
-                            @click.away="if (!cashSelectionRequired) openCashModal = false"
-                            x-transition:enter="transition ease-out duration-300"
-                            x-transition:enter-start="opacity-0 scale-95"
-                            x-transition:enter-end="opacity-100 scale-100"
-                            x-transition:leave="transition ease-in duration-200"
-                            x-transition:leave-start="opacity-100 scale-100"
-                            x-transition:leave-end="opacity-0 scale-95">
+                        <div x-show="openCashModal" style="display: none;"
+                            class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm"
+                            x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0"
+                            x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-200"
+                            x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
 
-                            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800">
-                                <h3 class="text-lg font-semibold text-gray-800 dark:text-white">
-                                    Seleccionar Caja
-                                </h3>
-                                <template x-if="!cashSelectionRequired">
-                                    <button @click="openCashModal = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
-                                        <i class="ri-close-line text-xl"></i>
-                                    </button>
-                                </template>
-                            </div>
+                            <div class="w-full max-w-md bg-white border border-gray-200 shadow-2xl rounded-2xl dark:bg-gray-900 dark:border-gray-700"
+                                @click.away="if (!cashSelectionRequired) openCashModal = false"
+                                x-transition:enter="transition ease-out duration-300"
+                                x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                                x-transition:leave="transition ease-in duration-200"
+                                x-transition:leave-start="opacity-100 scale-100"
+                                x-transition:leave-end="opacity-0 scale-95">
 
-                            <div class="p-6">
-                                <p class="mb-4 text-sm text-gray-500 dark:text-gray-400">
-                                    @if(($cashSelectionRequired ?? false) || ($forceCashRegisterModal ?? false))
-                                        Selecciona la caja de trabajo para esta sesión. Todo el sistema operará con esa caja hasta que la cambies.
-                                    @else
-                                        Seleccione la caja en la que desea operar actualmente.
-                                    @endif
-                                </p>
+                                <div
+                                    class="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+                                    <h3 class="text-lg font-semibold text-gray-800 dark:text-white">
+                                        Seleccionar Caja
+                                    </h3>
+                                    <template x-if="!cashSelectionRequired">
+                                        <button @click="openCashModal = false"
+                                            class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
+                                            <i class="ri-close-line text-xl"></i>
+                                        </button>
+                                    </template>
+                                </div>
 
-                                @if(!empty($selectedCashRegister))
-                                    <div class="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-300">
-                                        Caja actual: <span class="font-semibold">{{ $selectedCashRegister->number }}</span>
-                                    </div>
-                                @endif
+                                <div class="p-6">
+                                    <p class="mb-4 text-sm text-gray-500 dark:text-gray-400">
+                                        @if(($cashSelectionRequired ?? false) || ($forceCashRegisterModal ?? false))
+                                            Selecciona la caja de trabajo para esta sesión. Todo el sistema operará con esa caja
+                                            hasta que la cambies.
+                                        @else
+                                            Seleccione la caja en la que desea operar actualmente.
+                                        @endif
+                                    </p>
 
-                                <div class="grid gap-3">
-                                    @if(isset($cashRegisters) && $cashRegisters->count() > 0)
-                                        @foreach($cashRegisters as $caja)
-                                            @php
-                                                $sessionRegisterId = session('cash_register_id');
-                                                
-                                                $isActive = $sessionRegisterId 
-                                                            ? ($sessionRegisterId == $caja->id) 
-                                                            : $loop->first;
-                                            @endphp
-
-                                            <form action="{{ route('caja.fijar') }}" method="POST">
-                                                @csrf
-                                                <input type="hidden" name="cash_register_id" value="{{ $caja->id }}">
-                                                
-                                                <button type="submit" 
-                                                    class="group relative w-full flex items-center p-3 text-left border rounded-xl transition-all duration-200
-                                                    {{ $isActive 
-                                                        ? 'bg-[#FF4622]/10 border-brand-200 ring-1 ring-brand-500/20 dark:bg-[#FF4622]/20 dark:border-[#FF4622]/30' 
-                                                        : 'bg-gray-50 border-transparent hover:bg-white hover:border-gray-200 hover:shadow-sm dark:bg-gray-800 dark:hover:bg-gray-700 dark:hover:border-gray-600' 
-                                                    }}">
-                                                    
-                                                    <div class="flex items-center justify-center w-10 h-10 rounded-lg mr-4 
-                                                        {{ $isActive ? 'bg-brand-100 text-[#C43B25] dark:bg-[#FF4622]/20 dark:text-[#FF4622]/80' : 'bg-white text-gray-400 shadow-sm group-hover:text-[#FF4622] dark:bg-gray-700 dark:text-gray-400' }}">
-                                                        <i class="ri-store-2-line text-lg"></i>
-                                                    </div>
-
-                                                    <div class="flex-1 ml-4">
-                                                        <h4 class="font-medium {{ $isActive ? 'text-brand-700 dark:text-[#FF4622]/80' : 'text-gray-800 dark:text-gray-200' }}">
-                                                            {{ $caja->number }}
-                                                        </h4>
-                                                        @if($isActive)
-                                                            <span class="text-xs text-[#FF4622] font-medium">● Activa actualmente</span>
-                                                        @else
-                                                            <span class="text-xs text-gray-400 group-hover:text-gray-500"> Click para cambiar</span>
-                                                        @endif
-                                                    </div>
-
-                                                    @if($isActive)
-                                                        <div class="text-[#FF4622]">
-                                                            <i class="ri-checkbox-circle-fill text-xl"></i>
-                                                        </div>
-                                                    @endif
-                                                </button>
-                                            </form>
-                                        @endforeach
-                                    @else
-                                        <div class="text-center py-4 text-gray-500">
-                                            No hay cajas registradas para esta sucursal.
+                                    @if(!empty($selectedCashRegister))
+                                        <div
+                                            class="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-300">
+                                            Caja actual: <span class="font-semibold">{{ $selectedCashRegister->number }}</span>
                                         </div>
                                     @endif
-                                </div>
-                            </div>
 
+                                    <div class="grid gap-3">
+                                        @if(isset($cashRegisters) && $cashRegisters->count() > 0)
+                                            @foreach($cashRegisters as $caja)
+                                                                    @php
+                                                                        $sessionRegisterId = session('cash_register_id');
+
+                                                                        $isActive = $sessionRegisterId
+                                                                            ? ($sessionRegisterId == $caja->id)
+                                                                            : $loop->first;
+                                                                    @endphp
+
+                                                                    <form action="{{ route('caja.fijar') }}" method="POST">
+                                                                        @csrf
+                                                                        <input type="hidden" name="cash_register_id" value="{{ $caja->id }}">
+
+                                                                        <button type="submit"
+                                                                            class="group relative w-full flex items-center p-3 text-left border rounded-xl transition-all duration-200
+                                                                                                                                                                                    {{ $isActive
+                                                ? 'bg-[#FF4622]/10 border-brand-200 ring-1 ring-brand-500/20 dark:bg-[#FF4622]/20 dark:border-[#FF4622]/30'
+                                                : 'bg-gray-50 border-transparent hover:bg-white hover:border-gray-200 hover:shadow-sm dark:bg-gray-800 dark:hover:bg-gray-700 dark:hover:border-gray-600' 
+                                                                                                                                                                                    }}">
+
+                                                                            <div
+                                                                                class="flex items-center justify-center w-10 h-10 rounded-lg mr-4 
+                                                                                                                                                                                        {{ $isActive ? 'bg-brand-100 text-[#C43B25] dark:bg-[#FF4622]/20 dark:text-[#FF4622]/80' : 'bg-white text-gray-400 shadow-sm group-hover:text-[#FF4622] dark:bg-gray-700 dark:text-gray-400' }}">
+                                                                                <i class="ri-store-2-line text-lg"></i>
+                                                                            </div>
+
+                                                                            <div class="flex-1 ml-4">
+                                                                                <h4
+                                                                                    class="font-medium {{ $isActive ? 'text-brand-700 dark:text-[#FF4622]/80' : 'text-gray-800 dark:text-gray-200' }}">
+                                                                                    {{ $caja->number }}
+                                                                                </h4>
+                                                                                @if($isActive)
+                                                                                    <span class="text-xs text-[#FF4622] font-medium">● Activa
+                                                                                        actualmente</span>
+                                                                                @else
+                                                                                    <span class="text-xs text-gray-400 group-hover:text-gray-500"> Click
+                                                                                        para cambiar</span>
+                                                                                @endif
+                                                                            </div>
+
+                                                                            @if($isActive)
+                                                                                <div class="text-[#FF4622]">
+                                                                                    <i class="ri-checkbox-circle-fill text-xl"></i>
+                                                                                </div>
+                                                                            @endif
+                                                                        </button>
+                                                                    </form>
+                                            @endforeach
+                                        @else
+                                            <div class="text-center py-4 text-gray-500">
+                                                No hay cajas registradas para esta sucursal.
+                                            </div>
+                                        @endif
+                                    </div>
+                                </div>
+
+                            </div>
                         </div>
                     </div>
-                </div>
                 @endif
 
-               
+
             </div>
-                
+
             <!-- User Dropdown -->
             <x-header.user-dropdown class="text-white hover:text-white" />
         </div>

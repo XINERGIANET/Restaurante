@@ -49,15 +49,17 @@
                     </div>
                 </div>
 
-                {{-- CONCEPTO --}}
-                <x-form.select.combobox 
-                    label="Concepto" 
-                    :required="true"
-                    name="payment_concept_id"        
-                    x-model="formConceptId"          
-                    placeholder="Buscar concepto..."
-                    icon="ri-price-tag-3-line"
-                />
+                {{-- CONCEPTO (filtrado en tiempo real según Ingreso o Egreso) --}}
+                <div x-effect="$dispatch('update-combobox-options', { name: 'payment_concept_id', options: currentConcepts })">
+                    <x-form.select.combobox 
+                        label="Concepto" 
+                        :required="true"
+                        name="payment_concept_id"        
+                        x-model="formConceptId"          
+                        placeholder="Buscar concepto..."
+                        icon="ri-price-tag-3-line"
+                    />
+                </div>
             </div>
         </div>
     </div>
