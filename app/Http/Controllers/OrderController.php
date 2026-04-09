@@ -1687,13 +1687,24 @@ class OrderController extends Controller
                 ]);
             }
 
-            // Marcar la mesa como ocupada
+            if (empty($items)) {
+                $orderMovement->update(['status' => 'CANCELADO', 'finished_at' => now()]);
+            }
+
+            // Actualizar el estado de la mesa si está vinculada
             if ($tableId) {
-                $existingOpenedAt = Table::where('id', $tableId)->value('opened_at');
-                Table::where('id', $tableId)->update([
-                    'situation' => 'ocupada',
-                    'opened_at' => $existingOpenedAt ?? now(),
-                ]);
+                if (empty($items)) {
+                    Table::where('id', $tableId)->update([
+                        'situation' => 'libre',
+                        'opened_at' => null,
+                    ]);
+                } else {
+                    $existingOpenedAt = Table::where('id', $tableId)->value('opened_at');
+                    Table::where('id', $tableId)->update([
+                        'situation' => 'ocupada',
+                        'opened_at' => $existingOpenedAt ?? now(),
+                    ]);
+                }
             }
 
             foreach ($items as $rawItem) {

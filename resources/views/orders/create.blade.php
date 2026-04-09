@@ -522,17 +522,15 @@
                         <i class="ri-close-line text-xl"></i>
                     </button>
 
-                    <div class="mb-8 flex flex-col items-center text-center">
-                        <div
-                            class="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#FF4622]/10 text-[#FF4622] dark:bg-[#FF4622]/20 dark:text-[#FF4622] mb-4 shadow-sm">
-                            <i class="ri-user-add-line text-3xl"></i>
-                        </div>
-                        <div>
-                            <h3 class="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight">Registrar
-                                / Editar Cliente</h3>
-                            <p class="mt-2 text-sm text-gray-500 dark:text-gray-400 max-w-xs mx-auto">Ingresa los datos para
-                                registrar un nuevo cliente en el sistema.
-                            </p>
+                    <div class="mb-6 flex items-center justify-between gap-4 pr-12">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <div
+                                class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#FF4622]/10 text-[#FF4622] dark:bg-[#FF4622]/20 dark:text-[#FF4622] shadow-sm">
+                                <i class="ri-user-add-line text-2xl"></i>
+                            </div>
+                            <h3 class="text-lg sm:text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight">
+                                Registrar / Editar Cliente
+                            </h3>
                         </div>
                     </div>
 

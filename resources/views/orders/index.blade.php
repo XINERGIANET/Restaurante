@@ -154,11 +154,7 @@
                                             <p class="text-xs font-medium text-gray-800 dark:text-white truncate"
                                                 x-text="(table.client && table.client !== '-') ? table.client : 'Público General'"
                                                 :title="(table.client && table.client !== '-') ? table.client : 'Público General'"></p>
-                                            <template x-if="table.orders_count > 0">
-                                                <p class="text-[10px] text-blue-500 font-medium mt-0.5"
-                                                    x-text="table.orders_count + (table.orders_count === 1 ? ' compra anterior' : ' compras anteriores')">
-                                                </p>
-                                            </template>
+                                            
                                         </div>
                                     </div>
                 
