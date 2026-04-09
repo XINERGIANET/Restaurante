@@ -1168,6 +1168,12 @@
                         categoryIdsInBranch.includes(Number(p.category_id))
                     );
 
+                    function findProductBranchByProductId(productId) {
+                        const targetId = Number(productId);
+                        if (!targetId || !Array.isArray(serverProductBranches)) return null;
+                        return serverProductBranches.find(pb => Number(pb.product_id) === targetId) || null;
+                    }
+
                     function normalizeComplements(list) {
                         return (Array.isArray(list) ? list : [])
                             .map(item => String(item || '').trim())
@@ -2338,7 +2344,7 @@
                         let updated = false;
                         currentTable.items.forEach(item => {
                             const pId = parseInt(item.pId || item.product_id, 10);
-                            const pb = serverProductBranches.find(p => p.product_id === pId || parseInt(p.product_id, 10) === pId);
+                            const pb = findProductBranchByProductId(pId);
                             if (pb) {
                                 const newPrice = parseFloat(pb.price);
                                 if (!isNaN(newPrice) && newPrice >= 0 && newPrice !== parseFloat(item.price)) {
@@ -2539,7 +2545,7 @@
 
                         let productsRendered = 0;
                         productsToShow.forEach(prod => {
-                            const productBranch = serverProductBranches.find(p => p.product_id === prod.id || p.id === prod.id);
+                            const productBranch = findProductBranchByProductId(prod.id);
                             if (!productBranch) return;
 
                             const el = document.createElement('div');
