@@ -6,7 +6,7 @@
     <div class="px-4 md:px-6 pt-4 pb-2">
         <x-common.page-breadcrumb pageTitle="Salones de Pedidos" />
     </div>
-    <div class="mx-4 md:mx-6 flex flex-col gap-4 rounded-2xl border border-gray-200 bg-white dark:bg-gray-900 p-5">
+    <div class="mx-3 md:mx-4 flex flex-col gap-4 rounded-2xl border border-gray-200 bg-white dark:bg-gray-900 p-4">
         <div x-data="posSystem()" x-cloak
             class="flex flex-col min-h-[calc(100vh-9rem)] w-full font-sans text-slate-800 dark:text-white"
             style="--brand:#FF4622; --brand-soft:rgba(255,70,34,0.14);">

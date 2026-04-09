@@ -579,10 +579,10 @@ class OrderController extends Controller
         $search = $request->input('search');
         $documentTypeId = $request->input('document_type_id');
         $paymentMethodId = $request->input('payment_method_id');
+        $branchId = $request->session()->get('branch_id');
         $cashRegisterId = effective_cash_register_id($branchId ? (int) $branchId : null);
         $status = $request->input('status');
         $cashShiftRelationId = $request->input('cash_shift_relation_id');
-        $branchId = $request->session()->get('branch_id');
 
         $branch = $branchId ? Branch::with('company')->find($branchId) : null;
         $companyName = $branch?->company?->legal_name;
@@ -1172,9 +1172,8 @@ class OrderController extends Controller
             ->orderBy('name')
             ->whereIn('movement_type_id', ! empty($saleOrOrderTypeIds) ? $saleOrOrderTypeIds : [2])
             ->get(['id', 'name']);
-        $defaultDocumentTypeId = effective_default_sale_document_type_id($branchIdForPm ?: null, ! empty($saleOrOrderTypeIds) ? $saleOrOrderTypeIds : [2]);
-
         $branchIdForPm = (int) session('branch_id');
+        $defaultDocumentTypeId = effective_default_sale_document_type_id($branchIdForPm ?: null, ! empty($saleOrOrderTypeIds) ? $saleOrOrderTypeIds : [2]);
 
         $paymentMethods = PaymentMethod::query()
             ->where('status', true)
@@ -2282,13 +2281,17 @@ class OrderController extends Controller
                             $orderBaseMovement->update(['movement_type_id' => $salesMovementType->id]);
                         }
 
+                        $cashRegisterId = effective_cash_register_id($branchId);
+                        $cashRegister = $cashRegisterId ? \App\Models\CashRegister::find($cashRegisterId) : null;
+                        $activeSeries = $cashRegister?->series ?? '001';
+
                         // Crear el registro de SalesMovement
                         $salesMovement = SalesMovement::create([
                             'branch_snapshot' => [
                                 'id' => $branch->id,
                                 'legal_name' => $branch->legal_name,
                             ],
-                            'series' => '001',
+                            'series' => $activeSeries,
                             'year' => now()->year,
                             'detail_type' => 'DETALLADO',
                             'consumption' => 'N',

@@ -8,6 +8,7 @@
     'iconClickEvent' => null, 
     'displayField' => 'description',
     'value' => null,
+    'disabled' => false,
 ])
 
 <div x-data="{
@@ -93,8 +94,9 @@
         @if($iconClickEvent)
             <button 
                 type="button" 
-                @click="$dispatch('{{ $iconClickEvent }}')"
-                class="absolute inset-y-0 left-1 my-auto flex h-9 w-9 items-center justify-center rounded-md text-gray-400 hover:bg-[#C43B25]/10 hover:text-[#C43B25] focus:outline-none transition-colors z-10"
+                @click="!@js($disabled) && $dispatch('{{ $iconClickEvent }}')"
+                {{ $disabled ? 'disabled' : '' }}
+                class="absolute inset-y-0 left-1 my-auto flex h-9 w-9 items-center justify-center rounded-md text-gray-400 focus:outline-none transition-colors z-10 {{ $disabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#C43B25]/10 hover:text-[#C43B25]' }}"
                 title="Acción"
             >
                 <i class="{{ $icon }} text-[18px]"></i>
@@ -115,7 +117,8 @@
             @keydown.escape="closeDropdown()"
             @keydown.enter.prevent="if(filteredOptions.length > 0) selectOption(filteredOptions[0])"
             placeholder="{{ $placeholder }}"
-            class="h-11 w-full rounded-lg border border-gray-200 bg-white pl-11 pr-10 text-sm text-gray-800 placeholder-gray-400 focus:border-[#C43B25] focus:ring-1 focus:ring-[#C43B25] dark:border-gray-700 dark:bg-dark-900 dark:text-white/90 transition-all"
+            {{ $disabled ? 'disabled' : '' }}
+            class="h-11 w-full rounded-lg border border-gray-200 bg-white pl-11 pr-10 text-sm text-gray-800 placeholder-gray-400 focus:border-[#C43B25] focus:ring-1 focus:ring-[#C43B25] dark:border-gray-700 dark:bg-dark-900 dark:text-white/90 transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-gray-800/80"
             autocomplete="off"
         >
 

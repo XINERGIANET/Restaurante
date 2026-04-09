@@ -1252,13 +1252,16 @@ class SalesController extends Controller
                 ],
             ]);
 
+            $activeCashRegister = $activeCashRegisterId ? \App\Models\CashRegister::find($activeCashRegisterId) : null;
+            $activeSeries = $activeCashRegister?->series ?? '001';
+
             // Crear SalesMovement con payment_type 'CREDIT' (pendiente de pago)
             $salesMovement = SalesMovement::create([
                 'branch_snapshot' => [
                     'id' => $branch->id,
                     'legal_name' => $branch->legal_name,
                 ],
-                'series' => '001',
+                'series' => $activeSeries,
                 'year' => Carbon::now()->year,
                 'detail_type' => 'DETALLADO',
                 'consumption' => 'N',
@@ -1424,6 +1427,10 @@ class SalesController extends Controller
             'parent_movement_id' => $data['parent_movement_id'] ?? null,
         ]);
 
+        if (isset($data['serie']) && $sale->salesMovement) {
+            $sale->salesMovement->update(['series' => $data['serie']]);
+        }
+
         return redirect()
             ->route('sales.index', $request->filled('view_id') ? ['view_id' => $request->input('view_id')] : [])
             ->with('status', 'Venta actualizada correctamente.');
@@ -1490,6 +1497,7 @@ class SalesController extends Controller
     {
         return $request->validate([
             'number' => ['required', 'string', 'max:255'],
+            'serie' => ['nullable', 'string', 'max:10'],
             'moved_at' => ['required', 'date'],
             'person_id' => ['nullable', 'integer', 'exists:people,id'],
             'comment' => ['nullable', 'string'],
