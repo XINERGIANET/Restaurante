@@ -179,20 +179,19 @@
                                 <span id="pos-waiter-name-display" class="hidden">--</span>
                             </div>
                         </div>
-                        @else
                         <div class="flex items-center gap-3">
                             <div class="min-w-0 flex-1 sm:min-w-[220px]">
                                 <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider leading-none mb-1">
-                                    Cliente</p>
+                                    Comensal</p>
                                 <div class="relative">
                                     <input type="text" id="header-client-name"
                                         value="{{ old('client_name', $pendingClientName ?? 'CLIENTES VARIOS') }}"
-                                        placeholder="Escribir nombre del cliente..."
+                                        placeholder="Escribir nombre del comensal..."
                                         oninput="updateHeaderClientName(this.value)"
                                         class="w-full h-11 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 pr-10 text-sm text-gray-800 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-[#FF4622]/30 focus:border-[#FF4622] outline-none transition-all">
                                     <button type="button" onclick="clearHeaderClientName()"
                                         class="absolute right-2 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-red-500 dark:hover:bg-gray-700 dark:hover:text-red-400 transition-colors"
-                                        title="Limpiar cliente">
+                                        title="Limpiar comensal">
                                         <i class="ri-close-line text-base"></i>
                                     </button>
                                 </div>
