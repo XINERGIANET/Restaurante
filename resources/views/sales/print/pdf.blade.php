@@ -41,6 +41,9 @@
 @php
     $docName = strtoupper($sale->documentType?->name ?? 'COMPROBANTE');
     $ticketSeries = $sale->salesMovement?->series ?? '001';
+    if (!empty($sale->electronic_invoice_series) && preg_match('/^[A-Z]+(\d+)$/i', (string) $sale->electronic_invoice_series, $seriesMatches) === 1) {
+        $ticketSeries = $seriesMatches[1];
+    }
     $docCode = strtoupper(substr($sale->documentType?->name ?? 'X', 0, 1)) . $ticketSeries . '-' . $sale->number;
     $ticketSubtotal = (float) ($sale->salesMovement?->subtotal ?? $sale->orderMovement?->subtotal ?? 0);
     $ticketTax = (float) ($sale->salesMovement?->tax ?? $sale->orderMovement?->tax ?? 0);

@@ -33,6 +33,7 @@ use App\Models\Shift;
 use App\Models\Table;
 use App\Models\Unit;
 use App\Models\User;
+use App\Services\ApisunatService;
 use App\Services\ThermalNetworkPrintService;
 use App\Support\InsensitiveSearch;
 use App\Support\LocalNetworkClient;
@@ -2462,6 +2463,10 @@ class OrderController extends Controller
                 }
 
                 DB::commit();
+                $orderBaseMovement?->refresh();
+                $electronicInvoice = $orderBaseMovement
+                    ? $this->syncElectronicInvoiceForSale($orderBaseMovement, app(ApisunatService::class))
+                    : ['status' => 'SKIPPED', 'message' => 'No se encontró movimiento base para emitir.'];
 
                 $thermalPrinterAvailable = PrinterBranch::query()
                     ->where('branch_id', $branchId)
@@ -2476,6 +2481,7 @@ class OrderController extends Controller
                     'movement_id' => $orderMovement?->movement_id,
                     'order_movement_id' => $orderMovement?->id,
                     'cash_movement_id' => $cashEntryMovement?->id,
+                    'electronic_invoice' => $electronicInvoice,
                     'client_on_local_network' => LocalNetworkClient::isOnLocalNetwork($request),
                     'thermal_printer_available' => $thermalPrinterAvailable,
                 ]);
@@ -2504,6 +2510,62 @@ class OrderController extends Controller
      * Secuencia independiente por sucursal; cada nuevo movimiento recibe el siguiente correlativo.
      * Usa el último movimiento por id (más reciente) para no depender de ORDER BY por número en BD.
      */
+    private function syncElectronicInvoiceForSale(Movement $movement, ApisunatService $apisunatService): array
+    {
+        $movement->loadMissing(['documentType', 'branch', 'salesMovement', 'orderMovement']);
+
+        if (! $apisunatService->isEligibleDocument($movement)) {
+            return [
+                'status' => 'SKIPPED',
+                'message' => 'El documento no requiere envío electrónico.',
+            ];
+        }
+
+        if (! $apisunatService->isConfiguredForBranch($movement->branch)) {
+            return [
+                'status' => 'SKIPPED',
+                'message' => 'La sucursal no tiene Apisunat configurado.',
+            ];
+        }
+
+        try {
+            $result = $apisunatService->emitSale($movement);
+            if (($result['status'] ?? null) === 'SENT') {
+                $data = $result['data'] ?? [];
+                $movement->forceFill([
+                    'number' => $data['correlative'] ?? $movement->number,
+                    'electronic_invoice_provider' => $data['provider'] ?? 'apisunat',
+                    'electronic_invoice_status' => 'SENT',
+                    'electronic_invoice_external_id' => $data['external_id'] ?? null,
+                    'electronic_invoice_series' => $data['series'] ?? null,
+                    'electronic_invoice_number' => $data['full_number'] ?? null,
+                    'electronic_invoice_file_name' => $data['file_name'] ?? null,
+                    'electronic_invoice_pdf_ticket_url' => $data['pdf_ticket_80mm'] ?? null,
+                    'electronic_invoice_pdf_a4_url' => $data['pdf_a4'] ?? null,
+                    'electronic_invoice_xml_url' => $data['xml_url'] ?? null,
+                    'electronic_invoice_cdr_url' => $data['cdr_url'] ?? null,
+                    'electronic_invoice_response' => $data['response'] ?? null,
+                ])->save();
+                $movement->refresh();
+            }
+
+            return $result;
+        } catch (\Throwable $e) {
+            $movement->forceFill([
+                'electronic_invoice_provider' => 'apisunat',
+                'electronic_invoice_status' => 'ERROR',
+                'electronic_invoice_response' => [
+                    'message' => $e->getMessage(),
+                ],
+            ])->save();
+
+            return [
+                'status' => 'ERROR',
+                'message' => $e->getMessage(),
+            ];
+        }
+    }
+
     private function generateOrderMovementNumber(int $branchId, int $movementTypeId, int $documentTypeId): string
     {
         $driver = DB::connection()->getDriverName();

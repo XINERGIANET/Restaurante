@@ -30,6 +30,7 @@ use App\Models\Shift;
 use App\Models\TaxRate;
 use App\Models\Table;
 use App\Models\User;
+use App\Services\ApisunatService;
 use App\Services\ThermalNetworkPrintService;
 use App\Support\InsensitiveSearch;
 use App\Support\LocalNetworkClient;
@@ -1095,6 +1096,8 @@ class SalesController extends Controller
             }
 
             DB::commit();
+            $movement->refresh();
+            $electronicInvoice = $this->syncElectronicInvoiceForSale($movement, app(ApisunatService::class));
 
             $thermalPrinterAvailable = PrinterBranch::query()
                 ->where('branch_id', $branchId)
@@ -1109,8 +1112,9 @@ class SalesController extends Controller
                 'data' => [
                     'movement_id' => $movement->id,
                     'cash_movement_id' => $cashEntryMovement->id,
-                    'number' => $number,
+                    'number' => $movement->number,
                     'total' => $total,
+                    'electronic_invoice' => $electronicInvoice,
                 ],
                 'client_on_local_network' => LocalNetworkClient::isOnLocalNetwork($request),
                 'thermal_printer_available' => $thermalPrinterAvailable,
@@ -1981,7 +1985,7 @@ class SalesController extends Controller
             return null;
         }
 
-        $series = $this->ticketSeriesForMovement($sale);
+        $series = (string) ($sale->electronic_invoice_series ?: $this->ticketSeriesForMovement($sale));
         $correlative = (string) ($sale->number ?? '');
         $tax = number_format((float) ($sale->salesMovement?->tax ?? $sale->orderMovement?->tax ?? 0), 2, '.', '');
         $total = number_format((float) ($sale->salesMovement?->total ?? $sale->orderMovement?->total ?? 0), 2, '.', '');
@@ -2047,7 +2051,104 @@ class SalesController extends Controller
 
     private function ticketSeriesForMovement(Movement $sale): string
     {
+        $electronicSeries = trim((string) ($sale->electronic_invoice_series ?? ''));
+        if ($electronicSeries !== '') {
+            if (preg_match('/^[A-Z]+(\d+)$/i', $electronicSeries, $matches) === 1) {
+                return $matches[1];
+            }
+
+            return $electronicSeries;
+        }
+
         return $sale->salesMovement?->series ?? '001';
+    }
+
+    private function syncElectronicInvoiceForSale(Movement $movement, ApisunatService $apisunatService): array
+    {
+        $movement->loadMissing(['documentType', 'branch', 'salesMovement', 'orderMovement']);
+
+        if (! $apisunatService->isEligibleDocument($movement)) {
+            return [
+                'status' => 'SKIPPED',
+                'message' => 'El documento no requiere envío electrónico.',
+            ];
+        }
+
+        if (! $apisunatService->isConfiguredForBranch($movement->branch)) {
+            return [
+                'status' => 'SKIPPED',
+                'message' => 'La sucursal no tiene Apisunat configurado.',
+            ];
+        }
+
+        try {
+            $result = $apisunatService->emitSale($movement);
+            if (($result['status'] ?? null) === 'SENT') {
+                $data = $result['data'] ?? [];
+                $movement->forceFill([
+                    'number' => $data['correlative'] ?? $movement->number,
+                    'electronic_invoice_provider' => $data['provider'] ?? 'apisunat',
+                    'electronic_invoice_status' => 'SENT',
+                    'electronic_invoice_external_id' => $data['external_id'] ?? null,
+                    'electronic_invoice_series' => $data['series'] ?? null,
+                    'electronic_invoice_number' => $data['full_number'] ?? null,
+                    'electronic_invoice_file_name' => $data['file_name'] ?? null,
+                    'electronic_invoice_pdf_ticket_url' => $data['pdf_ticket_80mm'] ?? null,
+                    'electronic_invoice_pdf_a4_url' => $data['pdf_a4'] ?? null,
+                    'electronic_invoice_xml_url' => $data['xml_url'] ?? null,
+                    'electronic_invoice_cdr_url' => $data['cdr_url'] ?? null,
+                    'electronic_invoice_response' => $data['response'] ?? null,
+                ])->save();
+                $movement->refresh();
+            }
+
+            return $result;
+        } catch (\Throwable $e) {
+            $movement->forceFill([
+                'electronic_invoice_provider' => 'apisunat',
+                'electronic_invoice_status' => 'ERROR',
+                'electronic_invoice_response' => [
+                    'message' => $e->getMessage(),
+                ],
+            ])->save();
+
+            return [
+                'status' => 'ERROR',
+                'message' => $e->getMessage(),
+            ];
+        }
+    }
+
+    private function resolveElectronicDocumentUrl(Movement $sale, string $type, ApisunatService $apisunatService): ?string
+    {
+        if ($type === 'xml' && $sale->electronic_invoice_xml_url) {
+            return $sale->electronic_invoice_xml_url;
+        }
+        if ($type === 'cdr' && $sale->electronic_invoice_cdr_url) {
+            return $sale->electronic_invoice_cdr_url;
+        }
+
+        if (! $sale->electronic_invoice_external_id) {
+            return null;
+        }
+
+        try {
+            $payload = $apisunatService->getDocumentById((string) $sale->electronic_invoice_external_id, $sale->branch);
+            $urls = $apisunatService->extractDocumentUrls($payload);
+
+            $sale->forceFill([
+                'electronic_invoice_xml_url' => $sale->electronic_invoice_xml_url ?: ($urls['xml_url'] ?? null),
+                'electronic_invoice_cdr_url' => $sale->electronic_invoice_cdr_url ?: ($urls['cdr_url'] ?? null),
+                'electronic_invoice_response' => $payload,
+            ])->save();
+            $sale->refresh();
+
+            return $type === 'xml'
+                ? $sale->electronic_invoice_xml_url
+                : $sale->electronic_invoice_cdr_url;
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
 
     /**
@@ -2090,6 +2191,64 @@ class SalesController extends Controller
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="'.$docName.'.pdf"',
         ]);
+    }
+
+    public function lookupFiscalDocument(Request $request, ApisunatService $apisunatService)
+    {
+        $validated = $request->validate([
+            'doc' => ['required', 'string'],
+        ]);
+
+        $branchId = (int) session('branch_id');
+        $branch = $branchId ? Branch::find($branchId) : null;
+
+        try {
+            $data = $apisunatService->consultDocument($branch, preg_replace('/\D+/', '', (string) $validated['doc']) ?: '');
+
+            return response()->json([
+                'success' => true,
+                'data' => $data,
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        }
+    }
+
+    public function redirectElectronicPdfA4(Request $request, Movement $sale)
+    {
+        $sale = $this->resolvePrintableForTicket($sale);
+        if (! $sale->electronic_invoice_pdf_a4_url) {
+            abort(404, 'El comprobante no tiene PDF A4 electrónico.');
+        }
+
+        return redirect()->away($sale->electronic_invoice_pdf_a4_url);
+    }
+
+    public function redirectElectronicXml(Request $request, Movement $sale, ApisunatService $apisunatService)
+    {
+        $sale = $this->resolvePrintableForTicket($sale);
+        $url = $this->resolveElectronicDocumentUrl($sale, 'xml', $apisunatService);
+
+        if (! $url) {
+            abort(404, 'El comprobante no tiene XML disponible.');
+        }
+
+        return redirect()->away($url);
+    }
+
+    public function redirectElectronicCdr(Request $request, Movement $sale, ApisunatService $apisunatService)
+    {
+        $sale = $this->resolvePrintableForTicket($sale);
+        $url = $this->resolveElectronicDocumentUrl($sale, 'cdr', $apisunatService);
+
+        if (! $url) {
+            abort(404, 'El comprobante no tiene CDR disponible.');
+        }
+
+        return redirect()->away($url);
     }
 
     /**

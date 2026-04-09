@@ -56,4 +56,9 @@ class Branch extends Model
     {
         return $this->hasMany(BranchPaymentMethod::class);
     }
+
+    public function electronicBillingConfig()
+    {
+        return $this->hasOne(BranchElectronicBillingConfig::class);
+    }
 }

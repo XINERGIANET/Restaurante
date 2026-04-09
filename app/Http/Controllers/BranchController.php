@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Branch;
+use App\Models\BranchElectronicBillingConfig;
 use App\Models\Company;
 use App\Models\Location;
 use App\Models\Module;
@@ -113,8 +114,9 @@ class BranchController extends Controller
             $data['logo'] = Storage::url($path);
         }
 
-        DB::transaction(function () use ($company, $data) {
+        DB::transaction(function () use ($company, $data, $request) {
             $branch = $company->branches()->create($data);
+            $this->syncElectronicBillingConfig($branch, $request);
             $this->replicateBranchConfiguration($branch->id);
             $this->setupNewBranch($branch);
         });
@@ -1047,7 +1049,10 @@ class BranchController extends Controller
             unset($data['logo']);
         }
 
-        $branch->update($data);
+        DB::transaction(function () use ($branch, $data, $request) {
+            $branch->update($data);
+            $this->syncElectronicBillingConfig($branch, $request);
+        });
 
         // Actualizar parámetro por sucursal: requerir PIN de mozo al tomar pedidos
         // Buscar el parámetro global por su descripción visible en la UI
@@ -1133,12 +1138,37 @@ class BranchController extends Controller
             'address' => ['nullable', 'string', 'max:255'],
             'location_id' => ['required', 'integer', 'exists:locations,id'],
             'allow_zero_stock_sales' => ['nullable', 'boolean'],
+            'electronic_billing_enabled' => ['nullable', 'boolean'],
+            'electronic_billing_api_url' => ['nullable', 'url', 'max:255'],
+            'electronic_billing_persona_id' => ['nullable', 'string', 'max:255'],
+            'electronic_billing_persona_token' => ['nullable', 'string', 'max:255'],
+            'electronic_billing_series_boleta' => ['nullable', 'string', 'max:8'],
+            'electronic_billing_series_factura' => ['nullable', 'string', 'max:8'],
         ]);
 
         // Checkbox por sucursal: permitir vender/agregar productos sin stock (stock <= 0)
         $data['allow_zero_stock_sales'] = $request->boolean('allow_zero_stock_sales');
 
         return $data;
+    }
+
+    private function syncElectronicBillingConfig(Branch $branch, Request $request): void
+    {
+        $config = BranchElectronicBillingConfig::query()->firstOrNew([
+            'branch_id' => $branch->id,
+        ]);
+
+        $config->fill([
+            'provider' => 'apisunat',
+            'enabled' => $request->boolean('electronic_billing_enabled'),
+            'api_url' => $request->input('electronic_billing_api_url') ?: config('apisunat.url'),
+            'persona_id' => $request->input('electronic_billing_persona_id'),
+            'persona_token' => $request->input('electronic_billing_persona_token'),
+            'series_boleta' => strtoupper(trim((string) ($request->input('electronic_billing_series_boleta') ?: config('apisunat.series.boleta', 'B001')))),
+            'series_factura' => strtoupper(trim((string) ($request->input('electronic_billing_series_factura') ?: config('apisunat.series.factura', 'F001')))),
+        ]);
+
+        $config->save();
     }
 
     private function resolveBranch(Company $company, Branch $branch): Branch
