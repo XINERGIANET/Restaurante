@@ -57,6 +57,11 @@
                         'client_name' => $name,
                         'document_number' => $document,
                     ];
+                })->unique(function ($item) {
+                    return implode('|', [
+                        trim((string) ($item['document_number'] ?? '0')) ?: '0',
+                        mb_strtolower(trim((string) ($item['client_name'] ?? '')), 'UTF-8'),
+                    ]);
                 })->values()->all();
                 $waitersCollection = $waiters ?? collect();
                 $waiterOptions = $waitersCollection->map(function ($w) {
@@ -253,7 +258,7 @@
                     </div>
                 </div>
                 <aside
-                    class="lg:w-[450px] w-full md:w-[350px] lg:shrink-0 mx-auto lg:mx-0 flex-none bg-white dark:bg-gray-900 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-800 flex flex-col min-h-0 lg:h-full rounded-2xl overflow-hidden shadow-sm">
+                    class="lg:w-[450px] w-full md:w-[350px] lg:shrink-0 mx-auto lg:mx-0 flex-none self-stretch bg-white dark:bg-gray-900 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-800 flex flex-col min-h-[520px] lg:min-h-0 lg:h-[calc(100vh-190px)] rounded-2xl overflow-hidden shadow-sm">
                     {{-- Tabs Resumen | Cobro (Cobro oculto para Mozo) --}}
                     <div class="w-full shrink-0 px-3 pt-3">
                         <div class="grid grid-cols-2 gap-3">
@@ -352,8 +357,8 @@
                             </div>
                         </div>
 
-                        <div id="cart-container" style="max-height:350px; overflow-y:auto;"
-                            class="p-3 sm:p-4 space-y-2 sm:space-y-2.5 bg-white dark:bg-gray-900">
+                        <div id="cart-container"
+                            class="flex-1 min-h-0 overflow-y-auto p-3 sm:p-4 space-y-2 sm:space-y-2.5 bg-white dark:bg-gray-900">
                         </div>
                         <div id="cancelled-platos-container"
                             class="shrink-0 hidden border-t border-gray-200 dark:border-gray-700 bg-amber-50 dark:bg-amber-900/20 p-3 sm:p-4 max-h-40 overflow-y-auto">
@@ -396,8 +401,8 @@
 
                     {{-- Contenido Cobro (oculto para Mozo) --}}
                     @if($canCharge ?? true)
-                        <div id="aside-cobro" class="hidden mt-3 flex-col flex-1 min-h-0 overflow-y-auto p-4 sm:p-5">
-                            <div class="space-y-4">
+                        <div id="aside-cobro" class="hidden mt-3 flex-col flex-1 min-h-0 overflow-hidden">
+                            <div class="flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 space-y-4">
                                 <div class="flex items-center justify-center gap-2 w-full">
                                     <div class="flex-1 min-w-0" id="order-client-picker"
                                         x-data="{
@@ -488,7 +493,7 @@
 
                     {{-- Botones Guardar / Cobrar: visibles según pestaña activa --}}
                     <div
-                        class="shrink-0 p-4 sm:p-5 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 rounded-b-2xl">
+                        class="shrink-0 mt-auto p-4 sm:p-5 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 rounded-b-2xl">
                         {{-- Footer Resumen: solo Guardar y Precuenta --}}
                         <div id="footer-resumen" class="flex justify-between items-center gap-3">
                             <button type="button" id="btn-precuenta" class="hidden py-2.5 px-4 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs sm:text-sm border border-slate-200 hover:bg-slate-200 active:scale-95 transition-all flex justify-center items-center gap-2" style="display: none;">
@@ -503,7 +508,7 @@
                         </div>
                         {{-- Footer Cobro: solo Cobrar (oculto para Mozo) --}}
                         @if($canCharge ?? true)
-                            <div id="footer-cobro" class="hidden justify-end">
+                            <div id="footer-cobro" class="hidden flex justify-end">
                                 <button type="button" onclick="processOrderPayment()"
                                     class="py-2.5 px-4 rounded-xl bg-[#FF4622] text-white font-bold text-xs sm:text-sm shadow-lg hover:bg-[#C43B25] active:scale-95 transition-all flex justify-center items-center gap-2">
                                     <i class="ri-bank-card-line text-base"></i>
