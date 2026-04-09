@@ -225,10 +225,10 @@
             </div>
 
             <div
-                class="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden bg-gray-50/50 dark:bg-gray-950/50 gap-3 p-3">
+                class="flex-1 flex flex-col lg:flex-row items-start bg-gray-50/50 dark:bg-gray-950/50 gap-3 p-3">
                 <div
-                    class="flex-1 min-w-0 min-h-[320px] lg:min-h-0 lg:overflow-hidden p-3 sm:p-4 bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 flex flex-col min-h-0">
-                    <div class="flex flex-col flex-1 min-h-0 min-w-0 overflow-hidden">
+                    class="flex-1 min-w-0 min-h-[320px] p-3 sm:p-4 bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 flex flex-col">
+                    <div class="flex flex-col flex-1 min-w-0">
                         <div class="shrink-0 border-gray-300 px-2 sm:px-4 pt-3 pb-4">
                             <div class="flex items-center justify-between">
                             </div>
@@ -258,7 +258,7 @@
                     </div>
                 </div>
                 <aside
-                    class="lg:w-[450px] w-full md:w-[350px] lg:shrink-0 mx-auto lg:mx-0 flex-none self-stretch bg-white dark:bg-gray-900 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-800 flex flex-col min-h-[520px] lg:min-h-0 lg:h-[calc(100vh-190px)] rounded-2xl overflow-hidden shadow-sm">
+                    class="lg:w-[450px] w-full md:w-[350px] lg:shrink-0 mx-auto lg:mx-0 flex-none bg-white dark:bg-gray-900 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-800 flex flex-col min-h-[520px] rounded-2xl overflow-hidden shadow-sm">
                     {{-- Tabs Resumen | Cobro (Cobro oculto para Mozo) --}}
                     <div class="w-full shrink-0 px-3 pt-3">
                         <div class="grid grid-cols-2 gap-3">
