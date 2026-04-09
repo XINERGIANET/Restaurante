@@ -455,6 +455,14 @@ class PersonController extends Controller
             'pin'             => ['nullable', 'string', 'max:20'],
         ]);
 
+        if ($isPosRuc && !array_key_exists('last_name', $data)) {
+            $data['last_name'] = '';
+        }
+
+        if ($isPosRuc && $data['last_name'] === null) {
+            $data['last_name'] = '';
+        }
+
         return $data;
     }
 
