@@ -1212,18 +1212,18 @@
                         }
 
                         if (!window.Swal) {
-                            return { qty: 1, complements: detailOptions };
+                            return { qty: 1, complements: [] };
                         }
 
                         const html = `
-                            <div class="text-left">
+                            <div class="text-left overflow-x-hidden">
                                 <label class="mb-2 block text-sm font-semibold text-slate-700">Cantidad</label>
-                                <input id="swal-product-detail-qty" type="number" min="1" value="1" class="swal2-input !mt-0 !mb-4 !w-full" />
+                                <input id="swal-product-detail-qty" type="number" min="1" value="1" class="!mt-0 !mb-4 block h-11 rounded-lg border border-slate-200 px-3 text-base text-slate-700 outline-none" style="width: 100%; max-width: 100%; box-sizing: border-box; margin-left: 0; margin-right: 0;" />
                                 <label class="mb-2 block text-sm font-semibold text-slate-700">Detalles</label>
-                                <div class="max-h-56 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                                <div class="max-h-56 overflow-y-auto overflow-x-hidden rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
                                     ${detailOptions.map((option, index) => `
                                         <label class="flex items-center gap-2 py-1 text-sm text-slate-700">
-                                            <input type="checkbox" class="swal-product-detail-option" value="${index}" checked ${index === 0 ? 'autofocus' : ''}>
+                                            <input type="checkbox" class="swal-product-detail-option" value="${index}" ${index === 0 ? 'autofocus' : ''}>
                                             <span>${escapeHtml(option)}</span>
                                         </label>
                                     `).join('')}
