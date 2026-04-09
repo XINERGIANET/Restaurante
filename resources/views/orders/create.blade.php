@@ -4,6 +4,27 @@
     <meta name="qz-sign-url" content="{{ route('qz.sign') }}">
     <meta name="qz-certificate-url" content="{{ route('qz.certificate') }}">
     <meta name="turbo-visit-control" content="reload">
+    <script>
+        (function () {
+            const nav = performance.getEntriesByType('navigation')[0];
+            const navType = nav && nav.type ? nav.type : '';
+            const forceReloadKey = 'orders-create-hard-reload:' + window.location.pathname + window.location.search;
+            const cameFromTurboPreview = document.documentElement.hasAttribute('data-turbo-preview');
+
+            if (cameFromTurboPreview) {
+                window.location.replace(window.location.href);
+                return;
+            }
+
+            if (navType !== 'reload' && !sessionStorage.getItem(forceReloadKey)) {
+                sessionStorage.setItem(forceReloadKey, '1');
+                window.location.replace(window.location.href);
+                return;
+            }
+
+            sessionStorage.removeItem(forceReloadKey);
+        })();
+    </script>
 @endpush
 
 @section('title', 'Punto de Venta')
@@ -164,6 +185,9 @@
                                                                                                             init() {
                                                                                                                 if (window.currentTable && window.currentTable.waiter_id) {
                                                                                                                     this.waiterId = window.currentTable.waiter_id;
+                                                                                                                } else if ((window.__orderWaiterOptions || []).length > 0) {
+                                                                                                                    const firstWaiter = window.__orderWaiterOptions[0];
+                                                                                                                    this.waiterId = firstWaiter?.id ?? null;
                                                                                                                 }
                                                                                                                 this.$watch('waiterId', v => {
                                                                                                                     if (!v) return;
