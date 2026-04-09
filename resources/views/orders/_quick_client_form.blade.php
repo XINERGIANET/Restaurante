@@ -54,7 +54,6 @@
         </div>
     </div>
 
-    <div class="h-px w-full bg-gray-200 dark:bg-gray-800"></div>
 
     <!-- Bloque 2: Información Personal y Contacto -->
     <div>
@@ -128,7 +127,6 @@
         </div>
     </div>
 
-    <div class="h-px w-full bg-gray-200 dark:bg-gray-800"></div>
 
     <!-- Bloque 3: Ubicación y Dirección -->
     <div>

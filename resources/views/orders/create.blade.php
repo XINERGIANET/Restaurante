@@ -546,7 +546,7 @@
                         <input type="hidden" name="from_pos" value="1">
                         @include('orders._quick_client_form', ['person' => null])
 
-                        <div class="flex flex-wrap gap-3 justify-end pt-4 border-t border-gray-100 dark:border-gray-700">
+                        <div class="flex flex-wrap gap-3 justify-end pt-4">
                             <button type="button" @click="open = false"
                                 class="px-5 py-2.5 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700 transition-colors">
                                 Cancelar
