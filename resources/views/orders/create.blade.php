@@ -3,12 +3,7 @@
 @push('head')
     <meta name="qz-sign-url" content="{{ route('qz.sign') }}">
     <meta name="qz-certificate-url" content="{{ route('qz.certificate') }}">
-    <style>
-        html,
-        body {
-            overflow-y: scroll !important;
-        }
-    </style>
+    <meta name="turbo-visit-control" content="reload">
 @endpush
 
 @section('title', 'Punto de Venta')
@@ -880,9 +875,11 @@
                     }
 
                     function init() {
-                        document.body.style.setProperty('overflow-y', 'scroll', 'important');
+                        document.body.style.removeProperty('overflow');
+                        document.body.style.removeProperty('overflow-y');
                         document.body.style.removeProperty('overflow-x');
-                        document.documentElement.style.setProperty('overflow-y', 'scroll', 'important');
+                        document.documentElement.style.removeProperty('overflow');
+                        document.documentElement.style.removeProperty('overflow-y');
                         document.documentElement.style.removeProperty('overflow-x');
 
                         // Si requiere PIN, pedirlo al abrir la mesa
@@ -4450,9 +4447,11 @@
 
                     // Fix scroll on page load
                     window.addEventListener('turbo:load', () => {
-                        document.body.style.setProperty('overflow-y', 'scroll', 'important');
+                        document.body.style.removeProperty('overflow');
+                        document.body.style.removeProperty('overflow-y');
                         document.body.style.removeProperty('overflow-x');
-                        document.documentElement.style.setProperty('overflow-y', 'scroll', 'important');
+                        document.documentElement.style.removeProperty('overflow');
+                        document.documentElement.style.removeProperty('overflow-y');
                         document.documentElement.style.removeProperty('overflow-x');
                         setTimeout(fixScrollLayout, 50);
                     });
