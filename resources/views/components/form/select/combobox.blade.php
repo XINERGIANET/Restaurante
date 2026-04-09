@@ -1,11 +1,13 @@
 @props([
     'label' => null,
-    'options' => [], 
+    'options' => [],
     'placeholder' => 'Seleccione una opción...',
     'required' => false,
     'icon' => 'ri-price-tag-3-line',
+    'hideIcon' => false,
+    'clearable' => false,
     'name' => '',
-    'iconClickEvent' => null, 
+    'iconClickEvent' => null,
     'displayField' => 'description',
     'value' => null,
     'disabled' => false,
@@ -17,7 +19,7 @@
         value: @js($value),
         query: '',
         open: false,
- 
+
         init() {
             this.syncQueryFromId();
             this.$watch('value', () => this.syncQueryFromId());
@@ -39,7 +41,7 @@
 
         get filteredOptions() {
             if (this.query === '') return this.allOptions;
-            return this.allOptions.filter(item => 
+            return this.allOptions.filter(item =>
                 (item[this.displayField] || '').toLowerCase().includes(this.query.toLowerCase())
             );
         },
@@ -61,11 +63,19 @@
             this.value = null;
             this.query = '';
             this.open = false;
+        },
+
+        toggleDropdown() {
+            this.open = !this.open;
+            if (this.open) {
+                this.$nextTick(() => this.$refs.input?.focus());
+            } else {
+                this.syncQueryFromId();
+            }
         }
     }"
     x-modelable="value"
-    {{ $attributes->whereStartsWith('x-model') }} 
-    
+    {{ $attributes->whereStartsWith('x-model') }}
     @update-combobox-options.window="
         if (!$event.detail || !$event.detail.options) return;
         if (($event.detail.name || '') !== @js($name ?? '')) return;
@@ -75,50 +85,44 @@
         if (($event.detail?.name || '') !== @js($name ?? '')) return;
         clear()
     "
-    
     class="space-y-1.5 relative"
     x-on:mousedown.document="if (!$el.contains($event.target)) closeDropdown()"
 >
-
-    {{-- Label --}}
     @if($label)
         <label class="block text-sm font-medium text-gray-600 dark:text-gray-400">
-            {{ $label }} 
+            {{ $label }}
             @if($required) <span class="text-red-500">*</span> @endif
         </label>
     @endif
 
     <div class="relative">
-        
-        {{-- CONDICIONAL PARA EL ÍCONO IZQUIERDO: ¿ES BOTÓN O ES ADORNO? --}}
-        @if($iconClickEvent)
-            <button 
-                type="button" 
-                @click="!@js($disabled) && $dispatch('{{ $iconClickEvent }}')"
-                {{ $disabled ? 'disabled' : '' }}
-                class="absolute inset-y-0 left-1 my-auto flex h-9 w-9 items-center justify-center rounded-md text-gray-400 focus:outline-none transition-colors z-10 {{ $disabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#C43B25]/10 hover:text-[#C43B25]' }}"
+        @if(!$hideIcon && $iconClickEvent)
+            <button
+                type="button"
+                @click="$dispatch('{{ $iconClickEvent }}')"
+                class="absolute inset-y-0 left-1 my-auto flex h-9 w-9 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-[#C43B25]/10 hover:text-[#C43B25] focus:outline-none z-10"
                 title="Acción"
             >
                 <i class="{{ $icon }} text-[18px]"></i>
             </button>
-        @else
+        @elseif(!$hideIcon)
             <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
                 <i class="{{ $icon }} text-gray-400 text-[18px]"></i>
             </div>
         @endif
 
-        {{-- Input principal (se ajusta el padding pl-11 para que no pise el ícono) --}}
-        <input 
-            type="text" 
+        <input
+            x-ref="input"
+            type="text"
             x-model="query"
             @focus="open = true"
             @input="open = true"
-            @dblclick="$el.select()" 
+            @dblclick="$el.select()"
             @keydown.escape="closeDropdown()"
             @keydown.enter.prevent="if(filteredOptions.length > 0) selectOption(filteredOptions[0])"
             placeholder="{{ $placeholder }}"
             {{ $disabled ? 'disabled' : '' }}
-            class="h-11 w-full rounded-lg border border-gray-200 bg-white pl-11 pr-10 text-sm text-gray-800 placeholder-gray-400 focus:border-[#C43B25] focus:ring-1 focus:ring-[#C43B25] dark:border-gray-700 dark:bg-dark-900 dark:text-white/90 transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-gray-800/80"
+            class="h-11 w-full rounded-lg border border-gray-200 bg-white {{ $hideIcon ? 'pl-4' : 'pl-11' }} pr-10 text-sm text-gray-800 placeholder-gray-400 focus:border-[#C43B25] focus:ring-1 focus:ring-[#C43B25] dark:border-gray-700 dark:bg-dark-900 dark:text-white/90 transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-gray-800/80"
             autocomplete="off"
         >
 
@@ -126,15 +130,46 @@
             <input type="hidden" name="{{ $name }}" x-model="value">
         @endif
 
-        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
-            <i class="ri-arrow-down-s-line text-gray-400 transition-transform duration-200" :class="{'rotate-180': open}"></i>
+        <div class="absolute inset-y-0 right-0 flex items-center pr-2">
+            @if($clearable)
+                <button
+                    type="button"
+                    x-show="value"
+                    x-cloak
+                    @mousedown.prevent
+                    @click="clear()"
+                    class="flex h-8 w-8 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"
+                    title="Quitar selección"
+                >
+                    <i class="ri-close-line text-base"></i>
+                </button>
+                <button
+                    type="button"
+                    x-show="!value"
+                    @mousedown.prevent
+                    @click="toggleDropdown()"
+                    class="flex h-8 w-8 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-[#C43B25]"
+                    title="Abrir opciones"
+                >
+                    <i class="ri-arrow-down-s-line text-lg transition-transform duration-200" :class="{'rotate-180': open}"></i>
+                </button>
+            @else
+                <button
+                    type="button"
+                    @mousedown.prevent
+                    @click="toggleDropdown()"
+                    class="flex h-8 w-8 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-[#C43B25]"
+                    title="Abrir opciones"
+                >
+                    <i class="ri-arrow-down-s-line text-lg transition-transform duration-200" :class="{'rotate-180': open}"></i>
+                </button>
+            @endif
         </div>
 
-        <div x-show="open" 
+        <div x-show="open"
              x-transition.opacity.duration.200ms
              class="absolute z-50 mt-1 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800"
              style="display: none; max-height: 12rem;">
-            
             <ul class="py-1">
                 <template x-for="item in filteredOptions" :key="item.id">
                     <li @click="selectOption(item)"
@@ -142,7 +177,7 @@
                         <span x-text="item[displayField]"></span>
                     </li>
                 </template>
-                
+
                 <li x-show="filteredOptions.length === 0" class="px-4 py-2 text-sm text-gray-500 dark:text-gray-400 cursor-default">
                     No se encontraron resultados.
                 </li>

@@ -26,6 +26,7 @@ use App\Models\Product;
 use App\Models\ProductBranch;
 use App\Models\ProductType;
 use App\Models\Profile;
+use App\Models\Location;
 use App\Models\Role;
 use App\Models\SalesMovement;
 use App\Models\SalesMovementDetail;
@@ -1098,6 +1099,18 @@ class OrderController extends Controller
         $deliveryAreaId = Area::query()
             ->tap(fn ($q) => InsensitiveSearch::whereInsensitiveLikePattern($q, 'name', '%delivery%'))
             ->value('id');
+        $departments = Location::query()
+            ->where('type', 'department')
+            ->orderBy('name')
+            ->get(['id', 'name']);
+        $provinces = Location::query()
+            ->where('type', 'province')
+            ->orderBy('name')
+            ->get(['id', 'name', 'parent_location_id']);
+        $districts = Location::query()
+            ->where('type', 'district')
+            ->orderBy('name')
+            ->get(['id', 'name', 'parent_location_id']);
 
         $response = response()->view('orders.create', [
             'user' => $user,
@@ -1139,6 +1152,9 @@ class OrderController extends Controller
             'deliveryAreaId' => $deliveryAreaId,
             'canCharge' => $this->canCharge($profileId),
             'isMozo' => ! $this->canCharge($profileId),
+            'departments' => $departments,
+            'provinces' => $provinces,
+            'districts' => $districts,
             'turboCacheControl' => 'no-cache',
             'allowZeroStockSales' => (bool) ($branch?->allow_zero_stock_sales ?? true),
         ]);

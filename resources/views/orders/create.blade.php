@@ -46,9 +46,13 @@
                     if ($name === '' && !empty($p->document_number)) {
                         $name = $p->document_number;
                     }
+                    $document = trim((string) ($p->document_number ?? ''));
+                    $description = trim($document !== '' ? ($document . ' - ' . $name) : $name);
                     return [
                         'id' => $p->id,
-                        'description' => $name,
+                        'description' => $description,
+                        'client_name' => $name,
+                        'document_number' => $document,
                     ];
                 })->values()->all();
                 $waitersCollection = $waiters ?? collect();
@@ -166,10 +170,7 @@
                                                                                                                 });
                                                                                                             }
                                                                                                         }">
-                            <div
-                                class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400">
-                                <i class="ri-user-smile-line text-xl"></i>
-                            </div>
+                           
                             <div class="min-w-[140px] sm:min-w-[180px]">
                                 <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider leading-none mb-1">
                                     Mozo</p>
@@ -178,20 +179,19 @@
                                 <span id="pos-waiter-name-display" class="hidden">--</span>
                             </div>
                         </div>
-                        @else
                         <div class="flex items-center gap-3">
                             <div class="min-w-0 flex-1 sm:min-w-[220px]">
                                 <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider leading-none mb-1">
-                                    Cliente</p>
+                                    Comensal</p>
                                 <div class="relative">
                                     <input type="text" id="header-client-name"
                                         value="{{ old('client_name', $pendingClientName ?? 'CLIENTES VARIOS') }}"
-                                        placeholder="Escribir nombre del cliente..."
+                                        placeholder="Escribir nombre del comensal..."
                                         oninput="updateHeaderClientName(this.value)"
                                         class="w-full h-11 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 pr-10 text-sm text-gray-800 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-[#FF4622]/30 focus:border-[#FF4622] outline-none transition-all">
                                     <button type="button" onclick="clearHeaderClientName()"
                                         class="absolute right-2 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-red-500 dark:hover:bg-gray-700 dark:hover:text-red-400 transition-colors"
-                                        title="Limpiar cliente">
+                                        title="Limpiar comensal">
                                         <i class="ri-close-line text-base"></i>
                                     </button>
                                 </div>
@@ -404,20 +404,22 @@
                                                                                                                                                                                                                                                     this.$watch('clientId', v => {
                                                         const opts = window.__orderClientOptions || [];
                                                         const sel = opts.find(o => String(o.id) === String(v));
-                                                        const name = sel ? sel.description : 'CLIENTES VARIOS';
+                                                        const clientName = sel ? (sel.client_name || sel.description || 'CLIENTES VARIOS') : 'CLIENTES VARIOS';
+                                                        const clientLabel = sel ? (sel.description || clientName) : 'CLIENTES VARIOS';
                                                                                                                                                                                                                                                         if (window.currentTable) {
                                                                                                                                                                                                                                                             window.currentTable.person_id = v ? parseInt(v, 10) : null;
-                                                                                                                                                                                                                                                            window.currentTable.clientName = name;
+                                                                                                                                                                                                                                                            window.currentTable.clientName = clientName;
+                                                                                                                                                                                                                                                            window.currentTable.clientLabel = clientLabel;
                                                                                                                                                                                                                                                             if (typeof saveDB === 'function') saveDB();
                                                                                                                                                                                                                                                         }
                                                                                                                                                                                                                                                         const ci = document.getElementById('cobro-client-input');
-                                                                                                                                                                                                                                                        if (ci) ci.value = name;
-                                                                                                                                                                                                                                                    });
-                                                                                                                                                                                                                                                }
-                                                                                                                                                                                                                                            }">
+                                                                                                                                                                                                                                                        if (ci) ci.value = clientLabel;
+                                                                                                                                                                                                                                                   });
+                                                                                                                                                                                                                                               }
+                                                                                                                                                                                                                                           }">
                                         <x-form.select.combobox :options="$clientOptions" x-model="clientId"
                                             name="header_client_id" placeholder="Elegir cliente..." :compact="true"
-                                            input-id="order_client_search" class="w-full" />
+                                            input-id="order_client_search" class="w-full" :hide-icon="true" :clearable="true" />
                                     </div>
                                     <button type="button"
                                         class="inline-flex shrink-0 items-center justify-center h-9 w-9 rounded-lg bg-white border border-gray-200 text-gray-400 hover:bg-[#FF4622]/10 hover:text-[#C43B25] hover:border-[#FF4622]/30 shadow-sm transition-colors"
@@ -519,29 +521,25 @@
                         <i class="ri-close-line text-xl"></i>
                     </button>
 
-                    <div class="mb-8 flex flex-col items-center text-center">
-                        <div
-                            class="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#FF4622]/10 text-[#FF4622] dark:bg-[#FF4622]/20 dark:text-[#FF4622] mb-4 shadow-sm">
-                            <i class="ri-user-add-line text-3xl"></i>
-                        </div>
-                        <div>
-                            <h3 class="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight">Registrar
-                                / Editar Cliente</h3>
-                            <p class="mt-2 text-sm text-gray-500 dark:text-gray-400 max-w-xs mx-auto">Ingresa los datos para
-                                registrar un nuevo cliente en el sistema.
-                            </p>
+                    <div class="mb-6 flex items-center justify-between gap-4 pr-12">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <div
+                                class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#FF4622]/10 text-[#FF4622] dark:bg-[#FF4622]/20 dark:text-[#FF4622] shadow-sm">
+                                <i class="ri-user-add-line text-2xl"></i>
+                            </div>
+                            <h3 class="text-lg sm:text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight">
+                                Registrar / Editar Cliente
+                            </h3>
                         </div>
                     </div>
 
-                    <form method="POST"
+                    <form method="POST" id="quick-client-form"
                         action="{{ route('admin.companies.branches.people.store', [$branch->company_id ?? '0', $branch->id ?? '0']) }}"
                         class="space-y-6">
                         @csrf
                         <input type="hidden" name="redirect_to" value="{{ request()->fullUrl() }}">
-                        <input type="hidden" name="location_id" value="{{ $branch->location_id ?? '' }}">
                         <input type="hidden" name="from_pos" value="1">
-                        <input type="hidden" name="document_number" value="00000000">
-                        @include('branches.people._form', ['person' => null, 'hidePinAndRoles' => true])
+                        @include('orders._quick_client_form', ['person' => null])
 
                         <div class="flex flex-wrap gap-3 justify-end pt-4 border-t border-gray-100 dark:border-gray-700">
                             <button type="button" @click="open = false"
@@ -905,7 +903,7 @@
                         }
                         const cobroClientInput = document.getElementById('cobro-client-input');
                         if (cobroClientInput) {
-                            cobroClientInput.value = currentTable.clientName || "CLIENTES VARIOS";
+                            cobroClientInput.value = currentTable.clientLabel || currentTable.clientName || "CLIENTES VARIOS";
                         }
                         const dinersInput = document.getElementById('diners-input');
                         if (dinersInput && currentTable.people_count) {
@@ -3964,6 +3962,7 @@
                         if (input) input.value = 'CLIENTES VARIOS';
                         if (currentTable) {
                             currentTable.clientName = 'CLIENTES VARIOS';
+                            currentTable.clientLabel = 'CLIENTES VARIOS';
                             currentTable.person_id = null;
                             saveDB();
                         }
@@ -4184,15 +4183,19 @@
 
                     function changeClient(selectEl) {
                         if (!selectEl || !currentTable) return;
-                        const name = selectEl.options[selectEl.selectedIndex]?.text || 'CLIENTES VARIOS';
                         const personId = selectEl.value ? parseInt(selectEl.value, 10) : null;
-                        currentTable.clientName = name;
+                        const opts = window.__orderClientOptions || [];
+                        const selected = opts.find(o => String(o.id) === String(personId));
+                        const clientName = selected ? (selected.client_name || selected.description || 'CLIENTES VARIOS') : 'CLIENTES VARIOS';
+                        const clientLabel = selected ? (selected.description || clientName) : 'CLIENTES VARIOS';
+                        currentTable.clientName = clientName;
+                        currentTable.clientLabel = clientLabel;
                         currentTable.person_id = personId;
                         saveDB();
                         const headerInput = document.getElementById('header-client-name');
-                        if (headerInput) headerInput.value = personId ? name : '';
+                        if (headerInput) headerInput.value = personId ? clientName : '';
                         const cobroInput = document.getElementById('cobro-client-input');
-                        if (cobroInput) cobroInput.value = name;
+                        if (cobroInput) cobroInput.value = clientLabel;
                     }
 
                     function changeWaiter(selectEl) {
@@ -4200,6 +4203,100 @@
                         const name = selectEl.options[selectEl.selectedIndex]?.text || 'Sin asignar';
                         currentTable.waiter = name;
                         saveDB();
+                    }
+
+                    function buildClientOption(person) {
+                        if (!person || !person.person_id) return null;
+                        return {
+                            id: person.person_id,
+                            description: person.description || person.name || 'Cliente',
+                            client_name: person.name || 'Cliente',
+                            document_number: person.document_number || ''
+                        };
+                    }
+
+                    function setSelectedCobroClient(person) {
+                        const option = buildClientOption(person);
+                        if (!option) return;
+
+                        const currentOptions = Array.isArray(window.__orderClientOptions) ? window.__orderClientOptions.slice() : [];
+                        const filtered = currentOptions.filter(item => String(item.id) !== String(option.id));
+                        filtered.unshift(option);
+                        window.__orderClientOptions = filtered;
+
+                        window.dispatchEvent(new CustomEvent('update-combobox-options', {
+                            detail: { name: 'header_client_id', options: filtered }
+                        }));
+
+                        if (currentTable) {
+                            currentTable.person_id = option.id;
+                            currentTable.clientName = option.client_name;
+                            currentTable.clientLabel = option.description;
+                            saveDB();
+                        }
+
+                        const picker = document.getElementById('order-client-picker');
+                        if (picker && window.Alpine) {
+                            const data = Alpine.$data(picker);
+                            if (data) {
+                                data.clientId = option.id;
+                            }
+                        }
+
+                        const headerInput = document.getElementById('header-client-name');
+                        if (headerInput) {
+                            headerInput.value = option.client_name || '';
+                        }
+
+                        if (typeof switchAsideTab === 'function') {
+                            switchAsideTab('cobro');
+                        }
+                    }
+
+                    async function submitQuickClientForm(event) {
+                        event.preventDefault();
+                        const form = event.target;
+                        if (!form) return;
+
+                        const submitButton = form.querySelector('button[type="submit"]');
+                        const originalContent = submitButton ? submitButton.innerHTML : '';
+                        if (submitButton) {
+                            submitButton.disabled = true;
+                            submitButton.innerHTML = '<i class="ri-loader-4-line animate-spin mr-1"></i> Guardando...';
+                        }
+
+                        try {
+                            const formData = new FormData(form);
+                            const response = await fetch(form.action, {
+                                method: 'POST',
+                                headers: {
+                                    'Accept': 'application/json',
+                                    'X-Requested-With': 'XMLHttpRequest',
+                                },
+                                body: formData,
+                            });
+
+                            const data = await response.json().catch(() => ({}));
+
+                            if (!response.ok) {
+                                const errors = data.errors || {};
+                                const firstError = Object.values(errors).flat()[0] || data.message || 'No se pudo guardar el cliente.';
+                                showNotification('Cliente', firstError, 'error');
+                                return;
+                            }
+
+                            setSelectedCobroClient(data);
+                            window.dispatchEvent(new CustomEvent('close-person-modal'));
+                            form.reset();
+                            showNotification('Cliente', data.message || 'Cliente creado correctamente.', 'success');
+                        } catch (error) {
+                            showNotification('Cliente', 'No se pudo guardar el cliente en este momento.', 'error');
+                        } finally {
+                            if (submitButton) {
+                                submitButton.disabled = false;
+                                submitButton.innerHTML = originalContent;
+                            }
+                        }
                     }
 
                     function toggleOrderTakeAway() {
@@ -4296,6 +4393,11 @@
                     window.addEventListener('turbo:load', () => {
                         setTimeout(fixScrollLayout, 50);
                     });
+
+                    const quickClientForm = document.getElementById('quick-client-form');
+                    if (quickClientForm) {
+                        quickClientForm.addEventListener('submit', submitQuickClientForm);
+                    }
                 })();
             </script>
 
