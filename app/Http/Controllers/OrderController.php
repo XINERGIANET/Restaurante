@@ -122,8 +122,36 @@ class OrderController extends Controller
         }
 
         $name = trim((string) $clientName);
+        if (preg_match('/^\s*\d+\s*-\s*(.+)$/u', $name, $matches) === 1) {
+            $name = trim((string) ($matches[1] ?? ''));
+        }
         if ($name === '' || mb_strtolower($name) === 'público general' || mb_strtolower($name) === 'publico general') {
             return null;
+        }
+
+        $normalizedName = mb_strtolower(preg_replace('/\s+/', ' ', $name), 'UTF-8');
+        $existing = Person::query()
+            ->where('branch_id', $branchId)
+            ->where('document_number', '0')
+            ->whereNull('deleted_at')
+            ->get()
+            ->first(function (Person $person) use ($normalizedName) {
+                $personFullName = trim(($person->first_name ?? '').' '.($person->last_name ?? ''));
+                $personNormalized = mb_strtolower(preg_replace('/\s+/', ' ', $personFullName), 'UTF-8');
+                $firstNameNormalized = mb_strtolower(preg_replace('/\s+/', ' ', trim((string) $person->first_name)), 'UTF-8');
+
+                return $personNormalized === $normalizedName || $firstNameNormalized === $normalizedName;
+            });
+
+        if ($existing) {
+            $clienteRoleId = $this->clienteRoleId();
+            if ($clienteRoleId) {
+                $existing->roles()->syncWithoutDetaching([
+                    $clienteRoleId => ['branch_id' => $branchId],
+                ]);
+            }
+
+            return $existing;
         }
 
         $person = Person::create([
@@ -2916,7 +2944,15 @@ class OrderController extends Controller
                 }
             });
 
-        return $q->get(['id', 'first_name', 'last_name', 'document_number']);
+        return $q->get(['id', 'first_name', 'last_name', 'document_number'])
+            ->unique(function (Person $person) {
+                $document = trim((string) ($person->document_number ?? '0'));
+                $firstName = mb_strtolower(trim(preg_replace('/\s+/', ' ', (string) ($person->first_name ?? ''))), 'UTF-8');
+                $lastName = mb_strtolower(trim(preg_replace('/\s+/', ' ', (string) ($person->last_name ?? ''))), 'UTF-8');
+
+                return implode('|', [$document !== '' ? $document : '0', $firstName, $lastName]);
+            })
+            ->values();
     }
 
     private function resolveWaiters(?int $branchId): \Illuminate\Support\Collection

@@ -20,6 +20,32 @@ use Illuminate\Support\Facades\Http;
 
 class PersonController extends Controller
 {
+    private function normalizePersonText(?string $value): string
+    {
+        $value = preg_replace('/\s+/', ' ', trim((string) $value));
+        return mb_strtolower($value, 'UTF-8');
+    }
+
+    private function findExistingBranchPerson(Branch $branch, array $data): ?Person
+    {
+        $documentNumber = trim((string) ($data['document_number'] ?? ''));
+        $firstName = $this->normalizePersonText($data['first_name'] ?? '');
+        $lastName = $this->normalizePersonText($data['last_name'] ?? '');
+
+        $query = Person::query()
+            ->where('branch_id', $branch->id)
+            ->whereNull('deleted_at');
+
+        if ($documentNumber !== '') {
+            $query->where('document_number', $documentNumber);
+        }
+
+        return $query->get()->first(function (Person $person) use ($firstName, $lastName) {
+            return $this->normalizePersonText($person->first_name) === $firstName
+                && $this->normalizePersonText($person->last_name) === $lastName;
+        });
+    }
+
     /**
      * Busca una persona por DNI consultando la API externa configurada en services.php.
      * Ruta: GET /api/dni/{dni}
@@ -241,19 +267,28 @@ class PersonController extends Controller
         $userData = $this->validateUserData($request, $hasUserRole, null);
 
         $person = null;
-        DB::transaction(function () use ($branch, $data, $roleIds, $hasUserRole, $userData, &$person) {
-            $person = $branch->people()->create($data);
+        $alreadyExisted = false;
+        DB::transaction(function () use ($branch, $data, $roleIds, $hasUserRole, $userData, &$person, &$alreadyExisted) {
+            $person = $this->findExistingBranchPerson($branch, $data);
+            if (! $person) {
+                $person = $branch->people()->create($data);
+            } else {
+                $alreadyExisted = true;
+            }
             $this->syncRoles($person, $roleIds, $branch->id);
 
             if ($hasUserRole) {
-                User::create([
-                    'name' => $userData['user_name'],
-                    'email' => $person->email,
-                    'password' => Hash::make($userData['password']),
-                    'person_id' => $person->id,
-                    'profile_id' => $userData['profile_id'],
-                ]);
-                $this->syncProfileDefaultView((int) $userData['profile_id'], $userData['default_view_id'] ?? null);
+                $user = $person->user;
+                if (! $user) {
+                    User::create([
+                        'name' => $userData['user_name'],
+                        'email' => $person->email,
+                        'password' => Hash::make($userData['password']),
+                        'person_id' => $person->id,
+                        'profile_id' => $userData['profile_id'],
+                    ]);
+                    $this->syncProfileDefaultView((int) $userData['profile_id'], $userData['default_view_id'] ?? null);
+                }
             }
         });
         if (($request->expectsJson() || $request->ajax()) && $request->boolean('from_pos')) {
@@ -270,20 +305,20 @@ class PersonController extends Controller
                 'name' => $fullName !== '' ? $fullName : ($person?->document_number ?? 'Cliente'),
                 'description' => $description !== '' ? $description : ($documentNumber ?: 'Cliente'),
                 'document_number' => $person?->document_number,
-                'message' => 'Cliente creado correctamente.',
+                'message' => $alreadyExisted ? 'Cliente ya existente, se reutilizó el registro.' : 'Cliente creado correctamente.',
             ]);
         }
         // Si viene redirect_to (por ejemplo, desde POS), volver a esa URL
         if ($request->filled('redirect_to')) {
             return redirect($request->input('redirect_to'))
-                ->with('status', 'Cliente creado correctamente.');
+                ->with('status', $alreadyExisted ? 'Cliente ya existente, se reutilizó el registro.' : 'Cliente creado correctamente.');
         }
 
         $viewId = $request->input('view_id');
 
         return redirect()
             ->route('admin.companies.branches.people.index', $viewId ? [$company, $branch, 'view_id' => $viewId] : [$company, $branch])
-            ->with('status', 'Personal creado correctamente.');
+            ->with('status', $alreadyExisted ? 'Cliente ya existente, se reutilizó el registro.' : 'Personal creado correctamente.');
     }
 
     public function edit(Company $company, Branch $branch, Person $person)
