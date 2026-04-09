@@ -15,11 +15,11 @@
             <div class="flex flex-col w-full mb-6 gap-4 shrink-0">
 
                 {{-- Fila 1: Botones de área y buscador --}}
-                <div class="flex flex-col sm:flex-row justify-between items-center gap-4 w-full">
+                <div class="flex flex-col lg:flex-row items-stretch lg:items-center gap-4 w-full">
 
                     <template x-if="areas && areas.length > 0">
-                        <div class="w-full sm:w-auto">
-                            <div class="flex items-center gap-2">
+                        <div class="w-full min-w-0 flex-1">
+                            <div class="flex items-center gap-2 w-full">
                                 <button
                                     type="button"
                                     x-show="canScrollAreasLeft"
@@ -33,7 +33,7 @@
 
                                 <div x-ref="areasScroller"
                                     @scroll="updateAreaScrollState()"
-                                    class="w-full sm:w-auto overflow-x-auto overflow-y-hidden pb-1 scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                                    class="flex-1 min-w-0 overflow-x-auto overflow-y-hidden pb-1 scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                                     <div class="inline-flex min-w-max p-1 bg-gray-100 dark:bg-gray-800 rounded-xl">
                                         <template x-for="area in areas" :key="area.id">
                                             <button @click="switchArea(area)"
@@ -67,7 +67,7 @@
                     </template>
 
                     {{-- Buscador --}}
-                    <div class="relative w-full max-w-2xl min-w-0 flex-1 sm:min-w-[20rem] flex items-center gap-2">
+                    <div class="relative w-full lg:w-[380px] xl:w-[460px] shrink-0 min-w-0 flex items-center gap-2">
                         <input type="text" x-model="searchQuery" @keydown.enter.prevent="addSearchChip"
                             placeholder="Buscar por cliente, mozo o producto..."
                             class="w-full pl-10 pr-4 py-2.5 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:ring-2 focus:ring-[#FF4622]/30 focus:border-[#FF4622] outline-none transition-all">
