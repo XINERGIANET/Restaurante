@@ -33,22 +33,23 @@
         syncQueryFromId() {
             if (this.value && this.allOptions.length > 0) {
                 const found = this.allOptions.find(c => c.id == this.value);
-                this.query = found ? found[this.displayField] : '';
+                this.query = found ? (found[this.displayField] || '') : '';
             } else {
                 this.query = '';
             }
         },
 
         get filteredOptions() {
-            if (this.query === '') return this.allOptions;
+            const q = (this.query || '').toLowerCase();
+            if (q === '') return this.allOptions;
             return this.allOptions.filter(item =>
-                (item[this.displayField] || '').toLowerCase().includes(this.query.toLowerCase())
+                (String(item[this.displayField] || '')).toLowerCase().includes(q)
             );
         },
 
         selectOption(item) {
             this.value = item.id;
-            this.query = item[this.displayField];
+            this.query = item[this.displayField] || '';
             this.open = false;
         },
 
