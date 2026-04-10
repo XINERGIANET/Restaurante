@@ -1018,6 +1018,7 @@ class OrderController extends Controller
                     'qty' => $qty,
                     'price' => round($price, 6),
                     'tax_rate' => 10,
+                    'priceManual' => true,
                     'note' => $note,
                     'commandTime' => $commandTime,
                     'delivered' => $status === 'E',
@@ -1043,12 +1044,26 @@ class OrderController extends Controller
             $sumQty = $group->sum('qty');
             $sumTakeaway = $group->sum('takeawayQty');
 
+            $sumPaid = 0.0;
+            $sumWeighted = 0.0;
+            foreach ($group as $row) {
+                $q = (float) ($row['qty'] ?? 0);
+                $cq = (float) ($row['courtesyQty'] ?? 0);
+                $cq = max(0, min($cq, $q));
+                $paid = max(0, $q - $cq);
+                $p = (float) ($row['price'] ?? 0);
+                $sumPaid += $paid;
+                $sumWeighted += $p * $paid;
+            }
+            $mergedPrice = $sumPaid > 0 ? round($sumWeighted / $sumPaid, 6) : (float) ($first['price'] ?? 0);
+
             return [
                 'pId' => $first['pId'],
                 'name' => $first['name'],
                 'qty' => $sumQty,
-                'price' => $first['price'],
+                'price' => $mergedPrice,
                 'tax_rate' => $first['tax_rate'] ?? 10,
+                'priceManual' => true,
                 'note' => $first['note'],
                 'commandTime' => $first['commandTime'],
                 'delivered' => $group->contains('delivered', true),
@@ -1275,11 +1290,18 @@ class OrderController extends Controller
                     'id' => $movement->id,
                     'number' => $movement->number,
                     'items' => $details->map(function ($detail) {
+                        $qty = (float) $detail->quantity;
+                        $courtesyQty = (float) ($detail->courtesy_quantity ?? 0);
+                        $courtesyQty = max(0, min($courtesyQty, $qty));
+                        $paidQty = max(0, $qty - $courtesyQty);
+                        $amount = (float) $detail->amount;
+                        $unit = $paidQty > 0 ? ($amount / $paidQty) : 0;
+
                         return [
                             'pId' => $detail->product_id,
                             'name' => $detail->description ?? 'Producto #' . $detail->product_id,
-                            'qty' => (float) $detail->quantity,
-                            'price' => $detail->quantity > 0 ? (float) $detail->amount / (float) $detail->quantity : 0,
+                            'qty' => $qty,
+                            'price' => round($unit, 6),
                             'note' => $detail->comment ?? '',
                         ];
                     })->toArray(),

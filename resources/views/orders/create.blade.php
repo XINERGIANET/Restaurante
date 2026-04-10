@@ -125,6 +125,7 @@
                             const q = parseFloat(it.qty) || 0;
                             let t = parseFloat(it.takeawayQty) || 0;
                             if (t > q) it.takeawayQty = q;
+                            it.priceManual = true;
                         });
                         db[activeKey] = currentTable;
                         localStorage.setItem('restaurantDB', JSON.stringify(db));
@@ -1877,6 +1878,10 @@
                             text += String(qty) + '  ' + name + '\n';
                             if (complementsText) text += 'Detalle: ' + complementsText + '\n';
                             if (hour) text += 'Hora: ' + hour + '\n';
+                            const unitPdf = parseFloat(it?.price);
+                            if (!isNaN(unitPdf) && unitPdf >= 0) {
+                                text += 'P.unit: S/ ' + unitPdf.toFixed(2) + '\n';
+                            }
                             if (isDelivered) text += 'Estado: ENTREGADO\n';
                             if (courtesyQty > 0 || takeawayQty > 0) {
                                 const tags = [];
@@ -2219,6 +2224,10 @@
                                 body += padEnd(nm, COL_NAME) + padCenter(timeCol, COL_TIME) + padStart(qtyCol, COL_QTY) + '\n';
                                 if (complementsText) {
                                     body += 'Detalle: ' + complementsText + '\n';
+                                }
+                                const unitK = parseFloat(it?.price);
+                                if (!isNaN(unitK) && unitK >= 0) {
+                                    body += 'P.unit: S/ ' + unitK.toFixed(2) + '\n';
                                 }
                                 if (courtesyQty > 0 || takeawayQty > 0) {
                                     const tags = [];
@@ -3015,6 +3024,28 @@
                     }
                     window.setItemUnitPrice = setItemUnitPrice;
 
+                    /** Lee inputs de P. unit. visibles y aplica al modelo (evita perder el cambio si se envía sin blur). */
+                    function flushCartUnitPriceInputsFromDom() {
+                        if (!currentTable?.items?.length) return;
+                        let changed = false;
+                        document.querySelectorAll('input[data-cart-unit-price-index]').forEach((el) => {
+                            const idx = parseInt(el.getAttribute('data-cart-unit-price-index'), 10);
+                            if (!Number.isFinite(idx) || !currentTable.items[idx]) return;
+                            let v = parseFloat(String(el.value).replace(',', '.'));
+                            if (isNaN(v) || v < 0) v = 0;
+                            if (v > 999999.99) v = 999999.99;
+                            v = Math.round(v * 100) / 100;
+                            const prev = parseFloat(currentTable.items[idx].price);
+                            if (!Number.isFinite(prev) || Math.abs(prev - v) > 0.0001) {
+                                currentTable.items[idx].price = v;
+                                currentTable.items[idx].priceManual = true;
+                                changed = true;
+                            }
+                            el.value = v.toFixed(2);
+                        });
+                        if (changed) saveDB();
+                    }
+
                     function renderTicket() {
                         const container = document.getElementById('cart-container');
                         if (!container) {
@@ -3149,6 +3180,8 @@
                                                                                                                                                                                                                             <span class="text-slate-500 dark:text-zinc-500 font-medium">P. unit.</span>
                                                                                                                                                                                                                             <span class="text-slate-600 dark:text-zinc-400 font-semibold">S/</span>
                                                                                                                                                                                                                             <input type="number" inputmode="decimal" step="0.01" min="0" value="${itemPrice.toFixed(2)}"
+                                                                                                                                                                                                                                data-cart-unit-price-index="${index}"
+                                                                                                                                                                                                                                onchange="setItemUnitPrice(${index}, this)"
                                                                                                                                                                                                                                 onblur="setItemUnitPrice(${index}, this)"
                                                                                                                                                                                                                                 class="w-[4.75rem] min-w-0 bg-transparent text-right text-xs font-bold tabular-nums text-slate-900 dark:text-white border-none p-0 focus:ring-0 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
                                                                                                                                                                                                                         </label>
@@ -3331,11 +3364,15 @@
                             const id = parseInt(it.pId, 10) || 0;
                             if (!id) return;
                             const key = getItemGroupingKey(it);
+                            const lineQty = parseFloat(it.qty) || 0;
+                            const lineCourtesy = Math.max(0, Math.min(parseFloat(it.courtesyQty) || 0, lineQty));
+                            const linePaid = Math.max(0, lineQty - lineCourtesy);
+                            const linePrice = parseFloat(it.price) || 0;
                             if (!byPid[key]) {
                                 byPid[key] = {
                                     pId: it.pId,
                                     name: it.name,
-                                    price: parseFloat(it.price) || 0,
+                                    price: linePrice,
                                     tax_rate: it.tax_rate,
                                     note: it.note || '',
                                     commandTime: it.commandTime || null,
@@ -3346,20 +3383,30 @@
                                     takeawayQty: 0,
                                     savedTakeawayQty: 0,
                                     savedQty: 0,
-                                    qty: 0
+                                    qty: 0,
+                                    _priceSum: 0,
+                                    _paidQtySum: 0,
                                 };
                             }
-                            byPid[key].qty = (byPid[key].qty || 0) + (parseInt(it.qty, 10) || 1);
-                            byPid[key].courtesyQty = (byPid[key].courtesyQty || 0) + (parseInt(it.courtesyQty) || 0);
+                            byPid[key].qty = (byPid[key].qty || 0) + lineQty;
+                            byPid[key].courtesyQty = (byPid[key].courtesyQty || 0) + lineCourtesy;
                             byPid[key].takeawayQty = (byPid[key].takeawayQty || 0) + (parseFloat(it.takeawayQty) || 0);
                             byPid[key].savedQty = (byPid[key].savedQty || 0) + (parseFloat(it.savedQty) || 0);
                             byPid[key].savedCourtesyQty = (byPid[key].savedCourtesyQty || 0) + (parseFloat(it.savedCourtesyQty) || 0);
                             byPid[key].savedTakeawayQty = (byPid[key].savedTakeawayQty || 0) + (parseFloat(it.savedTakeawayQty) || 0);
                             if (it.delivered) byPid[key].delivered = true;
+                            byPid[key]._priceSum += linePrice * linePaid;
+                            byPid[key]._paidQtySum += linePaid;
                         });
                         const st = currentTable?.service_type || 'IN_SITU';
                         const vals = Object.values(byPid);
                         vals.forEach((v) => {
+                            const paidSum = parseFloat(v._paidQtySum) || 0;
+                            if (paidSum > 0) {
+                                v.price = Math.round((parseFloat(v._priceSum) / paidSum) * 100) / 100;
+                            }
+                            delete v._priceSum;
+                            delete v._paidQtySum;
                             const q = parseFloat(v.qty) || 0;
                             let t = parseFloat(v.takeawayQty) || 0;
                             if (t > q) t = q;
@@ -3470,6 +3517,8 @@
                         // No auto-guardar si hay cancelaciones pendientes de razón (se pide al hacer Guardar / Cobrar)
                         const cancels = currentTable.cancellations || [];
                         if (cancels.some(c => !(c.cancel_reason && String(c.cancel_reason).trim()))) return;
+                        flushCartUnitPriceInputsFromDom();
+                        renderTicket();
                         const itemsToSend = getItemsGroupedByProduct();
                         const totals = calculateTotalsFromItems(itemsToSend);
                         const order = {
@@ -3557,6 +3606,8 @@
                         }
                         const okReason = await ensureCancellationReasons();
                         if (!okReason) return;
+                        flushCartUnitPriceInputsFromDom();
+                        renderTicket();
                         const btnGuardar = document.getElementById('btn-guardar');
                         if (btnGuardar) { btnGuardar.disabled = true; }
                         let items = getItemsGroupedByProduct();
@@ -3848,6 +3899,8 @@
                             const ok = await ensureWaiterPin();
                             if (!ok) return;
                         }
+                        flushCartUnitPriceInputsFromDom();
+                        renderTicket();
                         const items = currentTable.items || [];
                         if (items.length === 0) {
                             if (typeof showNotification === 'function') {
