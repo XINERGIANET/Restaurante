@@ -815,6 +815,10 @@ class SalesController extends Controller
             $tax = $calculated['tax'];
             $total = $calculated['total'];
 
+            if ($validationMessage = $this->validateCustomerForDocumentType($documentType, $selectedPerson, (float) $total)) {
+                throw new \Exception($validationMessage);
+            }
+
             // Caja obtenida desde la sesión
             $cashRegister = CashRegister::findOrFail($cashRegisterId);
 
@@ -2389,8 +2393,15 @@ class SalesController extends Controller
 
         if (str_contains($targetDocumentName, 'factura')) {
             $document = preg_replace('/\D+/', '', (string) ($selectedPerson?->document_number ?? ''));
-            if (strlen($document) !== 11) {
+            if (! $this->isValidRuc($document)) {
                 return back()->with('error', 'La factura requiere un cliente con RUC válido.');
+            }
+        }
+
+        if (str_contains($targetDocumentName, 'boleta') && (float) ($sale->total ?? 0) > 700) {
+            $document = preg_replace('/\D+/', '', (string) ($selectedPerson?->document_number ?? ''));
+            if (! $this->isValidIdentityDocumentForBoleta($document)) {
+                return back()->with('error', 'Para boletas mayores a S/ 700 debes seleccionar un cliente con documento válido.');
             }
         }
 
@@ -3163,5 +3174,42 @@ class SalesController extends Controller
             });
 
         return $q->get(['id', 'first_name', 'last_name', 'document_number']);
+    }
+
+    private function isValidRuc(?string $document): bool
+    {
+        $doc = preg_replace('/\D+/', '', (string) $document);
+        return (bool) preg_match('/^\d{11}$/', $doc) && $doc !== '00000000000';
+    }
+
+    private function isValidDni(?string $document): bool
+    {
+        $doc = preg_replace('/\D+/', '', (string) $document);
+        return (bool) preg_match('/^\d{8}$/', $doc) && $doc !== '00000000';
+    }
+
+    private function isValidIdentityDocumentForBoleta(?string $document): bool
+    {
+        return $this->isValidDni($document) || $this->isValidRuc($document);
+    }
+
+    private function validateCustomerForDocumentType(DocumentType $documentType, ?Person $person, float $total): ?string
+    {
+        $docName = mb_strtolower(trim((string) ($documentType->name ?? '')), 'UTF-8');
+        $document = preg_replace('/\D+/', '', (string) ($person?->document_number ?? ''));
+
+        if (str_contains($docName, 'factura')) {
+            if (! $this->isValidRuc($document)) {
+                return 'La factura requiere un cliente con RUC válido.';
+            }
+        }
+
+        if (str_contains($docName, 'boleta') && $total > 700) {
+            if (! $this->isValidIdentityDocumentForBoleta($document)) {
+                return 'Para boletas mayores a S/ 700 debes seleccionar un cliente con documento válido.';
+            }
+        }
+
+        return null;
     }
 }

@@ -492,6 +492,26 @@
                                         </select>
                                     </div>
                                 </div>
+                                <div class="grid grid-cols-1 gap-3">
+                                    <div>
+                                        <label
+                                            class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">Detalle en comprobante</label>
+                                        <select id="cobro-detail-mode"
+                                            class="w-full py-2.5 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-slate-700 dark:text-slate-200 text-sm"
+                                            onchange="toggleCobroDetailGlosa()">
+                                            <option value="DETALLADO">Detallado</option>
+                                            <option value="CONSUMO">Por consumo</option>
+                                            <option value="GLOSA">Glosa personalizada</option>
+                                        </select>
+                                    </div>
+                                    <div id="cobro-detail-glosa-wrapper" class="hidden">
+                                        <label
+                                            class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">Glosa</label>
+                                        <input type="text" id="cobro-detail-glosa"
+                                            class="w-full py-2.5 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-slate-700 dark:text-slate-200 text-sm"
+                                            placeholder="Escribe el detalle que saldra en el comprobante">
+                                    </div>
+                                </div>
                                 <div>
                                     <div class="flex items-center justify-between mb-2">
                                         <label
@@ -3788,6 +3808,41 @@
                         }
                     }
 
+                    function toggleCobroDetailGlosa() {
+                        const modeEl = document.getElementById('cobro-detail-mode');
+                        const glosaWrap = document.getElementById('cobro-detail-glosa-wrapper');
+                        const glosaInput = document.getElementById('cobro-detail-glosa');
+                        const mode = (modeEl?.value || 'DETALLADO').toUpperCase();
+
+                        if (glosaWrap) {
+                            glosaWrap.classList.toggle('hidden', mode !== 'GLOSA');
+                        }
+                        if (glosaInput && mode !== 'GLOSA') {
+                            glosaInput.value = '';
+                        }
+                    }
+
+                    function getCurrentCobroClientData() {
+                        const opts = window.__orderClientOptions || [];
+                        const selected = opts.find(o => String(o.id) === String(currentTable?.person_id ?? ''));
+                        return {
+                            id: selected?.id || null,
+                            document_number: String(selected?.document_number || '').trim(),
+                            client_name: selected?.client_name || selected?.description || (currentTable?.clientName || '')
+                        };
+                    }
+
+                    function getCurrentCobroDocumentMeta() {
+                        const docTypeEl = document.getElementById('cobro-document-type');
+                        const label = String(docTypeEl?.selectedOptions?.[0]?.textContent || '').trim().toLowerCase();
+                        return {
+                            id: docTypeEl?.value ? parseInt(docTypeEl.value, 10) : null,
+                            isFactura: label.includes('factura'),
+                            isBoleta: label.includes('boleta'),
+                            label
+                        };
+                    }
+
                     async function processOrderPayment() {
                         if (waiterPinEnabled && !isMozoProfile) {
                             const ok = await ensureWaiterPin();
@@ -3821,6 +3876,30 @@
                             } else {
                                 alert('La suma de los métodos de pago debe ser igual al total (S/ ' + total.toFixed(2) + ').');
                             }
+                            return;
+                        }
+
+                        const selectedDoc = getCurrentCobroDocumentMeta();
+                        const selectedClient = getCurrentCobroClientData();
+                        const cleanDocument = String(selectedClient.document_number || '').replace(/\D+/g, '');
+                        const detailModeEl = document.getElementById('cobro-detail-mode');
+                        const detailGlosaEl = document.getElementById('cobro-detail-glosa');
+                        const detailMode = String(detailModeEl?.value || 'DETALLADO').toUpperCase();
+                        const detailGlosa = String(detailGlosaEl?.value || '').trim();
+
+                        if (selectedDoc.isFactura && cleanDocument.length !== 11) {
+                            const msg = 'La factura de venta requiere un cliente con RUC valido de 11 digitos.';
+                            if (typeof showNotification === 'function') showNotification('Error', msg, 'error'); else alert(msg);
+                            return;
+                        }
+                        if (selectedDoc.isBoleta && total > 700 && cleanDocument.length !== 8 && cleanDocument.length !== 11) {
+                            const msg = 'Para emitir boleta mayor a S/ 700.00 debes seleccionar un cliente con DNI o RUC valido.';
+                            if (typeof showNotification === 'function') showNotification('Error', msg, 'error'); else alert(msg);
+                            return;
+                        }
+                        if (detailMode === 'GLOSA' && !detailGlosa) {
+                            const msg = 'Debes escribir la glosa que saldra en el comprobante.';
+                            if (typeof showNotification === 'function') showNotification('Error', msg, 'error'); else alert(msg);
                             return;
                         }
 
@@ -3907,6 +3986,8 @@
                                 cash_register_id: cashRegEl?.value ? parseInt(cashRegEl.value, 10) : null,
                                 client_id: currentTable.person_id ?? null,
                                 client_name: currentTable.clientName || null,
+                                detail_mode: detailMode,
+                                detail_glosa: detailGlosa,
                                 payment_methods: paymentMethodsData,
                                 notes: '',
                             };
@@ -4559,6 +4640,7 @@
                     window.updateDeliveryInfo = updateDeliveryInfo;
                     window.updateTakeAwayInfo = updateTakeAwayInfo;
                     window.updateTakeawayDisposableInfo = updateTakeawayDisposableInfo;
+                    window.toggleCobroDetailGlosa = toggleCobroDetailGlosa;
                     window.printPreAccountTicket = printPreAccountTicket;
                     window.openPreAccountPdfTab = openPreAccountPdfTab;
                     window.ensureWaiterPin = ensureWaiterPin;
@@ -4578,6 +4660,7 @@
                     if (quickClientForm) {
                         quickClientForm.addEventListener('submit', submitQuickClientForm);
                     }
+                    toggleCobroDetailGlosa();
                 })();
             </script>
 

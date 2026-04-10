@@ -2235,11 +2235,16 @@ class OrderController extends Controller
         $clientPersonId = $request->input('client_id');
         $clientNameFromRequest = $request->filled('client_name') ? trim((string) $request->client_name) : null;
         $branch = $branchId ? Branch::find($branchId) : null;
-        $clientPerson = $this->resolveOrCreateClientPerson($branchId ?: null, $branch, $clientPersonId ? (int) $clientPersonId : null, $clientNameFromRequest);
+        $clientPerson = $clientPersonId ? Person::find((int) $clientPersonId) : null;
         $clientName = $clientNameFromRequest
             ?: ($clientPerson
                 ? trim(($clientPerson->first_name ?? '') . ' ' . ($clientPerson->last_name ?? ''))
                 : null);
+        $detailMode = strtoupper(trim((string) $request->input('detail_mode', 'DETALLADO')));
+        if (! in_array($detailMode, ['DETALLADO', 'CONSUMO', 'GLOSA'], true)) {
+            $detailMode = 'DETALLADO';
+        }
+        $detailGlosa = trim((string) $request->input('detail_glosa', ''));
         $paymentMethods = collect($request->input('payment_methods', []));
 
         $restrictedPmIds = PaymentMethod::paymentMethodIdsForBranchOrNull($branchId ?: null);
@@ -2306,6 +2311,31 @@ class OrderController extends Controller
                     $resolvedDocumentTypeId = ($requestDocumentTypeId && DocumentType::where('id', $requestDocumentTypeId)->exists())
                         ? (int) $requestDocumentTypeId
                         : $defaultDocumentTypeId;
+                    $resolvedDocumentType = $resolvedDocumentTypeId
+                        ? DocumentType::find((int) $resolvedDocumentTypeId)
+                        : null;
+                    if ($resolvedDocumentType) {
+                        $validationMessage = $this->validateCustomerForDocumentType(
+                            $resolvedDocumentType,
+                            $clientPerson,
+                            (float) ($orderMovement->total ?? 0)
+                        );
+                        if ($validationMessage) {
+                            throw new \InvalidArgumentException($validationMessage);
+                        }
+                    }
+                    if ($detailMode === 'GLOSA' && $detailGlosa === '') {
+                        throw new \InvalidArgumentException('Debes ingresar la glosa que saldra en el comprobante.');
+                    }
+                    if (! $clientPerson && $clientNameFromRequest) {
+                        $clientPerson = $this->resolveOrCreateClientPerson(
+                            $branchId ?: null,
+                            $branch,
+                            $clientPersonId ? (int) $clientPersonId : null,
+                            $clientNameFromRequest
+                        );
+                        $clientName = trim(($clientPerson->first_name ?? '') . ' ' . ($clientPerson->last_name ?? ''));
+                    }
                     if ($resolvedDocumentTypeId && DocumentType::where('id', $resolvedDocumentTypeId)->exists()) {
                         $updateData['document_type_id'] = (int) $resolvedDocumentTypeId;
                     }
@@ -2337,8 +2367,8 @@ class OrderController extends Controller
                             ],
                             'series' => $activeSeries,
                             'year' => now()->year,
-                            'detail_type' => 'DETALLADO',
-                            'consumption' => 'N',
+                            'detail_type' => $detailMode === 'DETALLADO' ? 'DETALLADO' : 'GLOSA',
+                            'consumption' => $detailMode === 'CONSUMO' ? 'Y' : 'N',
                             'payment_type' => 'CONTADO',
                             'status' => 'N',
                             'sale_type' => 'MINORISTA',
@@ -2352,7 +2382,12 @@ class OrderController extends Controller
                         ]);
 
                         // Crear detalles de venta a partir de los detalles del pedido
-                        foreach ($orderMovement->details as $orderDetail) {
+                        $activeOrderDetails = $orderMovement->details
+                            ->filter(fn ($orderDetail) => ($orderDetail->status ?? 'A') !== 'C')
+                            ->values();
+
+                        if ($detailMode === 'DETALLADO') {
+                        foreach ($activeOrderDetails as $orderDetail) {
                             if (($orderDetail->status ?? 'A') === 'C') {
                                 continue;
                             }
@@ -2386,6 +2421,36 @@ class OrderController extends Controller
                                 'original_amount' => $subtotalDetail,
                                 'comment' => $orderDetail->comment,
                                 'complements' => $orderDetail->complements ?? [],
+                                'status' => 'A',
+                                'branch_id' => $branchId,
+                            ]);
+                        }
+                        } else {
+                            $referenceDetail = $activeOrderDetails->first();
+                            if (! $referenceDetail) {
+                                throw new \InvalidArgumentException('No hay detalles validos para generar la venta.');
+                            }
+
+                            SalesMovementDetail::create([
+                                'detail_type' => 'GLOSA',
+                                'sales_movement_id' => $salesMovement->id,
+                                'code' => 'GLOSA',
+                                'description' => $detailMode === 'CONSUMO' ? 'POR CONSUMO' : $detailGlosa,
+                                'product_id' => null,
+                                'product_snapshot' => [
+                                    'type' => $detailMode,
+                                    'source' => 'order_payment',
+                                ],
+                                'unit_id' => $referenceDetail->unit_id,
+                                'tax_rate_id' => $referenceDetail->tax_rate_id,
+                                'tax_rate_snapshot' => $referenceDetail->tax_rate_snapshot,
+                                'quantity' => 1,
+                                'courtesy_quantity' => 0,
+                                'amount' => (float) ($orderMovement->total ?? 0),
+                                'discount_percentage' => 0,
+                                'original_amount' => (float) ($orderMovement->subtotal ?? 0),
+                                'comment' => null,
+                                'complements' => [],
                                 'status' => 'A',
                                 'branch_id' => $branchId,
                             ]);
@@ -2553,7 +2618,7 @@ class OrderController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => $e->getMessage(),
-                ], 500);
+                ], $e instanceof \InvalidArgumentException ? 422 : 500);
             }
         }
 
@@ -2971,5 +3036,44 @@ class OrderController extends Controller
             ->orderBy('first_name')
             ->orderBy('last_name')
             ->get(['id', 'first_name', 'last_name', 'pin']);
+    }
+
+    private function isValidRuc(?string $document): bool
+    {
+        $clean = preg_replace('/\D+/', '', (string) $document);
+
+        return strlen($clean) === 11;
+    }
+
+    private function isValidDni(?string $document): bool
+    {
+        $clean = preg_replace('/\D+/', '', (string) $document);
+
+        return strlen($clean) === 8;
+    }
+
+    private function isValidIdentityDocumentForBoleta(?string $document): bool
+    {
+        return $this->isValidDni($document) || $this->isValidRuc($document);
+    }
+
+    private function validateCustomerForDocumentType(DocumentType $documentType, ?Person $person, float $total): ?string
+    {
+        $documentName = mb_strtolower(trim((string) ($documentType->name ?? '')), 'UTF-8');
+        $documentNumber = trim((string) ($person?->document_number ?? ''));
+
+        if (str_contains($documentName, 'factura')) {
+            if (! $this->isValidRuc($documentNumber)) {
+                return 'La factura de venta requiere un cliente con RUC valido de 11 digitos.';
+            }
+
+            return null;
+        }
+
+        if (str_contains($documentName, 'boleta') && $total > 700 && ! $this->isValidIdentityDocumentForBoleta($documentNumber)) {
+            return 'Para emitir boleta por un monto mayor a S/ 700.00 debes seleccionar un cliente con DNI o RUC valido.';
+        }
+
+        return null;
     }
 }
