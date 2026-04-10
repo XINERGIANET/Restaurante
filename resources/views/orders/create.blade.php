@@ -2241,19 +2241,18 @@
                             const data = header + body + '\n\n';
                             try {
                                 if (canUseQz) {
-                                    // Validar que la impresora exista en QZ (por nombre exacto del sistema).
+                                    // Si QZ no encuentra la impresora exacta, reintentar por servidor (red/USB Windows).
                                     try {
                                         await qzApi.printers.find(pname);
+                                        await printTicketWithQz(qzApi, pname, data);
                                     } catch (notFoundErr) {
-                                        const msg = 'QZ no encontró la impresora "' + pname + '". Verifica el nombre exacto en Windows/QZ.';
-                                        console.error(msg, notFoundErr);
+                                        const msg = 'QZ no encontró la impresora "' + pname + '". Se intentará impresión por servidor.';
+                                        console.warn(msg, notFoundErr);
                                         if (typeof showNotification === 'function') {
-                                            showNotification('Impresión', msg, 'error');
+                                            showNotification('Impresión', msg, 'warning');
                                         }
-                                        continue;
+                                        await sendKitchenTicketToServer(pname, data);
                                     }
-
-                                    await printTicketWithQz(qzApi, pname, data);
                                 } else {
                                     await sendKitchenTicketToServer(pname, data);
                                 }
