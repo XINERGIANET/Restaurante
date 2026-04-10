@@ -1633,6 +1633,22 @@
                     })),
                     notes: '',
                 };
+                const selectedDocName = (docTypeEl?.selectedOptions?.[0]?.textContent || '').trim() || 'Documento no definido';
+                if (window.Swal && typeof window.Swal.fire === 'function') {
+                    const confirmPayment = await Swal.fire({
+                        title: 'Confirmar cobro',
+                        html: `Se emitira: <b>${selectedDocName}</b><br>Total: <b>S/ ${total.toFixed(2)}</b>`,
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#FF4622',
+                        cancelButtonColor: '#6b7280',
+                        confirmButtonText: 'Si, cobrar',
+                        cancelButtonText: 'Revisar'
+                    });
+                    if (!confirmPayment.isConfirmed) return;
+                } else if (!window.confirm('Se emitira: ' + selectedDocName + '\nTotal: S/ ' + total.toFixed(2) + '\n\n¿Deseas continuar con el cobro?')) {
+                    return;
+                }
 
                 const btn = document.getElementById('checkout-button');
                 if (btn) {

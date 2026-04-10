@@ -2391,6 +2391,9 @@
                         if (!currentTable?.items || !serverProductBranches?.length) return;
                         let updated = false;
                         currentTable.items.forEach(item => {
+                            if (item.priceManual === true) {
+                                return;
+                            }
                             const pId = parseInt(item.pId || item.product_id, 10);
                             const pb = findProductBranchByProductId(pId);
                             if (pb) {
@@ -2978,6 +2981,20 @@
                     window.changeTakeawayQty = changeTakeawayQty;
                     window.toggleTakeawayInput = toggleTakeawayInput;
 
+                    function setItemUnitPrice(index, inputEl) {
+                        if (!currentTable.items || !currentTable.items[index]) return;
+                        let v = parseFloat(String(inputEl.value).replace(',', '.'));
+                        if (isNaN(v) || v < 0) v = 0;
+                        if (v > 999999.99) v = 999999.99;
+                        v = Math.round(v * 100) / 100;
+                        currentTable.items[index].price = v;
+                        currentTable.items[index].priceManual = true;
+                        inputEl.value = v.toFixed(2);
+                        saveDB();
+                        renderTicket();
+                    }
+                    window.setItemUnitPrice = setItemUnitPrice;
+
                     function renderTicket() {
                         const container = document.getElementById('cart-container');
                         if (!container) {
@@ -3106,7 +3123,16 @@
                                                                                                                                                                                                                     ${takeawayBadge}
                                                                                                                                                                                                                     ${complementSummary}
                                                                                                                                                                                                                     ${commandSummary}
-                                                                                                                                                                                                                    <p class="mt-1 text-[11px] sm:text-xs text-slate-500 dark:text-zinc-400 font-medium tabular-nums">${noteTime ? noteTime + ' · ' : ''}S/ ${itemPrice.toFixed(2)} <span class="text-slate-400 dark:text-zinc-500 font-normal">c/u</span></p>
+                                                                                                                                                                                                                    <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] sm:text-xs">
+                                                                                                                                                                                                                        ${noteTime ? `<span class="text-slate-500 dark:text-zinc-400 font-medium tabular-nums">${noteTime}</span>` : ''}
+                                                                                                                                                                                                                        <label class="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-1.5 py-0.5 dark:border-zinc-600 dark:bg-zinc-800/80">
+                                                                                                                                                                                                                            <span class="text-slate-500 dark:text-zinc-500 font-medium">P. unit.</span>
+                                                                                                                                                                                                                            <span class="text-slate-600 dark:text-zinc-400 font-semibold">S/</span>
+                                                                                                                                                                                                                            <input type="number" inputmode="decimal" step="0.01" min="0" value="${itemPrice.toFixed(2)}"
+                                                                                                                                                                                                                                onblur="setItemUnitPrice(${index}, this)"
+                                                                                                                                                                                                                                class="w-[4.75rem] min-w-0 bg-transparent text-right text-xs font-bold tabular-nums text-slate-900 dark:text-white border-none p-0 focus:ring-0 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+                                                                                                                                                                                                                        </label>
+                                                                                                                                                                                                                    </div>
                                                                                                                                                                                                                 </div>
                                                                                                                                                                                                                 <span class="shrink-0 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wide ${statusClass}">${statusLabel}</span>
                                                                                                                                                                                                             </div>

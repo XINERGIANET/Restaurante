@@ -12,6 +12,7 @@ use App\Models\CashShiftRelation;
 use App\Models\Category;
 use App\Models\DigitalWallet;
 use App\Models\DocumentType;
+use App\Models\Location;
 use App\Models\Movement;
 use App\Models\MovementType;
 use App\Models\Operation;
@@ -251,6 +252,26 @@ class SalesController extends Controller
             ]);
         }
 
+        $branchForClients = null;
+        $departments = collect();
+        $provinces = collect();
+        $districts = collect();
+        if ($branchId) {
+            $branchForClients = Branch::query()->with('company')->find((int) $branchId);
+            $departments = Location::query()
+                ->where('type', 'department')
+                ->orderBy('name')
+                ->get(['id', 'name']);
+            $provinces = Location::query()
+                ->where('type', 'province')
+                ->orderBy('name')
+                ->get(['id', 'name', 'parent_location_id']);
+            $districts = Location::query()
+                ->where('type', 'district')
+                ->orderBy('name')
+                ->get(['id', 'name', 'parent_location_id']);
+        }
+
         $viewData = [
             'sales' => $sales,
             'search' => $search,
@@ -259,6 +280,10 @@ class SalesController extends Controller
             'operaciones' => $operaciones,
             'viewId' => $viewId,
             'branchId' => $branchId,
+            'branch' => $branchForClients,
+            'departments' => $departments,
+            'provinces' => $provinces,
+            'districts' => $districts,
             'dateFrom' => $dateFrom,
             'dateTo' => $dateTo,
             'documentTypeId' => $documentTypeId,

@@ -82,6 +82,10 @@
             };
         @endphp
 
+        <script>
+            window.__salesConvertClientOptions = @json($convertClientOptions);
+        </script>
+
         <x-common.page-breadcrumb pageTitle="Ventas" />
 
         <x-common.component-card title="Listado de ventas" desc="Gestiona las ventas registradas.">
@@ -677,6 +681,7 @@
             personId = $event.detail.currentPersonId ?? '';
             documentTypeId = '{{ $firstConvertibleDocumentTypeId }}';
         "
+        x-on:sales-convert-client-selected.window="personId = $event.detail.id"
         x-show="open" x-cloak
         class="fixed inset-0 z-[120] items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm"
         :class="{ 'flex': open }">
@@ -710,9 +715,20 @@
 
                 <div>
                     <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Cliente</label>
-                    <x-form.select.combobox :options="$convertClientOptions" x-model="personId"
-                        name="person_id" placeholder="Buscar cliente..." :hide-icon="true"
-                        :clearable="true" class="w-full" />
+                    <div class="flex gap-2 items-start">
+                        <div class="min-w-0 flex-1">
+                            <x-form.select.combobox :options="$convertClientOptions" x-model="personId"
+                                name="person_id" placeholder="Buscar cliente..." :hide-icon="true"
+                                :clearable="true" class="w-full" />
+                        </div>
+                        @if ($branch ?? null)
+                            <button type="button" title="Nuevo cliente"
+                                onclick="window.dispatchEvent(new CustomEvent('open-person-modal'))"
+                                class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-gray-300 bg-white text-[#FF4622] hover:bg-[#FF4622]/10 dark:border-gray-600 dark:bg-gray-800 dark:hover:bg-[#FF4622]/20">
+                                <i class="ri-add-line text-xl"></i>
+                            </button>
+                        @endif
+                    </div>
                     <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                         Para factura debes elegir un cliente con RUC válido.
                     </p>
@@ -731,6 +747,51 @@
             </form>
         </div>
     </div>
+
+    @if ($branch ?? null)
+        <x-ui.modal x-data="{ open: false }" @open-person-modal.window="open = true"
+            @close-person-modal.window="open = false" :isOpen="false" :showCloseButton="false" class="max-w-4xl z-[140]">
+            <div class="p-6 sm:p-8 bg-white dark:bg-gray-800">
+                <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="flex items-center gap-4">
+                        <div
+                            class="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#FF4622]/10 text-[#FF4622] dark:bg-[#FF4622]/20 dark:text-[#FF4622]">
+                            <i class="ri-user-add-line text-2xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-900 dark:text-white">Registrar / Editar Cliente</h3>
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Ingresa DNI y nombre de la persona.
+                            </p>
+                        </div>
+                    </div>
+                    <button type="button" @click="open = false"
+                        class="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600 transition-colors">
+                        <i class="ri-close-line text-xl"></i>
+                    </button>
+                </div>
+
+                <form id="quick-client-form-sales-convert" method="POST" data-client-combobox-name="person_id"
+                    action="{{ route('admin.companies.branches.people.store', [$branch->company_id ?? '0', $branch->id ?? '0']) }}"
+                    class="space-y-6">
+                    @csrf
+                    <input type="hidden" name="redirect_to" value="{{ request()->fullUrl() }}">
+                    <input type="hidden" name="from_pos" value="1">
+                    @include('orders._quick_client_form', ['person' => null])
+
+                    <div class="flex flex-wrap gap-3 justify-end pt-4 border-t border-gray-100 dark:border-gray-700">
+                        <button type="button" @click="open = false"
+                            class="px-5 py-2.5 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700 transition-colors">
+                            Cancelar
+                        </button>
+                        <button type="submit"
+                            class="px-5 py-2.5 rounded-xl bg-[#FF4622] text-white font-semibold hover:bg-[#C43B25] shadow-lg shadow-[#FF4622]/30 transition-all">
+                            <i class="ri-save-line mr-1"></i> Guardar Cliente
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </x-ui.modal>
+    @endif
 
     @push('scripts')
         @vite(['resources/js/qz-tray-init.js'])
@@ -1018,6 +1079,78 @@
 
                 window.open(url.toString(), '_blank');
             }
+
+            function setupSalesConvertQuickClientForm() {
+                const form = document.getElementById('quick-client-form-sales-convert');
+                if (!form || form.dataset.boundSalesConvert === '1') return;
+                form.dataset.boundSalesConvert = '1';
+                form.addEventListener('submit', async function (e) {
+                    e.preventDefault();
+                    const submitBtn = form.querySelector('button[type="submit"]');
+                    const originalText = submitBtn ? submitBtn.innerHTML : '';
+                    if (submitBtn) {
+                        submitBtn.disabled = true;
+                        submitBtn.innerHTML =
+                            '<i class="ri-loader-4-line animate-spin mr-1"></i> Guardando...';
+                    }
+                    try {
+                        const fd = new FormData(form);
+                        const res = await fetch(form.action, {
+                            method: 'POST',
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'Accept': 'application/json'
+                            },
+                            body: fd
+                        });
+                        const data = await res.json().catch(() => ({}));
+                        if (!res.ok || !data?.success || !data?.id) {
+                            const validation = data?.errors && typeof data.errors === 'object' ?
+                                Object.values(data.errors).flat().join('\n') :
+                                '';
+                            throw new Error(validation || data?.message || 'No se pudo crear el cliente.');
+                        }
+
+                        const comboName = form.dataset.clientComboboxName || 'person_id';
+                        const label = (data.description && String(data.description).trim() !== '') ?
+                            data.description :
+                            ([data.name, data.document_number].filter(Boolean).join(' - ') || 'Cliente');
+                        const newOpts = [...(window.__salesConvertClientOptions || [])];
+                        if (!newOpts.some(o => String(o.id) === String(data.id))) {
+                            newOpts.push({
+                                id: data.id,
+                                description: label
+                            });
+                        } else {
+                            const o = newOpts.find(x => String(x.id) === String(data.id));
+                            if (o) {
+                                o.description = label;
+                            }
+                        }
+                        window.__salesConvertClientOptions = newOpts;
+                        window.dispatchEvent(new CustomEvent('update-combobox-options', {
+                            detail: {
+                                name: comboName,
+                                options: newOpts
+                            }
+                        }));
+                        window.dispatchEvent(new CustomEvent('sales-convert-client-selected', {
+                            detail: { id: data.id }
+                        }));
+                        window.dispatchEvent(new CustomEvent('close-person-modal'));
+                    } catch (err) {
+                        alert(err?.message || 'Error al crear cliente.');
+                    } finally {
+                        if (submitBtn) {
+                            submitBtn.disabled = false;
+                            submitBtn.innerHTML = originalText;
+                        }
+                    }
+                });
+            }
+            setupSalesConvertQuickClientForm();
+            document.addEventListener('DOMContentLoaded', setupSalesConvertQuickClientForm);
+            document.addEventListener('turbo:load', setupSalesConvertQuickClientForm);
         </script>
     @endpush
 @endsection
