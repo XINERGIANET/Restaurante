@@ -1882,6 +1882,20 @@ class OrderController extends Controller
             return redirect()->back()->with('error', 'Debe ingresar el PIN del mozo.');
         }
 
+        $hasCancellationQty = collect($cancellations)->contains(function ($c) {
+            return ((float) ($c['qtyCanceled'] ?? $c['quantity'] ?? 0)) > 0;
+        });
+        if ($isMozoProfile && $hasCancellationQty) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No tiene permiso para anular productos ya enviados a cocina.',
+                ], 403);
+            }
+
+            return redirect()->back()->with('error', 'No tiene permiso para anular productos ya enviados a cocina.');
+        }
+
         // Subtotal: usar el enviado por el front o recalcular desde items
         $subtotal = $request->has('subtotal') ? (float) $request->subtotal : 0;
         if ($subtotal == 0 && ! empty($items)) {
