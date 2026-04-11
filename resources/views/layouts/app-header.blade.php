@@ -1,4 +1,4 @@
-<header style="height: 55px; background: linear-gradient(150deg, #FF4622 0%, #C43B25 100%) !important;"
+<header style="min-height: 55px; background: linear-gradient(150deg, #FF4622 0%, #C43B25 100%) !important;"
     class="sticky top-0 flex w-full z-99999 dark:border-gray-800 dark:bg-gray-900" x-data="{
         isApplicationMenuOpen: false,
         toggleApplicationMenu() {
@@ -85,7 +85,7 @@
 
         <!-- Application Menu (mobile) and Right Side Actions (desktop) -->
         <div :class="isApplicationMenuOpen ? 'flex' : 'hidden'"
-            class="items-center justify-between w-full gap-4 px-5 py-4 xl:flex shadow-theme-md xl:justify-end xl:px-0 xl:shadow-none border-t border-white/5 xl:border-0">
+            class="items-center justify-between w-full gap-4 px-5 py-4 xl:flex shadow-theme-md xl:justify-end xl:px-0 xl:shadow-none border-t border-white/5 xl:border-0 max-xl:bg-[linear-gradient(150deg,#FF4622_0%,#C43B25_100%)]">
             <div class="flex items-center gap-2 2xsm:gap-3">
                 @if (!($isMozo ?? false) && !empty($quickOptions) && $quickOptions->count())
                     <div class="hidden xl:flex items-center gap-3">
