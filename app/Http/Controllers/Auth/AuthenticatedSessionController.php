@@ -74,10 +74,7 @@ class AuthenticatedSessionController extends Controller
             // - Mozo: SIEMPRE a Salones de Pedidos (ignorar URL "intended" y vista por defecto)
             // - Otros: dashboard; si el perfil tiene default_view_id, se añade ?view_id= al destino por defecto
             if ($profileId) {
-                $mozoProfileId = Profile::query()
-                    ->whereNull('deleted_at')
-                    ->whereRaw('LOWER(TRIM(name)) = ?', ['mozo'])
-                    ->value('id');
+                $mozoProfileId = Profile::mozoProfileId();
                 if ($mozoProfileId && (int) $profileId === (int) $mozoProfileId) {
                     return redirect()->route('orders.index');
                 }

@@ -24,16 +24,9 @@ if (!function_exists('current_user_is_mozo')) {
     function current_user_is_mozo(): bool
     {
         $profileId = session('profile_id') ?? auth()->user()?->profile_id;
-        if (! $profileId) {
-            return false;
-        }
+        $resolved = $profileId !== null && $profileId !== '' ? (int) $profileId : null;
 
-        $mozoId = \App\Models\Profile::query()
-            ->whereNull('deleted_at')
-            ->whereRaw('LOWER(TRIM(name)) = ?', ['mozo'])
-            ->value('id');
-
-        return $mozoId && (int) $profileId === (int) $mozoId;
+        return \App\Models\Profile::userHasMozoProfile($resolved);
     }
 }
 

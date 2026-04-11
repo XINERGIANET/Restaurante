@@ -31,12 +31,9 @@ class AppServiceProvider extends ServiceProvider
             $isMozo = false;
             $hasMultipleModules = false;
             if (Auth::check()) {
-                $profileId = Auth::user()->profile_id;
-                $mozoId = Profile::query()
-                    ->whereNull('deleted_at')
-                    ->whereRaw('LOWER(TRIM(name)) = ?', ['mozo'])
-                    ->value('id');
-                $isMozo = $mozoId && $profileId && (int) $profileId === (int) $mozoId;
+                $profileId = session('profile_id') ?? Auth::user()?->profile_id;
+                $resolved = $profileId !== null && $profileId !== '' ? (int) $profileId : null;
+                $isMozo = Profile::userHasMozoProfile($resolved);
                 $hasMultipleModules = MenuOption::where('status', 1)->pluck('module_id')->unique()->count() > 1;
             }
             $view->with(compact('isMozo', 'hasMultipleModules'));

@@ -187,7 +187,7 @@
                                                     class="w-8 h-8 flex items-center justify-center bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition">
                                                     <i class="ri-drag-move-2-line text-sm"></i>
                                                 </button>
-                                                <template x-if="canCharge">
+                                                <template x-if="!isMozo">
                                                     <button type="button" @click.stop="closeTable(table)" title="Cerrar mesa"
                                                         class="w-8 h-8 flex items-center justify-center bg-red-400 hover:bg-red-600 text-white rounded-lg transition">
                                                         <i class="ri-close-circle-line text-sm"></i>
@@ -467,6 +467,7 @@
                     cancelOrderUrl: cancelOrderUrl,
                     cancelOrderToken: @json(csrf_token()),
                     canCharge: @json($canCharge ?? true),
+                    isMozo: @json($isMozo ?? false),
                     waiterPinEnabled: @json($waiterPinEnabled ?? false),
                     waiterPinBranchId: @json((int) session('branch_id')),
                     validateWaiterPinUrl: @json(route('orders.validateWaiterPin')),
@@ -851,12 +852,12 @@
 
 
                     closeTable(table) {
-                        if (!this.canCharge) {
+                        if (this.isMozo) {
                             if (window.Swal) {
                                 Swal.fire({
                                     icon: 'info',
                                     title: 'No permitido',
-                                    text: 'Los usuarios con perfil Mozo no pueden anular ni cerrar el pedido desde aquí.',
+                                    text: 'El perfil Mozo no puede anular ni cerrar el pedido desde aquí.',
                                 });
                             }
                             return;

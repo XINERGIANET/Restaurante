@@ -64,15 +64,9 @@ class OrderController extends Controller
         return in_array($v, ['1', 'true', 'si', 'sí', 'yes', 'y', 'on'], true);
     }
 
-    /** Perfil "Mozo" por nombre (solo se pide PIN a este perfil). */
     private function mozoProfileId(): ?int
     {
-        $id = Profile::query()
-            ->whereNull('deleted_at')
-            ->whereRaw('LOWER(TRIM(name)) = ?', ['mozo'])
-            ->value('id');
-
-        return $id ? (int) $id : null;
+        return Profile::mozoProfileId();
     }
 
     /** Solo pedir PIN cuando la sucursal lo tiene activo Y el usuario tiene perfil Mozo. */
@@ -93,13 +87,12 @@ class OrderController extends Controller
     /** El perfil Mozo puede guardar pedidos pero NO puede cobrar. */
     private function canCharge($profileId): bool
     {
-        $mozoId = $this->mozoProfileId();
-        if ($mozoId === null) {
+        if ($this->mozoProfileId() === null) {
             return true;
         }
         $currentProfileId = $profileId !== null && $profileId !== '' ? (int) $profileId : null;
 
-        return $currentProfileId !== $mozoId;
+        return ! Profile::userHasMozoProfile($currentProfileId);
     }
 
     private function clienteRoleId(): ?int
@@ -591,6 +584,9 @@ class OrderController extends Controller
             'user' => $request->user(),
             'waiterPinEnabled' => $waiterPinEnabled,
             'canCharge' => $this->canCharge($profileId),
+            'isMozo' => Profile::userHasMozoProfile(
+                $profileId !== null && $profileId !== '' ? (int) $profileId : null
+            ),
             'selectedAreaId' => $selectedAreaId,
             'turboCacheControl' => 'no-cache',
         ]);
@@ -1195,7 +1191,9 @@ class OrderController extends Controller
             'waiterPinEnabled' => $this->shouldRequireWaiterPin((int) $branchId, $profileId),
             'deliveryAreaId' => $deliveryAreaId,
             'canCharge' => $this->canCharge($profileId),
-            'isMozo' => ! $this->canCharge($profileId),
+            'isMozo' => Profile::userHasMozoProfile(
+                $profileId !== null && $profileId !== '' ? (int) $profileId : null
+            ),
             'departments' => $departments,
             'provinces' => $provinces,
             'districts' => $districts,
@@ -1570,7 +1568,9 @@ class OrderController extends Controller
             'waiterPinEnabled' => $this->shouldRequireWaiterPin((int) $branchId, $profileId),
             'deliveryAreaId' => $deliveryAreaId,
             'canCharge' => $this->canCharge($profileId),
-            'isMozo' => ! $this->canCharge($profileId),
+            'isMozo' => Profile::userHasMozoProfile(
+                $profileId !== null && $profileId !== '' ? (int) $profileId : null
+            ),
             'departments' => $departments,
             'provinces' => $provinces,
             'districts' => $districts,
@@ -1590,7 +1590,9 @@ class OrderController extends Controller
     public function charge(Request $request)
     {
         $profileId = session('profile_id') ?? $request->user()?->profile_id;
-        if (! $this->canCharge($profileId)) {
+        if (Profile::userHasMozoProfile(
+            $profileId !== null && $profileId !== '' ? (int) $profileId : null
+        )) {
             return redirect()
                 ->route('orders.index')
                 ->with('error', 'Tu perfil (Mozo) no tiene permiso para cobrar. Solo puedes guardar pedidos.');
@@ -1837,7 +1839,9 @@ class OrderController extends Controller
         $user = $request->user();
         $profileId = session('profile_id') ?? $user?->profile_id;
         $waiterPinEnabled = $this->shouldRequireWaiterPin($branchId ? (int) $branchId : null, $profileId);
-        $isMozoProfile = ! $this->canCharge($profileId);
+        $isMozoProfile = Profile::userHasMozoProfile(
+            $profileId !== null && $profileId !== '' ? (int) $profileId : null
+        );
         $waiterIdFrontend = $request->input('waiter_id');
         $responsibleId = $user?->id; // default
         if ($isMozoProfile) {
@@ -1889,11 +1893,11 @@ class OrderController extends Controller
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'No tiene permiso para anular productos ya enviados a cocina.',
+                    'message' => 'El perfil Mozo no puede anular productos ya enviados a cocina.',
                 ], 403);
             }
 
-            return redirect()->back()->with('error', 'No tiene permiso para anular productos ya enviados a cocina.');
+            return redirect()->back()->with('error', 'El perfil Mozo no puede anular productos ya enviados a cocina.');
         }
 
         // Subtotal: usar el enviado por el front o recalcular desde items
@@ -2661,7 +2665,9 @@ class OrderController extends Controller
     {
 
         $profileId = session('profile_id') ?? $request->user()?->profile_id;
-        if (! $this->canCharge($profileId)) {
+        if (Profile::userHasMozoProfile(
+            $profileId !== null && $profileId !== '' ? (int) $profileId : null
+        )) {
             return response()->json([
                 'success' => false,
                 'message' => 'Tu perfil (Mozo) no tiene permiso para cobrar. Solo puedes guardar pedidos.',
@@ -3354,10 +3360,11 @@ class OrderController extends Controller
     public function cancelOrder(Request $request)
     {
         $profileId = session('profile_id') ?? $request->user()?->profile_id;
-        if (! $this->canCharge($profileId)) {
+        $resolvedPid = $profileId !== null && $profileId !== '' ? (int) $profileId : null;
+        if (Profile::userHasMozoProfile($resolvedPid)) {
             return response()->json([
                 'success' => false,
-                'message' => 'No tiene permiso para anular o cerrar el pedido.',
+                'message' => 'El perfil Mozo no puede anular ni cerrar el pedido.',
             ], 403);
         }
 

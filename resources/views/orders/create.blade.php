@@ -666,7 +666,7 @@
             <x-ui.modal x-data="removeQuantityModal()" @open-remove-quantity-modal.window="
                                                                                                                             if (@json($isMozo ?? false)) {
                                                                                                                                 if (window.Swal) {
-                                                                                                                                    window.Swal.fire({ icon: 'info', title: 'No permitido', text: 'Los usuarios con perfil Mozo no pueden anular cantidades ya comandadas.' });
+                                                                                                                                    window.Swal.fire({ icon: 'info', title: 'No permitido', text: 'El perfil Mozo no puede anular cantidades ya comandadas.' });
                                                                                                                                 }
                                                                                                                                 return;
                                                                                                                             }
@@ -2843,6 +2843,14 @@
 
                         // Disminuir cantidad (si pedido guardado, no bajar de savedQty)
                         const savedQty = Number.isFinite(parseFloat(item.savedQty)) ? parseFloat(item.savedQty) : 0;
+                        if (isMozoProfile && newQty < 1) {
+                            if (typeof showNotification === 'function') {
+                                showNotification('No permitido', 'El perfil Mozo no puede dejar el pedido sin ese producto.', 'info');
+                            } else if (window.Swal) {
+                                window.Swal.fire({ icon: 'info', title: 'No permitido', text: 'El perfil Mozo no puede dejar el pedido sin ese producto.' });
+                            }
+                            return;
+                        }
                         if (currentTable.order_movement_id && savedQty > 0) {
                             newQty = Math.max(savedQty, newQty);
                         }
@@ -2919,6 +2927,14 @@
                     }
 
                     async function confirmRemoveLine(index) {
+                        if (isMozoProfile) {
+                            if (typeof showNotification === 'function') {
+                                showNotification('No permitido', 'El perfil Mozo no puede eliminar productos del pedido.', 'info');
+                            } else if (window.Swal) {
+                                window.Swal.fire({ icon: 'info', title: 'No permitido', text: 'El perfil Mozo no puede eliminar productos del pedido.' });
+                            }
+                            return;
+                        }
                         if (!currentTable.items || index < 0 || index >= currentTable.items.length) return;
                         const item = currentTable.items[index];
                         const qty = parseInt(item.qty, 10) || 1;
@@ -2945,6 +2961,14 @@
                     }
 
                     async function removeFromCart(index) {
+                        if (isMozoProfile) {
+                            if (typeof showNotification === 'function') {
+                                showNotification('No permitido', 'El perfil Mozo no puede eliminar productos del pedido.', 'info');
+                            } else if (window.Swal) {
+                                window.Swal.fire({ icon: 'info', title: 'No permitido', text: 'El perfil Mozo no puede eliminar productos del pedido.' });
+                            }
+                            return;
+                        }
                         if (!currentTable.items || index < 0 || index >= currentTable.items.length) return;
                         const item = currentTable.items[index];
                         const qty = parseInt(item.qty, 10) || 1;
@@ -2954,9 +2978,9 @@
                     function applyRemoveQuantity(index, qtyToRemove, reason) {
                         if (isMozoProfile) {
                             if (typeof showNotification === 'function') {
-                                showNotification('No permitido', 'No puede anular cantidades ya comandadas.', 'info');
+                                showNotification('No permitido', 'El perfil Mozo no puede anular cantidades ya comandadas.', 'info');
                             } else if (window.Swal) {
-                                window.Swal.fire({ icon: 'info', title: 'No permitido', text: 'No puede anular cantidades ya comandadas.' });
+                                window.Swal.fire({ icon: 'info', title: 'No permitido', text: 'El perfil Mozo no puede anular cantidades ya comandadas.' });
                             }
                             return;
                         }
@@ -3188,10 +3212,12 @@
                                 const qtyMinusDisabled = canReduce ? '' : ' disabled';
                                 const qtyMinusClass = canReduce ? ' hover:bg-slate-100 dark:hover:bg-slate-700 font-bold' : ' opacity-30 cursor-not-allowed';
                                 const qtyMinusOnclick = canReduce ? `onclick="updateQty(${index}, -1)"` : '';
-                                const trashOnclick = itemIsComandado
-                                    ? (isMozoProfile ? '' : `onclick="window.dispatchEvent(new CustomEvent('open-remove-quantity-modal', { detail: { index: ${index}, maxQty: ${itemQty}, productName: '${String(prod.name || 'Producto').replace(/\\/g, '\\\\').replace(/'/g, "\\'")}', isComandado: true } }))"`)
-                                    : `onclick="removeFromCart(${index})"`;
-                                const trashHiddenMozoComandado = (isMozoProfile && itemIsComandado) ? ' hidden' : '';
+                                const trashOnclick = isMozoProfile
+                                    ? ''
+                                    : (itemIsComandado
+                                        ? `onclick="window.dispatchEvent(new CustomEvent('open-remove-quantity-modal', { detail: { index: ${index}, maxQty: ${itemQty}, productName: '${String(prod.name || 'Producto').replace(/\\/g, '\\\\').replace(/'/g, "\\'")}', isComandado: true } }))"`
+                                        : `onclick="removeFromCart(${index})"`);
+                                const trashHiddenMozo = isMozoProfile ? ' hidden' : '';
                                 const hasCourtesy = (parseFloat(item.courtesyQty) || 0) > 0;
                                 const showNoteBox = item.noteOpen === true || (item.noteOpen === undefined && hasNote);
                                 const showCourtesyBox = item.courtesyOpen === true || (item.courtesyOpen === undefined && hasCourtesy);
@@ -3269,7 +3295,7 @@
                                                                                                                                                                                                                 <button type="button" onclick="toggleCourtesyInput(${index})" class="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-colors ${courtesyBtnActive ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300' : 'text-slate-500 hover:bg-slate-100 hover:text-emerald-600 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-emerald-400'}">
                                                                                                                                                                                                                     <i class="${courtesyBtnActive ? 'ri-star-fill' : 'ri-star-line'}"></i> Cortesía
                                                                                                                                                                                                                 </button>
-                                                                                                                                                                                                                <button type="button" ${trashOnclick} class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-red-500/10 hover:text-red-500 dark:text-zinc-500 dark:hover:text-red-400${trashHiddenMozoComandado}" title="Quitar o anular cantidad">
+                                                                                                                                                                                                                <button type="button" ${trashOnclick} class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-red-500/10 hover:text-red-500 dark:text-zinc-500 dark:hover:text-red-400${trashHiddenMozo}" title="Quitar o anular cantidad">
                                                                                                                                                                                                                     <i class="ri-delete-bin-line text-lg"></i>
                                                                                                                                                                                                                 </button>
                                                                                                                                                                                                             </div>
