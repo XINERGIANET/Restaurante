@@ -3339,6 +3339,14 @@ class OrderController extends Controller
 
     public function cancelOrder(Request $request)
     {
+        $profileId = session('profile_id') ?? $request->user()?->profile_id;
+        if (! $this->canCharge($profileId)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No tiene permiso para anular o cerrar el pedido.',
+            ], 403);
+        }
+
         $cancelReason = trim((string) $request->input('cancel_reason'));
         $tableId = $request->input('table_id');
 
