@@ -8,6 +8,11 @@ return [
 
     'certificate_path' => env('QZ_CERTIFICATE_PATH') ?: storage_path('app/qz/digital-certificate.txt'),
 
+    // Reserva: otro PC / otra ticketera (mismo par certificado+clave generado en esa máquina).
+    'private_key_path_secondary' => env('QZ2_PRIVATE_KEY_PATH') ?: storage_path('app/qz2/private-key.pem'),
+
+    'certificate_path_secondary' => env('QZ2_CERTIFICATE_PATH') ?: storage_path('app/qz2/digital-certificate.txt'),
+
     'printer_name' => env('QZ_PRINTER_NAME', 'BARRA'),
 
     // Algoritmo de firma que validará QZ (debe coincidir con qz.security.setSignatureAlgorithm()).

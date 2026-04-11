@@ -3,37 +3,35 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
 
 class QzTraySigningService
 {
+    private bool $pairLookupDone = false;
+
+    /** @var array{cert: string, key: string, source: string}|null */
+    private ?array $activePair = null;
+
     public function isConfigured(): bool
     {
-        try {
-            return $this->readConfiguredFile('qz.private_key_path', 'clave privada') !== ''
-                && $this->readConfiguredFile('qz.certificate_path', 'certificado') !== '';
-        } catch (\Throwable) {
-            return false;
-        }
+        return $this->getActivePair() !== null;
     }
 
     public function certificateContents(): ?string
     {
-        try {
-            return $this->readConfiguredFile('qz.certificate_path', 'certificado');
-        } catch (\Throwable) {
-            return null;
-        }
+        $pair = $this->getActivePair();
+
+        return $pair['cert'] ?? null;
     }
 
     public function sign(string $request): ?string
     {
-        try {
-            $pem = $this->readConfiguredFile('qz.private_key_path', 'clave privada');
-        } catch (\Throwable) {
+        $pair = $this->getActivePair();
+        if ($pair === null) {
             return null;
         }
 
-        $key = openssl_pkey_get_private($pem);
+        $key = openssl_pkey_get_private($pair['key']);
         if ($key === false) {
             return null;
         }
@@ -48,31 +46,94 @@ class QzTraySigningService
         return base64_encode($signature);
     }
 
-    private function readConfiguredFile(string $configKey, string $label): string
+    /**
+     * @return array{cert: string, key: string, source: string}|null
+     */
+    private function getActivePair(): ?array
+    {
+        if ($this->pairLookupDone) {
+            return $this->activePair;
+        }
+        $this->pairLookupDone = true;
+
+        $primary = $this->buildPairFromConfig(
+            'qz.certificate_path',
+            'qz.private_key_path',
+            'primary'
+        );
+        if ($primary !== null) {
+            $this->activePair = $primary;
+
+            return $this->activePair;
+        }
+
+        $secondary = $this->buildPairFromConfig(
+            'qz.certificate_path_secondary',
+            'qz.private_key_path_secondary',
+            'secondary'
+        );
+        if ($secondary !== null) {
+            Log::info('QZ Tray: el par principal (app/qz) no está disponible o no es válido; usando el par secundario (app/qz2).');
+            $this->activePair = $secondary;
+
+            return $this->activePair;
+        }
+
+        $this->activePair = null;
+
+        return null;
+    }
+
+    /**
+     * @return array{cert: string, key: string, source: string}|null
+     */
+    private function buildPairFromConfig(string $certConfigKey, string $keyConfigKey, string $source): ?array
+    {
+        $cert = $this->readMaterialFromConfigKey($certConfigKey);
+        $key = $this->readMaterialFromConfigKey($keyConfigKey);
+        if ($cert === null || $key === null) {
+            return null;
+        }
+
+        $privateKey = openssl_pkey_get_private($key);
+        if ($privateKey === false) {
+            return null;
+        }
+
+        $probe = '';
+        if (! openssl_sign('xinergia-qz-tray-probe', $probe, $privateKey, $this->opensslAlgorithmFromConfig())) {
+            return null;
+        }
+
+        return [
+            'cert' => $cert,
+            'key' => $key,
+            'source' => $source,
+        ];
+    }
+
+    private function readMaterialFromConfigKey(string $configKey): ?string
     {
         $configured = (string) config($configKey, '');
 
         if (trim($configured) === '') {
-            throw new \RuntimeException("Archivo de {$label} QZ no configurado en {$configKey}.");
+            return null;
         }
 
-        // Soporta caso accidental donde se pegue el contenido PEM/base64 en el .env.
         if (str_contains($configured, 'BEGIN ') || strlen($configured) > 500) {
-            return trim($configured);
+            $content = trim($configured);
+
+            return $content !== '' ? $content : null;
         }
 
         $path = $this->resolvePath($configured);
-
         if (! File::exists($path)) {
-            throw new \RuntimeException("Archivo de {$label} QZ no encontrado en {$path}.");
+            return null;
         }
 
-        $content = (string) File::get($path);
-        if (trim($content) === '') {
-            throw new \RuntimeException("Archivo de {$label} QZ vacío.");
-        }
+        $content = trim((string) File::get($path));
 
-        return $content;
+        return $content !== '' ? $content : null;
     }
 
     private function resolvePath(string $path): string
@@ -91,9 +152,16 @@ class QzTraySigningService
     private function opensslAlgorithmFromConfig(): int
     {
         $algo = strtoupper((string) config('qz.signature_algorithm', 'SHA512'));
-        if ($algo === 'SHA512') return OPENSSL_ALGO_SHA512;
-        if ($algo === 'SHA384') return OPENSSL_ALGO_SHA384;
-        if ($algo === 'SHA256') return OPENSSL_ALGO_SHA256;
+        if ($algo === 'SHA512') {
+            return OPENSSL_ALGO_SHA512;
+        }
+        if ($algo === 'SHA384') {
+            return OPENSSL_ALGO_SHA384;
+        }
+        if ($algo === 'SHA256') {
+            return OPENSSL_ALGO_SHA256;
+        }
+
         return OPENSSL_ALGO_SHA1;
     }
 }
