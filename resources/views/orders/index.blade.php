@@ -144,6 +144,11 @@
                 
                                     {{-- Grid de metadata --}}
                                     <div class="flex flex-col gap-y-2 flex-1">
+                                        <div class="min-w-0" x-show="hasActiveSearch">
+                                            <p class="text-[10px] text-gray-400 dark:text-gray-500">Área</p>
+                                            <p class="text-xs font-semibold text-[#F37022] dark:text-orange-300/90 truncate"
+                                                x-text="resolveAreaName(table.area_id)" :title="resolveAreaName(table.area_id)"></p>
+                                        </div>
                                         <div class="min-w-0" x-show="table.situation === 'ocupada'">
                                             <p class="text-[10px] text-gray-400 dark:text-gray-500">Mozo</p>
                                             <p class="text-xs font-medium text-gray-800 dark:text-white truncate"
@@ -466,9 +471,17 @@
                     waiterPinBranchId: @json((int) session('branch_id')),
                     validateWaiterPinUrl: @json(route('orders.validateWaiterPin')),
                     filteredTables: safeFilteredTables,
+                    hasActiveSearch: false,
                     waiter: null,
                     canScrollAreasLeft: false,
                     canScrollAreasRight: false,
+
+                    resolveAreaName(areaId) {
+                        const id = Number(areaId);
+                        if (!id || isNaN(id)) return '—';
+                        const a = (this.areas || []).find(x => Number(x.id) === id);
+                        return a && a.name ? String(a.name) : '—';
+                    },
 
                     getStoredWaiter() {
                         try {
@@ -716,13 +729,22 @@
                         try {
                             if (!this.tables || !Array.isArray(this.tables)) {
                                 this.filteredTables = [];
+                                this.hasActiveSearch = false;
                                 return;
                             }
 
                             let list = [...this.tables];
 
-                            // Filtro por Área
-                            if (this.areas && this.areas.length > 0 && this.currentAreaId) {
+                            // Términos de búsqueda (input actual + chips): si hay búsqueda activa, no limitamos por área
+                            const currentInput = String(this.searchQuery || '').trim().toLowerCase();
+                            let searchTerms = [...this.activeFilters.map(f => f.toLowerCase())];
+                            if (currentInput.length > 0) {
+                                searchTerms.push(...currentInput.split(/\s+/).filter(term => term.length > 0));
+                            }
+                            const hasActiveSearch = searchTerms.length > 0;
+
+                            // Filtro por Área (solo cuando no hay búsqueda: el buscador es global entre todas las áreas)
+                            if (!hasActiveSearch && this.areas && this.areas.length > 0 && this.currentAreaId) {
                                 const areaId = Number(this.currentAreaId);
                                 if (!isNaN(areaId)) {
                                     list = list.filter(t => {
@@ -736,18 +758,6 @@
                             if (this.statusChip) {
                                 const status = String(this.statusChip).toLowerCase();
                                 list = list.filter(t => String(t.situation || '').toLowerCase() === status);
-                            }
-
-                            // NUEVO FILTRO MULTIPLE: Combinar input actual + chips guardados
-                            const currentInput = String(this.searchQuery || '').trim().toLowerCase();
-
-                            // Extraemos todos los términos de búsqueda activos
-                            let searchTerms = [...this.activeFilters.map(f => f.toLowerCase())];
-
-                            // Si el usuario está escribiendo algo pero aún no presiona Enter, lo consideramos también
-                            if (currentInput.length > 0) {
-                                searchTerms.push(...currentInput.split(/\s+/).filter(term => term.length >
-                                    0));
                             }
 
                             // Si hay términos que buscar, aplicamos el filtro
@@ -771,10 +781,12 @@
                                 });
                             }
 
+                            this.hasActiveSearch = hasActiveSearch;
                             this.filteredTables = list;
                         } catch (error) {
                             console.error('Error en updateFilteredTables:', error);
                             this.filteredTables = [];
+                            this.hasActiveSearch = false;
                         }
                     },
 
