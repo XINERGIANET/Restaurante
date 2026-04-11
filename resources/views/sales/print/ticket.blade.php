@@ -290,6 +290,9 @@
         @endif
         <p class="company">{{ strtoupper($branchForLogo->legal_name ?? 'SUCURSAL') }}</p>
         <p class="subhead">RUC: {{ $branchForLogo->ruc ?? '-' }}</p>
+        @if(!empty(trim((string) ($branchForLogo->address ?? ''))))
+            <p class="subhead">Suc.: {{ trim((string) $branchForLogo->address) }}</p>
+        @endif
         <p class="subhead">{{ $docName }}</p>
         <p class="doc-code">{{ $docCode }}</p>
     </div>
@@ -306,7 +309,7 @@
             <td class="info-value">{{ $customerName }}</td>
         </tr>
         <tr>
-            <td class="info-label">Dir.:</td>
+            <td class="info-label">Dir. cliente:</td>
             <td class="info-value">{{ $sale->person?->address ?? '-' }}</td>
         </tr>
         <tr>

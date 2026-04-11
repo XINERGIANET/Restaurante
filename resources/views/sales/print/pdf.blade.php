@@ -67,6 +67,9 @@
         @endif
         <h3 style="margin:12px 0 2px;">{{ strtoupper($branchForLogo->legal_name ?? 'SUCURSAL') }}</h3>
         <p style="margin:0;">RUC: {{ $branchForLogo->ruc ?? '-' }}</p>
+        @if(!empty(trim((string) ($branchForLogo->address ?? ''))))
+            <p style="margin:4px 0 0;">Suc.: {{ trim((string) $branchForLogo->address) }}</p>
+        @endif
     </div>
     <div class="doc-box">
         <h1>{{ $docName }}</h1>
@@ -88,7 +91,7 @@
         <td>{{ $customerDocument }}</td>
     </tr>
     <tr>
-        <td class="label">Direccion:</td>
+        <td class="label">Direccion cliente:</td>
         <td>{{ $sale->person?->address ?? '-' }}</td>
     </tr>
     <tr>

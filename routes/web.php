@@ -122,10 +122,12 @@ Route::middleware('auth')->group(function () {
         ->names('admin.roles')
         ->parameters(['roles' => 'role'])
         ->only(['index', 'store', 'edit', 'update', 'destroy']);
+    Route::get('/ventas/create', [OrderController::class, 'createCounterSalePos'])
+        ->name('sales.create');
     Route::resource('/ventas', SalesController::class)
         ->names('sales')
         ->parameters(['ventas' => 'sale'])
-        ->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
+        ->only(['index', 'store', 'edit', 'update', 'destroy']);
     Route::get('/admin/ventas/pdf', [SalesController::class, 'exportPdf'])->name('admin.sales.pdf');
     Route::get('/admin/ventas/excel', [SalesController::class, 'exportExcel'])->name('admin.sales.excel');
     Route::get('/admin/ventas/pdf/{sale}', [SalesController::class, 'printPdf'])->name('admin.sales.print.pdf');

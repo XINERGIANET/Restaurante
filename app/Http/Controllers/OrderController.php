@@ -1155,6 +1155,7 @@ class OrderController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'parent_location_id']);
 
+        $viewIdForPos = $request->query('view_id');
         $response = response()->view('orders.create', [
             'user' => $user,
             'person' => $person,
@@ -1200,6 +1201,385 @@ class OrderController extends Controller
             'districts' => $districts,
             'turboCacheControl' => 'no-cache',
             'allowZeroStockSales' => (bool) ($branch?->allow_zero_stock_sales ?? true),
+            'afterPaymentIndexUrl' => route('orders.index', $viewIdForPos ? ['view_id' => $viewIdForPos] : []),
+        ]);
+        $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+        $response->headers->set('Pragma', 'no-cache');
+
+        return $response;
+    }
+
+    /**
+     * POS Ventas: misma vista y lógica que Pedidos/create, sin mesa (pedido sin table_id por usuario).
+     */
+    public function createCounterSalePos(Request $request)
+    {
+        $profileId = session('profile_id');
+        $personId = session('person_id');
+        $userId = session('user_id');
+
+        $user = User::find($userId);
+        $person = Person::find($personId);
+        $profile = Profile::find($profileId);
+
+        $branchId = (int) (session('branch_id') ?? 0) ?: null;
+        if (! $branchId) {
+            abort(404, 'Sin sucursal en sesión');
+        }
+        $branch = Branch::findOrFail($branchId);
+        $area = Area::where('branch_id', $branchId)->orderBy('id')->first();
+        if (! $area) {
+            $area = new Area(['name' => 'Local', 'branch_id' => $branchId]);
+        }
+
+        $table = new \stdClass();
+        $table->id = 0;
+        $table->name = 'Mostrador';
+        $table->area_id = $area->id ?? null;
+        $table->branch_id = $branchId;
+        $table->capacity = 1;
+        $table->situation = 'ocupada';
+        $table->area = $area;
+
+        $people = $this->resolveClientPeople($branchId);
+        $waiters = $this->resolveWaiters($branchId);
+
+        $products = Product::where('type', 'PRODUCT')
+            ->where(function ($q) {
+                $q->whereNull('product_type_id')
+                    ->orWhereHas('productType', fn ($q2) => $q2->whereIn('behavior', [
+                        ProductType::BEHAVIOR_SELLABLE,
+                        ProductType::BEHAVIOR_BOTH,
+                    ]));
+            })
+            ->when($branchId, function ($query) use ($branchId) {
+                $query->whereHas('productBranches', function ($q) use ($branchId) {
+                    $q->where('branch_id', $branchId);
+                })
+                    ->whereExists(function ($sub) use ($branchId) {
+                        $sub->select(DB::raw(1))
+                            ->from('category_branch')
+                            ->whereColumn('category_branch.category_id', 'products.category_id')
+                            ->where('category_branch.branch_id', $branchId)
+                            ->whereIn('category_branch.menu_type', ['VENTAS_PEDIDOS', 'COMPRAS', 'GENERAL'])
+                            ->whereNull('category_branch.deleted_at');
+                    });
+            }, function ($query) {
+                $query->whereRaw('1 = 0');
+            })
+            ->with('category')
+            ->orderBy('description')
+            ->get()
+            ->map(function ($product) use ($branchId) {
+                $imageUrl = ($product->image && ! empty($product->image))
+                    ? asset('storage/' . $product->image)
+                    : null;
+
+                return [
+                    'id' => $product->id,
+                    'name' => $product->description,
+                    'img' => $imageUrl,
+                    'category' => $product->category ? $product->category->description : 'Sin categoría',
+                    'category_id' => $product->category_id,
+                    'detail_options' => collect($product->detail_options ?? [])->map(fn ($item) => trim((string) $item))->filter()->values()->all(),
+                    'table_id' => null,
+                    'branch_id' => $branchId,
+                ];
+            });
+
+        $productBranches = $branchId
+            ? ProductBranch::where('branch_id', $branchId)
+            ->with(['product.productType', 'taxRate', 'printers'])
+            ->get()
+            ->filter(function ($productBranch) {
+                if ($productBranch->product === null) {
+                    return false;
+                }
+                $pt = $productBranch->product->productType;
+
+                return $pt === null || $pt->isSellable();
+            })
+            ->map(function ($productBranch) {
+                $taxRatePct = $productBranch->taxRate ? (float) $productBranch->taxRate->tax_rate : null;
+                $printerNames = $productBranch->printers
+                    ->pluck('name')
+                    ->map(fn ($n) => trim((string) $n))
+                    ->filter(fn ($n) => $n !== '')
+                    ->values()
+                    ->all();
+                $printers = $productBranch->printers
+                    ->map(function ($p) {
+                        $name = trim((string) ($p->name ?? ''));
+                        $widthRaw = trim((string) ($p->width ?? ''));
+                        if ($name === '') {
+                            return null;
+                        }
+
+                        return [
+                            'name' => $name,
+                            'width' => $widthRaw !== '' ? $widthRaw : null,
+                        ];
+                    })
+                    ->filter()
+                    ->values()
+                    ->all();
+
+                return [
+                    'id' => $productBranch->id,
+                    'product_id' => $productBranch->product_id,
+                    'price' => (float) $productBranch->price,
+                    'stock' => (float) ($productBranch->stock ?? 0),
+                    'tax_rate' => $taxRatePct,
+                    'favorite' => ($productBranch->favorite ?? 'N'),
+                    'qz_printer_name' => request()->ip() === '127.0.0.1' || request()->ip() === '::1' ? ($printerNames[0] ?? null) : 'BARRA2',
+                    'qz_printer_names' => $printerNames,
+                    'qz_printers' => $printers,
+                ];
+            })
+            ->values()
+            : collect();
+
+        $categories = Category::query()
+            ->when($branchId, fn ($q) => $q->forBranchMenu($branchId, 'VENTAS_PEDIDOS'), function ($query) {
+                $query->whereRaw('1 = 0');
+            })
+            ->orderBy('description')
+            ->get();
+
+        $units = Unit::query()->orderBy('description')->get();
+
+        $pendingOrder = OrderMovement::with(['movement', 'details'])
+            ->where('branch_id', $branchId)
+            ->whereNull('table_id')
+            ->whereHas('movement', function ($q) use ($userId) {
+                $q->where('user_id', $userId);
+            })
+            ->whereIn('status', ['PENDIENTE', 'P'])
+            ->orderByDesc('id')
+            ->first();
+        $startFresh = ! $pendingOrder;
+
+        $pendingClientId = $pendingOrder?->movement?->person_id;
+        $pendingClientName = $pendingOrder?->movement?->person_name;
+
+        $pendingItemsRaw = $pendingOrder
+            ? ($pendingOrder->details ?? collect())
+            ->filter(fn ($d) => ($d->status ?? 'A') !== 'C')
+            ->map(function ($d) {
+                $qty = (float) ($d->quantity ?? 0);
+                $courtesyQty = (float) ($d->courtesy_quantity ?? 0);
+                $amount = (float) ($d->amount ?? 0);
+                $paidQty = max(0, $qty - $courtesyQty);
+                $price = ($paidQty > 0)
+                    ? ($amount / $paidQty)
+                    : 0;
+                $rawComment = trim((string) ($d->comment ?? ''));
+                $note = $rawComment;
+                if ($note !== '' && preg_match('/^\d{2}:\d{2}\s*-\s*/', $note) === 1) {
+                    $note = preg_replace('/^\d{2}:\d{2}(?:\s*[ap]\.?m\.?)?\s*-\s*/i', '', $note);
+                    $note = trim($note);
+                }
+                $commandTime = $d->commanded_at
+                    ? $d->commanded_at->format('H:i')
+                    : ($d->created_at ? $d->created_at->format('H:i') : null);
+                $status = $d->status ?? 'A';
+                $takeawayQty = (float) ($d->takeaway_quantity ?? 0);
+                $takeawayQty = max(0, min($takeawayQty, $qty));
+
+                return [
+                    'pId' => (int) ($d->product_id ?? 0),
+                    'name' => $d->description ?? '',
+                    'qty' => $qty,
+                    'price' => round($price, 6),
+                    'tax_rate' => 10,
+                    'priceManual' => true,
+                    'note' => $note,
+                    'commandTime' => $commandTime,
+                    'delivered' => $status === 'E',
+                    'courtesyQty' => $courtesyQty,
+                    'takeawayQty' => $takeawayQty,
+                    'complements' => collect($d->complements ?? [])->map(fn ($item) => trim((string) $item))->filter()->values()->all(),
+                ];
+            })->values()->all()
+            : [];
+
+        $pendingItems = collect($pendingItemsRaw)->groupBy(function ($item) {
+            $complements = collect($item['complements'] ?? [])->map(fn ($value) => trim((string) $value))->filter()->values()->all();
+            sort($complements);
+
+            return implode('|', [
+                (int) ($item['pId'] ?? 0),
+                md5(json_encode($complements)),
+                trim((string) ($item['note'] ?? '')),
+            ]);
+        })->map(function ($group) {
+            $first = $group->first();
+
+            $sumQty = $group->sum('qty');
+            $sumTakeaway = $group->sum('takeawayQty');
+
+            $sumPaid = 0.0;
+            $sumWeighted = 0.0;
+            foreach ($group as $row) {
+                $q = (float) ($row['qty'] ?? 0);
+                $cq = (float) ($row['courtesyQty'] ?? 0);
+                $cq = max(0, min($cq, $q));
+                $paid = max(0, $q - $cq);
+                $p = (float) ($row['price'] ?? 0);
+                $sumPaid += $paid;
+                $sumWeighted += $p * $paid;
+            }
+            $mergedPrice = $sumPaid > 0 ? round($sumWeighted / $sumPaid, 6) : (float) ($first['price'] ?? 0);
+
+            return [
+                'pId' => $first['pId'],
+                'name' => $first['name'],
+                'qty' => $sumQty,
+                'price' => $mergedPrice,
+                'tax_rate' => $first['tax_rate'] ?? 10,
+                'priceManual' => true,
+                'note' => $first['note'],
+                'commandTime' => $first['commandTime'],
+                'delivered' => $group->contains('delivered', true),
+                'courtesyQty' => $group->sum('courtesyQty'),
+                'takeawayQty' => min($sumTakeaway, $sumQty),
+                'complements' => $first['complements'] ?? [],
+            ];
+        })->values()->all();
+
+        $pendingCancelledDetails = $pendingOrder
+            ? collect($pendingOrder->details->where('status', 'C')->map(fn ($d) => [
+                'product_id' => (int) ($d->product_id ?? 0),
+                'description' => $d->description ?? 'Producto',
+                'quantity' => (float) $d->quantity,
+                'comment' => $d->comment ?? '',
+                'complements' => collect($d->complements ?? [])->map(fn ($item) => trim((string) $item))->filter()->values()->all(),
+            ]))
+            ->groupBy(function ($item) {
+                $complements = collect($item['complements'] ?? [])->map(fn ($value) => trim((string) $value))->filter()->values()->all();
+                sort($complements);
+
+                return implode('|', [(int) ($item['product_id'] ?? 0), md5(json_encode($complements))]);
+            })
+            ->map(fn ($group) => [
+                'description' => $group->first()['description'],
+                'quantity' => $group->sum('quantity'),
+                'comment' => $group->first()['comment'],
+                'complements' => $group->first()['complements'] ?? [],
+            ])
+            ->values()
+            ->all()
+            : [];
+
+        $saleOrOrderTypeIds = MovementType::query()
+            ->where(function ($q) {
+                $q->where('description', 'like', '%venta%')
+                    ->orWhere('description', 'like', '%sale%')
+                    ->orWhere('description', 'like', '%pedido%')
+                    ->orWhere('description', 'like', '%orden%');
+            })
+            ->pluck('id')
+            ->unique()
+            ->values()
+            ->all();
+        $documentTypes = DocumentType::query()
+            ->orderBy('name')
+            ->whereIn('movement_type_id', ! empty($saleOrOrderTypeIds) ? $saleOrOrderTypeIds : [2])
+            ->get(['id', 'name']);
+        $defaultDocumentTypeId = effective_default_sale_document_type_id($branchId, ! empty($saleOrOrderTypeIds) ? $saleOrOrderTypeIds : [2]);
+        $paymentMethods = PaymentMethod::query()
+            ->where('status', true)
+            ->restrictedToBranch($branchId)
+            ->orderBy('order_num')
+            ->get(['id', 'description', 'order_num']);
+        $paymentGateways = PaymentGateways::query()
+            ->where('status', true)
+            ->orderBy('order_num')
+            ->get(['id', 'description', 'order_num']);
+        $cards = Card::query()
+            ->where('status', true)
+            ->orderBy('order_num')
+            ->get(['id', 'description', 'type', 'icon', 'order_num']);
+        $digitalWallets = DigitalWallet::query()
+            ->where('status', true)
+            ->orderBy('order_num')
+            ->get(['id', 'description', 'order_num']);
+        $banks = Bank::query()
+            ->where('status', true)
+            ->orderBy('order_num')
+            ->get(['id', 'description', 'order_num']);
+        $cashRegisters = CashRegister::query()
+            ->where('status', '1')
+            ->orderBy('number')
+            ->get(['id', 'number']);
+
+        $deliveryAreaId = null;
+        $departments = Location::query()
+            ->where('type', 'department')
+            ->orderBy('name')
+            ->get(['id', 'name']);
+        $provinces = Location::query()
+            ->where('type', 'province')
+            ->orderBy('name')
+            ->get(['id', 'name', 'parent_location_id']);
+        $districts = Location::query()
+            ->where('type', 'district')
+            ->orderBy('name')
+            ->get(['id', 'name', 'parent_location_id']);
+
+        $viewId = $request->query('view_id');
+        $salesIndexUrl = route('sales.index', $viewId ? ['view_id' => $viewId] : []);
+        $posStorageKey = 'counter-b'.$branchId.'-u'.(int) $userId;
+
+        $response = response()->view('orders.create', [
+            'user' => $user,
+            'person' => $person,
+            'profile' => $profile,
+            'branch' => $branch,
+            'area' => $area,
+            'table' => $table,
+            'products' => $products,
+            'productBranches' => $productBranches,
+            'categories' => $categories,
+            'people' => $people,
+            'waiters' => $waiters,
+            'units' => $units,
+            'startFresh' => $startFresh,
+            'pendingOrderMovementId' => $pendingOrder?->id,
+            'pendingMovementId' => $pendingOrder?->movement_id,
+            'pendingClientId' => $pendingClientId,
+            'pendingClientName' => $pendingClientName,
+            'pendingWaiterId' => $pendingOrder?->movement?->person_id ?? session('waiter_person_id'),
+            'pendingWaiterName' => $pendingOrder?->movement?->responsible_name ?? session('waiter_name'),
+            'pendingPeopleCount' => (int) ($pendingOrder?->people_count ?: 1),
+            'pendingCancelledDetails' => $pendingCancelledDetails,
+            'pendingItems' => $pendingItems,
+            'pendingServiceType' => $pendingOrder?->service_type ?? 'IN_SITU',
+            'pendingDeliveryAddress' => $pendingOrder?->delivery_address,
+            'pendingContactPhone' => $pendingOrder?->contact_phone,
+            'pendingDeliveryAmount' => $pendingOrder?->delivery_amount ?? 0,
+            'pendingTakeawayDisposableAmount' => (float) ($pendingOrder?->takeaway_disposable_amount ?? 0),
+            'documentTypes' => $documentTypes,
+            'defaultDocumentTypeId' => $defaultDocumentTypeId,
+            'paymentMethods' => $paymentMethods,
+            'paymentGateways' => $paymentGateways,
+            'cards' => $cards,
+            'digitalWallets' => $digitalWallets,
+            'banks' => $banks,
+            'cashRegisters' => $cashRegisters,
+            'waiterPinEnabled' => $this->shouldRequireWaiterPin((int) $branchId, $profileId),
+            'deliveryAreaId' => $deliveryAreaId,
+            'canCharge' => $this->canCharge($profileId),
+            'isMozo' => ! $this->canCharge($profileId),
+            'departments' => $departments,
+            'provinces' => $provinces,
+            'districts' => $districts,
+            'turboCacheControl' => 'no-cache',
+            'allowZeroStockSales' => (bool) ($branch?->allow_zero_stock_sales ?? true),
+            'isCounterSale' => true,
+            'posStorageKey' => $posStorageKey,
+            'afterPaymentIndexUrl' => $salesIndexUrl,
+            'viewId' => $viewId,
         ]);
         $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
         $response->headers->set('Pragma', 'no-cache');
@@ -1604,12 +1984,23 @@ class OrderController extends Controller
             } elseif ($existingOrderMovementForPeople && $existingOrderMovementForPeople->people_count > 0) {
                 $peopleCount = (int) $existingOrderMovementForPeople->people_count;
             } else {
-                $peopleCount = (int) ($table->capacity ?? 1);
+                $capTable = $tableId ? Table::find($tableId) : null;
+                $peopleCount = (int) ($capTable->capacity ?? 1);
             }
 
             // Prioridad 2: si no, buscar por mesa
             if (! $existingOrderMovement && $tableId) {
                 $existingOrderMovement = OrderMovement::where('table_id', $tableId)
+                    ->whereIn('status', ['PENDIENTE', 'P'])
+                    ->orderByDesc('id')
+                    ->first();
+            }
+
+            // Mostrador / venta directa (sin mesa): pedido pendiente del usuario en esta sucursal
+            if (! $existingOrderMovement && ! $tableId && $branchId && $user) {
+                $existingOrderMovement = OrderMovement::where('branch_id', $branchId)
+                    ->whereNull('table_id')
+                    ->whereHas('movement', fn ($q) => $q->where('user_id', $user->id))
                     ->whereIn('status', ['PENDIENTE', 'P'])
                     ->orderByDesc('id')
                     ->first();
@@ -1628,6 +2019,19 @@ class OrderController extends Controller
                 }
 
                 return redirect()->route('orders.index')->with('status', 'Pedido pendiente en la mesa.');
+            }
+
+            // Sin mesa (mostrador): no crear pedido vacío sin borrador previo
+            if (! $tableId && ! $request->filled('order_movement_id') && empty($items) && empty($cancellations)) {
+                DB::rollBack();
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Agregue productos al pedido.',
+                    ], 422);
+                }
+
+                return redirect()->back()->with('error', 'Agregue productos al pedido.');
             }
 
             // Mesa concreta pero sin items y sin pedido previo: no crear pedido vacío

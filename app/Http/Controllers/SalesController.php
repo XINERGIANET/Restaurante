@@ -325,191 +325,6 @@ class SalesController extends Controller
         ]);
     }
 
-    public function create(Request $request)
-    {
-        $branchId = (int) (session('branch_id') ?? 0) ?: null;
-
-        $defaultImage = asset('images/logo/Xinergia-icon.png');
-
-        $userId = session('user_id');
-        $user = User::find($userId);
-
-        $personId = session('person_id');
-        $person = Person::find($personId);
-
-        // Categorías asignadas a esta sucursal (category_branch)
-        $categories = Category::query()
-            ->when($branchId, fn ($q) => $q->forBranchMenu($branchId, 'VENTAS_PEDIDOS'), function ($query) {
-                $query->whereRaw('1 = 0');
-            })
-            ->orderBy('description')
-            ->get()
-            ->map(function ($cat) use ($defaultImage) {
-                $img = $defaultImage;
-                if ($cat->image && Storage::disk('public')->exists($cat->image)) {
-                    $img = asset('storage/'.$cat->image);
-                }
-
-                return [
-                    'id' => $cat->id,
-                    'name' => $cat->description,
-                    'img' => $img,
-                ];
-            })->values();
-
-        // Productos vendibles y ambos (sin ingredientes/insumos SUPPLY): product_branch y categoría en la sucursal
-        $products = Product::query()
-            ->where('type', 'PRODUCT')
-            ->where(function ($q) {
-                $q->whereNull('product_type_id')
-                    ->orWhereHas('productType', fn ($q2) => $q2->whereIn('behavior', [
-                        ProductType::BEHAVIOR_SELLABLE,
-                        ProductType::BEHAVIOR_BOTH,
-                    ]));
-            })
-            ->when($branchId, function ($query) use ($branchId) {
-                $query->whereHas('productBranches', fn ($q) => $q->where('branch_id', $branchId))
-                    ->whereExists(function ($sub) use ($branchId) {
-                        $sub->select(DB::raw(1))
-                            ->from('category_branch')
-                            ->whereColumn('category_branch.category_id', 'products.category_id')
-                            ->where('category_branch.branch_id', $branchId)
-                            ->whereIn('category_branch.menu_type', ['VENTAS_PEDIDOS', 'GENERAL'])
-                            ->whereNull('category_branch.deleted_at');
-                    });
-            }, function ($query) {
-                $query->whereRaw('1 = 0');
-            })
-            ->with('category')
-            ->orderBy('description')
-            ->get()
-            ->map(function (Product $product) use ($defaultImage) {
-                $imageUrl = $defaultImage;
-                if (! empty($product->image)) {
-                    $path = ltrim($product->image, '/');
-                    if (Storage::disk('public')->exists($path)) {
-                        $imageUrl = asset('storage/'.$path);
-                    }
-                }
-
-                return [
-                    'id' => (int) $product->id,
-                    'name' => $product->description,
-                    'img' => $imageUrl,
-                    'note' => $product->note ?? null,
-                    'category' => $product->category ? $product->category->description : 'Sin categoria',
-                    'category_id' => $product->category_id,
-                ];
-            })
-            ->values();
-
-        $productBranches = $branchId
-            ? ProductBranch::query()
-                ->where('branch_id', $branchId)
-                ->with(['product.productType', 'taxRate'])
-                ->get()
-                ->filter(function ($productBranch) {
-                    if ($productBranch->product === null) {
-                        return false;
-                    }
-                    $pt = $productBranch->product->productType;
-
-                    return $pt === null || $pt->isSellable();
-                })
-                ->map(function ($productBranch) {
-                    $taxRate = $productBranch->taxRate;
-                    $taxRatePct = $taxRate ? (float) $taxRate->tax_rate : null;
-
-                    return [
-                        'id' => (int) $productBranch->id,
-                        'product_id' => (int) $productBranch->product_id,
-                        'price' => (float) $productBranch->price,
-                        'tax_rate' => $taxRatePct,
-                        'stock' => (float) ($productBranch->stock ?? 0),
-                        'favorite' => ($productBranch->favorite ?? 'N'),
-                    ];
-                })
-                ->values()
-            : collect();
-
-        $saleType = 'IN_SITU';
-
-        $people = $this->branchClientsForBranch($branchId);
-
-        $documentTypes = DocumentType::query()
-            ->orderBy('name')
-            ->where('movement_type_id', 2)
-            ->get(['id', 'name']);
-        $defaultDocumentTypeId = effective_default_sale_document_type_id($branchId, [2]);
-
-        $paymentMethods = PaymentMethod::query()
-            ->where('status', true)
-            ->restrictedToBranch($branchId)
-            ->orderBy('order_num')
-            ->get(['id', 'description', 'order_num']);
-
-        $paymentGateways = PaymentGateways::query()
-            ->where('status', true)
-            ->orderBy('order_num')
-            ->get(['id', 'description', 'order_num']);
-
-        $cards = Card::query()
-            ->where('status', true)
-            ->orderBy('order_num')
-            ->get(['id', 'description', 'type', 'icon', 'order_num']);
-
-        $digitalWallets = DigitalWallet::query()
-            ->where('status', true)
-            ->orderBy('order_num')
-            ->get(['id', 'description', 'order_num']);
-
-        $banks = Bank::query()
-            ->where('status', true)
-            ->orderBy('order_num')
-            ->get(['id', 'description', 'order_num']);
-
-        $cashRegisters = CashRegister::query()
-            ->orderByRaw("CASE WHEN status = 'A' THEN 0 ELSE 1 END")
-            ->orderBy('number')
-            ->get(['id', 'number', 'status']);
-
-        $branch = $branchId ? Branch::find($branchId) : null;
-        $allowZeroStockSales = (bool) ($branch?->allow_zero_stock_sales ?? true);
-
-        $thermalPrinters = $branchId
-            ? PrinterBranch::query()
-                ->where('branch_id', $branchId)
-                ->where('status', 'E')
-                ->whereNotNull('ip')
-                ->where('ip', '!=', '')
-                ->orderBy('id')
-                ->get(['id', 'name', 'ip', 'width'])
-            : collect();
-
-        return view('sales.create', [
-            'products' => $products,
-            'productBranches' => $productBranches,
-            'productsBranches' => $productBranches,
-            'user' => $user,
-            'person' => $person,
-            'categories' => $categories,
-            'people' => $people,
-            'documentTypes' => $documentTypes,
-            'defaultDocumentTypeId' => $defaultDocumentTypeId,
-            'paymentMethods' => $paymentMethods,
-            'paymentGateways' => $paymentGateways,
-            'cards' => $cards,
-            'digitalWallets' => $digitalWallets,
-            'banks' => $banks,
-            'cashRegisters' => $cashRegisters,
-            'saleType' => $saleType,
-            'branch' => $branch,
-            'allowZeroStockSales' => $allowZeroStockSales,
-            'clientOnLocalNetwork' => LocalNetworkClient::isOnLocalNetwork($request),
-            'thermalPrinters' => $thermalPrinters,
-        ]);
-    }
-
     // POS: vista de cobro
     public function charge(Request $request)
     {
@@ -2930,6 +2745,16 @@ class SalesController extends Controller
 
         $lines[] = $this->thermalPadCenter(strtoupper(Str::ascii($branch->legal_name ?? 'SUCURSAL')), $w);
         $lines[] = $this->thermalPadCenter('RUC: '.Str::ascii($branch->ruc ?? '-'), $w);
+        $branchAddrPlain = trim((string) ($branch->address ?? ''));
+        if ($branchAddrPlain !== '') {
+            $addrAscii = Str::ascii($branchAddrPlain);
+            foreach (preg_split('/\r\n|\r|\n/', wordwrap($addrAscii, max(10, $w - 2), "\n", true)) ?: [] as $addrLine) {
+                $t = trim((string) $addrLine);
+                if ($t !== '') {
+                    $lines[] = $this->thermalPadCenter($t, $w);
+                }
+            }
+        }
         $lines[] = $this->thermalPadCenter(strtoupper(Str::ascii($sale->documentType?->name ?? 'TICKET')), $w);
         $docCode = strtoupper(substr($sale->documentType?->name ?? 'T', 0, 1))
             .$this->ticketSeriesForMovement($sale).'-'.$sale->number;
@@ -2937,7 +2762,7 @@ class SalesController extends Controller
         $lines[] = $sep;
         $lines[] = 'Fecha: '.optional($sale->moved_at)->format('d/m/Y H:i');
         $lines[] = 'Cliente: '.Str::ascii($sale->person_name ?? 'CLIENTES VARIOS');
-        $lines[] = 'Dir.: '.Str::ascii($sale->person?->address ?? '-');
+        $lines[] = 'Dir. cliente: '.Str::ascii($sale->person?->address ?? '-');
         $lines[] = 'RUC/DNI: '.Str::ascii($sale->person?->document_number ?? '-');
         $lines[] = 'Forma pago: '.Str::ascii($paymentLabel);
         $lines[] = $sep;
@@ -3039,12 +2864,22 @@ class SalesController extends Controller
         $lines = [];
         $lines[] = $this->thermalPadCenter(strtoupper(Str::ascii($branch->legal_name ?? 'SUCURSAL')), $lineWidth);
         $lines[] = $this->thermalPadCenter('RUC: '.Str::ascii($branch->ruc ?? '-'), $lineWidth);
+        $branchAddrPlainAppr = trim((string) ($branch->address ?? ''));
+        if ($branchAddrPlainAppr !== '') {
+            $addrAsciiAppr = Str::ascii($branchAddrPlainAppr);
+            foreach (preg_split('/\r\n|\r|\n/', wordwrap($addrAsciiAppr, max(10, $lineWidth - 2), "\n", true)) ?: [] as $addrLineAppr) {
+                $tAppr = trim((string) $addrLineAppr);
+                if ($tAppr !== '') {
+                    $lines[] = $this->thermalPadCenter($tAppr, $lineWidth);
+                }
+            }
+        }
         $lines[] = $this->thermalPadCenter(strtoupper(Str::ascii($sale->documentType?->name ?? 'TICKET')), $lineWidth);
         $lines[] = $this->thermalPadCenter(Str::ascii($docCode), $lineWidth);
         $lines[] = $sep;
         $lines[] = 'Fecha: '.optional($sale->moved_at)->format('d/m/Y H:i');
         $lines[] = 'Cliente: '.Str::ascii($sale->person_name ?? 'CLIENTES VARIOS');
-        $lines[] = 'Dir.: '.Str::ascii($sale->person?->address ?? '-');
+        $lines[] = 'Dir. cliente: '.Str::ascii($sale->person?->address ?? '-');
         $lines[] = 'RUC/DNI: '.Str::ascii($sale->person?->document_number ?? '-');
         $lines[] = 'Forma pago: '.Str::ascii($paymentLabel);
         $lines[] = $sep;

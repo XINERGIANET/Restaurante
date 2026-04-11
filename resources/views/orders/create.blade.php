@@ -33,19 +33,29 @@
     <div class="px-4 md:px-6 pt-4 pb-2">
         <div class="flex items-center justify-between"></div>
         @php
+            $isCounterSale = $isCounterSale ?? false;
+            $viewId = request('view_id');
             $breadcrumbAreaName = $table->area?->name ?? ($area?->name ?? 'Sin área');
         @endphp
-        <x-common.page-breadcrumb pageTitle="{{ $breadcrumbAreaName }} | Mesa {{ $table->name ?? $table->id }}"
-            :breadcrumbs="[
-            ['label' => 'Salones', 'url' => route('orders.index')],
-            ['label' => 'Mesa ' . ($table->name ?? $table->id), 'active' => true]
-        ]" />
+        @if(!empty($isCounterSale))
+            <x-common.page-breadcrumb pageTitle="Nueva venta (mostrador)"
+                :breadcrumbs="[
+                ['label' => 'Ventas', 'url' => route('sales.index', $viewId ? ['view_id' => $viewId] : [])],
+                ['label' => 'Nueva venta', 'active' => true]
+            ]" />
+        @else
+            <x-common.page-breadcrumb pageTitle="{{ $breadcrumbAreaName }} | Mesa {{ $table->name ?? $table->id }}"
+                :breadcrumbs="[
+                ['label' => 'Salones', 'url' => route('orders.index')],
+                ['label' => 'Mesa ' . ($table->name ?? $table->id), 'active' => true]
+            ]" />
+        @endif
 
         <div class="flex flex-col h-full bg-gray-50 dark:bg-gray-950">
             @php
                 $serverTableData = [
                     'id' => $table->id,
-                    'table_id' => $table->id,
+                    'table_id' => !empty($isCounterSale) ? null : $table->id,
                     'area_id' => $table->area_id ?? ($area->id ?? null),
                     'name' => $table->name ?? $table->id,
                     'waiter' => $pendingWaiterName ?? ($user?->name ?? 'Sin asignar'),
@@ -63,7 +73,7 @@
                     'takeaway_disposable_amount' => (float) ($pendingTakeawayDisposableAmount ?? 0),
                     'original_area_id' => $area->id ?? null,
                     'original_area_name' => $area->name ?? 'Sin área',
-                    'delivery_area_id' => $deliveryAreaId ?? null,
+                    'delivery_area_id' => !empty($isCounterSale) ? null : ($deliveryAreaId ?? null),
                 ];
 
                 $peopleCollection = $people ?? collect();
@@ -105,7 +115,7 @@
                     const serverMovementId = @json($pendingMovementId ?? null);
                     const serverPendingItems = @json($pendingItems ?? []);
                     let db = JSON.parse(localStorage.getItem('restaurantDB')) || {};
-                    let activeKey = `table-{{ $table->id }}`;
+                    let activeKey = @json($posStorageKey ?? null) || `table-{{ $table->id }}`;
                     const tableIsFree = (serverTable.status || '').toLowerCase() === 'libre';
                     const useFreshOrder = startFresh || tableIsFree;
                     if (useFreshOrder && db[activeKey]) { delete db[activeKey]; localStorage.setItem('restaurantDB', JSON.stringify(db)); }
@@ -161,6 +171,7 @@
             </script>
 
             <!-- Barra de Información: Mesa, Mozo y Comensales -->
+            @unless(!empty($isCounterSale))
             <div class="px-3 sm:px-4 mb-2 flex-none">
                 <div
                     class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-3 sm:p-4 shadow-sm flex items-center justify-between gap-2 sm:gap-4">
@@ -251,6 +262,7 @@
                     </div>
                 </div>
             </div>
+            @endunless
 
             <div class="flex-1 flex flex-col lg:flex-row items-start bg-gray-50/50 dark:bg-gray-950/50 gap-3 p-3">
                 <div
@@ -305,6 +317,7 @@
                     {{-- Contenido Resumen --}}
                     <div id="aside-resumen" class="mt-3 flex flex-col flex-1 min-h-0 overflow-hidden">
                         {{-- Datos Delivery --}}
+                        @unless(!empty($isCounterSale))
                         <div id="delivery-info-container"
                             class="hidden p-3 bg-[#FF4622]/5 dark:bg-[#FF4622]/10 border-b border-[#FF4622]/20 dark:border-[#FF4622]/30 space-y-2 overflow-hidden">
                             <div class="flex flex-col gap-2">
@@ -383,6 +396,7 @@
                                 </div>
                             </div>
                         </div>
+                        @endunless
 
                         <div id="cart-container"
                             class="flex-1 min-h-0 overflow-y-auto p-3 sm:p-4 space-y-2 sm:space-y-2.5 bg-white dark:bg-gray-900">
@@ -768,6 +782,9 @@
                     const validateWaiterPinUrl = @json(route('orders.validateWaiterPin'));
                     const waiterPinBranchId = @json((int) session('branch_id'));
                     const branchDisplayName = @json($branch?->legal_name ?? $branch?->company?->legal_name ?? 'SUCURSAL');
+                    const branchAddressForTicket = @json(trim((string) ($branch->address ?? '')));
+                    const counterPosMode = @json(!empty($isCounterSale));
+                    const afterPaymentIndexUrl = @json($afterPaymentIndexUrl ?? route('orders.index'));
                     const cobroPaymentMethods = @json($paymentMethods ?? []);
                     const cobroPaymentGateways = @json($paymentGateways ?? []);
                     const cobroCards = @json($cards ?? []);
@@ -935,17 +952,19 @@
                         if (waiterPinEnabled && !isMozoProfile) {
                             ensureWaiterPin();
                         }
-                        // Marcar la mesa como ocupada al abrir la vista
-                        const tableId = currentTable.table_id ?? currentTable.id ?? {{ $table->id }};
-                        fetch('{{ route('orders.openTable') }}', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-                                'Accept': 'application/json'
-                            },
-                            body: JSON.stringify({ table_id: tableId })
-                        }).catch(() => { });
+                        // Marcar la mesa como ocupada al abrir la vista (no aplica en venta mostrador)
+                        if (!counterPosMode) {
+                            const tableId = currentTable.table_id ?? currentTable.id ?? {{ $table->id }};
+                            fetch('{{ route('orders.openTable') }}', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                                    'Accept': 'application/json'
+                                },
+                                body: JSON.stringify({ table_id: tableId })
+                            }).catch(() => { });
+                        }
 
                         // Inicializar datos de la mesa
                         if (document.getElementById('pos-table-name')) {
@@ -977,8 +996,8 @@
                             dinersInput.value = currentTable.people_count;
                         }
 
-                        // Inicializar datos de servicio y delivery (automático por área)
-                        if (currentTable.area_id == serverTable.delivery_area_id) {
+                        // Inicializar datos de servicio y delivery (automático por área; mostrador siempre IN_SITU)
+                        if (!counterPosMode && currentTable.area_id == serverTable.delivery_area_id) {
                             currentTable.service_type = 'DELIVERY';
                         } else {
                             currentTable.service_type = 'IN_SITU';
@@ -1015,6 +1034,9 @@
                         renderTicket();
                         syncPreAccountVisibility();
                         syncCobroTabState();
+                        if (counterPosMode && !isMozoProfile && typeof switchAsideTab === 'function') {
+                            switchAsideTab('cobro');
+                        }
                         renderCancelledSection();
                         fixScrollLayout();
                         function updateSearchClearVisibility() {
@@ -1529,6 +1551,21 @@
                         let txt = '';
                         if (hasCanceled) txt += 'ANULADO\n';
                         txt += padCenterSafe(branchName.toUpperCase(), lineWidth) + '\n';
+                        const branchAddr = String(branchAddressForTicket || '').trim();
+                        if (branchAddr) {
+                            const words = branchAddr.split(/\s+/);
+                            let line = '';
+                            words.forEach((w) => {
+                                const test = (line ? line + ' ' : '') + w;
+                                if (test.length > lineWidth) {
+                                    if (line) txt += padCenterSafe(line, lineWidth) + '\n';
+                                    line = w;
+                                } else {
+                                    line = test;
+                                }
+                            });
+                            if (line) txt += padCenterSafe(line, lineWidth) + '\n';
+                        }
                         txt += '\n';
                         txt += sep;
                         txt += 'Cant' + compactGap + 'Descr' + compactGap + 'P.U.' + compactGap + 'Subt' + '\n';
@@ -3464,11 +3501,12 @@
                     }
 
                     function goToIndexWithTurbo() {
-                        const base = "{{ route('orders.index') }}";
+                        const u = new URL(afterPaymentIndexUrl, window.location.href);
+                        u.searchParams.set('_', String(Date.now()));
                         const params = new URLSearchParams(window.location.search);
                         const viewId = params.get('view_id');
-                        let url = base + '?_=' + Date.now();
-                        if (viewId) url += '&view_id=' + encodeURIComponent(viewId);
+                        if (viewId) u.searchParams.set('view_id', viewId);
+                        let url = u.toString();
                         const win = (typeof window.top !== 'undefined' ? window.top : window);
                         try {
                             win.location.replace(url);
@@ -3523,7 +3561,7 @@
                         const totals = calculateTotalsFromItems(itemsToSend);
                         const order = {
                             items: itemsToSend,
-                            table_id: currentTable.table_id ?? currentTable.id,
+                            table_id: counterPosMode ? null : (currentTable.table_id ?? currentTable.id),
                             area_id: currentTable.area_id ?? null,
                             subtotal: totals.subtotal,
                             tax: totals.tax,
@@ -3628,7 +3666,7 @@
 
                         const order = {
                             items: items,
-                            table_id: currentTable.table_id ?? currentTable.id,
+                            table_id: counterPosMode ? null : (currentTable.table_id ?? currentTable.id),
                             area_id: currentTable.area_id ?? null,
                             subtotal: subtotal,
                             tax: tax,
@@ -3978,7 +4016,7 @@
                         const productTotals = calculateTotalsFromItems(itemsToSend);
                         const processPayload = {
                             items: itemsToSend,
-                            table_id: currentTable.table_id ?? currentTable.id,
+                            table_id: counterPosMode ? null : (currentTable.table_id ?? currentTable.id),
                             area_id: currentTable.area_id ?? null,
                             subtotal: productTotals.subtotal,
                             tax: productTotals.tax,
@@ -4034,7 +4072,7 @@
                             const cashRegEl = document.getElementById('cobro-cash-register');
                             const paymentPayload = {
                                 movement_id: movementId,
-                                table_id: currentTable.table_id ?? currentTable.id,
+                                table_id: counterPosMode ? null : (currentTable.table_id ?? currentTable.id),
                                 document_type_id: docTypeEl?.value ? parseInt(docTypeEl.value, 10) : null,
                                 cash_register_id: cashRegEl?.value ? parseInt(cashRegEl.value, 10) : null,
                                 client_id: currentTable.person_id ?? null,
@@ -4071,7 +4109,7 @@
                                 localStorage.setItem('restaurantDB', JSON.stringify(db));
                             }
                             sessionStorage.setItem('flash_success_message', payData.message || 'Cobro de pedido procesado correctamente');
-                            const indexUrl = "{{ route('orders.index') }}";
+                            const indexUrl = afterPaymentIndexUrl;
                             setTimeout(() => {
                                 if (window.Turbo && typeof window.Turbo.visit === 'function') {
                                     window.Turbo.visit(indexUrl, { action: 'replace' });
@@ -4095,6 +4133,15 @@
                     }
 
                     function releaseTableAndGoBack() {
+                        if (counterPosMode) {
+                            const indexUrl = afterPaymentIndexUrl;
+                            if (window.Turbo && typeof window.Turbo.visit === 'function') {
+                                window.Turbo.visit(indexUrl, { action: 'replace' });
+                            } else {
+                                window.location.href = indexUrl;
+                            }
+                            return;
+                        }
                         const tableId = currentTable?.table_id ?? currentTable?.id ?? {{ $table->id }};
                         const url = "{{ route('orders.cancelOrder') }}";
                         const indexUrl = "{{ route('orders.index') }}";
@@ -4144,9 +4191,8 @@
                     }
 
                     function goBack() {
-                        //Solo regresar a ordenes, con turbo
                         if (window.Turbo && typeof window.Turbo.visit === 'function') {
-                            window.Turbo.visit("{{ route('orders.index') }}", {
+                            window.Turbo.visit(afterPaymentIndexUrl, {
                                 action: 'replace'
                             });
                         }
