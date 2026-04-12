@@ -1451,7 +1451,19 @@
                 if (!qzApi || !isQzTrayAvailable()) {
                     return false;
                 }
-                return qzApi.websocket.isActive();
+                if (qzApi.websocket.isActive()) {
+                    return true;
+                }
+                if (typeof window.__qzConnectWithCertPairFallback === 'function') {
+                    return await window.__qzConnectWithCertPairFallback(qzApi);
+                }
+                try {
+                    await qzApi.websocket.connect();
+                    return qzApi.websocket.isActive();
+                } catch (e) {
+                    console.warn('QZ Tray: conexión no disponible.', e);
+                    return false;
+                }
             }
 
             function resolveStrictLocalPrinterName() {

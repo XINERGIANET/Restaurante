@@ -24,6 +24,45 @@ class QzTraySigningService
         return $pair['cert'] ?? null;
     }
 
+    /**
+     * Certificado para un par explícito (sin mezclar con el otro).
+     * $pair: primary | secondary
+     */
+    public function certificateContentsForPair(string $pair): ?string
+    {
+        $resolved = $this->resolveStrictPair($pair);
+        if ($resolved === null) {
+            return null;
+        }
+
+        return $resolved['cert'] ?? null;
+    }
+
+    /**
+     * Firma usando solo el par indicado (primary o secondary).
+     */
+    public function signForPair(string $pair, string $request): ?string
+    {
+        $resolved = $this->resolveStrictPair($pair);
+        if ($resolved === null) {
+            return null;
+        }
+
+        $key = openssl_pkey_get_private($resolved['key']);
+        if ($key === false) {
+            return null;
+        }
+
+        $signature = '';
+        $ok = openssl_sign($request, $signature, $key, $this->opensslAlgorithmFromConfig());
+
+        if (! $ok) {
+            return null;
+        }
+
+        return base64_encode($signature);
+    }
+
     public function sign(string $request): ?string
     {
         $pair = $this->getActivePair();
@@ -44,6 +83,30 @@ class QzTraySigningService
         }
 
         return base64_encode($signature);
+    }
+
+    /**
+     * @return array{cert: string, key: string, source: string}|null
+     */
+    private function resolveStrictPair(string $pair): ?array
+    {
+        $p = strtolower(trim($pair));
+        if ($p === 'secondary') {
+            return $this->buildPairFromConfig(
+                'qz.certificate_path_secondary',
+                'qz.private_key_path_secondary',
+                'secondary'
+            );
+        }
+        if ($p === 'primary') {
+            return $this->buildPairFromConfig(
+                'qz.certificate_path',
+                'qz.private_key_path',
+                'primary'
+            );
+        }
+
+        return null;
     }
 
     /**

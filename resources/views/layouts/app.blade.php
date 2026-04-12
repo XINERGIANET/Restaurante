@@ -16,6 +16,7 @@
             certificateUrl: @json(route('qz.certificate')),
             signUrl: @json(route('qz.sign')),
             signatureAlgorithm: @json(config('qz.signature_algorithm', 'SHA512')),
+            certPairTryOrder: @json(config('qz.cert_pair_try_order', ['primary', 'secondary'])),
             defaultPrinterName: @json($qzDefaultPrinter),
             printerName: @json($qzDefaultPrinter),
             printMode: @json(config('qz.print_mode', 'auto')),

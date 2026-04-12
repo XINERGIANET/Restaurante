@@ -822,10 +822,13 @@
                     if (!qzApi || !isQzTrayAvailable()) {
                         return false;
                     }
+                    if (qzApi.websocket.isActive()) {
+                        return true;
+                    }
+                    if (typeof window.__qzConnectWithCertPairFallback === 'function') {
+                        return await window.__qzConnectWithCertPairFallback(qzApi);
+                    }
                     try {
-                        if (qzApi.websocket.isActive()) {
-                            return true;
-                        }
                         await qzApi.websocket.connect();
                         return qzApi.websocket.isActive();
                     } catch (e) {

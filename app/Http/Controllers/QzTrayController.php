@@ -34,14 +34,29 @@ class QzTrayController extends Controller
         }
     }
 
-    public function certificate(QzTraySigningService $signing)
+    public function certificate(Request $request, QzTraySigningService $signing)
     {
         if (!config('qz.enabled', true)) {
             abort(503, 'QZ Tray deshabilitado.');
         }
 
         try {
-            $certificate = $signing->certificateContents();
+            $pair = strtolower(trim((string) $request->query('pair', '')));
+            if ($pair !== '' && ! in_array($pair, ['primary', 'secondary'], true)) {
+                abort(400, 'Par de certificado QZ inválido.');
+            }
+
+            if ($pair === '') {
+                $certificate = $signing->certificateContents();
+            } else {
+                $certificate = $signing->certificateContentsForPair($pair);
+            }
+
+            Log::debug('QZ Tray: entrega de certificado', [
+                'pair' => $pair === '' ? 'auto' : $pair,
+                'ip' => $request->ip(),
+            ]);
+
             if ($certificate === null || trim($certificate) === '') {
                 abort(503, 'Certificado QZ no encontrado.');
             }
@@ -68,7 +83,22 @@ class QzTrayController extends Controller
             // Soporta GET ?request=... (qz-tray-init actual) y POST JSON {request: "..."} (ejemplo legado).
             $request->validate(['request' => 'required|string']);
             $payload = (string) $request->input('request');
-            $signature = $signing->sign($payload);
+            $pair = strtolower(trim((string) ($request->query('pair') ?? $request->input('pair') ?? '')));
+            if ($pair !== '' && ! in_array($pair, ['primary', 'secondary'], true)) {
+                abort(400, 'Par de certificado QZ inválido.');
+            }
+
+            if ($pair === '') {
+                $signature = $signing->sign($payload);
+            } else {
+                $signature = $signing->signForPair($pair, $payload);
+            }
+
+            Log::info('QZ Tray: firma de solicitud', [
+                'pair' => $pair === '' ? 'auto' : $pair,
+                'ip' => $request->ip(),
+            ]);
+
             if ($signature === null || trim($signature) === '') {
                 abort(503, 'No se pudo firmar la solicitud de QZ.');
             }

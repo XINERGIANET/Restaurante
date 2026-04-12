@@ -32,4 +32,11 @@ return [
     // Si true, en producción exige Origin válido (si se configuró allowed_origins).
     'production_lock' => env('QZ_PRODUCTION_LOCK', false),
 
+    // Orden de prueba al conectar QZ Tray (cliente): primary,secondary o secondary,primary.
+    // Si el primer par provoca rechazo en websocket.connect(), se prueba el siguiente.
+    'cert_pair_try_order' => array_values(array_filter(array_map(
+        'trim',
+        explode(',', (string) env('QZ_CERT_PAIR_TRY_ORDER', 'primary,secondary'))
+    ))),
+
 ];
