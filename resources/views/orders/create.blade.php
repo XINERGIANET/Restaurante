@@ -3,6 +3,7 @@
 @push('head')
     <meta name="qz-sign-url" content="{{ route('qz.sign') }}">
     <meta name="qz-certificate-url" content="{{ route('qz.certificate') }}">
+    <meta name="qz-signature-algorithm" content="{{ config('qz.signature_algorithm', 'SHA512') }}">
     <meta name="turbo-visit-control" content="reload">
     <script>
         (function () {

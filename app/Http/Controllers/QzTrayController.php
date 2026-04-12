@@ -73,8 +73,10 @@ class QzTrayController extends Controller
                 abort(503, 'No se pudo firmar la solicitud de QZ.');
             }
 
-            // Si el frontend espera JSON (integración vieja), devolvemos JSON; si no, texto plano (qz-tray-init).
-            if ($request->expectsJson()) {
+            // El bundle qz-tray-init.js siempre firma por POST JSON y espera { "signature": "..." }.
+            // Antes dependíamos de expectsJson(); en algunos navegadores/proxies el Accept no llega y
+            // Laravel devolvía texto plano, rompía el parseo y QZ Tray caía al aviso de "Demo Cert".
+            if ($request->isMethod('POST') || $request->expectsJson() || $request->isJson()) {
                 return response()->json(['signature' => $signature]);
             }
 

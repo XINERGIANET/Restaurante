@@ -65,15 +65,26 @@ export function configureQzSecurity() {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': qzCsrfToken(),
                     Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
                 },
                 body: JSON.stringify({ request: toSign }),
             })
-                .then((r) => (r.ok ? r.json() : Promise.reject(new Error(r.statusText))))
-                .then((payload) => {
-                    const sig = payload?.signature ? String(payload.signature) : '';
+                .then(async (r) => {
+                    const raw = await r.text();
+                    if (!r.ok) {
+                        throw new Error(raw || r.statusText);
+                    }
+                    let sig = '';
+                    try {
+                        const payload = raw ? JSON.parse(raw) : {};
+                        sig = payload?.signature ? String(payload.signature) : '';
+                    } catch (e) {
+                        sig = String(raw || '').trim();
+                    }
                     if (!sig) throw new Error('Firma QZ inválida');
-                    resolve(sig);
+                    return sig;
                 })
+                .then((sig) => resolve(sig))
                 .catch(reject);
         };
     });
