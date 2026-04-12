@@ -2983,6 +2983,27 @@
                         await updateQty(index, -qty);
                     }
 
+                    function openRemoveQuantityLineModal(index) {
+                        if (isMozoProfile) return;
+                        if (!currentTable?.items || index < 0 || index >= currentTable.items.length) return;
+                        const item = currentTable.items[index];
+                        const maxQty = Math.max(1, parseInt(item.qty, 10) || 1);
+                        const prod = serverProducts.find(p => p.id === item.pId);
+                        const productName = (prod && prod.name) ? prod.name : (item.name || 'Producto');
+                        const rawSaved = item.savedQty != null && item.savedQty !== '' ? parseFloat(item.savedQty) : NaN;
+                        const savedQtyItem = Number.isFinite(rawSaved) ? rawSaved : 0;
+                        const omId = Number(currentTable.order_movement_id || 0);
+                        const lineLooksComandado = savedQtyItem > 0 || (omId > 0 && !!item.commandTime);
+                        if (!lineLooksComandado) {
+                            void removeFromCart(index);
+                            return;
+                        }
+                        window.dispatchEvent(new CustomEvent('open-remove-quantity-modal', {
+                            bubbles: true,
+                            detail: { index, maxQty, productName, isComandado: true },
+                        }));
+                    }
+
                     function applyRemoveQuantity(index, qtyToRemove, reason) {
                         if (isMozoProfile) {
                             if (typeof showNotification === 'function') {
@@ -3222,9 +3243,7 @@
                                 const qtyMinusOnclick = canReduce ? `onclick="updateQty(${index}, -1)"` : '';
                                 const trashOnclick = isMozoProfile
                                     ? ''
-                                    : (itemIsComandado
-                                        ? `onclick="window.dispatchEvent(new CustomEvent('open-remove-quantity-modal', { detail: { index: ${index}, maxQty: ${itemQty}, productName: '${String(prod.name || 'Producto').replace(/\\/g, '\\\\').replace(/'/g, "\\'")}', isComandado: true } }))"`
-                                        : `onclick="removeFromCart(${index})"`);
+                                    : `onclick="openRemoveQuantityLineModal(${index})"`;
                                 const trashHiddenMozo = isMozoProfile ? ' hidden' : '';
                                 const hasCourtesy = (parseFloat(item.courtesyQty) || 0) > 0;
                                 const showNoteBox = item.noteOpen === true || (item.noteOpen === undefined && hasNote);
@@ -4765,6 +4784,7 @@
                     window.setQtyFromInput = setQtyFromInput;
                     window.confirmRemoveLine = confirmRemoveLine;
                     window.removeFromCart = removeFromCart;
+                    window.openRemoveQuantityLineModal = openRemoveQuantityLineModal;
                     window.applyRemoveQuantity = applyRemoveQuantity;
                     window.saveNote = saveNote;
                     window.toggleDelivered = toggleDelivered;
