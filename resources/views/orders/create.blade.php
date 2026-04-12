@@ -1982,15 +1982,15 @@
                         }
                     }
 
-                    async function ensureQzTrayConnected(qzApi) {
+                    async function ensureQzTrayConnected(qzApi, printerNameForCert) {
                         if (!qzApi || !isQzTrayAvailable()) {
                             return false;
                         }
+                        if (typeof window.__qzConnectWithCertPairFallback === 'function') {
+                            return await window.__qzConnectWithCertPairFallback(qzApi, printerNameForCert);
+                        }
                         if (qzApi.websocket.isActive()) {
                             return true;
-                        }
-                        if (typeof window.__qzConnectWithCertPairFallback === 'function') {
-                            return await window.__qzConnectWithCertPairFallback(qzApi);
                         }
                         try {
                             await qzApi.websocket.connect();
@@ -2009,7 +2009,7 @@
                             return false;
                         }
                         try {
-                            if (!await ensureQzTrayConnected(qzApi)) {
+                            if (!await ensureQzTrayConnected(qzApi, printerName)) {
                                 return false;
                             }
                             let currentPrinterName = printerName ? String(printerName).trim() : '';
@@ -2047,7 +2047,7 @@
 
                         let qzFailed = false;
                         // Si QZ está disponible y funciona, intentar imprimir por QZ
-                        if (qzApi && await ensureQzTrayConnected(qzApi)) {
+                        if (qzApi && await ensureQzTrayConnected(qzApi, printerName)) {
                             let currentPrinterName = printerName;
                             try {
                                 // Si no hay impresora asignada en productos, usar la impresora por defecto de QZ
@@ -2196,7 +2196,11 @@
                             throw new Error(td?.message || ('No se pudo imprimir comanda en "' + (printerName || 'Ticketera') + '".'));
                         }
 
-                        const qzAvailable = qzApi && await ensureQzTrayConnected(qzApi);
+                        const anyKitchenBarra2 = names.some((n) => {
+                            const t = String(n || '').trim().toLowerCase();
+                            return t === 'barra2' || t.startsWith('barra2');
+                        });
+                        const qzAvailable = qzApi && await ensureQzTrayConnected(qzApi, anyKitchenBarra2 ? 'BARRA2' : undefined);
                         let canUseQz = !!qzAvailable;
                         if (!canUseQz) {
                             if (qzApi) {
@@ -3869,7 +3873,7 @@
                         if (printerId) body.printer_id = printerId;
 
                         let qzFailed = false;
-                        if (qzApi && await ensureQzTrayConnected(qzApi)) {
+                        if (qzApi && await ensureQzTrayConnected(qzApi, printerName)) {
                             try {
                                 const tr = await fetch(salesThermalPrintUrl, {
                                     method: 'POST',

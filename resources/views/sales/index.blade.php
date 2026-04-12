@@ -818,15 +818,15 @@
                     }
                 }
 
-                async function ensureQzTrayConnected(qzApi) {
+                async function ensureQzTrayConnected(qzApi, printerNameForCert) {
                     if (!qzApi || !isQzTrayAvailable()) {
                         return false;
                     }
+                    if (typeof window.__qzConnectWithCertPairFallback === 'function') {
+                        return await window.__qzConnectWithCertPairFallback(qzApi, printerNameForCert);
+                    }
                     if (qzApi.websocket.isActive()) {
                         return true;
-                    }
-                    if (typeof window.__qzConnectWithCertPairFallback === 'function') {
-                        return await window.__qzConnectWithCertPairFallback(qzApi);
                     }
                     try {
                         await qzApi.websocket.connect();
@@ -878,7 +878,7 @@
                         body.printer_id = printerId;
                     }
 
-                    if (qzApi && await ensureQzTrayConnected(qzApi)) {
+                    if (qzApi && await ensureQzTrayConnected(qzApi, preferredPrinterName)) {
                         try {
                             const tr = await fetch(salesThermalPrintUrl, {
                                 method: 'POST',

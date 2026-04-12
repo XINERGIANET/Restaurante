@@ -30,12 +30,50 @@ function appendPairQuery(url, pair) {
     return u.toString();
 }
 
+/**
+ * Misma regla que requiresStrictLocalQz en las vistas: ticketera de la 2.ª PC (LAN).
+ * Para esas impresoras se usa primero el par secondary (app/qz2) y no se intenta primary antes.
+ */
+export function printerRequiresSecondaryCertFirst(printerName) {
+    const t = String(printerName || '').trim().toLowerCase();
+    return t === 'barra2' || t.startsWith('barra2');
+}
+
+export function applyQzCertPairOverrideForPrinter(printerName) {
+    if (printerRequiresSecondaryCertFirst(printerName)) {
+        window.__qzCertPairOrderOverride = ['secondary', 'primary'];
+        console.info('[QZ Xinergia] Impresora BARRA2: orden de certificado forzado a secondary → primary (app/qz2 primero, sin probar primary antes).');
+    } else {
+        window.__qzCertPairOrderOverride = null;
+    }
+}
+
 export function resetQzTraySecurityState() {
     window.__qzTraySecurityConfigured = false;
     window.__qzActiveCertPair = null;
 }
 
 function resolveCertPairTryOrder() {
+    const allowed = ['primary', 'secondary'];
+    if (Array.isArray(window.__qzCertPairOrderOverride) && window.__qzCertPairOrderOverride.length > 0) {
+        const order = [];
+        const seen = new Set();
+        for (const item of window.__qzCertPairOrderOverride) {
+            const p = String(item || '').trim().toLowerCase();
+            if (allowed.includes(p) && !seen.has(p)) {
+                order.push(p);
+                seen.add(p);
+            }
+        }
+        for (const p of allowed) {
+            if (!seen.has(p)) {
+                order.push(p);
+                seen.add(p);
+            }
+        }
+        return order;
+    }
+
     const cfg = window.__qzConfig || {};
     let raw = [];
     if (Array.isArray(cfg.certPairTryOrder)) {
@@ -46,7 +84,6 @@ function resolveCertPairTryOrder() {
             .map((s) => s.trim().toLowerCase())
             .filter(Boolean);
     }
-    const allowed = ['primary', 'secondary'];
     const seen = new Set();
     const order = [];
     try {
@@ -147,13 +184,35 @@ export function configureQzSecurityForPair(pair) {
 }
 
 /**
- * Intenta conectar a QZ Tray probando cada par de certificado en orden (p. ej. primary → secondary).
+ * Intenta conectar a QZ Tray probando cada par de certificado en orden.
+ * @param {object} qzApi instancia qz-tray
+ * @param {string} [printerName] si es BARRA2, se fuerza orden secondary → primary sin conectar antes con primary.
  */
-export async function connectQzWithCertPairFallback(qzApi) {
+export async function connectQzWithCertPairFallback(qzApi, printerName) {
     if (!qzApi) {
         return false;
     }
+    applyQzCertPairOverrideForPrinter(printerName);
+
+    const needSecondaryFirst = printerRequiresSecondaryCertFirst(printerName);
+    if (qzApi.websocket.isActive()) {
+        if (needSecondaryFirst) {
+            if (window.__qzSelectedCertPair === 'secondary') {
+                return true;
+            }
+            console.warn('[QZ Xinergia] Sesión QZ activa pero no usa certificado secondary; desconectando para BARRA2.');
+            try {
+                await qzApi.websocket.disconnect();
+            } catch (e) {
+                console.warn('[QZ Xinergia] disconnect:', e);
+            }
+        } else {
+            return true;
+        }
+    }
+
     const order = resolveCertPairTryOrder();
+    console.info('[QZ Xinergia] Orden de pares:', order.join(' → '), printerName ? '(impresora: ' + printerName + ')' : '');
     let lastErr = null;
     for (let i = 0; i < order.length; i++) {
         const pair = order[i];
@@ -207,6 +266,8 @@ function initQzIfMetaPresent() {
 window.__qzConnectWithCertPairFallback = connectQzWithCertPairFallback;
 window.__qzConfigureQzSecurityForPair = configureQzSecurityForPair;
 window.__qzResolveCertPairTryOrder = resolveCertPairTryOrder;
+window.__qzApplyCertPairOverrideForPrinter = applyQzCertPairOverrideForPrinter;
+window.__qzPrinterRequiresSecondaryCertFirst = printerRequiresSecondaryCertFirst;
 
 initQzIfMetaPresent();
 
