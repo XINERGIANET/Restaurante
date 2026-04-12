@@ -649,40 +649,88 @@
                 </div>
             </div>
 
-            {{-- removeQuantityModal debe existir en window antes de que Alpine procese el modal --}}
+            {{-- removeQuantityModal: lógica en métodos + x-on: para evitar conflictos Blade/@ y SyntaxError en Alpine AsyncFunction --}}
             <script>
-                window.removeQuantityModal = function () {
-                    return {
-                        open: false,
-                        indexToRemove: null,
-                        quantityToRemove: 1,
-                        maxQty: 1,
-                        productName: '',
-                        reasonToRemove: '',
-                        isComandado: false
-                    };
-                };
+                (function () {
+                    const isMozoFromServer = @json($isMozo ?? false);
+                    function removeQuantityModalFactory() {
+                        return {
+                            open: false,
+                            indexToRemove: null,
+                            quantityToRemove: 1,
+                            maxQty: 1,
+                            productName: '',
+                            reasonToRemove: '',
+                            isComandado: false,
+                            onOpenRemoveQuantityModal($event) {
+                                if (isMozoFromServer) {
+                                    if (window.Swal) {
+                                        window.Swal.fire({ icon: 'info', title: 'No permitido', text: 'El perfil Mozo no puede anular cantidades ya comandadas.' });
+                                    }
+                                    return;
+                                }
+                                const d = $event.detail;
+                                if (d && d.maxQty >= 1) {
+                                    this.open = true;
+                                    this.indexToRemove = d.index != null ? d.index : null;
+                                    this.maxQty = Math.max(1, d.maxQty != null ? d.maxQty : 1);
+                                    this.productName = d.productName || 'Producto';
+                                    this.quantityToRemove = 1;
+                                    this.reasonToRemove = '';
+                                    this.isComandado = !!d.isComandado;
+                                    this.$nextTick(() => {
+                                        if (this.$refs.qtyInput) this.$refs.qtyInput.value = 1;
+                                    });
+                                }
+                            },
+                            onCloseRemoveQuantityModal() {
+                                this.open = false;
+                                this.indexToRemove = null;
+                                this.quantityToRemove = 1;
+                                this.maxQty = 1;
+                                this.productName = '';
+                                this.reasonToRemove = '';
+                                this.isComandado = false;
+                            },
+                            onQtyInput($event) {
+                                const val = $event.target.value;
+                                if (val === '' || val === null) return;
+                                const v = parseInt(val, 10);
+                                this.quantityToRemove = (Number.isNaN(v) || v < 1) ? 1 : Math.min(this.maxQty, Math.max(1, v));
+                                $event.target.value = this.quantityToRemove;
+                            },
+                            onQtyBlur($event) {
+                                if ($event.target.value === '' || Number.isNaN(parseInt($event.target.value, 10))) {
+                                    this.quantityToRemove = 1;
+                                    $event.target.value = 1;
+                                }
+                            },
+                            onConfirmRemoveQuantity() {
+                                if (this.indexToRemove == null || this.quantityToRemove < 1) return;
+                                if (this.isComandado && !String(this.reasonToRemove || '').trim()) return;
+                                const q = Math.min(this.quantityToRemove, this.maxQty);
+                                if (typeof window.applyRemoveQuantity === 'function') {
+                                    window.applyRemoveQuantity(this.indexToRemove, q, String(this.reasonToRemove || '').trim());
+                                }
+                                this.onCloseRemoveQuantityModal();
+                            },
+                        };
+                    }
+                    window.removeQuantityModal = removeQuantityModalFactory;
+                    function registerRemoveQuantityModalData() {
+                        if (!window.Alpine || typeof window.Alpine.data !== 'function') return;
+                        if (window.__removeQuantityModalAlpineRegistered) return;
+                        window.Alpine.data('removeQuantityModal', removeQuantityModalFactory);
+                        window.__removeQuantityModalAlpineRegistered = true;
+                    }
+                    document.addEventListener('alpine:init', registerRemoveQuantityModalData);
+                    registerRemoveQuantityModalData();
+                })();
             </script>
             {{-- Modal eliminar por cantidad (se abre al presionar la basurita en una línea del pedido) --}}
-            <x-ui.modal x-data="removeQuantityModal()" @open-remove-quantity-modal.window="
-                                                                                                                            if (@json($isMozo ?? false)) {
-                                                                                                                                if (window.Swal) {
-                                                                                                                                    window.Swal.fire({ icon: 'info', title: 'No permitido', text: 'El perfil Mozo no puede anular cantidades ya comandadas.' });
-                                                                                                                                }
-                                                                                                                                return;
-                                                                                                                            }
-                                                                                                                            if ($event.detail && $event.detail.maxQty >= 1) {
-                                                                                                                                open = true;
-                                                                                                                                indexToRemove = $event.detail.index ?? null;
-                                                                                                                                maxQty = Math.max(1, $event.detail.maxQty ?? 1);
-                                                                                                                                productName = $event.detail.productName || 'Producto';
-                                                                                                                                quantityToRemove = 1;
-                                                                                                                                reasonToRemove = '';
-                                                                                                                                isComandado = !!$event.detail.isComandado;
-                                                                                                                                $nextTick(() => { if ($refs.qtyInput) $refs.qtyInput.value = 1; });
-                                                                                                                            }
-                                                                                                                        "
-                @close-remove-quantity-modal.window="open = false; indexToRemove = null; quantityToRemove = 1; maxQty = 1; productName = ''; reasonToRemove = ''; isComandado = false"
+            <x-ui.modal x-data="removeQuantityModal"
+                x-on:open-remove-quantity-modal.window="onOpenRemoveQuantityModal($event)"
+                x-on:close-remove-quantity-modal.window="onCloseRemoveQuantityModal()"
                 :showCloseButton="false" class="max-w-4xl z-[100]">
                 <div class="p-6 sm:p-8 bg-white dark:bg-gray-800">
                     <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -698,7 +746,7 @@
                                     x-text="productName ? (productName + ' · Cantidad actual: ' + maxQty) : ''"></p>
                             </div>
                         </div>
-                        <button type="button" @click="$dispatch('close-remove-quantity-modal')"
+                        <button type="button" x-on:click="onCloseRemoveQuantityModal()"
                             class="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600 transition-colors">
                             <i class="ri-close-line text-xl"></i>
                         </button>
@@ -707,19 +755,8 @@
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Cantidad a
                             eliminar</label>
                         <input type="number" x-ref="qtyInput"
-                            @input="
-                                                                                                                                        let val = $event.target.value;
-                                                                                                                                        if (val === '' || val === null) { return; }
-                                                                                                                                        let v = parseInt(val, 10);
-                                                                                                                                        quantityToRemove = (isNaN(v) || v < 1) ? 1 : Math.min(maxQty, Math.max(1, v));
-                                                                                                                                        $event.target.value = quantityToRemove;
-                                                                                                                                    "
-                            @blur="
-                                                                                                                                        if ($event.target.value === '' || isNaN(parseInt($event.target.value, 10))) {
-                                                                                                                                            quantityToRemove = 1;
-                                                                                                                                            $event.target.value = 1;
-                                                                                                                                        }
-                                                                                                                                    " min="1" :max="maxQty"
+                            x-on:input="onQtyInput($event)"
+                            x-on:blur="onQtyBlur($event)" min="1" :max="maxQty"
                             class="w-24 text-center text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-red-500 focus:border-red-500">
                         <p class="text-xs text-gray-500 dark:text-gray-400 mt-1"
                             x-text="'Entre 1 y ' + maxQty + (maxQty === 1 ? ' unidad' : ' unidades')"></p>
@@ -736,18 +773,12 @@
                             class="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"></textarea>
                     </div>
                     <div class="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-600">
-                        <button type="button" @click="$dispatch('close-remove-quantity-modal')"
+                        <button type="button" x-on:click="onCloseRemoveQuantityModal()"
                             class="px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                             Cancelar
                         </button>
                         <button type="button"
-                            @click="
-                                                                                                                                        if (indexToRemove != null && quantityToRemove >= 1 && (!isComandado || reasonToRemove.trim())) {
-                                                                                                                                            var q = Math.min(quantityToRemove, maxQty);
-                                                                                                                                            window.applyRemoveQuantity(indexToRemove, q, reasonToRemove.trim());
-                                                                                                                                            $dispatch('close-remove-quantity-modal');
-                                                                                                                                        }
-                                                                                                                                    "
+                            x-on:click="onConfirmRemoveQuantity()"
                             :disabled="isComandado && !reasonToRemove.trim()"
                             :class="isComandado && !reasonToRemove.trim() ? 'opacity-50 cursor-not-allowed' : ''"
                             class="px-4 py-2 rounded-xl bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
@@ -764,21 +795,6 @@
                 }
             </style>
 
-            <script>
-                document.addEventListener('alpine:init', function () {
-                    window.Alpine.data('removeQuantityModal', function () {
-                        return {
-                            open: false,
-                            indexToRemove: null,
-                            quantityToRemove: 1,
-                            maxQty: 1,
-                            productName: '',
-                            reasonToRemove: '',
-                            isComandado: false
-                        };
-                    });
-                });
-            </script>
             <script>
                 (function () {
                     const serverPendingCancelledDetails = @json($pendingCancelledDetails ?? []);
