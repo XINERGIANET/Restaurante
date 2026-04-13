@@ -13,6 +13,7 @@ class KardexSyncService
         $movement->loadMissing([
             'documentType',
             'movementType',
+            'orderMovement.details.unit',
             'salesMovement.details.unit',
             'purchaseMovement.details',
             'warehouseMovement.details.unit',
@@ -21,6 +22,45 @@ class KardexSyncService
         $this->deleteMovement($movement->id);
 
         $productBranchPairs = [];
+
+        if ($movement->orderMovement && in_array((string) ($movement->orderMovement->status ?? ''), ['PENDIENTE', 'P', 'FINALIZADO', 'F'], true)) {
+            foreach ($movement->orderMovement->details as $detail) {
+                if ((string) ($detail->status ?? 'A') === 'C') {
+                    continue;
+                }
+
+                $productId = (int) ($detail->product_id ?? 0);
+                $quantity = (float) ($detail->quantity ?? 0);
+                $unitId = (int) ($detail->unit_id ?? 0);
+
+                if ($productId <= 0 || $unitId <= 0 || $quantity <= 0) {
+                    continue;
+                }
+
+                $unitPrice = $quantity > 0 ? ((float) ($detail->amount ?? 0) / $quantity) : 0;
+                $qtySigned = -$quantity;
+
+                $this->createEntry($movement, [
+                    'detalle_id' => $detail->id,
+                    'producto_id' => $productId,
+                    'unidad_id' => $unitId,
+                    'cantidad' => $qtySigned,
+                    'preciounitario' => $unitPrice,
+                    'moneda' => (string) ($movement->orderMovement->currency ?? 'PEN'),
+                    'tipocambio' => (float) ($movement->orderMovement->exchange_rate ?? 1),
+                    'total' => $qtySigned * $unitPrice,
+                ]);
+
+                $productBranchPairs[$this->pairKey($productId, (int) $movement->branch_id)] = [
+                    'producto_id' => $productId,
+                    'sucursal_id' => (int) $movement->branch_id,
+                ];
+            }
+
+            $this->rebuildStocksForPairs($productBranchPairs);
+
+            return;
+        }
 
         if ($movement->salesMovement && $movement->status === 'A') {
             foreach ($movement->salesMovement->details as $detail) {

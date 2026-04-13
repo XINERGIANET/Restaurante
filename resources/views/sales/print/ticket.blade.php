@@ -310,7 +310,7 @@
         </tr>
         <tr>
             <td class="info-label">Dir. cliente:</td>
-            <td class="info-value">{{ $sale->person?->address ?? '-' }}</td>
+            <td class="info-value">{{ $ticketAddressDisplay ?? '-' }}</td>
         </tr>
         <tr>
             <td class="info-label">RUC/DNI:</td>

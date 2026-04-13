@@ -2159,6 +2159,27 @@ class OrderController extends Controller
                 ]);
             }
 
+            $previousCommittedQtyByProduct = $orderMovement->details()
+                ->where(function ($q) {
+                    $q->whereNull('status')->orWhere('status', '!=', 'C');
+                })
+                ->get(['product_id', 'quantity'])
+                ->groupBy('product_id')
+                ->map(function ($rows) {
+                    return (float) $rows->sum('quantity');
+                });
+
+            $newCommittedQtyByProduct = collect($items)
+                ->groupBy(function ($rawItem) {
+                    return (int) ($rawItem['product_id'] ?? $rawItem['pId'] ?? 0);
+                })
+                ->map(function ($rows) {
+                    return (float) collect($rows)->sum(function ($rawItem) {
+                        return (float) ($rawItem['quantity'] ?? $rawItem['qty'] ?? 0);
+                    });
+                })
+                ->filter(fn ($qty, $productId) => (int) $productId > 0);
+
             if (empty($items)) {
                 $orderMovement->update(['status' => 'CANCELADO', 'finished_at' => now()]);
             }
@@ -2206,10 +2227,13 @@ class OrderController extends Controller
                     ->where('branch_id', $branchId)
                     ->first();
                 $currentStock = (float) ($productBranch->stock ?? 0);
-                if (!$branch->allow_zero_stock_sales && $currentStock < $qty) {
+                $previousCommittedQty = (float) ($previousCommittedQtyByProduct->get((int) $productId, 0));
+                $newCommittedQty = (float) ($newCommittedQtyByProduct->get((int) $productId, 0));
+                $deltaQty = $newCommittedQty - $previousCommittedQty;
+                if (!$branch->allow_zero_stock_sales && $deltaQty > 0 && $currentStock < $deltaQty) {
                     throw new \Exception(
                         "Stock insuficiente para el producto \"{$description}\". " .
-                            "Stock disponible: {$currentStock}, Cantidad solicitada: {$qty}"
+                            "Stock disponible: {$currentStock}, Cantidad solicitada: {$deltaQty}"
                     );
                 }
 
@@ -2300,6 +2324,50 @@ class OrderController extends Controller
                     'status' => 'C',
                 ]);
             }
+
+            $affectedProductIds = $previousCommittedQtyByProduct
+                ->keys()
+                ->merge($newCommittedQtyByProduct->keys())
+                ->map(fn ($productId) => (int) $productId)
+                ->filter(fn ($productId) => $productId > 0)
+                ->unique()
+                ->values();
+
+            foreach ($affectedProductIds as $productId) {
+                $previousCommittedQty = (float) ($previousCommittedQtyByProduct->get($productId, 0));
+                $newCommittedQty = (float) ($newCommittedQtyByProduct->get($productId, 0));
+                $deltaQty = $newCommittedQty - $previousCommittedQty;
+                if (abs($deltaQty) < 0.000001) {
+                    continue;
+                }
+
+                $productBranch = ProductBranch::query()
+                    ->where('product_id', $productId)
+                    ->where('branch_id', $branchId)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $productBranch) {
+                    $product = Product::find($productId);
+                    $productName = (string) ($product?->description ?? ('Producto #' . $productId));
+                    throw new \Exception("Producto {$productName} no disponible en esta sucursal.");
+                }
+
+                $currentStock = (float) ($productBranch->stock ?? 0);
+                $newStock = $currentStock - $deltaQty;
+
+                if (! $branch->allow_zero_stock_sales && $newStock < 0) {
+                    $product = Product::find($productId);
+                    $productName = (string) ($product?->description ?? ('Producto #' . $productId));
+                    throw new \Exception("Stock insuficiente para \"{$productName}\".");
+                }
+
+                $productBranch->update([
+                    'stock' => max(0, round($newStock, 6)),
+                ]);
+            }
+
+            app(KardexSyncService::class)->syncMovement($movement);
 
             DB::commit();
 
@@ -2833,40 +2901,6 @@ class OrderController extends Controller
                             ->filter(fn ($orderDetail) => ($orderDetail->status ?? 'A') !== 'C')
                             ->values();
 
-                        // Descontar stock al concretar el cobro (mismo criterio que ventas POS).
-                        foreach ($activeOrderDetails as $orderDetail) {
-                            $productId = (int) ($orderDetail->product_id ?? 0);
-                            $qtyToDiscount = (float) ($orderDetail->quantity ?? 0);
-
-                            if ($productId <= 0 || $qtyToDiscount <= 0) {
-                                continue;
-                            }
-
-                            $productBranch = ProductBranch::query()
-                                ->where('product_id', $productId)
-                                ->where('branch_id', $branchId)
-                                ->lockForUpdate()
-                                ->first();
-
-                            if (! $productBranch) {
-                                throw new \InvalidArgumentException("Producto {$productId} no disponible en esta sucursal.");
-                            }
-
-                            $currentStock = (float) ($productBranch->stock ?? 0);
-                            $allowZeroStockSales = (bool) ($branch->allow_zero_stock_sales ?? false);
-                            if (! $allowZeroStockSales && $currentStock < $qtyToDiscount) {
-                                $productName = (string) ($orderDetail->description ?? ('Producto #' . $productId));
-                                throw new \InvalidArgumentException(
-                                    "Stock insuficiente para \"{$productName}\". Disponible: {$currentStock}, solicitado: {$qtyToDiscount}."
-                                );
-                            }
-
-                            $newStock = $currentStock - $qtyToDiscount;
-                            $productBranch->update([
-                                'stock' => max(0, $newStock),
-                            ]);
-                        }
-
                         if ($detailMode === 'DETALLADO') {
                         foreach ($activeOrderDetails as $orderDetail) {
                             if (($orderDetail->status ?? 'A') === 'C') {
@@ -3064,10 +3098,6 @@ class OrderController extends Controller
                         'situation' => 'libre',
                         'opened_at' => null,
                     ]);
-                }
-
-                if ($orderBaseMovement && $orderBaseMovement->status === 'A') {
-                    app(KardexSyncService::class)->syncMovement($orderBaseMovement);
                 }
 
                 DB::commit();

@@ -1485,7 +1485,7 @@ class SalesController extends Controller
         }
 
         $customerNameLines = max(1, (int) ceil(mb_strlen((string) ($sale->person_name ?? 'CLIENTES VARIOS')) / 24));
-        $addressLines = max(1, (int) ceil(mb_strlen((string) ($sale->person?->address ?? '-')) / 24));
+        $addressLines = max(1, (int) ceil(mb_strlen($this->resolveTicketAddressDisplay($sale)) / 24));
         $documentLines = max(1, (int) ceil(mb_strlen((string) ($sale->person?->document_number ?? '-')) / 24));
         $paymentLines = max(1, (int) ceil(mb_strlen((string) $this->resolveSalePaymentLabel($sale)) / 24));
         $notesLines = 0;
@@ -1836,6 +1836,8 @@ class SalesController extends Controller
             'salesMovement.details.taxRate',
             'orderMovement.details.unit',
             'orderMovement.details.product',
+            'orderMovement.area',
+            'orderMovement.table.area',
         ]);
 
         $userBranchId = (int) (auth()->user()?->person?->branch_id ?? 0);
@@ -1881,10 +1883,32 @@ class SalesController extends Controller
             'logoFileUrl' => $logoFileUrl,
             'printedAt' => now(),
             'paymentLabel' => $this->resolveSalePaymentLabel($sale),
+            'ticketAddressDisplay' => $this->resolveTicketAddressDisplay($sale),
             'qrPayload' => $this->buildSaleQrPayload($sale, $branchForLogo),
             'qrImageUrl' => $this->buildSaleQrImageUrl($sale, $branchForLogo),
             'viewId' => $request->input('view_id'),
         ];
+    }
+
+    private function resolveTicketAddressDisplay(Movement $sale): string
+    {
+        $documentName = mb_strtolower(trim((string) ($sale->documentType?->name ?? '')), 'UTF-8');
+        $isTicketSale = str_contains($documentName, 'ticket');
+        if (! $isTicketSale) {
+            $clientAddress = trim((string) ($sale->person?->address ?? ''));
+            return $clientAddress !== '' ? $clientAddress : '-';
+        }
+
+        $orderMovement = $sale->orderMovement;
+        if (! $orderMovement) {
+            return '';
+        }
+
+        $areaName = trim((string) ($orderMovement->area?->description ?? $orderMovement->table?->area?->description ?? ''));
+        $tableName = trim((string) ($orderMovement->table?->name ?? ''));
+        $parts = array_values(array_filter([$areaName, $tableName], fn ($value) => $value !== ''));
+
+        return implode(' - ', $parts);
     }
 
     private function buildSaleQrPayload(Movement $sale, ?Branch $branchForLogo): ?string
@@ -2740,6 +2764,7 @@ class SalesController extends Controller
         $details = $printData['details'];
         $branch = $printData['branchForLogo'];
         $paymentLabel = $printData['paymentLabel'];
+        $ticketAddressDisplay = (string) ($printData['ticketAddressDisplay'] ?? '');
 
         // Ancho dinámico según impresora configurada (80mm → 48 chars, 58mm → 32 chars)
         $printerWidthMm = (int) ($printer?->width ?? 58);
@@ -2766,7 +2791,7 @@ class SalesController extends Controller
         $lines[] = $sep;
         $lines[] = 'Fecha: '.optional($sale->moved_at)->format('d/m/Y H:i');
         $lines[] = 'Cliente: '.Str::ascii($sale->person_name ?? 'CLIENTES VARIOS');
-        $lines[] = 'Dir. cliente: '.Str::ascii($sale->person?->address ?? '-');
+        $lines[] = 'Dir. cliente: '.Str::ascii($ticketAddressDisplay);
         $lines[] = 'RUC/DNI: '.Str::ascii($sale->person?->document_number ?? '-');
         $lines[] = 'Forma pago: '.Str::ascii($paymentLabel);
         $lines[] = $sep;
@@ -2817,6 +2842,7 @@ class SalesController extends Controller
         $details = $printData['details'];
         $branch = $printData['branchForLogo'];
         $paymentLabel = $printData['paymentLabel'];
+        $ticketAddressDisplay = (string) ($printData['ticketAddressDisplay'] ?? '');
 
         $printerWidthMm = (int) ($printer?->width ?? 58);
         $lineWidth = $printerWidthMm >= 80 ? 48 : 32;
@@ -2883,7 +2909,7 @@ class SalesController extends Controller
         $lines[] = $sep;
         $lines[] = 'Fecha: '.optional($sale->moved_at)->format('d/m/Y H:i');
         $lines[] = 'Cliente: '.Str::ascii($sale->person_name ?? 'CLIENTES VARIOS');
-        $lines[] = 'Dir. cliente: '.Str::ascii($sale->person?->address ?? '-');
+        $lines[] = 'Dir. cliente: '.Str::ascii($ticketAddressDisplay);
         $lines[] = 'RUC/DNI: '.Str::ascii($sale->person?->document_number ?? '-');
         $lines[] = 'Forma pago: '.Str::ascii($paymentLabel);
         $lines[] = $sep;
