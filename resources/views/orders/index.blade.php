@@ -143,7 +143,7 @@
                                     <div class="border-t border-gray-100 dark:border-gray-700 my-3"></div>
                 
                                     {{-- Grid de metadata --}}
-                                    <div class="flex flex-col gap-y-2 flex-1">
+                                    <div class="flex flex-col gap-y-2 min-h-0">
                                         <div class="min-w-0" x-show="hasActiveSearch">
                                             <p class="text-[10px] text-gray-400 dark:text-gray-500">Área</p>
                                             <p class="text-xs font-semibold text-[#F37022] dark:text-orange-300/90 truncate"
@@ -164,7 +164,7 @@
                                     </div>
                 
                                     {{-- Footer: total + botones --}}
-                                    <div class="flex justify-between items-center mt-3">
+                                    <div class="flex justify-between items-center mt-auto pt-3">
                                         <template x-if="table.situation === 'ocupada'">
                                             <p class="text-lg font-semibold text-gray-900 dark:text-white"
                                                 x-text="'S/. ' + parseFloat(table.total).toFixed(2)"></p>
