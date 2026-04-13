@@ -46,4 +46,10 @@ return [
         explode(',', (string) env('QZ_SECONDARY_FIRST_PRINTER_NAMES', 'BARRA2'))
     ))),
 
+    // Comanda cocina: si la ticketera tiene IP en printers_branch, no usar QZ en el navegador (el servidor envía RAW a esa IP).
+    'kitchen_skip_client_qz_when_printer_has_ip' => filter_var(
+        env('QZ_KITCHEN_SKIP_CLIENT_WHEN_PRINTER_IP', true),
+        FILTER_VALIDATE_BOOL
+    ),
+
 ];

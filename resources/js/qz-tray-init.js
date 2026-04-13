@@ -314,6 +314,10 @@ function initQzIfMetaPresent() {
     if (!signUrl || !certUrl) {
         return;
     }
+    const qzLib = getQz();
+    if (qzLib?.websocket?.isActive?.()) {
+        return;
+    }
     configureQzSecurity();
 }
 

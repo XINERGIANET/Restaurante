@@ -937,6 +937,7 @@ class OrderController extends Controller
                         return [
                             'name' => $name,
                             'width' => $widthRaw !== '' ? $widthRaw : null,
+                            'ip' => filled(trim((string) ($p->ip ?? ''))) ? trim((string) $p->ip) : null,
                         ];
                     })
                     ->filter()
@@ -1317,6 +1318,7 @@ class OrderController extends Controller
                         return [
                             'name' => $name,
                             'width' => $widthRaw !== '' ? $widthRaw : null,
+                            'ip' => filled(trim((string) ($p->ip ?? ''))) ? trim((string) $p->ip) : null,
                         ];
                     })
                     ->filter()
