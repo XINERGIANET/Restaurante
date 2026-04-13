@@ -6,6 +6,7 @@
     <meta name="qz-signature-algorithm" content="{{ config('qz.signature_algorithm', 'SHA512') }}">
     <script>
         window.__qzSecondaryFirstPrinterNames = @json(config('qz.secondary_first_printer_names', []));
+        window.__qzKitchenSkipClientQzWhenPrinterHasIp = @json((bool) config('qz.kitchen_skip_client_qz_when_printer_has_ip', true));
     </script>
     @vite(['resources/js/qz-tray-init.js'])
     <meta name="turbo-visit-control" content="reload">
@@ -1393,6 +1394,36 @@
                         return 58; // default seguro
                     }
 
+                    /**
+                     * Comanda: ticketera con IP en sucursal → RAW vía Laravel (sin QZ en este navegador).
+                     */
+                    function kitchenComandaPrinterUsesServerThermal(printerName) {
+                        if (window.__qzKitchenSkipClientQzWhenPrinterHasIp === false) {
+                            return false;
+                        }
+                        const target = String(printerName || '').trim().toLowerCase();
+                        if (!target || !Array.isArray(serverProductBranches)) {
+                            return false;
+                        }
+                        for (let i = 0; i < serverProductBranches.length; i++) {
+                            const plist = serverProductBranches[i]?.qz_printers;
+                            if (!Array.isArray(plist)) {
+                                continue;
+                            }
+                            for (let j = 0; j < plist.length; j++) {
+                                const p = plist[j];
+                                if (String(p?.name || '').trim().toLowerCase() !== target) {
+                                    continue;
+                                }
+                                const ip = String(p?.ip || '').trim();
+                                if (ip !== '') {
+                                    return true;
+                                }
+                            }
+                        }
+                        return false;
+                    }
+
                     /** Escapa texto para HTML (comanda impresa como pixel/HTML en Epson u otras no-RAW). */
                     function escapeHtmlForQzPrint(text) {
                         return String(text)
@@ -2148,8 +2179,8 @@
                     }
 
                     /**
-                     * Imprime comandas agrupadas por ticketera (solo servidor: RAW vía Laravel o PDF si falla).
-                     * No usa QZ Tray en el navegador (evita el diálogo Allow / certificado no confiable).
+                     * Comandas por ticketera: QZ Tray en el navegador (igual que cobro) + servidor si la ticketera tiene IP.
+                     * En PC terminal (defaultPrinterName BARRA2) init ya prioriza certificado secondary (qz2).
                      */
                     async function printKitchenTickets(items, table) {
                         const activeItems = Array.isArray(items) ? items : [];
@@ -2158,6 +2189,7 @@
                             ...clientCancelled,
                         ];
                         if (!activeItems.length && !mergedCancellations.length) return true;
+                        const qzApi = window.qz;
                         const byPrinter = {};
                         activeItems.forEach((it) => {
                             const pId = parseInt(it.pId, 10) || 0;
@@ -2222,6 +2254,30 @@
                                 return td;
                             }
                             throw new Error(td?.message || ('No se pudo imprimir comanda en "' + (printerName || 'Ticketera') + '".'));
+                        }
+
+                        const namesNeedingClientQz = names.filter((n) => !kitchenComandaPrinterUsesServerThermal(n));
+                        const needsClientQz = namesNeedingClientQz.length > 0;
+                        const QZ_MULTI_KITCHEN_HINT = '__MULTI_KITCHEN_SECONDARY_FIRST__';
+                        const kitchenCertPrinterHint = namesNeedingClientQz.find((n) => {
+                            if (typeof window.__qzPrinterRequiresSecondaryCertFirst === 'function') {
+                                return window.__qzPrinterRequiresSecondaryCertFirst(n);
+                            }
+                            const t = String(n || '').trim().toLowerCase().replace(/\s+/g, '');
+                            return t === 'barra2' || t.startsWith('barra2');
+                        }) || null;
+                        const multiTicketeraComanda = namesNeedingClientQz.length >= 2;
+                        const defPn = String(window.__qzConfig?.defaultPrinterName || window.__qzConfig?.printerName || '').trim();
+                        let qzKitchenCertHint = kitchenCertPrinterHint || (multiTicketeraComanda ? QZ_MULTI_KITCHEN_HINT : undefined);
+                        if (!qzKitchenCertHint && needsClientQz && defPn && typeof window.__qzPrinterRequiresSecondaryCertFirst === 'function' && window.__qzPrinterRequiresSecondaryCertFirst(defPn)) {
+                            qzKitchenCertHint = defPn;
+                        }
+                        const qzAvailable = needsClientQz && qzApi && await ensureQzTrayConnected(qzApi, qzKitchenCertHint);
+                        let canUseQz = !!qzAvailable;
+                        if (!canUseQz && needsClientQz && qzApi) {
+                            if (typeof showNotification === 'function') {
+                                showNotification('Impresión', 'QZ Tray no disponible para comanda; se usará servidor o PDF.', 'warning');
+                            }
                         }
 
                         function padEnd(str, length) {
@@ -2335,7 +2391,23 @@
                             }
                             const data = header + body + '\n\n';
                             try {
-                                await sendKitchenTicketToServer(pname, data);
+                                if (kitchenComandaPrinterUsesServerThermal(pname)) {
+                                    await sendKitchenTicketToServer(pname, data);
+                                } else if (canUseQz) {
+                                    try {
+                                        await qzApi.printers.find(pname);
+                                        await printTicketWithQz(qzApi, pname, data);
+                                    } catch (notFoundErr) {
+                                        const msg = 'QZ no encontró la impresora "' + pname + '". Se intentará impresión por servidor.';
+                                        console.warn(msg, notFoundErr);
+                                        if (typeof showNotification === 'function') {
+                                            showNotification('Impresión', msg, 'warning');
+                                        }
+                                        await sendKitchenTicketToServer(pname, data);
+                                    }
+                                } else {
+                                    await sendKitchenTicketToServer(pname, data);
+                                }
                             } catch (e) {
                                 console.error('Impresi?n comanda: error al imprimir en ' + pname, e);
                                 printedDirectly = false;

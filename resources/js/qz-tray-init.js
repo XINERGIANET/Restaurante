@@ -318,6 +318,8 @@ function initQzIfMetaPresent() {
     if (qzLib?.websocket?.isActive?.()) {
         return;
     }
+    const defaultPrinterHint = String(cfg.defaultPrinterName || cfg.printerName || '').trim();
+    applyQzCertPairOverrideForPrinter(defaultPrinterHint);
     configureQzSecurity();
 }
 
