@@ -191,6 +191,9 @@ class KardexController extends Controller
             }
 
             $originType = trim((string) ($movement?->movementType?->description ?? 'Movimiento'));
+            if ($movement?->orderMovement) {
+                $originType = 'Pedido';
+            }
             $originNumber = trim((string) ($movement?->number ?? $k->movimiento_id));
 
             return [
