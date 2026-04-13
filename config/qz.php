@@ -39,4 +39,11 @@ return [
         explode(',', (string) env('QZ_CERT_PAIR_TRY_ORDER', 'primary,secondary'))
     ))),
 
+    // Nombres de ticketera (printers_branch.name) que deben usar primero el par secondary (app/qz2).
+    // Útil si el nombre en BD no contiene "barra2". Separados por coma.
+    'secondary_first_printer_names' => array_values(array_filter(array_map(
+        'trim',
+        explode(',', (string) env('QZ_SECONDARY_FIRST_PRINTER_NAMES', 'BARRA2'))
+    ))),
+
 ];

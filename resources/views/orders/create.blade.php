@@ -4,6 +4,9 @@
     <meta name="qz-sign-url" content="{{ route('qz.sign') }}">
     <meta name="qz-certificate-url" content="{{ route('qz.certificate') }}">
     <meta name="qz-signature-algorithm" content="{{ config('qz.signature_algorithm', 'SHA512') }}">
+    <script>
+        window.__qzSecondaryFirstPrinterNames = @json(config('qz.secondary_first_printer_names', []));
+    </script>
     @vite(['resources/js/qz-tray-init.js'])
     <meta name="turbo-visit-control" content="reload">
     <script>
@@ -2221,6 +2224,7 @@
                             throw new Error(td?.message || ('No se pudo imprimir comanda en "' + (printerName || 'Ticketera') + '".'));
                         }
 
+                        const QZ_MULTI_KITCHEN_HINT = '__MULTI_KITCHEN_SECONDARY_FIRST__';
                         const kitchenCertPrinterHint = names.find((n) => {
                             if (typeof window.__qzPrinterRequiresSecondaryCertFirst === 'function') {
                                 return window.__qzPrinterRequiresSecondaryCertFirst(n);
@@ -2228,7 +2232,9 @@
                             const t = String(n || '').trim().toLowerCase().replace(/\s+/g, '');
                             return t === 'barra2' || t.startsWith('barra2');
                         }) || null;
-                        const qzAvailable = qzApi && await ensureQzTrayConnected(qzApi, kitchenCertPrinterHint || undefined);
+                        const multiTicketeraComanda = names.length >= 2;
+                        const qzKitchenCertHint = kitchenCertPrinterHint || (multiTicketeraComanda ? QZ_MULTI_KITCHEN_HINT : undefined);
+                        const qzAvailable = qzApi && await ensureQzTrayConnected(qzApi, qzKitchenCertHint);
                         let canUseQz = !!qzAvailable;
                         if (!canUseQz) {
                             if (qzApi) {

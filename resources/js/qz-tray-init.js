@@ -30,23 +30,59 @@ function appendPairQuery(url, pair) {
     return u.toString();
 }
 
+const MULTI_KITCHEN_SECONDARY_FIRST = '__MULTI_KITCHEN_SECONDARY_FIRST__';
+
+function matchesConfiguredSecondaryFirstList(printerName) {
+    const list = Array.isArray(window.__qzSecondaryFirstPrinterNames) ? window.__qzSecondaryFirstPrinterNames : [];
+    const raw = String(printerName || '').trim().toLowerCase();
+    const compact = raw.replace(/\s+/g, '');
+    if (!raw) {
+        return false;
+    }
+    for (let i = 0; i < list.length; i++) {
+        const e = String(list[i] || '').trim().toLowerCase();
+        if (!e) {
+            continue;
+        }
+        const ec = e.replace(/\s+/g, '');
+        if (raw === e || compact === ec) {
+            return true;
+        }
+        if (e.length >= 6 && raw.includes(e)) {
+            return true;
+        }
+        if (ec.length >= 6 && compact.includes(ec)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 /**
  * Misma regla que requiresStrictLocalQz en las vistas: ticketera de la 2.ª PC (LAN).
  * Para esas impresoras se usa primero el par secondary (app/qz2) y no se intenta primary antes.
  */
 export function printerRequiresSecondaryCertFirst(printerName) {
-    const raw = String(printerName || '').trim().toLowerCase();
-    if (!raw) {
+    const raw = String(printerName || '').trim();
+    if (raw === MULTI_KITCHEN_SECONDARY_FIRST) {
+        return true;
+    }
+    const lower = raw.toLowerCase();
+    if (!lower) {
         return false;
     }
-    const compact = raw.replace(/\s+/g, '');
+    if (matchesConfiguredSecondaryFirstList(printerName)) {
+        return true;
+    }
+    const compact = lower.replace(/\s+/g, '');
     if (compact === 'barra2' || compact.startsWith('barra2')) {
         return true;
     }
-    if (/\bbarra\s*2\b/i.test(raw)) {
+    if (/\bbarra\s*2\b/i.test(lower)) {
         return true;
     }
-    if (raw.includes('barra2')) {
+    if (lower.includes('barra2')) {
         return true;
     }
 
@@ -56,7 +92,11 @@ export function printerRequiresSecondaryCertFirst(printerName) {
 export function applyQzCertPairOverrideForPrinter(printerName) {
     if (printerRequiresSecondaryCertFirst(printerName)) {
         window.__qzCertPairOrderOverride = ['secondary', 'primary'];
-        console.info('[QZ Xinergia] Impresora BARRA2: orden de certificado forzado a secondary → primary (app/qz2 primero, sin probar primary antes).');
+        if (String(printerName || '').trim() === MULTI_KITCHEN_SECONDARY_FIRST) {
+            console.info('[QZ Xinergia] Comanda a varias ticketeras: orden secondary → primary (qz2 primero).');
+        } else {
+            console.info('[QZ Xinergia] Ticketera qz2 primero: orden secondary → primary (app/qz2 antes que primary).');
+        }
     } else {
         window.__qzCertPairOrderOverride = null;
     }
@@ -282,6 +322,7 @@ window.__qzConfigureQzSecurityForPair = configureQzSecurityForPair;
 window.__qzResolveCertPairTryOrder = resolveCertPairTryOrder;
 window.__qzApplyCertPairOverrideForPrinter = applyQzCertPairOverrideForPrinter;
 window.__qzPrinterRequiresSecondaryCertFirst = printerRequiresSecondaryCertFirst;
+window.__qzMultiKitchenSecondaryFirstToken = MULTI_KITCHEN_SECONDARY_FIRST;
 
 initQzIfMetaPresent();
 
