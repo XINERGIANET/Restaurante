@@ -2833,6 +2833,40 @@ class OrderController extends Controller
                             ->filter(fn ($orderDetail) => ($orderDetail->status ?? 'A') !== 'C')
                             ->values();
 
+                        // Descontar stock al concretar el cobro (mismo criterio que ventas POS).
+                        foreach ($activeOrderDetails as $orderDetail) {
+                            $productId = (int) ($orderDetail->product_id ?? 0);
+                            $qtyToDiscount = (float) ($orderDetail->quantity ?? 0);
+
+                            if ($productId <= 0 || $qtyToDiscount <= 0) {
+                                continue;
+                            }
+
+                            $productBranch = ProductBranch::query()
+                                ->where('product_id', $productId)
+                                ->where('branch_id', $branchId)
+                                ->lockForUpdate()
+                                ->first();
+
+                            if (! $productBranch) {
+                                throw new \InvalidArgumentException("Producto {$productId} no disponible en esta sucursal.");
+                            }
+
+                            $currentStock = (float) ($productBranch->stock ?? 0);
+                            $allowZeroStockSales = (bool) ($branch->allow_zero_stock_sales ?? false);
+                            if (! $allowZeroStockSales && $currentStock < $qtyToDiscount) {
+                                $productName = (string) ($orderDetail->description ?? ('Producto #' . $productId));
+                                throw new \InvalidArgumentException(
+                                    "Stock insuficiente para \"{$productName}\". Disponible: {$currentStock}, solicitado: {$qtyToDiscount}."
+                                );
+                            }
+
+                            $newStock = $currentStock - $qtyToDiscount;
+                            $productBranch->update([
+                                'stock' => max(0, $newStock),
+                            ]);
+                        }
+
                         if ($detailMode === 'DETALLADO') {
                         foreach ($activeOrderDetails as $orderDetail) {
                             if (($orderDetail->status ?? 'A') === 'C') {
