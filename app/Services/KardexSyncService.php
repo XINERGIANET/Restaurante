@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Kardex;
 use App\Models\Movement;
+use App\Models\ProductBranch;
 
 class KardexSyncService
 {
@@ -204,6 +205,20 @@ class KardexSyncService
 
     private function rebuildStocksForProductBranch(int $productId, int $branchId): void
     {
+        $currentOperationalStock = (float) (ProductBranch::query()
+            ->where('product_id', $productId)
+            ->where('branch_id', $branchId)
+            ->value('stock') ?? 0);
+
+        $kardexSignedSum = (float) (Kardex::query()
+            ->where('producto_id', $productId)
+            ->where('sucursal_id', $branchId)
+            ->sum('cantidad') ?? 0);
+
+        // Anclar la reconstruccion al stock operativo actual:
+        // opening + sum(cantidades) = stock actual en product_branch.
+        $openingStock = round($currentOperationalStock - $kardexSignedSum, 6);
+
         $rows = Kardex::query()
             ->where('producto_id', $productId)
             ->where('sucursal_id', $branchId)
@@ -211,7 +226,7 @@ class KardexSyncService
             ->orderBy('id')
             ->get(['id', 'cantidad']);
 
-        $stock = 0.0;
+        $stock = $openingStock;
         foreach ($rows as $row) {
             $previous = $stock;
             $stock = round($stock + (float) $row->cantidad, 6);
