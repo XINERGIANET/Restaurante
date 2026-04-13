@@ -2067,6 +2067,17 @@ class OrderController extends Controller
             }
 
             if ($existingOrderMovement) {
+                // Antes de borrar y recrear detalles: snapshot para delta de stock/kardex (si no, previous queda en 0 y se vuelve a descontar todo).
+                $previousCommittedQtyByProduct = $existingOrderMovement->details()
+                    ->where(function ($q) {
+                        $q->whereNull('status')->orWhere('status', '!=', 'C');
+                    })
+                    ->get(['product_id', 'quantity'])
+                    ->groupBy('product_id')
+                    ->map(function ($rows) {
+                        return (float) $rows->sum('quantity');
+                    });
+
                 // ACTUALIZAR pedido existente (aunque quede sin items, para registrar cancelaciones)
                 $existingOrderMovement->update([
                     'subtotal' => $subtotal,
@@ -2150,17 +2161,9 @@ class OrderController extends Controller
                     'movement_id' => $movement->id,
                     'branch_id' => $branchId,
                 ]);
-            }
 
-            $previousCommittedQtyByProduct = $orderMovement->details()
-                ->where(function ($q) {
-                    $q->whereNull('status')->orWhere('status', '!=', 'C');
-                })
-                ->get(['product_id', 'quantity'])
-                ->groupBy('product_id')
-                ->map(function ($rows) {
-                    return (float) $rows->sum('quantity');
-                });
+                $previousCommittedQtyByProduct = collect();
+            }
 
             $newCommittedQtyByProduct = collect($items)
                 ->groupBy(function ($rawItem) {
