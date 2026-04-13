@@ -2867,11 +2867,11 @@
 
                         // Disminuir cantidad (si pedido guardado, no bajar de savedQty)
                         const savedQty = Number.isFinite(parseFloat(item.savedQty)) ? parseFloat(item.savedQty) : 0;
-                        if (isMozoProfile && newQty < 1) {
+                        if (isMozoProfile && newQty < 1 && lineLooksComandado(item)) {
                             if (typeof showNotification === 'function') {
-                                showNotification('No permitido', 'El perfil Mozo no puede dejar el pedido sin ese producto.', 'info');
+                                showNotification('No permitido', 'El perfil Mozo no puede eliminar productos ya enviados a cocina.', 'info');
                             } else if (window.Swal) {
-                                window.Swal.fire({ icon: 'info', title: 'No permitido', text: 'El perfil Mozo no puede dejar el pedido sin ese producto.' });
+                                window.Swal.fire({ icon: 'info', title: 'No permitido', text: 'El perfil Mozo no puede eliminar productos ya enviados a cocina.' });
                             }
                             return;
                         }
@@ -2950,17 +2950,25 @@
                         renderTicket();
                     }
 
+                    function lineLooksComandado(item) {
+                        if (!item) return false;
+                        const rawSaved = item.savedQty != null && item.savedQty !== '' ? parseFloat(item.savedQty) : NaN;
+                        const savedQtyItem = Number.isFinite(rawSaved) ? rawSaved : 0;
+                        const omId = Number(currentTable?.order_movement_id || 0);
+                        return savedQtyItem > 0 || (omId > 0 && !!item.commandTime);
+                    }
+
                     async function confirmRemoveLine(index) {
-                        if (isMozoProfile) {
+                        if (!currentTable.items || index < 0 || index >= currentTable.items.length) return;
+                        const item = currentTable.items[index];
+                        if (isMozoProfile && lineLooksComandado(item)) {
                             if (typeof showNotification === 'function') {
-                                showNotification('No permitido', 'El perfil Mozo no puede eliminar productos del pedido.', 'info');
+                                showNotification('No permitido', 'El perfil Mozo no puede eliminar productos ya enviados a cocina.', 'info');
                             } else if (window.Swal) {
-                                window.Swal.fire({ icon: 'info', title: 'No permitido', text: 'El perfil Mozo no puede eliminar productos del pedido.' });
+                                window.Swal.fire({ icon: 'info', title: 'No permitido', text: 'El perfil Mozo no puede eliminar productos ya enviados a cocina.' });
                             }
                             return;
                         }
-                        if (!currentTable.items || index < 0 || index >= currentTable.items.length) return;
-                        const item = currentTable.items[index];
                         const qty = parseInt(item.qty, 10) || 1;
                         const prod = serverProducts.find(p => p.id === item.pId);
                         const name = (prod && prod.name) ? prod.name : 'este producto';
@@ -2985,32 +2993,36 @@
                     }
 
                     async function removeFromCart(index) {
-                        if (isMozoProfile) {
+                        if (!currentTable.items || index < 0 || index >= currentTable.items.length) return;
+                        const item = currentTable.items[index];
+                        if (isMozoProfile && lineLooksComandado(item)) {
                             if (typeof showNotification === 'function') {
-                                showNotification('No permitido', 'El perfil Mozo no puede eliminar productos del pedido.', 'info');
+                                showNotification('No permitido', 'El perfil Mozo no puede eliminar productos ya enviados a cocina.', 'info');
                             } else if (window.Swal) {
-                                window.Swal.fire({ icon: 'info', title: 'No permitido', text: 'El perfil Mozo no puede eliminar productos del pedido.' });
+                                window.Swal.fire({ icon: 'info', title: 'No permitido', text: 'El perfil Mozo no puede eliminar productos ya enviados a cocina.' });
                             }
                             return;
                         }
-                        if (!currentTable.items || index < 0 || index >= currentTable.items.length) return;
-                        const item = currentTable.items[index];
                         const qty = parseInt(item.qty, 10) || 1;
                         await updateQty(index, -qty);
                     }
 
                     function openRemoveQuantityLineModal(index) {
-                        if (isMozoProfile) return;
                         if (!currentTable?.items || index < 0 || index >= currentTable.items.length) return;
                         const item = currentTable.items[index];
                         const maxQty = Math.max(1, parseInt(item.qty, 10) || 1);
                         const prod = serverProducts.find(p => p.id === item.pId);
                         const productName = (prod && prod.name) ? prod.name : (item.name || 'Producto');
-                        const rawSaved = item.savedQty != null && item.savedQty !== '' ? parseFloat(item.savedQty) : NaN;
-                        const savedQtyItem = Number.isFinite(rawSaved) ? rawSaved : 0;
-                        const omId = Number(currentTable.order_movement_id || 0);
-                        const lineLooksComandado = savedQtyItem > 0 || (omId > 0 && !!item.commandTime);
-                        if (!lineLooksComandado) {
+                        const itemIsComandado = lineLooksComandado(item);
+                        if (isMozoProfile && itemIsComandado) {
+                            if (typeof showNotification === 'function') {
+                                showNotification('No permitido', 'El perfil Mozo no puede eliminar productos ya enviados a cocina.', 'info');
+                            } else if (window.Swal) {
+                                window.Swal.fire({ icon: 'info', title: 'No permitido', text: 'El perfil Mozo no puede eliminar productos ya enviados a cocina.' });
+                            }
+                            return;
+                        }
+                        if (!itemIsComandado) {
                             void removeFromCart(index);
                             return;
                         }
@@ -3021,7 +3033,9 @@
                     }
 
                     function applyRemoveQuantity(index, qtyToRemove, reason) {
-                        if (isMozoProfile) {
+                        if (!currentTable.items || index < 0 || index >= currentTable.items.length) return;
+                        const item = currentTable.items[index];
+                        if (isMozoProfile && lineLooksComandado(item)) {
                             if (typeof showNotification === 'function') {
                                 showNotification('No permitido', 'El perfil Mozo no puede anular cantidades ya comandadas.', 'info');
                             } else if (window.Swal) {
@@ -3029,8 +3043,6 @@
                             }
                             return;
                         }
-                        if (!currentTable.items || index < 0 || index >= currentTable.items.length) return;
-                        const item = currentTable.items[index];
                         const prod = serverProducts.find(p => p.id === item.pId);
                         const qty = parseFloat(item.qty) || 0;
                         const toCancel = Math.min(qtyToRemove, qty);
@@ -3236,9 +3248,9 @@
 
                                 const rawSaved = item.savedQty != null && item.savedQty !== '' ? parseFloat(item.savedQty) : NaN;
                                 const savedQtyItem = Number.isFinite(rawSaved) ? rawSaved : 0;
-                                const commandedQty = Math.max(0, Math.min(itemQty, savedQtyItem));
+                                const itemIsComandado = lineLooksComandado(item);
+                                const commandedQty = Math.max(0, Math.min(itemQty, savedQtyItem > 0 ? savedQtyItem : (itemIsComandado ? itemQty : 0)));
                                 const pendingQty = Math.max(0, itemQty - commandedQty);
-                                const itemIsComandado = savedQtyItem > 0;
                                 const canReduce = !itemIsComandado || (parseFloat(item.qty) || 0) > savedQtyItem;
 
                                 const statusLabel = isDelivered ? 'Entregado' : (itemIsComandado ? (pendingQty > 0 ? `Parcial ${commandedQty}/${itemQty}` : 'Comandado') : 'Pendiente');
@@ -3257,10 +3269,11 @@
                                 const qtyMinusDisabled = canReduce ? '' : ' disabled';
                                 const qtyMinusClass = canReduce ? ' hover:bg-slate-100 dark:hover:bg-slate-700 font-bold' : ' opacity-30 cursor-not-allowed';
                                 const qtyMinusOnclick = canReduce ? `onclick="updateQty(${index}, -1)"` : '';
-                                const trashOnclick = isMozoProfile
-                                    ? ''
-                                    : `onclick="openRemoveQuantityLineModal(${index})"`;
-                                const trashHiddenMozo = isMozoProfile ? ' hidden' : '';
+                                const canRemoveLine = !isMozoProfile || !itemIsComandado;
+                                const trashOnclick = canRemoveLine
+                                    ? `onclick="openRemoveQuantityLineModal(${index})"`
+                                    : '';
+                                const trashHiddenMozo = canRemoveLine ? '' : ' hidden';
                                 const hasCourtesy = (parseFloat(item.courtesyQty) || 0) > 0;
                                 const showNoteBox = item.noteOpen === true || (item.noteOpen === undefined && hasNote);
                                 const showCourtesyBox = item.courtesyOpen === true || (item.courtesyOpen === undefined && hasCourtesy);
