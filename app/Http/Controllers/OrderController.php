@@ -2104,15 +2104,8 @@ class OrderController extends Controller
                 $movement = $orderMovement->movement;
             } else {
                 // CREAR nuevo pedido
-                $movementType = MovementType::where('description', 'like', '%pedido%')
-                    ->orWhere('description', 'like', '%orden%')
-                    ->first() ?? MovementType::first();
-
-                $documentType = DocumentType::where('movement_type_id', $movementType->id)->first() ?? DocumentType::first();
-
-                if (! $movementType || ! $documentType) {
-                    throw new \Exception('No hay tipo de movimiento o tipo de documento configurado para pedidos.');
-                }
+                $documentType = $this->resolveOrderDocumentType();
+                $movementType = $documentType->movementType ?? MovementType::query()->findOrFail($documentType->movement_type_id);
 
                 $number = $this->generateOrderMovementNumber(
                     (int) $branchId,
@@ -3202,6 +3195,65 @@ class OrderController extends Controller
                 'message' => $e->getMessage(),
             ];
         }
+    }
+
+    /**
+     * Documento de pedido (tabla document_types, ej. nombre "Pedido") y su movement_type.
+     * Evita el bug de tomar el primer movement_type por LIKE/OR y acabar en "Factura de compra".
+     */
+    private function resolveOrderDocumentType(): DocumentType
+    {
+        $exact = DocumentType::query()
+            ->whereRaw('LOWER(TRIM(name)) = ?', ['pedido'])
+            ->first();
+
+        if ($exact) {
+            return $exact;
+        }
+
+        $byName = DocumentType::query()
+            ->tap(fn ($q) => InsensitiveSearch::whereInsensitiveLikePattern($q, 'name', '%pedido%'))
+            ->orderBy('id')
+            ->first();
+
+        if ($byName) {
+            return $byName;
+        }
+
+        $movementType = MovementType::query()
+            ->where(function ($query) {
+                InsensitiveSearch::whereInsensitiveLikePattern($query, 'description', '%pedido%');
+            })
+            ->orderBy('id')
+            ->first();
+
+        if ($movementType) {
+            $documentType = DocumentType::query()
+                ->where('movement_type_id', $movementType->id)
+                ->tap(fn ($q) => InsensitiveSearch::whereInsensitiveLikePattern($q, 'name', '%pedido%'))
+                ->orderBy('id')
+                ->first();
+
+            if ($documentType) {
+                return $documentType;
+            }
+
+            $documentType = DocumentType::query()
+                ->where('movement_type_id', $movementType->id)
+                ->orderBy('id')
+                ->first();
+
+            if ($documentType) {
+                return $documentType;
+            }
+        }
+
+        $fallback = DocumentType::query()->orderBy('id')->first();
+        if ($fallback) {
+            return $fallback;
+        }
+
+        throw new \Exception('No hay tipo de movimiento o tipo de documento configurado para pedidos.');
     }
 
     private function generateOrderMovementNumber(int $branchId, int $movementTypeId, int $documentTypeId): string

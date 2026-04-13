@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Branch;
 use App\Models\Company;
+use App\Models\DocumentType;
 use App\Models\Kardex;
 use App\Models\Product;
 use App\Models\Operation;
@@ -174,12 +175,20 @@ class KardexController extends Controller
             ->orderBy('id')
             ->get();
 
-        return $entries->map(function ($k) {
+        $pedidoTipoNombre = DocumentType::query()
+            ->whereRaw('LOWER(TRIM(name)) = ?', ['pedido'])
+            ->value('name');
+
+        return $entries->map(function ($k) use ($pedidoTipoNombre) {
             $movement = $k->movement;
             $qtySigned = (float) ($k->cantidad ?? 0);
             $quantity = abs($qtySigned);
             $docTypeName = trim((string) ($movement?->documentType?->name ?? ''));
-            $type = $docTypeName !== '' ? $docTypeName : ($qtySigned >= 0 ? 'Entrada' : 'Salida');
+            if ($movement?->orderMovement) {
+                $type = $pedidoTipoNombre ? trim((string) $pedidoTipoNombre) : 'Pedido';
+            } else {
+                $type = $docTypeName !== '' ? $docTypeName : ($qtySigned >= 0 ? 'Entrada' : 'Salida');
+            }
 
             $originPrefix = 'M';
             if ($movement?->salesMovement) {
