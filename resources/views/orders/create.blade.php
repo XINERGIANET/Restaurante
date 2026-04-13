@@ -821,7 +821,6 @@
                     const salesThermalPrintUrl = @json(route('sales.print.ticket.thermal'));
                     const salesTicketPrintBaseUrl = @json(route('admin.sales.print.ticket', ['sale' => '__SALE__']));
                     const kitchenThermalPrintUrl = @json(route('orders.print.kitchen.thermal'));
-                    const kitchenPdfLinkUrl = @json(route('orders.print.kitchen.pdf.link'));
                     const orderPreAccountPrintUrl = @json(route('orders.print.preaccount.thermal'));
                     const orderPreAccountPdfLinkUrl = @json(route('orders.print.preaccount.pdf.link'));
 
@@ -1921,103 +1920,6 @@
                         });
                     }
 
-                    function openKitchenCommandPdfTab(items, table) {
-                        const activeItems = Array.isArray(items) ? items : [];
-                        const cancellations = normalizeCancellationsForTicket(table?.cancellations);
-                        if (!activeItems.length && !cancellations.length) {
-                            if (typeof showNotification === 'function') {
-                                showNotification('Comanda', 'No hay productos para generar la comanda.', 'warning');
-                            }
-                            return;
-                        }
-
-                        const firstPid = parseInt(activeItems[0]?.pId ?? activeItems[0]?.product_id, 10) || 0;
-                        const firstPrinterName = firstPid ? (resolveQzPrinterNames(firstPid)[0] || '') : '';
-                        const paperWidth = firstPrinterName ? resolvePrinterWidthByName(firstPrinterName) : 58;
-                        const lineWidth = paperWidth === 80 ? 32 : 24;
-                        const sep = '='.repeat(lineWidth) + '\n';
-                        const tableLabel = table?.name ?? table?.table_id ?? 'Mesa';
-                        const areaLabel = (table?.original_area_name || '').trim();
-                        const orderLabel = String(table?.order_movement_number ?? table?.order_movement_id ?? '').trim();
-                        const clientLabel = String(table?.clientName || table?.client || '').trim();
-
-                        const padEnd = (s, len) => {
-                            const v = String(s ?? '');
-                            return v.length >= len ? v.slice(0, len) : (v + ' '.repeat(len - v.length));
-                        };
-                        const padCenter = (s, len) => {
-                            const v = String(s ?? '');
-                            if (v.length >= len) return v.slice(0, len);
-                            const l = Math.floor((len - v.length) / 2);
-                            const r = len - v.length - l;
-                            return ' '.repeat(l) + v + ' '.repeat(r);
-                        };
-
-                        let text = '';
-                        text += padCenter('COMANDA', lineWidth) + '\n';
-                        text += '\n';
-                        text += 'Mesa: ' + tableLabel + (areaLabel ? ' - ' + areaLabel : '') + '\n';
-                        text += 'Fecha: ' + formatDateTimeForTicket(new Date()) + '\n';
-                        text += 'Mesero: ' + (table?.waiter || '-') + '\n';
-                        if (clientLabel) text += 'Cliente: ' + clientLabel + '\n';
-                        text += sep;
-
-                        activeItems.forEach((it) => {
-                            const qty = it?.qty ?? 1;
-                            const name = (it?.name || 'Producto').trim();
-                            const hour = (it?.commandTime || '').trim();
-                            const complementsText = formatComplementsLabel(it?.complements);
-                            const courtesyQty = Math.max(0, Math.min(parseFloat(qty) || 0, parseFloat(it?.courtesyQty ?? 0) || 0));
-                            const takeawayQty = Math.max(0, Math.min(parseFloat(qty) || 0, parseFloat(it?.takeawayQty ?? 0) || 0));
-                            const status = String(it?.status ?? '').toUpperCase();
-                            const isDelivered = !!it?.delivered || status === 'ENTREGADO' || status === 'E';
-                            text += String(qty) + '  ' + name + '\n';
-                            if (complementsText) text += 'Detalle: ' + complementsText + '\n';
-                            if (hour) text += 'Hora: ' + hour + '\n';
-                            const unitPdf = parseFloat(it?.price);
-                            if (!isNaN(unitPdf) && unitPdf >= 0) {
-                                text += 'P.unit: S/ ' + unitPdf.toFixed(2) + '\n';
-                            }
-                            if (isDelivered) text += 'Estado: ENTREGADO\n';
-                            if (courtesyQty > 0 || takeawayQty > 0) {
-                                const tags = [];
-                                if (courtesyQty > 0) tags.push('Cortesia: ' + courtesyQty);
-                                if (takeawayQty > 0) tags.push('Llevar: ' + takeawayQty);
-                                text += tags.join(' | ') + '\n';
-                            }
-                            if (it?.note && String(it.note).trim()) text += 'Nota: ' + String(it.note).trim() + '\n';
-                            text += sep + '\n';
-                            text += '\n';
-                        });
-
-                        // Cancelados: cada uno con "ANULADO" encima y cantidad anulada
-                        if (cancellations.length) {
-                            cancellations.forEach((c) => {
-                                const cName = String(c?.name ?? c?.description ?? 'Producto').trim();
-                                const cQty = parseFloat(c?.qtyCanceled ?? c?.quantity ?? 1) || 1;
-                                const cComplements = formatComplementsLabel(c?.complements);
-                                text += 'ANULADO\n';
-                                text += String(cQty) + '  ' + cName + '\n';
-                                if (cComplements) text += 'Detalle: ' + cComplements + '\n';
-                                if (c?.cancel_reason && String(c.cancel_reason).trim()) text += 'Motivo: ' + String(c.cancel_reason).trim() + '\n';
-                                text += sep + '\n';
-                                text += '\n';
-                            });
-                        }
-
-                        const hasCancellations = cancellations.length > 0;
-                        openPdfLinkInNewTab(kitchenPdfLinkUrl, {
-                            title: hasCancellations ? 'ANULADO - Comanda' : 'Comanda',
-                            ticket_text: text,
-                            paper_width: paperWidth,
-                        }).catch((error) => {
-                            console.error('Comanda PDF:', error);
-                            if (typeof showNotification === 'function') {
-                                showNotification('Impresión', 'No se pudo generar el PDF de comanda.', 'error');
-                            }
-                        });
-                    }
-
                     function isQzTrayAvailable() {
                         try {
                             return typeof window.qz !== 'undefined' && window.qz !== null;
@@ -2179,9 +2081,18 @@
                     }
 
                     /**
-                     * Comandas por ticketera: QZ Tray en el navegador (igual que cobro) + servidor si la ticketera tiene IP.
-                     * En PC terminal (defaultPrinterName BARRA2) init ya prioriza certificado secondary (qz2).
+                     * Solo en PC terminal (default BARRA2 / cert qz2): comanda vía QZ en el navegador.
+                     * En PC principal (default BARRA): sin QZ en comanda (evita Allow) — solo servidor / ticketera con IP.
                      */
+                    function kitchenComandaAllowClientQz() {
+                        const d = String(window.__qzConfig?.defaultPrinterName || window.__qzConfig?.printerName || '').trim();
+                        if (typeof window.__qzPrinterRequiresSecondaryCertFirst === 'function') {
+                            return window.__qzPrinterRequiresSecondaryCertFirst(d);
+                        }
+                        const t = d.toLowerCase().replace(/\s+/g, '');
+                        return t === 'barra2' || t.startsWith('barra2');
+                    }
+
                     async function printKitchenTickets(items, table) {
                         const activeItems = Array.isArray(items) ? items : [];
                         const clientCancelled = Array.isArray(table?.cancellations) ? table.cancellations : [];
@@ -2227,7 +2138,9 @@
                             ...Object.keys(canceledByPrinter),
                         ]));
                         if (!names.length) {
-                            openKitchenCommandPdfTab(activeItems, table);
+                            if (typeof showNotification === 'function') {
+                                showNotification('Comanda', 'No hay ticketera asignada a los productos. Configure impresoras en el producto o sucursal.', 'warning');
+                            }
                             return false;
                         }
                         let printedDirectly = true;
@@ -2272,11 +2185,12 @@
                         if (!qzKitchenCertHint && needsClientQz && defPn && typeof window.__qzPrinterRequiresSecondaryCertFirst === 'function' && window.__qzPrinterRequiresSecondaryCertFirst(defPn)) {
                             qzKitchenCertHint = defPn;
                         }
-                        const qzAvailable = needsClientQz && qzApi && await ensureQzTrayConnected(qzApi, qzKitchenCertHint);
+                        const allowKitchenClientQz = kitchenComandaAllowClientQz();
+                        const qzAvailable = allowKitchenClientQz && needsClientQz && qzApi && await ensureQzTrayConnected(qzApi, qzKitchenCertHint);
                         let canUseQz = !!qzAvailable;
-                        if (!canUseQz && needsClientQz && qzApi) {
+                        if (!canUseQz && needsClientQz && allowKitchenClientQz && qzApi) {
                             if (typeof showNotification === 'function') {
-                                showNotification('Impresión', 'QZ Tray no disponible para comanda; se usará servidor o PDF.', 'warning');
+                                showNotification('Impresión', 'QZ Tray no disponible para comanda; se intentará impresión por servidor.', 'warning');
                             }
                         }
 
@@ -2411,7 +2325,9 @@
                             } catch (e) {
                                 console.error('Impresi?n comanda: error al imprimir en ' + pname, e);
                                 printedDirectly = false;
-                                openKitchenCommandPdfTab(lines, table);
+                                if (typeof showNotification === 'function') {
+                                    showNotification('Comanda', 'No se pudo imprimir en "' + pname + '". ' + (e?.message || ''), 'error');
+                                }
                             }
                         }
                         return printedDirectly;
