@@ -1904,11 +1904,21 @@ class SalesController extends Controller
             return '';
         }
 
-        $areaName = trim((string) ($orderMovement->area?->description ?? $orderMovement->table?->area?->description ?? ''));
+        $areaName = trim((string) (
+            $orderMovement->area?->name
+            ?? $orderMovement->table?->area?->name
+            ?? ''
+        ));
         $tableName = trim((string) ($orderMovement->table?->name ?? ''));
-        $parts = array_values(array_filter([$areaName, $tableName], fn ($value) => $value !== ''));
 
-        return implode(' - ', $parts);
+        if ($areaName !== '' && $tableName !== '') {
+            return $areaName.' - mesa '.$tableName;
+        }
+        if ($tableName !== '') {
+            return 'mesa '.$tableName;
+        }
+
+        return $areaName;
     }
 
     private function buildSaleQrPayload(Movement $sale, ?Branch $branchForLogo): ?string
