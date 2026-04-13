@@ -4,6 +4,7 @@
     <meta name="qz-sign-url" content="{{ route('qz.sign') }}">
     <meta name="qz-certificate-url" content="{{ route('qz.certificate') }}">
     <meta name="qz-signature-algorithm" content="{{ config('qz.signature_algorithm', 'SHA512') }}">
+    @vite(['resources/js/qz-tray-init.js'])
     <meta name="turbo-visit-control" content="reload">
     <script>
         (function () {
@@ -2002,6 +2003,14 @@
                         if (!qzApi || !isQzTrayAvailable()) {
                             return false;
                         }
+                        if (typeof window.__qzConnectWithCertPairFallback !== 'function') {
+                            for (let w = 0; w < 40; w++) {
+                                await new Promise((r) => setTimeout(r, 50));
+                                if (typeof window.__qzConnectWithCertPairFallback === 'function') {
+                                    break;
+                                }
+                            }
+                        }
                         if (typeof window.__qzConnectWithCertPairFallback === 'function') {
                             return await window.__qzConnectWithCertPairFallback(qzApi, printerNameForCert);
                         }
@@ -2212,11 +2221,14 @@
                             throw new Error(td?.message || ('No se pudo imprimir comanda en "' + (printerName || 'Ticketera') + '".'));
                         }
 
-                        const anyKitchenBarra2 = names.some((n) => {
-                            const t = String(n || '').trim().toLowerCase();
+                        const kitchenCertPrinterHint = names.find((n) => {
+                            if (typeof window.__qzPrinterRequiresSecondaryCertFirst === 'function') {
+                                return window.__qzPrinterRequiresSecondaryCertFirst(n);
+                            }
+                            const t = String(n || '').trim().toLowerCase().replace(/\s+/g, '');
                             return t === 'barra2' || t.startsWith('barra2');
-                        });
-                        const qzAvailable = qzApi && await ensureQzTrayConnected(qzApi, anyKitchenBarra2 ? 'BARRA2' : undefined);
+                        }) || null;
+                        const qzAvailable = qzApi && await ensureQzTrayConnected(qzApi, kitchenCertPrinterHint || undefined);
                         let canUseQz = !!qzAvailable;
                         if (!canUseQz) {
                             if (qzApi) {
@@ -4861,5 +4873,4 @@
                 })();
             </script>
 
-            @vite(['resources/js/qz-tray-init.js'])
 @endsection

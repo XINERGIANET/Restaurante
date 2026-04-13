@@ -35,8 +35,22 @@ function appendPairQuery(url, pair) {
  * Para esas impresoras se usa primero el par secondary (app/qz2) y no se intenta primary antes.
  */
 export function printerRequiresSecondaryCertFirst(printerName) {
-    const t = String(printerName || '').trim().toLowerCase();
-    return t === 'barra2' || t.startsWith('barra2');
+    const raw = String(printerName || '').trim().toLowerCase();
+    if (!raw) {
+        return false;
+    }
+    const compact = raw.replace(/\s+/g, '');
+    if (compact === 'barra2' || compact.startsWith('barra2')) {
+        return true;
+    }
+    if (/\bbarra\s*2\b/i.test(raw)) {
+        return true;
+    }
+    if (raw.includes('barra2')) {
+        return true;
+    }
+
+    return false;
 }
 
 export function applyQzCertPairOverrideForPrinter(printerName) {
