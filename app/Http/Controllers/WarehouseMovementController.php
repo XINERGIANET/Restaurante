@@ -10,6 +10,7 @@ use App\Models\Product;
 use App\Models\ProductBranch;
 use App\Models\WarehouseMovement;
 use App\Models\WarehouseMovementDetail;
+use App\Services\KardexSyncService;
 use App\Support\InsensitiveSearch;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -253,6 +254,8 @@ class WarehouseMovementController extends Controller
                 $productBranch->update(['stock' => $newStock]);
             }
 
+            app(KardexSyncService::class)->syncMovement($movement);
+
             DB::commit();
 
             return response()->json([
@@ -463,6 +466,8 @@ class WarehouseMovementController extends Controller
                 ]);
             }
 
+            app(KardexSyncService::class)->syncMovement($movement);
+
             DB::commit();
 
             return response()->json([
@@ -518,6 +523,9 @@ class WarehouseMovementController extends Controller
         ]);
         $wm = WarehouseMovement::with(['movement', 'branch'])->findOrFail($warehouseMovement->id ?? $warehouseMovement);
         $wm->update(['status' => $request->input('status')]);
+        if ($wm->movement) {
+            app(KardexSyncService::class)->syncMovement($wm->movement);
+        }
         return redirect()->route('warehouse_movements.show', ['warehouseMovement' => $wm->id])->with('success', 'Movimiento de Almacén actualizado correctamente');
     }
 
@@ -552,6 +560,10 @@ class WarehouseMovementController extends Controller
                     }
                     $productBranch->update(['stock' => $newStock]);
                 }
+            }
+
+            if ($wm->movement_id) {
+                app(KardexSyncService::class)->deleteMovement((int) $wm->movement_id);
             }
 
             $wm->details()->delete();

@@ -35,6 +35,7 @@ use App\Models\Table;
 use App\Models\Unit;
 use App\Models\User;
 use App\Services\ApisunatService;
+use App\Services\KardexSyncService;
 use App\Services\ThermalNetworkPrintService;
 use App\Support\InsensitiveSearch;
 use App\Support\LocalNetworkClient;
@@ -3029,6 +3030,10 @@ class OrderController extends Controller
                         'situation' => 'libre',
                         'opened_at' => null,
                     ]);
+                }
+
+                if ($orderBaseMovement && $orderBaseMovement->status === 'A') {
+                    app(KardexSyncService::class)->syncMovement($orderBaseMovement);
                 }
 
                 DB::commit();

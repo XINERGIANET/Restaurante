@@ -32,6 +32,7 @@ use App\Models\TaxRate;
 use App\Models\Table;
 use App\Models\User;
 use App\Services\ApisunatService;
+use App\Services\KardexSyncService;
 use App\Services\ThermalNetworkPrintService;
 use App\Support\InsensitiveSearch;
 use App\Support\LocalNetworkClient;
@@ -963,6 +964,8 @@ class SalesController extends Controller
                 ]);
             }
 
+            app(KardexSyncService::class)->syncMovement($movement);
+
             DB::commit();
             $movement->refresh();
             $electronicInvoice = $this->syncElectronicInvoiceForSale($movement, app(ApisunatService::class));
@@ -1329,6 +1332,7 @@ class SalesController extends Controller
                 }
             }
 
+            app(KardexSyncService::class)->deleteMovement((int) $sale->id);
             $sale->delete();
         });
 

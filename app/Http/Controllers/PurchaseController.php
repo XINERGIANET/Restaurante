@@ -27,6 +27,7 @@ use App\Models\PaymentGateways;
 use App\Models\PaymentMethod;
 use App\Models\Operation;
 use App\Models\Role;
+use App\Services\KardexSyncService;
 use App\Support\InsensitiveSearch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -572,6 +573,8 @@ class PurchaseController extends Controller
                         ]);
                     }
                 }
+
+                app(KardexSyncService::class)->syncMovement($movement);
             });
 
             return redirect()->route('purchase.index')->with('status', 'Compra registrada correctamente.');
@@ -817,6 +820,10 @@ class PurchaseController extends Controller
                         ]);
                     }
                 }
+
+                if ($purchaseMovement->movement) {
+                    app(KardexSyncService::class)->syncMovement($purchaseMovement->movement);
+                }
             });
 
             return redirect()->route('purchase.index')->with('status', 'Compra actualizada correctamente.');
@@ -965,6 +972,9 @@ class PurchaseController extends Controller
 
     public function destroy(PurchaseMovement $purchaseMovement)
     {
+        if ($purchaseMovement->movement_id) {
+            app(KardexSyncService::class)->deleteMovement((int) $purchaseMovement->movement_id);
+        }
         $purchaseMovement->delete();
         return redirect()->route('purchase.index')
             ->with('status', 'Compra eliminada correctamente.');
