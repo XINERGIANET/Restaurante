@@ -16,8 +16,9 @@
 @endphp
 
 <script>
-document.addEventListener('alpine:init', function () {
-    Alpine.data('recipeForm', function () {
+(function () {
+    function registerRecipeForm() {
+        Alpine.data('recipeForm', function () {
         var initialIngredients = {!! $ingredientsJson !!};
         var initialProductList = {!! $productListJson !!};
 
@@ -62,7 +63,14 @@ document.addEventListener('alpine:init', function () {
             },
         };
     });
-});
+    }
+
+    if (window.Alpine && window.Alpine.data) {
+        registerRecipeForm();
+    } else {
+        document.addEventListener('alpine:init', registerRecipeForm);
+    }
+})();
 </script>
 
 <div x-data="recipeForm" class="w-full max-w-5xl mx-auto space-y-6 pb-10">
