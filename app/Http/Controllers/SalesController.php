@@ -25,6 +25,7 @@ use App\Models\PrinterBranch;
 use App\Models\Product;
 use App\Models\ProductBranch;
 use App\Models\ProductType;
+use App\Models\Recipe;
 use App\Models\SalesMovement;
 use App\Models\SalesMovementDetail;
 use App\Models\Shift;
@@ -757,6 +758,13 @@ class SalesController extends Controller
             foreach ($validated['items'] as $item) {
                 $product = Product::with('baseUnit')->findOrFail($item['pId']);
 
+                $roundUpToQuarter = function (float $qty): float {
+                    if ($qty <= 0) {
+                        return 0.0;
+                    }
+                    return round(ceil($qty * 4) / 4, 6);
+                };
+
                 // Bloquear el registro para evitar condiciones de carrera
                 $productBranch = ProductBranch::with('taxRate')
                     ->where('product_id', $item['pId'])
@@ -769,17 +777,97 @@ class SalesController extends Controller
                 }
 
                 // Validar stock disponible
-                $quantityToSell = (int) $item['qty'];
-                $currentStock = (int) ($productBranch->stock ?? 0);
+                $qty = (float) ($item['qty'] ?? 0);
+                $quantityToSell = $qty;
 
-                // Validar stock disponible si no se permite vender sin stock
-                if (!$branch->allow_zero_stock_sales && $currentStock < $quantityToSell) {
-                    throw new \Exception(
-                        "Stock insuficiente para el producto \"{$product->description}\". " .
-                        "Stock disponible: {$currentStock}, Cantidad solicitada: {$quantityToSell}"
-                    );
+                // Si el producto tiene receta activa en esta sucursal, el stock se controla por ingredientes.
+                $recipe = Recipe::query()
+                    ->where('branch_id', $branchId)
+                    ->where('product_id', (int) $product->id)
+                    ->where('status', 'A')
+                    ->with(['ingredients'])
+                    ->first();
+
+                if ($recipe && (float) ($recipe->yield_quantity ?? 0) > 0) {
+                    $yield = (float) $recipe->yield_quantity;
+
+                    // Calcular consumo total por ingrediente para esta línea.
+                    $requiredByIngredientId = [];
+                    foreach ($recipe->ingredients as $ingredient) {
+                        $ingredientProductId = (int) ($ingredient->product_id ?? 0);
+                        $ingredientQty = (float) ($ingredient->quantity ?? 0);
+                        if ($ingredientProductId <= 0 || $ingredientQty <= 0) {
+                            continue;
+                        }
+
+                        $rawConsumption = ($ingredientQty / $yield) * $quantityToSell;
+                        $consumption = $roundUpToQuarter($rawConsumption);
+                        if ($consumption <= 0) {
+                            continue;
+                        }
+
+                        $requiredByIngredientId[$ingredientProductId] = ($requiredByIngredientId[$ingredientProductId] ?? 0) + $consumption;
+                    }
+
+                    if (! empty($requiredByIngredientId)) {
+                        $ingredientIds = array_keys($requiredByIngredientId);
+                        sort($ingredientIds);
+
+                        // Lock de stocks de ingredientes (ordenado para evitar deadlocks).
+                        $ingredientBranches = ProductBranch::query()
+                            ->where('branch_id', $branchId)
+                            ->whereIn('product_id', $ingredientIds)
+                            ->lockForUpdate()
+                            ->get()
+                            ->keyBy('product_id');
+
+                        foreach ($ingredientIds as $ingredientProductId) {
+                            $pb = $ingredientBranches->get($ingredientProductId);
+                            $name = Product::query()->where('id', $ingredientProductId)->value('description') ?? ('Producto #' . $ingredientProductId);
+                            if (! $pb) {
+                                throw new \Exception("Ingrediente \"{$name}\" no disponible en esta sucursal");
+                            }
+
+                            $current = (float) ($pb->stock ?? 0);
+                            $needed = (float) $requiredByIngredientId[$ingredientProductId];
+
+                            // Para recetas, el stock se controla por ingredientes SIEMPRE, incluso si la sucursal
+                            // permite vender con stock 0 para otros productos.
+                            if ($current < $needed) {
+                                throw new \Exception(
+                                    "Stock insuficiente para el ingrediente \"{$name}\". " .
+                                    "Stock disponible: {$current}, Requerido: {$needed}"
+                                );
+                            }
+                        }
+
+                        // Descontar stock de ingredientes
+                        foreach ($ingredientIds as $ingredientProductId) {
+                            $pb = $ingredientBranches->get($ingredientProductId);
+                            $current = (float) ($pb->stock ?? 0);
+                            $needed = (float) $requiredByIngredientId[$ingredientProductId];
+                            $newStock = $current - $needed;
+                            $pb->update([
+                                'stock' => max(0, round($newStock, 6)),
+                            ]);
+                        }
+                    }
+                } else {
+                    $currentStock = (float) ($productBranch->stock ?? 0);
+                    // Validar stock disponible si no se permite vender sin stock
+                    if (! $branch->allow_zero_stock_sales && $currentStock < $quantityToSell) {
+                        throw new \Exception(
+                            "Stock insuficiente para el producto \"{$product->description}\". " .
+                            "Stock disponible: {$currentStock}, Cantidad solicitada: {$quantityToSell}"
+                        );
+                    }
+
+                    // Restar el stock del producto en la sucursal
+                    $newStock = $currentStock - $quantityToSell;
+                    $productBranch->update([
+                        'stock' => max(0, round($newStock, 6)),
+                    ]);
                 }
-
 
                 $unit = $product->baseUnit;
                 if (! $unit) {
@@ -789,7 +877,6 @@ class SalesController extends Controller
                 $taxRate = $productBranch->taxRate;
                 $taxRateValue = $taxRate ? ($taxRate->tax_rate / 100) : $this->getDefaultTaxRateValue();
 
-                $qty = (float) ($item['qty'] ?? 0);
                 $courtesyQty = (float) ($item['courtesyQty'] ?? $item['courtesy_quantity'] ?? 0);
                 $courtesyQty = max(0, min($courtesyQty, $qty));
                 $paidQty = $qty - $courtesyQty;
@@ -830,12 +917,6 @@ class SalesController extends Controller
                     'complements' => [],
                     'status' => 'A',
                     'branch_id' => $branchId,
-                ]);
-
-                // Restar el stock del producto en la sucursal
-                $newStock = $currentStock - $quantityToSell;
-                $productBranch->update([
-                    'stock' => max(0, $newStock), // Asegurar que no sea negativo
                 ]);
             }
 

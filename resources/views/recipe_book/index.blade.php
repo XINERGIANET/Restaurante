@@ -373,9 +373,10 @@
                 <input type="hidden" name="view_id" value="{{ $viewId }}">
 
                 @include('recipe_book._form', [
-                    'product' => null,
+                    'recipe'        => new \App\Models\Recipe(),
+                    'product'       => null,
                     'currentBranch' => $currentBranch ?? null,
-                    'taxRates' => $taxRates ?? collect(),
+                    'taxRates'      => $taxRates ?? collect(),
                     'productBranch' => null,
                 ])
 

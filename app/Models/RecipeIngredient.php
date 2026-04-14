@@ -19,7 +19,7 @@ class RecipeIngredient extends Model
     ];
 
     protected $casts = [
-        'quantity' => 'decimal:2',
+        'quantity' => 'decimal:4',
         'unit_cost' => 'decimal:2',
         'order' => 'integer',
     ];

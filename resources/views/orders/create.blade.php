@@ -1232,6 +1232,50 @@
                     const serverProductBranches = @json($productBranches ?? []);
                     const serverCategories = @json(collect($categories ?? [])->map(fn($c) => ['id' => $c->id, 'name' => $c->description ?? '', 'img' => $c->image ? asset('storage/' . $c->image) : null])->values()->all());
                     const serverProductsRaw = @json($products ?? []);
+
+                    // Stock de ingredientes por producto con receta activa: { "productId": { yield_quantity, ingredients[] } }
+                    const recipeStockData = @json($recipeStockData ?? []);
+
+                    /**
+                     * Para un producto con receta, calcula el máximo de unidades vendibles
+                     * según el stock actual de cada ingrediente.
+                     * Retorna { max: int, ingredient: obj } o null si no hay receta.
+                     */
+                    function getRecipeMaxQty(productId) {
+                        const recipe = recipeStockData[String(productId)];
+                        if (!recipe || !Array.isArray(recipe.ingredients) || recipe.ingredients.length === 0) return null;
+                        const yieldQty = parseFloat(recipe.yield_quantity) || 1;
+                        let maxPortions = Infinity;
+                        let limitingIng = null;
+                        for (const ing of recipe.ingredients) {
+                            const ingStock = parseFloat(ing.stock) || 0;
+                            const qtyPerPortion = parseFloat(ing.quantity) / yieldQty;
+                            if (qtyPerPortion <= 0) continue;
+                            const portions = ingStock / qtyPerPortion;
+                            if (portions < maxPortions) {
+                                maxPortions = portions;
+                                limitingIng = ing;
+                            }
+                        }
+                        if (!isFinite(maxPortions)) return null;
+                        return { max: Math.floor(maxPortions), ingredient: limitingIng };
+                    }
+
+                    /** Muestra advertencia de stock de receta y retorna false si hay que bloquear. */
+                    function checkRecipeStock(productId, currentQtyInCart, qtyToAdd) {
+                        const check = getRecipeMaxQty(productId);
+                        if (!check) return true; // sin receta: sin restricción
+                        const totalNeeded = currentQtyInCart + qtyToAdd;
+                        if (totalNeeded > check.max) {
+                            const ing = check.ingredient;
+                            const detail = ing
+                                ? `Ingrediente "${ing.name}" tiene ${ing.stock} disponible(s). Máximo: ${check.max} unidad(es).`
+                                : `Stock de ingredientes insuficiente. Máximo: ${check.max} unidad(es).`;
+                            showNotification('Stock insuficiente (receta)', detail, 'warning');
+                            return false;
+                        }
+                        return true;
+                    }
                     const categoryIdsInBranch = (serverCategories || []).map(c => Number(c.id));
                     // Solo productos que tienen productBranch en esta sucursal Y cuya categoría está en category_branch (está en serverCategories).
                     const serverProducts = (serverProductsRaw || []).filter(p =>
@@ -2744,6 +2788,7 @@
 
                         // Asegurar que el ID del producto sea un número entero para la comparación
                         const productId = parseInt(prod.id, 10);
+                        const hasRecipe = !!recipeStockData[String(productId)];
                         if (isNaN(productId) || productId <= 0) {
 
                             showNotification('ID de producto inválido', 'El ID del producto es inválido.', 'error');
@@ -2771,10 +2816,14 @@
                         });
 
                         const productQtyInCart = getCurrentProductQtyInCart(productId);
-                        if (!allowZeroStockSales && (productQtyInCart + qtyRequested) > stock) {
+                        // Para productos con receta, no bloquear por el stock propio del producto
+                        // (se controla vía ingredientes más abajo). Solo aplicar para productos sin receta.
+                        if (!hasRecipe && !allowZeroStockSales && (productQtyInCart + qtyRequested) > stock) {
                             showNotification('Stock insuficiente', (prod.name || 'Producto') + ': solo hay ' + stock + ' disponible(s).', 'error');
                             return;
                         }
+                        // Validación de ingredientes para productos con receta (siempre obligatoria)
+                        if (!checkRecipeStock(productId, productQtyInCart, qtyRequested)) return;
 
                         const st = currentTable.service_type || 'IN_SITU';
                         if (existing) {
@@ -2820,11 +2869,14 @@
                             const pb = serverProductBranches.find(p => parseInt(p.product_id, 10) === prodId);
                             const stock = parseFloat(pb?.stock ?? 0) || 0;
                             const currentOtherQty = getCurrentProductQtyInCart(prodId, index);
+                            const prodHasRecipe = !!recipeStockData[String(prodId)];
 
-                            if (!allowZeroStockSales && (currentOtherQty + newQty) > stock) {
+                            // Para productos con receta, la validación es por ingredientes (más abajo)
+                            if (!prodHasRecipe && !allowZeroStockSales && (currentOtherQty + newQty) > stock) {
                                 showNotification('Stock insuficiente', (item.name || 'Producto') + ': solo hay ' + stock + ' disponible(s).', 'error');
                                 return;
                             }
+                            if (!checkRecipeStock(prodId, currentOtherQty, change)) return;
 
                             item.qty = newQty;
                             if ((currentTable.service_type || '') === 'TAKE_AWAY') {
@@ -2874,9 +2926,15 @@
                             const pb = serverProductBranches.find(p => parseInt(p.product_id, 10) === prodId);
                             const stock = parseFloat(pb?.stock ?? 0) || 0;
                             const currentOtherQty = getCurrentProductQtyInCart(prodId, index);
+                            const prodHasRecipe = !!recipeStockData[String(prodId)];
 
-                            if (!allowZeroStockSales && (currentOtherQty + newQty) > stock) {
+                            // Para productos con receta, la validación es por ingredientes (más abajo)
+                            if (!prodHasRecipe && !allowZeroStockSales && (currentOtherQty + newQty) > stock) {
                                 showNotification('Stock insuficiente', (item.name || 'Producto') + ': solo hay ' + stock + ' disponible(s).', 'error');
+                                inputEl.value = oldQty;
+                                return;
+                            }
+                            if (!checkRecipeStock(prodId, currentOtherQty, newQty - oldQty)) {
                                 inputEl.value = oldQty;
                                 return;
                             }
@@ -3271,11 +3329,24 @@
                                     ? `<span class="mt-1 inline-flex items-center gap-1 rounded-full bg-orange-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-orange-700 dark:text-orange-300"><i class="ri-shopping-bag-3-line"></i> ${takeawayQty} p. llevar</span>`
                                     : '';
 
+                                // Badge de advertencia de stock de ingredientes (receta)
+                                const recipeMaxCheck = getRecipeMaxQty(item.pId);
+                                let stockWarningBadge = '';
+                                if (recipeMaxCheck !== null) {
+                                    const remaining = recipeMaxCheck.max - itemQty;
+                                    if (remaining < 0) {
+                                        stockWarningBadge = `<span class="mt-1 inline-flex items-center gap-1 rounded-full bg-red-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-red-700 dark:bg-red-500/15 dark:text-red-400"><i class="ri-error-warning-line"></i> Stock insuficiente (máx. ${recipeMaxCheck.max})</span>`;
+                                    } else if (remaining <= 3) {
+                                        stockWarningBadge = `<span class="mt-1 inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700 dark:bg-amber-500/15 dark:text-amber-300"><i class="ri-alert-line"></i> Quedan ${remaining} disponible(s)</span>`;
+                                    }
+                                }
+
                                 row.innerHTML = `
                                                                                                                                                                                                     <div class="flex flex-col gap-3 p-3.5 sm:p-4">
                                                                                                                                                                                                             <div class="flex items-start justify-between gap-2">
                                                                                                                                                                                                                 <div class="min-w-0 flex-1">
                                                                                                                                                                                                                     <h3 class="font-bold text-[15px] sm:text-base leading-snug tracking-tight text-slate-900 dark:text-white">${productName}</h3>
+                                                                                                                                                                                                                    ${stockWarningBadge}
                                                                                                                                                                                                                     ${takeawayBadge}
                                                                                                                                                                                                                     ${complementSummary}
                                                                                                                                                                                                                     ${commandSummary}

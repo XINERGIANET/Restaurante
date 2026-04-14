@@ -68,6 +68,11 @@
         const pt = this.productTypeId != null ? this.productTypesById[this.productTypeId] : null;
         return pt ? (pt.behavior === 'BOTH' || pt.behavior === 'SUPPLY') : false;
     },
+    get disableStockEdit() {
+        // Solo bloquear edición de stock en productos vendibles (se recomienda gestionarlo vía kardex/almacén).
+        // Para insumos/suministros, se permite ajustar stock directamente aquí.
+        return this.isEdit && this.showBranchDetail && this.branchStore && (this.branchStore[this.selectedBranchId] !== undefined);
+    },
     get showSupplyFields() {
         const pt = this.productTypeId != null ? this.productTypesById[this.productTypeId] : null;
         return pt ? pt.behavior === 'SUPPLY' : false;
@@ -565,17 +570,13 @@
                         (configurar por sede)
                     </span>
                 </label>
-                <template x-if="isEdit && branchStore && (branchStore[selectedBranchId] !== undefined)">
-                    <input type="hidden" name="stock" x-bind:value="branchFields.stock ?? 0" />
-                </template>
-
                 <input type="number" step="0.01" :name="showBranchDetail ? 'stock' : 'stock_skip'"
                     :required="showBranchDetail" x-model.number="branchFields.stock"
-                    x-bind:disabled="isEdit && branchStore && (branchStore[selectedBranchId] !== undefined)"
+                    x-bind:disabled="disableStockEdit"
                     :min="Number(branchFields.stock_minimum || 0)"
                     :max="Number(branchFields.stock_maximum || 0) > 0 ? Number(branchFields.stock_maximum) : undefined"
                     class="dark:bg-dark-900 shadow-theme-xs h-11 w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm placeholder:text-gray-400 dark:border-gray-700 dark:text-white/90 dark:placeholder:text-white/30"
-                    :class="(isEdit && branchStore && (branchStore[selectedBranchId] !== undefined))
+                    :class="disableStockEdit
                         ? 'bg-gray-100 dark:bg-gray-800 cursor-not-allowed text-gray-500'
                         : 'bg-transparent focus:border-[#FF4622] focus:ring-[#FF4622]/10 dark:focus:border-[#FF4622] text-gray-800 focus:ring-3 focus:outline-hidden dark:bg-gray-900'"
                     placeholder="0.00" />

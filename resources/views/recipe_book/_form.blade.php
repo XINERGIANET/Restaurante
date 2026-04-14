@@ -1,37 +1,71 @@
 @php
-    // Definimos la variable readonly por si no viene seteada
     $isReadonly = $readonly ?? false;
+    $isEditMode = isset($recipe) && $recipe instanceof \App\Models\Recipe && $recipe->exists;
+    // $useOld: repoblar con old() solo en edición O cuando hay errores de validación activos.
+    // En creación limpia (primera vez o tras éxito/excepción sin errores) el form debe quedar vacío.
+    $useOld = $isEditMode || $errors->any();
+
+    if ($isEditMode) {
+        $ingredientsJson = \Illuminate\Support\Js::from(old('ingredients', $recipe->ingredients->toArray()));
+    } elseif ($errors->any()) {
+        $ingredientsJson = \Illuminate\Support\Js::from(old('ingredients', []));
+    } else {
+        $ingredientsJson = \Illuminate\Support\Js::from([]);
+    }
+    $productListJson = \Illuminate\Support\Js::from($ingredientsList ?? []);
 @endphp
 
-<div x-data="{
-        ingredients: {{ \Illuminate\Support\Js::from(old('ingredients', data_get($recipe, 'ingredients') ?? [])) }},
-        product_list: {{ \Illuminate\Support\Js::from($ingredientsList ?? []) }}, // Usamos ?? [] por seguridad
+<script>
+document.addEventListener('alpine:init', function () {
+    Alpine.data('recipeForm', function () {
+        var initialIngredients = {!! $ingredientsJson !!};
+        var initialProductList = {!! $productListJson !!};
 
-    addIngredient() {
-        this.ingredients.push({
-            product_id: '',
-            unit_id: '',
-            quantity: 1,
-            notes: '',
-            unit_cost: 0,
-            order: this.ingredients.length
-        });
-    },
-
-    removeIngredient(index) {
-        this.ingredients.splice(index, 1);
-    },
-
-    calculateTotalCost() {
-        return this.ingredients.reduce((total, item) => {
-            return total + (parseFloat(item.quantity || 0) * parseFloat(item.unit_cost || 0));
-        }, 0).toFixed(2);
-    },
-
-        isProductSelected(productId) {
-            return this.ingredients.some(i => i.product_id == productId);
+        function normalizeRow(row) {
+            var base = (row && typeof row === 'object') ? row : {};
+            var rawQ = base.quantity;
+            var q = (rawQ !== undefined && rawQ !== null && rawQ !== '') ? parseFloat(rawQ) : 1;
+            if (isNaN(q) || q <= 0) q = 1;
+            var normalized = Object.assign({}, base);
+            normalized.quantity = q;
+            return normalized;
         }
-    }" class="w-full max-w-5xl mx-auto space-y-6 pb-10">
+
+        return {
+            ingredients: (Array.isArray(initialIngredients) ? initialIngredients : []).map(normalizeRow),
+            product_list: Array.isArray(initialProductList) ? initialProductList : [],
+
+            addIngredient() {
+                if (!Array.isArray(this.ingredients)) this.ingredients = [];
+                this.ingredients.push(normalizeRow({
+                    product_id: '',
+                    unit_id: '',
+                    quantity: 1,
+                    notes: '',
+                    unit_cost: 0,
+                    order: this.ingredients.length,
+                }));
+            },
+
+            removeIngredient(index) {
+                this.ingredients.splice(index, 1);
+            },
+
+            calculateTotalCost() {
+                return this.ingredients.reduce(function (total, item) {
+                    return total + (parseFloat(item.quantity || 0) * parseFloat(item.unit_cost || 0));
+                }, 0).toFixed(2);
+            },
+
+            isProductSelected(productId) {
+                return this.ingredients.some(function (i) { return i.product_id == productId; });
+            },
+        };
+    });
+});
+</script>
+
+<div x-data="recipeForm" class="w-full max-w-5xl mx-auto space-y-6 pb-10">
 
     <div class="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
         <div class="border-b border-gray-100 px-6 py-4 bg-gray-50/50 dark:border-gray-700 dark:bg-gray-800">
@@ -62,7 +96,7 @@
                 <div x-data='{ 
                         open: false, 
                         search: "", 
-                        selectedId: "{{ old("product_id", data_get($recipe, "product_id")) }}",
+                        selectedId: "{{ $useOld ? old("product_id", data_get($recipe, "product_id")) : data_get($recipe, "product_id") }}",
                         products: @json($productsForRecipe ?? []), // Usamos ?? [] por seguridad
 
                         init() {
@@ -136,8 +170,8 @@
                     <div>
                         <label class="mb-2 block text-sm font-semibold text-gray-700 dark:text-gray-300">Estado</label>
                         <select name="status" @disabled($isReadonly) class="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 text-sm text-gray-800 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none dark:border-gray-600 dark:bg-gray-900 dark:text-white transition-all {{ $isReadonly ? 'bg-gray-100 cursor-not-allowed' : '' }}">
-                            <option value="A" @selected(old('status', data_get($recipe, 'status', 'A')) === 'A')>Activo</option>
-                            <option value="I" @selected(old('status', data_get($recipe, 'status')) === 'I')>Inactivo</option>
+                            <option value="A" @selected(($useOld ? old('status', data_get($recipe, 'status', 'A')) : data_get($recipe, 'status', 'A')) === 'A')>Activo</option>
+                            <option value="I" @selected(($useOld ? old('status', data_get($recipe, 'status')) : data_get($recipe, 'status')) === 'I')>Inactivo</option>
                         </select>
                     </div>
 
@@ -147,7 +181,7 @@
                             <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                                 <i class="ri-time-line text-gray-400"></i>
                             </div>
-                            <input type="number" name="preparation_time" value="{{ old('preparation_time', data_get($recipe, 'preparation_time')) }}" @disabled($isReadonly) class="h-11 w-full rounded-lg border border-gray-300 bg-white pl-10 px-4 text-sm text-gray-800 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none dark:border-gray-600 dark:bg-gray-900 dark:text-white transition-all {{ $isReadonly ? 'bg-gray-100 cursor-not-allowed' : '' }}" placeholder="0">
+                            <input type="number" name="preparation_time" value="{{ $useOld ? old('preparation_time', data_get($recipe, 'preparation_time')) : data_get($recipe, 'preparation_time') }}" @disabled($isReadonly) class="h-11 w-full rounded-lg border border-gray-300 bg-white pl-10 px-4 text-sm text-gray-800 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none dark:border-gray-600 dark:bg-gray-900 dark:text-white transition-all {{ $isReadonly ? 'bg-gray-100 cursor-not-allowed' : '' }}" placeholder="0">
                         </div>
                     </div>
                 </div>
@@ -160,7 +194,7 @@
                         x-data='{ 
                             open: false, 
                             search: "", 
-                            selectedUnitId: "{{ old('yield_unit_id', data_get($recipe, 'yield_unit_id')) }}",
+                            selectedUnitId: "{{ $useOld ? old('yield_unit_id', data_get($recipe, 'yield_unit_id')) : data_get($recipe, 'yield_unit_id') }}",
                             units: @json($units ?? []),
 
                             init() {
@@ -188,8 +222,10 @@
                         >
                         <input type="number" 
                             name="yield_quantity" 
-                            value="{{ old('yield_quantity', data_get($recipe, 'yield_quantity', 1)) }}" 
+                            value="{{ $useOld ? old('yield_quantity', data_get($recipe, 'yield_quantity', 1)) : data_get($recipe, 'yield_quantity', 1) }}" 
                             @disabled($isReadonly)
+                            step="0.01"
+                            @wheel.prevent="$el.blur()"
                             class="h-11 w-24 rounded-l-lg border border-gray-300 bg-white px-3 text-sm text-gray-800 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none dark:border-gray-600 dark:bg-gray-900 dark:text-white z-10 {{ $isReadonly ? 'bg-gray-100 cursor-not-allowed' : '' }}" 
                             placeholder="1">
 
@@ -234,17 +270,18 @@
                     <label class="mb-2 block text-sm font-semibold text-gray-700 dark:text-gray-300">Método</label>
                     <select name="preparation_method" @disabled($isReadonly) class="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 text-sm text-gray-800 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none dark:border-gray-600 dark:bg-gray-900 dark:text-white transition-all {{ $isReadonly ? 'bg-gray-100 cursor-not-allowed' : '' }}">
                         <option value="">Seleccione...</option>
-                        <option value="wok" @selected(old('preparation_method', data_get($recipe, 'preparation_method')) === 'wok')>🔥 Wok</option>
-                        <option value="horno" @selected(old('preparation_method', data_get($recipe, 'preparation_method')) === 'horno')>🥯 Horno</option>
-                        <option value="freidora" @selected(old('preparation_method', data_get($recipe, 'preparation_method')) === 'freidora')>🍟 Freidora</option>
-                        <option value="frio" @selected(old('preparation_method', data_get($recipe, 'preparation_method')) === 'frio')>🥗 Frío</option>
-                        <option value="manual" @selected(old('preparation_method', data_get($recipe, 'preparation_method')) === 'manual')>🔪 Manual</option>
+                        @php $selectedMethod = $useOld ? old('preparation_method', data_get($recipe, 'preparation_method')) : data_get($recipe, 'preparation_method'); @endphp
+                        <option value="wok" @selected($selectedMethod === 'wok')>🔥 Wok</option>
+                        <option value="horno" @selected($selectedMethod === 'horno')>🥯 Horno</option>
+                        <option value="freidora" @selected($selectedMethod === 'freidora')>🍟 Freidora</option>
+                        <option value="frio" @selected($selectedMethod === 'frio')>🥗 Frío</option>
+                        <option value="manual" @selected($selectedMethod === 'manual')>🔪 Manual</option>
                     </select>
                 </div>
 
                 <div class="col-span-1 md:col-span-2">
                     <label class="mb-2 block text-sm font-semibold text-gray-700 dark:text-gray-300">Descripción / Historia</label>
-                    <textarea name="description" rows="3" @disabled($isReadonly) class="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-800 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none dark:border-gray-600 dark:bg-gray-900 dark:text-white resize-none {{ $isReadonly ? 'bg-gray-100 cursor-not-allowed' : '' }}" placeholder="Ej: Versión especial de la casa...">{{ old('description', data_get($recipe, 'description')) }}</textarea>
+                    <textarea name="description" rows="3" @disabled($isReadonly) class="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-800 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none dark:border-gray-600 dark:bg-gray-900 dark:text-white resize-none {{ $isReadonly ? 'bg-gray-100 cursor-not-allowed' : '' }}" placeholder="Ej: Versión especial de la casa...">{{ $useOld ? old('description', data_get($recipe, 'description')) : data_get($recipe, 'description') }}</textarea>
                 </div>
             </div>
         </div>
@@ -373,15 +410,33 @@
 
                         <div class="col-span-1 md:col-span-2">
                             <label class="md:hidden text-xs font-bold text-gray-500 mb-1 block">Cantidad</label>
-                            <input 
-                                type="number" 
-                                :name="`ingredients[${index}][quantity]`" 
-                                x-model="ingredient.quantity" 
-                                step="0.01" 
-                                class="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-center text-gray-800 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none dark:border-gray-600 dark:bg-gray-900 dark:text-white {{ $isReadonly ? 'bg-gray-100 cursor-not-allowed' : '' }}" 
-                                placeholder="1"
-                                @disabled($isReadonly)
-                            >
+                            <div class="flex flex-col gap-1">
+                                {{-- Input numérico: acepta cualquier valor --}}
+                                <input
+                                    type="number"
+                                    :name="`ingredients[${index}][quantity]`"
+                                    x-model="ingredient.quantity"
+                                    min="0.001"
+                                    step="0.001"
+                                    @wheel.prevent="$el.blur()"
+                                    class="h-9 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-center text-gray-800 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none dark:border-gray-600 dark:bg-gray-900 dark:text-white {{ $isReadonly ? 'bg-gray-100 cursor-not-allowed' : '' }}"
+                                    placeholder="1"
+                                    @disabled($isReadonly)
+                                />
+                                {{-- Select de atajos de fracción --}}
+                                @if(!$isReadonly)
+                                <select
+                                    @change="if ($event.target.value !== '') { ingredient.quantity = parseFloat($event.target.value); $event.target.value = ''; }"
+                                    class="h-7 w-full rounded-md border border-gray-200 bg-gray-50 px-1 text-xs text-center text-gray-600 cursor-pointer hover:border-blue-400 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300"
+                                >
+                                    <option value="">— fracción —</option>
+                                    <option value="0.125">1/8</option>
+                                    <option value="0.25">1/4</option>
+                                    <option value="0.5">1/2</option>
+                                    <option value="0.75">3/4</option>
+                                </select>
+                                @endif
+                            </div>
                         </div>
 
                         <div class="col-span-1 md:col-span-2">
@@ -393,6 +448,7 @@
                                     :name="`ingredients[${index}][unit_cost]`" 
                                     x-model="ingredient.unit_cost" 
                                     step="0.01" 
+                                    @wheel.prevent="$el.blur()"
                                     class="h-10 w-full rounded-lg border border-gray-300 bg-white pl-9 px-3 text-sm text-gray-800 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none dark:border-gray-600 dark:bg-gray-900 dark:text-white {{ $isReadonly ? 'bg-gray-100 cursor-not-allowed' : '' }}" 
                                     placeholder="0.00"
                                     @disabled($isReadonly)
@@ -451,6 +507,6 @@
 
     <div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
         <label class="mb-2 block text-sm font-semibold text-gray-700 dark:text-gray-300"><i class="ri-sticky-note-fill text-yellow-500"></i> Notas</label>
-        <textarea name="notes" rows="3" @disabled($isReadonly) class="w-full rounded-lg border border-gray-300 bg-yellow-50/30 px-4 py-3 text-sm text-gray-800 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20 focus:outline-none dark:border-gray-600 dark:bg-gray-900 dark:text-white resize-none {{ $isReadonly ? 'bg-gray-100 cursor-not-allowed' : '' }}">{{ old('notes', data_get($recipe, 'notes')) }}</textarea>
+        <textarea name="notes" rows="3" @disabled($isReadonly) class="w-full rounded-lg border border-gray-300 bg-yellow-50/30 px-4 py-3 text-sm text-gray-800 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20 focus:outline-none dark:border-gray-600 dark:bg-gray-900 dark:text-white resize-none {{ $isReadonly ? 'bg-gray-100 cursor-not-allowed' : '' }}">{{ $useOld ? old('notes', data_get($recipe, 'notes')) : data_get($recipe, 'notes') }}</textarea>
     </div>
 </div>

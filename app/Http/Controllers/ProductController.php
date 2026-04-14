@@ -546,12 +546,7 @@ class ProductController extends Controller
 
         if ($isSupply) {
             $validated['price'] = 0;
-            $validated['purchase_price'] = 0;
-            $validated['stock'] = 0;
-            $validated['stock_minimum'] = 0;
-            $validated['stock_maximum'] = 0;
             $validated['minimum_sell'] = 0;
-            $validated['minimum_purchase'] = 0;
             $validated['tax_rate_id'] = null;
             $validated['unit_sale'] = 'N';
             $validated['expiration_date'] = null;
