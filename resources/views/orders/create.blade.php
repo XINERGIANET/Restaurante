@@ -1241,36 +1241,74 @@
                      * según el stock actual de cada ingrediente.
                      * Retorna { max: int, ingredient: obj } o null si no hay receta.
                      */
-                    function getRecipeMaxQty(productId) {
+                    function getRecipeAvailability(productId, qtyInCart = null) {
                         const recipe = recipeStockData[String(productId)];
                         if (!recipe || !Array.isArray(recipe.ingredients) || recipe.ingredients.length === 0) return null;
                         const yieldQty = parseFloat(recipe.yield_quantity) || 1;
-                        let maxPortions = Infinity;
+                        const currentQty = Math.max(0, parseFloat(qtyInCart ?? getCurrentProductQtyInCart(productId)) || 0);
+                        let maxAdditional = Infinity;
                         let limitingIng = null;
+                        const ingredients = [];
+
                         for (const ing of recipe.ingredients) {
-                            const ingStock = parseFloat(ing.stock) || 0;
-                            const qtyPerPortion = parseFloat(ing.quantity) / yieldQty;
-                            if (qtyPerPortion <= 0) continue;
-                            const portions = ingStock / qtyPerPortion;
-                            if (portions < maxPortions) {
-                                maxPortions = portions;
-                                limitingIng = ing;
+                            const baseStock = parseFloat(ing.stock) || 0;
+                            const qtyPerPortion = (parseFloat(ing.quantity) || 0) / yieldQty;
+                            const consumed = qtyPerPortion > 0 ? (currentQty * qtyPerPortion) : 0;
+                            const remaining = baseStock - consumed;
+                            const additionalByIng = qtyPerPortion > 0 ? (remaining / qtyPerPortion) : Infinity;
+
+                            if (additionalByIng < maxAdditional) {
+                                maxAdditional = additionalByIng;
+                                limitingIng = {
+                                    ...ing,
+                                    remaining,
+                                    base_stock: baseStock,
+                                    consumed,
+                                    qty_per_portion: qtyPerPortion,
+                                };
                             }
+
+                            ingredients.push({
+                                ...ing,
+                                remaining,
+                                base_stock: baseStock,
+                                consumed,
+                                qty_per_portion: qtyPerPortion,
+                            });
                         }
-                        if (!isFinite(maxPortions)) return null;
-                        return { max: Math.floor(maxPortions), ingredient: limitingIng };
+
+                        if (!isFinite(maxAdditional)) return null;
+                        return {
+                            current_qty: currentQty,
+                            max_additional: Math.max(0, Math.floor(maxAdditional)),
+                            limiting_ingredient: limitingIng,
+                            ingredients,
+                        };
+                    }
+
+                    /**
+                     * Compatibilidad: máximo total de unidades para un producto con receta.
+                     * (stock base, sin descontar carrito)
+                     */
+                    function getRecipeMaxQty(productId) {
+                        const availability = getRecipeAvailability(productId, 0);
+                        if (!availability) return null;
+                        return {
+                            max: Math.max(0, Math.floor((availability.current_qty || 0) + (availability.max_additional || 0))),
+                            ingredient: availability.limiting_ingredient || null,
+                        };
                     }
 
                     /** Muestra advertencia de stock de receta y retorna false si hay que bloquear. */
                     function checkRecipeStock(productId, currentQtyInCart, qtyToAdd) {
-                        const check = getRecipeMaxQty(productId);
-                        if (!check) return true; // sin receta: sin restricción
-                        const totalNeeded = currentQtyInCart + qtyToAdd;
-                        if (totalNeeded > check.max) {
-                            const ing = check.ingredient;
+                        const availability = getRecipeAvailability(productId, currentQtyInCart);
+                        if (!availability) return true; // sin receta: sin restricción
+                        if (qtyToAdd > availability.max_additional) {
+                            const ing = availability.limiting_ingredient;
+                            const remaining = ing ? Math.max(0, parseFloat(ing.remaining) || 0) : 0;
                             const detail = ing
-                                ? `Ingrediente "${ing.name}" tiene ${ing.stock} disponible(s). Máximo: ${check.max} unidad(es).`
-                                : `Stock de ingredientes insuficiente. Máximo: ${check.max} unidad(es).`;
+                                ? `Ingrediente "${ing.name}" tiene ${remaining.toFixed(2)} disponible(s). Solo puedes agregar ${availability.max_additional} unidad(es) más.`
+                                : `Stock de ingredientes insuficiente. Solo puedes agregar ${availability.max_additional} unidad(es) más.`;
                             showNotification('Stock insuficiente (receta)', detail, 'warning');
                             return false;
                         }
@@ -2667,6 +2705,40 @@
                         ensureMobileQuickFilters();
                     }
 
+                    function buildProductStockLabel(prod, productBranch) {
+                        const stockVal = Number(productBranch?.stock);
+                        const stockText = !isNaN(stockVal) ? stockVal.toFixed(2) : '0.00';
+                        const availability = getRecipeAvailability(prod?.id);
+                        if (availability && availability.limiting_ingredient) {
+                            const ing = availability.limiting_ingredient;
+                            const ingName = ing.name || 'Ingrediente';
+                            const remaining = Math.max(0, parseFloat(ing.remaining) || 0);
+                            const label = `Stock ${ingName}: ${remaining.toFixed(2)} | +${availability.max_additional} und`;
+                            const colorClass = remaining <= 0
+                                ? 'text-red-500 dark:text-red-400'
+                                : (availability.max_additional <= 3 ? 'text-amber-500 dark:text-amber-400' : 'text-gray-500 dark:text-gray-400');
+                            return { label, colorClass };
+                        }
+
+                        const colorClass = Number(stockText) <= 0
+                            ? 'text-red-500 dark:text-red-400'
+                            : (Number(stockText) < 5 ? 'text-amber-500 dark:text-amber-400' : 'text-gray-500 dark:text-gray-400');
+                        return { label: `Stock: ${stockText}`, colorClass };
+                    }
+
+                    function refreshRecipeStockLabelsInProductGrid() {
+                        document.querySelectorAll('[data-product-stock-label]').forEach((stockEl) => {
+                            const productId = parseInt(stockEl.getAttribute('data-product-stock-label'), 10);
+                            if (!productId) return;
+                            const prod = serverProducts.find((p) => Number(p.id) === Number(productId));
+                            const productBranch = findProductBranchByProductId(productId);
+                            if (!prod || !productBranch) return;
+                            const stockInfo = buildProductStockLabel(prod, productBranch);
+                            stockEl.textContent = stockInfo.label;
+                            stockEl.className = `mt-1 text-xs font-medium ${stockInfo.colorClass}`;
+                        });
+                    }
+
                     function renderProducts() {
                         const grid = document.getElementById('products-grid');
                         if (!grid) return;
@@ -2731,32 +2803,7 @@
                             const imageUrl = getImageUrl(prod.img);
                             const priceFormatted = 'S/ ' + parseFloat(productBranch.price).toFixed(2);
                             const hasImg = prod.img && String(prod.img).trim() !== '';
-                            const stockVal = Number(productBranch.stock);
-                            const stockText = !isNaN(stockVal) ? stockVal.toFixed(2) : '0.00';
-
-                            // Stock: si tiene receta, mostrar el ingrediente limitante
-                            const recipeData = recipeStockData[String(prod.id)];
-                            const hasRecipe = !!recipeData && Array.isArray(recipeData.ingredients) && recipeData.ingredients.length > 0;
-                            let stockLabel, stockColorClass;
-                            if (hasRecipe) {
-                                const check = getRecipeMaxQty(prod.id);
-                                if (check && check.ingredient) {
-                                    const ingName = check.ingredient.name || 'Ingrediente';
-                                    const ingStock = parseFloat(check.ingredient.stock || 0);
-                                    stockLabel = 'Stock ' + escapeHtml(ingName) + ': ' + ingStock.toFixed(2);
-                                    stockColorClass = ingStock <= 0
-                                        ? 'text-red-500 dark:text-red-400'
-                                        : (ingStock < 5 ? 'text-amber-500 dark:text-amber-400' : 'text-gray-500 dark:text-gray-400');
-                                } else {
-                                    stockLabel = 'Stock: ' + stockText;
-                                    stockColorClass = 'text-gray-500 dark:text-gray-400';
-                                }
-                            } else {
-                                stockLabel = 'Stock: ' + stockText;
-                                stockColorClass = Number(stockText) <= 0
-                                    ? 'text-red-500 dark:text-red-400'
-                                    : (Number(stockText) < 5 ? 'text-amber-500 dark:text-amber-400' : 'text-gray-500 dark:text-gray-400');
-                            }
+                            const stockInfo = buildProductStockLabel(prod, productBranch);
 
                             el.innerHTML = `
                                                                                                                                                                                                     <div class="rounded-2xl overflow-hidden p-4 sm:p-5 bg-white dark:bg-slate-800/60 border-2 border-[#FF4622]/20 dark:border-[#FF4622]/40 hover:border-[#FF4622] dark:hover:border-[#FF4622] transition-all duration-200 hover:-translate-y-0.5 flex flex-col items-center text-center h-full w-full">
@@ -2772,7 +2819,7 @@
                                                                                                                                                                                                         <span class="text-base sm:text-lg font-bold text-[#FF4622] dark:text-[#FF4622]">
                                                                                                                                                                                                             ${priceFormatted}
                                                                                                                                                                                                         </span>
-                                                                                                                                                                                                        <span class="mt-1 text-xs font-medium ` + stockColorClass + `">` + stockLabel + `</span>
+                                                                                                                                                                                                        <span data-product-stock-label="${Number(prod.id)}" class="mt-1 text-xs font-medium ` + stockInfo.colorClass + `">` + escapeHtml(stockInfo.label) + `</span>
                                                                                                                                                                                                     </div>
                                                                                                                                                                                                 `;
                             grid.appendChild(el);
@@ -3354,14 +3401,14 @@
                                     : '';
 
                                 // Badge de advertencia de stock de ingredientes (receta)
-                                const recipeMaxCheck = getRecipeMaxQty(item.pId);
+                                const recipeMaxCheck = getRecipeAvailability(item.pId);
                                 let stockWarningBadge = '';
                                 if (recipeMaxCheck !== null) {
-                                    const remaining = recipeMaxCheck.max - itemQty;
-                                    if (remaining < 0) {
-                                        stockWarningBadge = `<span class="mt-1 inline-flex items-center gap-1 rounded-full bg-red-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-red-700 dark:bg-red-500/15 dark:text-red-400"><i class="ri-error-warning-line"></i> Stock insuficiente (máx. ${recipeMaxCheck.max})</span>`;
+                                    const remaining = Math.max(0, parseInt(recipeMaxCheck.max_additional, 10) || 0);
+                                    if (remaining <= 0) {
+                                        stockWarningBadge = `<span class="mt-1 inline-flex items-center gap-1 rounded-full bg-red-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-red-700 dark:bg-red-500/15 dark:text-red-400"><i class="ri-error-warning-line"></i> Stock de insumos agotado</span>`;
                                     } else if (remaining <= 3) {
-                                        stockWarningBadge = `<span class="mt-1 inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700 dark:bg-amber-500/15 dark:text-amber-300"><i class="ri-alert-line"></i> Quedan ${remaining} disponible(s)</span>`;
+                                        stockWarningBadge = `<span class="mt-1 inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700 dark:bg-amber-500/15 dark:text-amber-300"><i class="ri-alert-line"></i> Puedes agregar ${remaining} unidad(es) más</span>`;
                                     }
                                 }
 
@@ -3496,6 +3543,7 @@
                         }
                         if (totalEl) totalEl.innerText = `S/ ${total.toFixed(2)}`;
 
+                        refreshRecipeStockLabelsInProductGrid();
                         syncTakeawayDisposablePanel();
                         syncCobroAmountsWithCart(total);
                         renderCancelledSection();
