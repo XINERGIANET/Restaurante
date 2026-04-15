@@ -2734,6 +2734,30 @@
                             const stockVal = Number(productBranch.stock);
                             const stockText = !isNaN(stockVal) ? stockVal.toFixed(2) : '0.00';
 
+                            // Stock: si tiene receta, mostrar el ingrediente limitante
+                            const recipeData = recipeStockData[String(prod.id)];
+                            const hasRecipe = !!recipeData && Array.isArray(recipeData.ingredients) && recipeData.ingredients.length > 0;
+                            let stockLabel, stockColorClass;
+                            if (hasRecipe) {
+                                const check = getRecipeMaxQty(prod.id);
+                                if (check && check.ingredient) {
+                                    const ingName = check.ingredient.name || 'Ingrediente';
+                                    const ingStock = parseFloat(check.ingredient.stock || 0);
+                                    stockLabel = 'Stock ' + escapeHtml(ingName) + ': ' + ingStock.toFixed(2);
+                                    stockColorClass = ingStock <= 0
+                                        ? 'text-red-500 dark:text-red-400'
+                                        : (ingStock < 5 ? 'text-amber-500 dark:text-amber-400' : 'text-gray-500 dark:text-gray-400');
+                                } else {
+                                    stockLabel = 'Stock: ' + stockText;
+                                    stockColorClass = 'text-gray-500 dark:text-gray-400';
+                                }
+                            } else {
+                                stockLabel = 'Stock: ' + stockText;
+                                stockColorClass = Number(stockText) <= 0
+                                    ? 'text-red-500 dark:text-red-400'
+                                    : (Number(stockText) < 5 ? 'text-amber-500 dark:text-amber-400' : 'text-gray-500 dark:text-gray-400');
+                            }
+
                             el.innerHTML = `
                                                                                                                                                                                                     <div class="rounded-2xl overflow-hidden p-4 sm:p-5 bg-white dark:bg-slate-800/60 border-2 border-[#FF4622]/20 dark:border-[#FF4622]/40 hover:border-[#FF4622] dark:hover:border-[#FF4622] transition-all duration-200 hover:-translate-y-0.5 flex flex-col items-center text-center h-full w-full">
                                         <div class="hidden sm:flex w-20 h-20 rounded-full bg-[#FF4622] items-center justify-center shrink-0 overflow-hidden mb-3">
@@ -2748,7 +2772,7 @@
                                                                                                                                                                                                         <span class="text-base sm:text-lg font-bold text-[#FF4622] dark:text-[#FF4622]">
                                                                                                                                                                                                             ${priceFormatted}
                                                                                                                                                                                                         </span>
-                                                                                                                                                                                                        <span class="mt-1 text-xs font-medium text-gray-500 dark:text-gray-400">Stock: ` + stockText + `</span>
+                                                                                                                                                                                                        <span class="mt-1 text-xs font-medium ` + stockColorClass + `">` + stockLabel + `</span>
                                                                                                                                                                                                     </div>
                                                                                                                                                                                                 `;
                             grid.appendChild(el);
