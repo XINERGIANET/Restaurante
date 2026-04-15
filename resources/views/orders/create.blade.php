@@ -1254,7 +1254,7 @@
                         (currentTable?.items || []).forEach((item) => {
                             const productId = parseInt(item?.pId ?? item?.product_id, 10) || 0;
                             if (!productId) return;
-                            const qty = parseFloat(item?.qty) || 0;
+                            const qty = getItemVirtualPendingQty(item);
                             if (qty <= 0) return;
                             productQtyInCartMap.set(productId, (productQtyInCartMap.get(productId) || 0) + qty);
                         });
@@ -1289,7 +1289,7 @@
                         const recipe = recipeStockData[String(productId)];
                         if (!recipe || !Array.isArray(recipe.ingredients) || recipe.ingredients.length === 0) return null;
                         const yieldQty = parseFloat(recipe.yield_quantity) || 1;
-                        const currentQty = Math.max(0, parseFloat(qtyInCart ?? getCurrentProductQtyInCart(productId)) || 0);
+                        const currentQty = Math.max(0, parseFloat(qtyInCart ?? getCurrentProductVirtualQtyInCart(productId)) || 0);
                         const ingredientConsumptionMap = buildIngredientConsumptionMap({
                             [String(productId)]: currentQty,
                         });
@@ -1413,6 +1413,28 @@
                                 return sum;
                             }
                             return sum + (parseFloat(item?.qty) || 0);
+                        }, 0);
+                    }
+
+                    function getItemVirtualPendingQty(item) {
+                        const qty = Math.max(0, parseFloat(item?.qty) || 0);
+                        const hasSavedOrder = Number(currentTable?.order_movement_id || 0) > 0;
+                        if (!hasSavedOrder) return qty;
+                        const savedQty = parseFloat(item?.savedQty);
+                        if (!Number.isFinite(savedQty)) return qty;
+                        return Math.max(0, qty - Math.max(0, savedQty));
+                    }
+
+                    function getCurrentProductVirtualQtyInCart(productId, excludeIndex = null) {
+                        return (currentTable.items || []).reduce((sum, item, index) => {
+                            if (excludeIndex !== null && index === excludeIndex) {
+                                return sum;
+                            }
+                            const itemId = parseInt(item?.pId ?? item?.product_id, 10) || 0;
+                            if (itemId !== Number(productId)) {
+                                return sum;
+                            }
+                            return sum + getItemVirtualPendingQty(item);
                         }, 0);
                     }
 
@@ -2936,6 +2958,7 @@
                         });
 
                         const productQtyInCart = getCurrentProductQtyInCart(productId);
+                        const productVirtualQtyInCart = getCurrentProductVirtualQtyInCart(productId);
                         // Para productos con receta, no bloquear por el stock propio del producto
                         // (se controla vía ingredientes más abajo). Solo aplicar para productos sin receta.
                         if (!hasRecipe && !allowZeroStockSales && (productQtyInCart + qtyRequested) > stock) {
@@ -2943,7 +2966,7 @@
                             return;
                         }
                         // Validación de ingredientes para productos con receta (siempre obligatoria)
-                        if (!checkRecipeStock(productId, productQtyInCart, qtyRequested)) return;
+                        if (!checkRecipeStock(productId, productVirtualQtyInCart, qtyRequested)) return;
 
                         const st = currentTable.service_type || 'IN_SITU';
                         if (existing) {
@@ -2989,6 +3012,7 @@
                             const pb = serverProductBranches.find(p => parseInt(p.product_id, 10) === prodId);
                             const stock = parseFloat(pb?.stock ?? 0) || 0;
                             const currentOtherQty = getCurrentProductQtyInCart(prodId, index);
+                            const currentOtherVirtualQty = getCurrentProductVirtualQtyInCart(prodId, index);
                             const prodHasRecipe = !!recipeStockData[String(prodId)];
 
                             // Para productos con receta, la validación es por ingredientes (más abajo)
@@ -2996,7 +3020,7 @@
                                 showNotification('Stock insuficiente', (item.name || 'Producto') + ': solo hay ' + stock + ' disponible(s).', 'error');
                                 return;
                             }
-                            if (!checkRecipeStock(prodId, currentOtherQty, change)) return;
+                            if (!checkRecipeStock(prodId, currentOtherVirtualQty, change)) return;
 
                             item.qty = newQty;
                             if ((currentTable.service_type || '') === 'TAKE_AWAY') {
@@ -3046,6 +3070,7 @@
                             const pb = serverProductBranches.find(p => parseInt(p.product_id, 10) === prodId);
                             const stock = parseFloat(pb?.stock ?? 0) || 0;
                             const currentOtherQty = getCurrentProductQtyInCart(prodId, index);
+                            const currentOtherVirtualQty = getCurrentProductVirtualQtyInCart(prodId, index);
                             const prodHasRecipe = !!recipeStockData[String(prodId)];
 
                             // Para productos con receta, la validación es por ingredientes (más abajo)
@@ -3054,7 +3079,7 @@
                                 inputEl.value = oldQty;
                                 return;
                             }
-                            if (!checkRecipeStock(prodId, currentOtherQty, newQty - oldQty)) {
+                            if (!checkRecipeStock(prodId, currentOtherVirtualQty, newQty - oldQty)) {
                                 inputEl.value = oldQty;
                                 return;
                             }
