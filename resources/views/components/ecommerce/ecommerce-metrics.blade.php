@@ -2,33 +2,33 @@
     @foreach($accounts as $key => $account)
     @php
         $theme = match($key) {
-            'caja' => ['bg' => 'bg-[#00acc1]', 'badge' => 'bg-white/20 text-white'], // Cyan
-            'bcp' => ['bg' => 'bg-[#2979ff]', 'badge' => 'bg-white/20 text-white'],  // Blue
-            'interbank' => ['bg' => 'bg-[#3f51b5]', 'badge' => 'bg-white/20 text-white'], // Indigo
-            'wallet' => ['bg' => 'bg-[#fb8c00]', 'badge' => 'bg-white/20 text-white'], // Orange/Amber
-            default => ['bg' => 'bg-gray-600', 'badge' => 'bg-white/20 text-white']
+            'Ventas'   => ['color' => '#2979ff'],
+            'Compras'  => ['color' => '#FE0000'],
+            'Entradas' => ['color' => '#03B430'],
+            'Salidas'  => ['color' => '#FFA500'],
+            default    => ['color' => '#4b5563'],
         };
     @endphp
-    <div class="rounded-2xl {{ $theme['bg'] }} p-5 md:p-6 shadow-lg hover:shadow-xl transition-all duration-300 relative overflow-hidden group">
-        <!-- Decoration element -->
+    <div class="rounded-2xl p-5 md:p-6 shadow-lg hover:shadow-xl transition-all duration-300 relative overflow-hidden group" style="background-color: {{ $theme['color'] }}">
+                <!-- Decoration element -->
         <div class="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full blur-2xl group-hover:bg-white/20 transition-all"></div>
         
         <div class="flex items-start justify-between relative z-10">
             <div class="flex items-center justify-center w-10 h-10 bg-white/20 backdrop-blur-md rounded-xl shadow-inner">
-                @if($key == 'caja')
+                @if($key == 'Ventas')
                     <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H4a2 2 0 0 0 0 4h15a1 1 0 0 0 1-1v-4"></path><path d="M19 11v12"></path></svg>
-                @elseif($key == 'bcp')
+                @elseif($key == 'Compras')
                     <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="10" width="18" height="11" rx="2"></rect><path d="M3 10L12 3L21 10"></path><path d="M6 10V21"></path><path d="M10 10V21"></path><path d="M14 10V21"></path><path d="M18 10V21"></path></svg>
-                @elseif($key == 'interbank')
+                @elseif($key == 'Entradas')
                     <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg>
-                @elseif($key == 'wallet')
+                @elseif($key == 'Salidas')
                     <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
                 @else
                     <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
                 @endif
             </div>
             
-            <span class="flex items-center gap-1 rounded-lg {{ $theme['badge'] }} py-1 px-2.5 text-[10px] font-black uppercase tracking-widest backdrop-blur-sm">
+            <span class="flex items-center gap-1 rounded-lg bg-white/20 text-white py-1 px-2.5 text-[10px] font-black uppercase tracking-widest backdrop-blur-sm">
                 <svg width="8" height="8" viewBox="0 0 10 10" fill="none" xmlns="http://www.w3.org/2000/svg" class="{{ $account['diff'] < 0 ? 'rotate-180' : '' }}">
                     <path d="M5 2L8 5L2 5L5 2Z" fill="currentColor"/>
                 </svg>
