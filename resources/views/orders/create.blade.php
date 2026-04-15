@@ -1241,11 +1241,58 @@
                      * según el stock actual de cada ingrediente.
                      * Retorna { max: int, ingredient: obj } o null si no hay receta.
                      */
+                    function getIngredientUsageKey(ingredient) {
+                        const ingProductId = parseInt(ingredient?.product_id, 10);
+                        if (ingProductId > 0) {
+                            return `product:${ingProductId}`;
+                        }
+                        return `name:${String(ingredient?.name || '').trim().toLowerCase()}`;
+                    }
+
+                    function buildIngredientConsumptionMap(qtyOverridesByProduct = {}) {
+                        const productQtyInCartMap = new Map();
+                        (currentTable?.items || []).forEach((item) => {
+                            const productId = parseInt(item?.pId ?? item?.product_id, 10) || 0;
+                            if (!productId) return;
+                            const qty = parseFloat(item?.qty) || 0;
+                            if (qty <= 0) return;
+                            productQtyInCartMap.set(productId, (productQtyInCartMap.get(productId) || 0) + qty);
+                        });
+
+                        Object.entries(qtyOverridesByProduct || {}).forEach(([k, v]) => {
+                            const productId = parseInt(k, 10);
+                            if (!productId) return;
+                            const qty = Math.max(0, parseFloat(v) || 0);
+                            productQtyInCartMap.set(productId, qty);
+                        });
+
+                        const ingredientConsumptionMap = new Map();
+                        productQtyInCartMap.forEach((productQtyInCart, productId) => {
+                            const recipe = recipeStockData[String(productId)];
+                            if (!recipe || !Array.isArray(recipe.ingredients) || recipe.ingredients.length === 0) return;
+                            const yieldQty = parseFloat(recipe.yield_quantity) || 1;
+                            if (yieldQty <= 0) return;
+
+                            recipe.ingredients.forEach((ingredient) => {
+                                const qtyPerPortion = (parseFloat(ingredient?.quantity) || 0) / yieldQty;
+                                if (qtyPerPortion <= 0) return;
+                                const consumedQty = productQtyInCart * qtyPerPortion;
+                                const ingKey = getIngredientUsageKey(ingredient);
+                                ingredientConsumptionMap.set(ingKey, (ingredientConsumptionMap.get(ingKey) || 0) + consumedQty);
+                            });
+                        });
+
+                        return ingredientConsumptionMap;
+                    }
+
                     function getRecipeAvailability(productId, qtyInCart = null) {
                         const recipe = recipeStockData[String(productId)];
                         if (!recipe || !Array.isArray(recipe.ingredients) || recipe.ingredients.length === 0) return null;
                         const yieldQty = parseFloat(recipe.yield_quantity) || 1;
                         const currentQty = Math.max(0, parseFloat(qtyInCart ?? getCurrentProductQtyInCart(productId)) || 0);
+                        const ingredientConsumptionMap = buildIngredientConsumptionMap({
+                            [String(productId)]: currentQty,
+                        });
                         let maxAdditional = Infinity;
                         let limitingIng = null;
                         const ingredients = [];
@@ -1253,7 +1300,9 @@
                         for (const ing of recipe.ingredients) {
                             const baseStock = parseFloat(ing.stock) || 0;
                             const qtyPerPortion = (parseFloat(ing.quantity) || 0) / yieldQty;
-                            const consumed = qtyPerPortion > 0 ? (currentQty * qtyPerPortion) : 0;
+                            const consumed = qtyPerPortion > 0
+                                ? (ingredientConsumptionMap.get(getIngredientUsageKey(ing)) || 0)
+                                : 0;
                             const remaining = baseStock - consumed;
                             const additionalByIng = qtyPerPortion > 0 ? (remaining / qtyPerPortion) : Infinity;
 
