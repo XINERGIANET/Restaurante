@@ -98,7 +98,7 @@
             $branch = $productBranches->get($p->id);
             $unit = $p->baseUnit ?? null;
             $unitType = $unit ? ($unit->type ?? 'OTRO') : 'OTRO';
-            $allowsDecimal = in_array($unitType, ['MASA', 'LONGITUD', 'VOLUMEN'], true);
+            $allowsDecimal = true; // permite decimales en todas las unidades (ej: 19.5 cuyes)
             return [
                 'id' => $p->id,
                 'code' => $p->code ?? '',
@@ -158,6 +158,12 @@
                 const inputMin = allowsDecimal ? '0.01' : '1';
                 const inputStep = allowsDecimal ? '0.01' : '1';
                 const stepNum = allowsDecimal ? 0.01 : 1;
+                // Fracción seleccionada según el decimal actual
+                const dec = parseFloat((cantidadSalida % 1).toFixed(2));
+                const fracSel0  = dec === 0    ? 'selected' : '';
+                const fracSel25 = dec === 0.25 ? 'selected' : '';
+                const fracSel50 = dec === 0.5  ? 'selected' : '';
+                const fracSel75 = dec === 0.75 ? 'selected' : '';
                 return `
                     <tr class="hover:bg-gray-50 transition-colors ${overStock ? 'bg-red-50' : ''}">
                         <td class="px-4 py-2 align-middle">
@@ -170,10 +176,19 @@
                             <span class="text-sm font-medium text-gray-800">${stockActual}</span>
                         </td>
                         <td class="px-4 py-2 text-center align-middle">
-                            <div class="inline-flex items-center rounded-lg border border-gray-300 bg-white overflow-hidden ${overStock ? 'border-red-500' : ''}">
-                                <button type="button" onclick="var r=this.closest('tr');var i=r.querySelector('input[type=number]');var v=parseFloat(i.value)||0; updateOutputQuantity(${index}, (v-${stepNum}).toString());" class="w-9 h-9 flex items-center justify-center text-gray-600 hover:bg-gray-100 border-r border-gray-300 transition-colors" title="Menos">−</button>
-                                <input type="number" min="${inputMin}" step="${inputStep}" max="${stockActual}" value="${item.quantity}" class="w-14 text-center border-0 px-1 py-1.5 text-sm focus:ring-0 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" onchange="updateOutputQuantity(${index}, this.value)">
-                                <button type="button" onclick="var r=this.closest('tr');var i=r.querySelector('input[type=number]');var v=parseFloat(i.value)||0; var m=Math.min(v+${stepNum},${stockActual}); updateOutputQuantity(${index}, m.toString());" class="w-9 h-9 flex items-center justify-center text-gray-600 hover:bg-gray-100 border-l border-gray-300 transition-colors" title="Más">+</button>
+                            <div class="flex flex-col items-center gap-1">
+                                <div class="inline-flex items-center rounded-lg border border-gray-300 bg-white overflow-hidden ${overStock ? 'border-red-500' : ''}">
+                                    <button type="button" onclick="var r=this.closest('tr');var i=r.querySelector('input[type=number]');var v=parseFloat(i.value)||0; updateOutputQuantity(${index}, (v-${stepNum}).toString());" class="w-9 h-9 flex items-center justify-center text-gray-600 hover:bg-gray-100 border-r border-gray-300 transition-colors" title="Menos">−</button>
+                                    <input type="number" min="${inputMin}" step="${inputStep}" max="${stockActual}" value="${item.quantity}" class="w-14 text-center border-0 px-1 py-1.5 text-sm focus:ring-0 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" onchange="updateOutputQuantity(${index}, this.value)">
+                                    <button type="button" onclick="var r=this.closest('tr');var i=r.querySelector('input[type=number]');var v=parseFloat(i.value)||0; var m=Math.min(v+${stepNum},${stockActual}); updateOutputQuantity(${index}, m.toString());" class="w-9 h-9 flex items-center justify-center text-gray-600 hover:bg-gray-100 border-l border-gray-300 transition-colors" title="Más">+</button>
+                                </div>
+                                <select onchange="applyFractionOutput(${index}, this.value)"
+                                    class="text-xs rounded border border-gray-300 bg-white px-1 py-0.5 text-gray-600 focus:outline-none focus:ring-1 focus:ring-orange-400">
+                                    <option value="0"    ${fracSel0}>sin fracción</option>
+                                    <option value="0.25" ${fracSel25}>+ ¼ (0.25)</option>
+                                    <option value="0.5"  ${fracSel50}>+ ½ (0.5)</option>
+                                    <option value="0.75" ${fracSel75}>+ ¾ (0.75)</option>
+                                </select>
                             </div>
                         </td>
                         <td class="px-4 py-2 text-center align-middle">
@@ -261,6 +276,17 @@
                     item.quantity = Math.min(qty, maxStock);
                 }
             }
+            renderOutputItems();
+        }
+
+        function applyFractionOutput(index, fraction) {
+            const item = outputItems[index];
+            if (!item) return;
+            const whole   = Math.floor(parseFloat(item.quantity) || 0);
+            const frac    = parseFloat(fraction) || 0;
+            const maxStock = item.stock ?? 0;
+            const newQty  = parseFloat((whole + frac).toFixed(2));
+            item.quantity = Math.min(newQty < 0.01 ? 0.01 : newQty, maxStock);
             renderOutputItems();
         }
 
