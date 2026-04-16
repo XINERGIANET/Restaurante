@@ -2375,133 +2375,12 @@ class OrderController extends Controller
                 ]);
             }
 
-            $affectedProductIds = $previousCommittedQtyByProduct
-                ->keys()
-                ->merge($newCommittedQtyByProduct->keys())
-                ->map(fn ($productId) => (int) $productId)
-                ->filter(fn ($productId) => $productId > 0)
-                ->unique()
-                ->values();
-
-            foreach ($affectedProductIds as $productId) {
-                $previousCommittedQty = (float) ($previousCommittedQtyByProduct->get($productId, 0));
-                $newCommittedQty = (float) ($newCommittedQtyByProduct->get($productId, 0));
-                $deltaQty = $newCommittedQty - $previousCommittedQty;
-                if (abs($deltaQty) < 0.000001) {
-                    continue;
-                }
-
-                $roundUpToQuarter = function (float $qty): float {
-                    if ($qty <= 0) {
-                        return 0.0;
-                    }
-                    return round(ceil($qty * 4) / 4, 6);
-                };
-                $roundDownToQuarter = function (float $qty): float {
-                    if ($qty <= 0) {
-                        return 0.0;
-                    }
-                    return round(floor($qty * 4) / 4, 6);
-                };
-
-                $recipe = Recipe::query()
-                    ->where('branch_id', $branchId)
-                    ->where('product_id', $productId)
-                    ->where('status', 'A')
-                    ->with(['ingredients'])
-                    ->first();
-
-                if ($recipe && (float) ($recipe->yield_quantity ?? 0) > 0) {
-                    $yield = (float) $recipe->yield_quantity;
-
-                    $requiredByIngredientId = [];
-                    foreach ($recipe->ingredients as $ingredient) {
-                        $ingredientProductId = (int) ($ingredient->product_id ?? 0);
-                        $ingredientQty = (float) ($ingredient->quantity ?? 0);
-                        if ($ingredientProductId <= 0 || $ingredientQty <= 0) {
-                            continue;
-                        }
-
-                        $raw = ($ingredientQty / $yield) * abs($deltaQty);
-                        $portion = $deltaQty > 0 ? $roundUpToQuarter($raw) : $roundDownToQuarter($raw);
-                        if ($portion <= 0) {
-                            continue;
-                        }
-
-                        // Delta positivo consume (resta), delta negativo devuelve (suma)
-                        $signed = $deltaQty > 0 ? $portion : -$portion;
-                        $requiredByIngredientId[$ingredientProductId] = ($requiredByIngredientId[$ingredientProductId] ?? 0) + $signed;
-                    }
-
-                    if (! empty($requiredByIngredientId)) {
-                        $ingredientIds = array_keys($requiredByIngredientId);
-                        sort($ingredientIds);
-
-                        $ingredientBranches = ProductBranch::query()
-                            ->where('branch_id', $branchId)
-                            ->whereIn('product_id', $ingredientIds)
-                            ->lockForUpdate()
-                            ->get()
-                            ->keyBy('product_id');
-
-                        // Para recetas, el stock se controla por ingredientes SIEMPRE, incluso si la sucursal
-                        // permite vender con stock 0 para otros productos.
-                        foreach ($ingredientIds as $ingredientProductId) {
-                            $signedDelta = (float) $requiredByIngredientId[$ingredientProductId];
-                            if ($signedDelta <= 0) {
-                                continue;
-                            }
-                            $pb = $ingredientBranches->get($ingredientProductId);
-                            $name = Product::query()->where('id', $ingredientProductId)->value('description') ?? ('Ingrediente #' . $ingredientProductId);
-                            if (! $pb) {
-                                throw new \Exception("Ingrediente \"{$name}\" no disponible en esta sucursal.");
-                            }
-                            $current = (float) ($pb->stock ?? 0);
-                            if ($current < $signedDelta) {
-                                throw new \Exception("Stock insuficiente para \"{$name}\".");
-                            }
-                        }
-
-                        foreach ($ingredientIds as $ingredientProductId) {
-                            $pb = $ingredientBranches->get($ingredientProductId);
-                            if (! $pb) {
-                                continue;
-                            }
-                            $current = (float) ($pb->stock ?? 0);
-                            $signedDelta = (float) $requiredByIngredientId[$ingredientProductId];
-                            $newStock = $current - $signedDelta;
-                            $pb->update([
-                                'stock' => max(0, round($newStock, 6)),
-                            ]);
-                        }
-                    }
-                } else {
-                    $productBranch = ProductBranch::query()
-                        ->where('product_id', $productId)
-                        ->where('branch_id', $branchId)
-                        ->lockForUpdate()
-                        ->first();
-
-                    if (! $productBranch) {
-                        $product = Product::find($productId);
-                        $productName = (string) ($product?->description ?? ('Producto #' . $productId));
-                        throw new \Exception("Producto {$productName} no disponible en esta sucursal.");
-                    }
-
-                    $currentStock = (float) ($productBranch->stock ?? 0);
-                    $newStock = $currentStock - $deltaQty;
-
-                    if (! $branch->allow_zero_stock_sales && $newStock < 0) {
-                        $product = Product::find($productId);
-                        $productName = (string) ($product?->description ?? ('Producto #' . $productId));
-                        throw new \Exception("Stock insuficiente para \"{$productName}\".");
-                    }
-
-                    $productBranch->update([
-                        'stock' => max(0, round($newStock, 6)),
-                    ]);
-                }
-            }
+            $this->applyCommittedStockDelta(
+                $branch,
+                (int) $branchId,
+                $previousCommittedQtyByProduct,
+                $newCommittedQtyByProduct
+            );
 
             app(KardexSyncService::class)->syncMovement($movement);
 
@@ -3621,6 +3500,135 @@ class OrderController extends Controller
             ->first();
     }
 
+    private function applyCommittedStockDelta(Branch $branch, int $branchId, \Illuminate\Support\Collection $previousCommittedQtyByProduct, \Illuminate\Support\Collection $newCommittedQtyByProduct): void
+    {
+        $affectedProductIds = $previousCommittedQtyByProduct
+            ->keys()
+            ->merge($newCommittedQtyByProduct->keys())
+            ->map(fn ($productId) => (int) $productId)
+            ->filter(fn ($productId) => $productId > 0)
+            ->unique()
+            ->values();
+
+        foreach ($affectedProductIds as $productId) {
+            $previousCommittedQty = (float) ($previousCommittedQtyByProduct->get($productId, 0));
+            $newCommittedQty = (float) ($newCommittedQtyByProduct->get($productId, 0));
+            $deltaQty = $newCommittedQty - $previousCommittedQty;
+            if (abs($deltaQty) < 0.000001) {
+                continue;
+            }
+
+            $roundUpToQuarter = function (float $qty): float {
+                if ($qty <= 0) {
+                    return 0.0;
+                }
+                return round(ceil($qty * 4) / 4, 6);
+            };
+            $roundDownToQuarter = function (float $qty): float {
+                if ($qty <= 0) {
+                    return 0.0;
+                }
+                return round(floor($qty * 4) / 4, 6);
+            };
+
+            $recipe = Recipe::query()
+                ->where('branch_id', $branchId)
+                ->where('product_id', $productId)
+                ->where('status', 'A')
+                ->with(['ingredients'])
+                ->first();
+
+            if ($recipe && (float) ($recipe->yield_quantity ?? 0) > 0) {
+                $yield = (float) $recipe->yield_quantity;
+
+                $requiredByIngredientId = [];
+                foreach ($recipe->ingredients as $ingredient) {
+                    $ingredientProductId = (int) ($ingredient->product_id ?? 0);
+                    $ingredientQty = (float) ($ingredient->quantity ?? 0);
+                    if ($ingredientProductId <= 0 || $ingredientQty <= 0) {
+                        continue;
+                    }
+
+                    $raw = ($ingredientQty / $yield) * abs($deltaQty);
+                    $portion = $deltaQty > 0 ? $roundUpToQuarter($raw) : $roundDownToQuarter($raw);
+                    if ($portion <= 0) {
+                        continue;
+                    }
+
+                    // Delta positivo consume (resta), delta negativo devuelve (suma)
+                    $signed = $deltaQty > 0 ? $portion : -$portion;
+                    $requiredByIngredientId[$ingredientProductId] = ($requiredByIngredientId[$ingredientProductId] ?? 0) + $signed;
+                }
+
+                if (! empty($requiredByIngredientId)) {
+                    $ingredientIds = array_keys($requiredByIngredientId);
+                    sort($ingredientIds);
+
+                    $ingredientBranches = ProductBranch::query()
+                        ->where('branch_id', $branchId)
+                        ->whereIn('product_id', $ingredientIds)
+                        ->lockForUpdate()
+                        ->get()
+                        ->keyBy('product_id');
+
+                    foreach ($ingredientIds as $ingredientProductId) {
+                        $signedDelta = (float) $requiredByIngredientId[$ingredientProductId];
+                        if ($signedDelta <= 0) {
+                            continue;
+                        }
+                        $pb = $ingredientBranches->get($ingredientProductId);
+                        $name = Product::query()->where('id', $ingredientProductId)->value('description') ?? ('Ingrediente #' . $ingredientProductId);
+                        if (! $pb) {
+                            throw new \Exception("Ingrediente \"{$name}\" no disponible en esta sucursal.");
+                        }
+                        $current = (float) ($pb->stock ?? 0);
+                        if ($current < $signedDelta) {
+                            throw new \Exception("Stock insuficiente para \"{$name}\".");
+                        }
+                    }
+
+                    foreach ($ingredientIds as $ingredientProductId) {
+                        $pb = $ingredientBranches->get($ingredientProductId);
+                        if (! $pb) {
+                            continue;
+                        }
+                        $current = (float) ($pb->stock ?? 0);
+                        $signedDelta = (float) $requiredByIngredientId[$ingredientProductId];
+                        $newStock = $current - $signedDelta;
+                        $pb->update([
+                            'stock' => max(0, round($newStock, 6)),
+                        ]);
+                    }
+                }
+            } else {
+                $productBranch = ProductBranch::query()
+                    ->where('product_id', $productId)
+                    ->where('branch_id', $branchId)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $productBranch) {
+                    $product = Product::find($productId);
+                    $productName = (string) ($product?->description ?? ('Producto #' . $productId));
+                    throw new \Exception("Producto {$productName} no disponible en esta sucursal.");
+                }
+
+                $currentStock = (float) ($productBranch->stock ?? 0);
+                $newStock = $currentStock - $deltaQty;
+
+                if (! $branch->allow_zero_stock_sales && $newStock < 0) {
+                    $product = Product::find($productId);
+                    $productName = (string) ($product?->description ?? ('Producto #' . $productId));
+                    throw new \Exception("Stock insuficiente para \"{$productName}\".");
+                }
+
+                $productBranch->update([
+                    'stock' => max(0, round($newStock, 6)),
+                ]);
+            }
+        }
+    }
+
     public function cancelOrder(Request $request)
     {
         $profileId = session('profile_id') ?? $request->user()?->profile_id;
@@ -3659,21 +3667,67 @@ class OrderController extends Controller
             ], 404);
         }
 
-        $orderMovement->update([
-            'status' => 'CANCELADO',
-            'finished_at' => now(),
-        ]);
+        try {
+            DB::beginTransaction();
 
-        $movementUpdate = ['moved_at' => now()];
-        if ($cancelReason !== '') {
-            $movementUpdate['comment'] = $cancelReason;
+            $branchId = (int) ($orderMovement->branch_id ?: $table->branch_id ?: session('branch_id'));
+            $branch = Branch::find($branchId);
+            if (! $branch) {
+                throw new \Exception('No se encontró la sucursal del pedido para revertir stock.');
+            }
+
+            $previousCommittedQtyByProduct = $orderMovement->details()
+                ->where(function ($q) {
+                    $q->whereNull('status')->orWhere('status', '!=', 'C');
+                })
+                ->get(['product_id', 'quantity'])
+                ->groupBy('product_id')
+                ->map(function ($rows) {
+                    return (float) $rows->sum('quantity');
+                });
+
+            // Al cerrar mesa se revierte todo lo comprometido del pedido pendiente.
+            $this->applyCommittedStockDelta(
+                $branch,
+                $branchId,
+                $previousCommittedQtyByProduct,
+                collect()
+            );
+
+            $orderMovement->update([
+                'status' => 'CANCELADO',
+                'finished_at' => now(),
+            ]);
+
+            $movementUpdate = ['moved_at' => now()];
+            if ($cancelReason !== '') {
+                $movementUpdate['comment'] = $cancelReason;
+            }
+            Movement::where('id', $orderMovement->movement_id)->update($movementUpdate);
+
+            Table::where('id', $table->id)->update([
+                'situation' => 'libre',
+                'opened_at' => null,
+            ]);
+
+            if ($orderMovement->movement) {
+                app(KardexSyncService::class)->syncMovement($orderMovement->movement);
+            }
+
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Error al cerrar mesa y revertir stock', [
+                'error' => $e->getMessage(),
+                'table_id' => $tableId,
+                'order_movement_id' => $orderMovement->id,
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
         }
-        Movement::where('id', $orderMovement->movement_id)->update($movementUpdate);
-
-        Table::where('id', $table->id)->update([
-            'situation' => 'libre',
-            'opened_at' => null,
-        ]);
 
         return response()->json([
             'success' => true,
