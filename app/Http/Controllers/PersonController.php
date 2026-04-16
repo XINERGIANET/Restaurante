@@ -226,7 +226,10 @@ class PersonController extends Controller
                 ->get();
         }
         $roles = Role::query()->orderBy('name')->get(['id', 'name']);
-        $profiles = Profile::query()->orderBy('name')->get(['id', 'name', 'default_view_id']);
+        $profiles = Profile::query()
+            ->where('id', '!=', 1)
+            ->orderBy('name')
+            ->get(['id', 'name', 'default_view_id']);
 
         $perPage = (int) $request->input('per_page', 10);
         $allowedPerPage = [10, 20, 50, 100];
@@ -235,6 +238,7 @@ class PersonController extends Controller
         }
 
         $roleId = $request->input('role_id');
+        $profileIdParam = $request->input('profile_id');
 
         $people = $branch->people()
             ->with(['location', 'user.profile', 'roles'])
@@ -251,6 +255,11 @@ class PersonController extends Controller
                     $q->where('roles.id', $roleId);
                 });
             })
+            ->when($profileIdParam, function($query) use ($profileIdParam) {
+                $query->whereHas('user', function($q) use ($profileIdParam) {
+                    $q->where('profile_id', $profileIdParam);
+                });
+            })
             ->orderByDesc('id')
             ->paginate($perPage)
             ->withQueryString();
@@ -261,6 +270,7 @@ class PersonController extends Controller
             'people' => $people,
             'search' => $search,
             'roleId' => $roleId,
+            'profileIdParam' => $profileIdParam,
             'perPage' => $perPage,
             'roles' => $roles,
             'profiles' => $profiles,

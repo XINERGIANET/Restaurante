@@ -157,6 +157,20 @@
                             @endforeach
                         </select>
                     </div>
+
+                    <div class="relative min-w-[160px]">
+                        <select
+                            name="profile_id"
+                            class="dark:bg-dark-900 shadow-theme-xs focus:border-[#FF4622] focus:ring-[#FF4622]/10 dark:focus:border-[#FF4622] h-11 w-full rounded-lg border border-gray-300 bg-transparent px-3 py-2 text-sm text-gray-700 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+                        >
+                            <option value="">Perfil: Todos</option>
+                            @foreach ($profiles as $profile)
+                                <option value="{{ $profile->id }}" {{ $profileIdParam == $profile->id ? 'selected' : '' }}>
+                                    {{ $profile->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
                     <div class="flex flex-wrap gap-2">
                         <x-ui.button size="md" variant="primary" type="submit" class="flex-1 sm:flex-none h-11 px-4 shadow-sm hover:shadow-md transition-all duration-200 active:scale-95" style="background-color: #C43B25; border-color: #C43B25;">
                             <i class="ri-search-line text-gray-100"></i>
@@ -212,7 +226,7 @@
                             <th class="px-5 py-3 text-left sm:px-6 whitespace-nowrap">Documento</th>
                             <th class="px-3 py-3 text-left sm:px-6 whitespace-nowrap">Nombres</th>
                             <th class="px-5 py-3 text-left sm:px-6 whitespace-nowrap">Teléfono</th>
-                            <th class="px-5 py-3 text-left sm:px-6 whitespace-nowrap">Correo</th>
+                            <th class="px-5 py-3 text-left sm:px-6 whitespace-nowrap">Perfil</th>
                             <th class="px-5 py-3 text-left sm:px-6 whitespace-nowrap">Rol</th>
                             <th class="px-5 py-3 text-right sm:px-6 whitespace-nowrap last:rounded-tr-2xl">Acciones</th>
                         </tr>
@@ -240,7 +254,9 @@
                                     <p class="text-gray-500 text-theme-sm dark:text-gray-400">{{ $person->phone ?? '-' }}</p>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
-                                    <p class="text-gray-500 text-theme-sm dark:text-gray-400 truncate" title="{{ $person->email }}">{{ $person->email ?? '-' }}</p>
+                                    <p class="text-gray-500 text-theme-sm dark:text-gray-400 truncate" title="{{ $person->user?->profile?->name ?? 'Sin perfil' }}">
+                                        {{ $person->user?->profile?->name ?? '-' }}
+                                    </p>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
                                     <div class="flex flex-wrap gap-1">
