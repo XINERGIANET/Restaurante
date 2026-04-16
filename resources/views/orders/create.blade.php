@@ -543,8 +543,8 @@
                                 @if(!empty($split_account_enabled))
                                 <div class="flex flex-wrap items-center gap-2 mb-3">
                                     <button type="button" onclick="openSplitAccountModal()"
-                                        class="inline-flex items-center gap-2 rounded-xl border border-amber-300 dark:border-amber-500/50 bg-amber-50 dark:bg-amber-900/30 px-3 py-2 text-sm font-semibold text-amber-900 dark:text-amber-100 hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors shadow-sm">
-                                        <i class="ri-scissors-cut-line text-lg"></i>
+                                        class="inline-flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/80 px-3 py-2 text-sm font-semibold text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors shadow-sm">
+                                        <i class="ri-scissors-cut-line text-lg text-[#FF4622]"></i>
                                         <span>Dividir cuenta</span>
                                     </button>
                                     <span id="split-inline-status" class="text-xs text-slate-500 dark:text-slate-400 max-w-[14rem]"></span>
@@ -563,13 +563,17 @@
                                     </div>
                                     <div id="cobro-payment-methods-list" class="space-y-3 max-h-48 overflow-y-auto pr-1"></div>
                                     <div
-                                        class="mt-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-100 dark:bg-gray-800/80 px-3 py-2.5">
-                                        <div class="flex justify-between items-center">
-                                            <span class="text-xs font-semibold text-gray-600 dark:text-gray-300">Total
-                                                pagado</span>
+                                        class="mt-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-100 dark:bg-gray-800/80 px-3 py-2.5 space-y-2">
+                                        <div id="cobro-order-total-row" class="hidden flex justify-between items-center gap-2 border-b border-gray-200/80 dark:border-gray-600/80 pb-2">
+                                            <span class="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Total del pedido</span>
+                                            <span class="text-xs font-semibold tabular-nums text-slate-600 dark:text-slate-300" id="cobro-order-total-display">S/ 0.00</span>
+                                        </div>
+                                        <div class="flex justify-between items-center gap-2">
+                                            <span class="text-xs font-semibold text-gray-600 dark:text-gray-300" id="cobro-total-label">Total pagado</span>
                                             <span class="text-base font-bold text-slate-800 dark:text-white tabular-nums"
                                                 id="cobro-total-paid">S/ 0.00</span>
                                         </div>
+                                        <p id="cobro-split-footnote" class="hidden text-[11px] leading-snug text-slate-500 dark:text-slate-400">Este cobro es por una parte del pedido. La mesa no se libera hasta saldar el saldo pendiente.</p>
                                     </div>
                                 </div>
                             </div>
@@ -595,11 +599,12 @@
                         </div>
                         {{-- Footer Cobro: solo Cobrar (oculto para Mozo) --}}
                         @if($canCharge ?? true)
-                            <div id="footer-cobro" class="hidden flex justify-end">
+                            <div id="footer-cobro" class="hidden flex flex-col items-end gap-1.5">
+                                <p id="cobro-split-footer-hint" class="hidden max-w-[18rem] text-right text-[10px] text-slate-500 dark:text-slate-400 leading-tight">Si queda saldo pendiente en el pedido, la mesa sigue ocupada hasta el cobro final.</p>
                                 <button type="button" onclick="processOrderPayment()"
                                     class="py-2.5 px-4 rounded-xl bg-[#FF4622] text-white font-bold text-xs sm:text-sm shadow-lg hover:bg-[#C43B25] active:scale-95 transition-all flex justify-center items-center gap-2">
                                     <i class="ri-bank-card-line text-base"></i>
-                                    <span>Cobrar</span>
+                                    <span id="footer-cobro-btn-label">Cobrar</span>
                                 </button>
                             </div>
                         @endif
@@ -611,14 +616,16 @@
             @if(!empty($split_account_enabled))
             <div id="split-account-modal" class="fixed inset-0 z-[110] hidden" role="dialog" aria-modal="true" aria-labelledby="split-modal-title">
                 <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-[1px]" onclick="closeSplitAccountModal()"></div>
-                <div class="absolute inset-3 sm:inset-6 md:inset-auto md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:max-w-lg md:w-full max-h-[min(92vh,540px)] flex flex-col rounded-2xl bg-white dark:bg-gray-900 shadow-2xl border border-amber-200/80 dark:border-amber-900/40 overflow-hidden">
-                    <div class="flex items-center justify-between gap-3 px-4 py-3 border-b border-amber-100 dark:border-amber-900/40 bg-amber-50/90 dark:bg-amber-950/40 shrink-0">
+                <div class="absolute inset-3 sm:inset-6 md:inset-auto md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:max-w-lg md:w-full max-h-[min(92vh,540px)] flex flex-col rounded-2xl bg-white dark:bg-gray-900 shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden relative z-10">
+                    <div class="flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shrink-0">
                         <div class="flex items-center gap-2 min-w-0">
-                            <i class="ri-scissors-cut-line text-xl text-amber-700 dark:text-amber-300 shrink-0"></i>
-                            <h2 id="split-modal-title" class="text-sm font-black uppercase tracking-wide text-amber-900 dark:text-amber-100 truncate">División de cuenta</h2>
+                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#FF4622]/10 text-[#FF4622] dark:bg-[#FF4622]/20">
+                                <i class="ri-scissors-cut-line text-xl"></i>
+                            </div>
+                            <h2 id="split-modal-title" class="text-sm font-black uppercase tracking-wide text-slate-800 dark:text-white truncate">División de cuenta</h2>
                         </div>
                         <div class="flex items-center gap-2 shrink-0">
-                            <span id="split-remaining-badge" class="text-xs font-bold tabular-nums text-amber-800 dark:text-amber-200 whitespace-nowrap">Pendiente: S/ 0.00</span>
+                            <span id="split-remaining-badge" class="text-xs font-bold tabular-nums text-slate-600 dark:text-slate-300 whitespace-nowrap">Pendiente: S/ 0.00</span>
                             <button type="button" onclick="closeSplitAccountModal()" class="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-gray-800" aria-label="Cerrar"><i class="ri-close-line text-xl"></i></button>
                         </div>
                     </div>
@@ -636,10 +643,10 @@
                             </select>
                         </div>
                         <div id="split-products-wrap" class="space-y-2">
-                            <div class="max-h-52 overflow-y-auto rounded-xl border border-amber-100 dark:border-amber-900/30">
+                            <div class="max-h-52 overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-600">
                                 <table class="w-full text-xs text-slate-700 dark:text-slate-200">
-                                    <thead class="sticky top-0 z-[1] bg-amber-50/95 dark:bg-amber-950/50 backdrop-blur-sm">
-                                        <tr class="border-b border-amber-200/60 dark:border-amber-500/30">
+                                    <thead class="sticky top-0 z-[1] bg-slate-100/95 dark:bg-slate-800/95 backdrop-blur-sm">
+                                        <tr class="border-b border-gray-200 dark:border-gray-600">
                                             <th class="text-left py-2 px-2 font-semibold">Producto</th>
                                             <th class="text-center py-2 px-1 font-semibold w-14">Pend.</th>
                                             <th class="text-right py-2 px-2 font-semibold min-w-[9rem]">Cobrar</th>
@@ -655,9 +662,9 @@
                                 class="w-full py-2.5 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-slate-700 dark:text-slate-200 text-sm tabular-nums"
                                 placeholder="0.00">
                         </div>
-                        <p id="split-hint-locked" class="hidden text-xs text-amber-800 dark:text-amber-200">Este pedido ya inició división por monto; solo puede continuar en ese modo.</p>
+                        <p id="split-hint-locked" class="hidden text-xs text-slate-600 dark:text-slate-400">Este pedido ya inició división por monto; solo puede continuar en ese modo.</p>
                     </div>
-                    <div class="flex flex-wrap gap-2 justify-end px-4 py-3 border-t border-amber-100 dark:border-amber-900/40 bg-gray-50/90 dark:bg-gray-900/90 shrink-0">
+                    <div class="flex flex-wrap gap-2 justify-end px-4 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/95 shrink-0">
                         <button type="button" onclick="clearSplitDivision()" class="px-4 py-2 rounded-xl text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-gray-700">Quitar división</button>
                         <button type="button" onclick="closeSplitAccountModal()" class="px-4 py-2 rounded-xl text-sm font-semibold border border-gray-300 dark:border-gray-600 text-slate-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-gray-800">Cancelar</button>
                         <button type="button" onclick="applySplitAccountModal()" class="px-4 py-2 rounded-xl text-sm font-bold bg-[#FF4622] text-white hover:bg-[#C43B25] shadow">Aplicar</button>
@@ -4363,7 +4370,7 @@
                         const snap = window.__splitAppliedSnapshot;
                         cfg.lines.forEach(function (line) {
                             const tr = document.createElement('tr');
-                            tr.className = 'border-b border-amber-100/80 dark:border-amber-900/40';
+                            tr.className = 'border-b border-gray-100 dark:border-gray-700/80';
                             tr.setAttribute('data-split-detail-id', String(line.detail_id));
                             const rq = parseFloat(line.remaining_qty) || 0;
                             let initial = 0;
@@ -4380,10 +4387,10 @@
                                 '<td class="py-2 px-1 text-center tabular-nums align-middle">' + rq.toFixed(2) + '</td>' +
                                 '<td class="py-2 px-2 align-middle">' +
                                 '<div class="flex items-center justify-end gap-1">' +
-                                '<button type="button" class="split-qty-minus flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-amber-200 bg-white text-lg font-bold text-amber-800 hover:bg-amber-50 dark:border-amber-700 dark:bg-gray-800 dark:text-amber-200 dark:hover:bg-gray-700 leading-none" aria-label="Menos">−</button>' +
+                                '<button type="button" class="split-qty-minus flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white text-lg font-bold text-slate-700 hover:bg-slate-50 dark:border-gray-600 dark:bg-gray-800 dark:text-slate-200 dark:hover:bg-gray-700 leading-none" aria-label="Menos">−</button>' +
                                 '<span class="split-qty-display w-11 text-center text-sm font-bold tabular-nums text-slate-800 dark:text-slate-100">' + dispVal + '</span>' +
                                 '<input type="hidden" class="split-qty-input" value="' + initial + '" data-max="' + rq + '" />' +
-                                '<button type="button" class="split-qty-plus flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-amber-200 bg-white text-lg font-bold text-amber-800 hover:bg-amber-50 dark:border-amber-700 dark:bg-gray-800 dark:text-amber-200 dark:hover:bg-gray-700 leading-none" aria-label="Más">+</button>' +
+                                '<button type="button" class="split-qty-plus flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white text-lg font-bold text-slate-700 hover:bg-slate-50 dark:border-gray-600 dark:bg-gray-800 dark:text-slate-200 dark:hover:bg-gray-700 leading-none" aria-label="Más">+</button>' +
                                 '</div></td>';
                             tbody.appendChild(tr);
                             syncSplitQtyRow(tr);
@@ -4413,7 +4420,7 @@
                         if (sel) sel.value = mode;
                         const tp = document.getElementById('split-mode-tab-products');
                         const ta = document.getElementById('split-mode-tab-amount');
-                        const active = 'bg-white dark:bg-gray-700 text-[#FF4622] shadow-sm ring-1 ring-amber-200/80 dark:ring-amber-800';
+                        const active = 'bg-white dark:bg-gray-700 text-[#FF4622] shadow-sm ring-1 ring-slate-200 dark:ring-slate-600';
                         const inactive = 'text-slate-600 dark:text-slate-300 hover:bg-white/70 dark:hover:bg-gray-700/50';
                         if (tp) {
                             tp.className = 'split-mode-tab flex-1 py-2.5 px-3 rounded-lg text-sm font-semibold transition-colors ' + (mode === 'products' ? active : inactive);
@@ -4504,8 +4511,30 @@
                             toggleCobroDetailGlosa();
                         }
                         updateSplitInlineStatus();
+                        syncCobroPaymentAmountsToSplitPart();
                         closeSplitAccountModal();
-                        if (typeof updateCobroTotalPaid === 'function') updateCobroTotalPaid();
+                    }
+
+                    function syncCobroPaymentAmountsToSplitPart() {
+                        const cb = document.getElementById('split-dividir-cuenta');
+                        if (!cb || !cb.checked) return;
+                        let part = 0;
+                        try {
+                            const p = buildSplitPayloadForPayment();
+                            if (p) part = computeSplitPartTotal(p);
+                        } catch (e) {
+                            return;
+                        }
+                        if (!(part > 0)) return;
+                        let inputs = document.querySelectorAll('.cobro-pm-amount');
+                        if (!inputs.length) {
+                            addCobroPaymentMethod();
+                            inputs = document.querySelectorAll('.cobro-pm-amount');
+                        }
+                        inputs.forEach(function (inp, i) {
+                            inp.value = i === 0 ? part.toFixed(2) : '0.00';
+                        });
+                        updateCobroTotalPaid();
                     }
 
                     function clearSplitDivision() {
@@ -5268,6 +5297,35 @@
                         });
                         const el = document.getElementById('cobro-total-paid');
                         if (el) el.textContent = 'S/ ' + total.toFixed(2);
+                        const lbl = document.getElementById('cobro-total-label');
+                        const row = document.getElementById('cobro-order-total-row');
+                        const orderDisp = document.getElementById('cobro-order-total-display');
+                        const foot = document.getElementById('cobro-split-footnote');
+                        const cb = document.getElementById('split-dividir-cuenta');
+                        const splitOn = !!(cb && cb.checked && window.__splitAccount && window.__splitAccount.enabled);
+                        if (lbl) {
+                            lbl.textContent = splitOn ? 'Total dividido' : 'Total pagado';
+                        }
+                        if (row && orderDisp) {
+                            if (splitOn) {
+                                row.classList.remove('hidden');
+                                const orderTot = getTotalsWithDelivery(currentTable?.items || []).total || 0;
+                                orderDisp.textContent = 'S/ ' + orderTot.toFixed(2);
+                            } else {
+                                row.classList.add('hidden');
+                            }
+                        }
+                        if (foot) {
+                            foot.classList.toggle('hidden', !splitOn);
+                        }
+                        const btnLbl = document.getElementById('footer-cobro-btn-label');
+                        if (btnLbl) {
+                            btnLbl.textContent = splitOn ? 'Cobrar parte' : 'Cobrar';
+                        }
+                        const fh = document.getElementById('cobro-split-footer-hint');
+                        if (fh) {
+                            fh.classList.toggle('hidden', !splitOn);
+                        }
                     }
 
                     function changeClient(selectEl) {
