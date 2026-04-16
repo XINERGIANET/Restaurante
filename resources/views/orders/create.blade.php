@@ -3932,7 +3932,10 @@
                         flushCartUnitPriceInputsFromDom();
                         renderTicket();
                         const btnGuardar = document.getElementById('btn-guardar');
-                        if (btnGuardar) { btnGuardar.disabled = true; }
+                        if (btnGuardar) {
+                            btnGuardar.disabled = true;
+                            btnGuardar.innerHTML = '<i class="ri-loader-4-line text-base animate-spin"></i><span>Procesando...</span>';
+                        }
                         let items = getItemsGroupedByProduct();
 
                         // Hora de comanda: solo se fija la primera vez; la nota va siempre solo como texto.
@@ -4041,12 +4044,18 @@
                                     console.error('Error al guardar:', data);
                                     sessionStorage.setItem('flash_error_message', data?.message || 'Error al guardar.');
                                 }
-                                if (btnGuardar) { btnGuardar.disabled = false; }
+                                if (btnGuardar) {
+                                    btnGuardar.disabled = false;
+                                    btnGuardar.innerHTML = '<i class="ri-send-plane-2-line text-base"></i><span>Enviar</span>';
+                                }
                             })
                             .catch(error => {
                                 console.error('Error:', error);
                                 sessionStorage.setItem('flash_error_message', 'Error al guardar el pedido. Revisa la consola.');
-                                if (btnGuardar) { btnGuardar.disabled = false; }
+                                if (btnGuardar) {
+                                    btnGuardar.disabled = false;
+                                    btnGuardar.innerHTML = '<i class="ri-send-plane-2-line text-base"></i><span>Enviar</span>';
+                                }
                             });
 
                     }
