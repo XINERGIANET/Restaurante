@@ -90,15 +90,21 @@
                 }
                 return '#FFFFFF';
             };
+
+            $isFromConfig = request('from_config');
+            $crumbs = $isFromConfig ? [
+                ['label' => 'Configuración', 'url' => '#'],
+                ['label' => 'Personal']
+            ] : [
+                ['label' => 'Empresas', 'url' => route('admin.companies.index', $companyViewId ? ['view_id' => $companyViewId] : [])],
+                ['label' =>  $company->legal_name . ' | Sucursales', 'url' => route('admin.companies.branches.index', array_merge([$company], array_filter(['view_id' => $branchViewId ?: $viewId, 'company_view_id' => $companyViewId, 'icon' => $requestIcon])))],
+                ['label' =>  $branch->legal_name . ' | Personal' ]
+            ];
         @endphp
         <x-common.page-breadcrumb
             pageTitle="Personal"
             :iconHtml="$pageIconHtml"
-            :crumbs="[
-                ['label' => 'Empresas', 'url' => route('admin.companies.index', $companyViewId ? ['view_id' => $companyViewId] : [])],
-                ['label' =>  $company->legal_name . ' | Sucursales', 'url' => route('admin.companies.branches.index', array_merge([$company], array_filter(['view_id' => $branchViewId ?: $viewId, 'company_view_id' => $companyViewId, 'icon' => $requestIcon])))],
-                ['label' =>  $branch->legal_name . ' | Personal' ]
-            ]"
+            :crumbs="$crumbs"
         />
 
         <x-common.component-card
@@ -118,6 +124,9 @@
                     @endif
                     @if ($requestIcon)
                         <input type="hidden" name="icon" value="{{ $requestIcon }}">
+                    @endif
+                    @if ($isFromConfig)
+                        <input type="hidden" name="from_config" value="1">
                     @endif
                     
                     <x-ui.per-page-selector :per-page="$perPage" />
@@ -139,7 +148,7 @@
                             <i class="ri-search-line text-gray-100"></i>
                             <span class="font-medium text-gray-100">Buscar</span>
                         </x-ui.button>
-                        <x-ui.link-button size="md" variant="outline" href="{{ route('admin.companies.branches.people.index', array_merge([$company, $branch], array_filter(['view_id' => $viewId, 'company_view_id' => $companyViewId, 'branch_view_id' => $branchViewId, 'icon' => $requestIcon]))) }}" class="flex-1 sm:flex-none h-11 px-4 border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200">
+                        <x-ui.link-button size="md" variant="outline" href="{{ $isFromConfig ? route('configuracion.personal.index', array_filter(['view_id' => $viewId, 'icon' => $requestIcon, 'from_config' => 1])) : route('admin.companies.branches.people.index', array_merge([$company, $branch], array_filter(['view_id' => $viewId, 'company_view_id' => $companyViewId, 'branch_view_id' => $branchViewId, 'icon' => $requestIcon]))) }}" class="flex-1 sm:flex-none h-11 px-4 border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200">
                             <i class="ri-refresh-line"></i>
                             <span class="font-medium">Limpiar</span>
                         </x-ui.link-button>
@@ -275,7 +284,7 @@
                                                         class="inline-flex h-10 w-10 items-center justify-center rounded-xl shadow-theme-xs transition hover:opacity-90"
                                                         style="{{ $buttonStyle }}"
                                                         aria-label="{{ $operation->name }}"
-                                                @click="$dispatch('open-reset-password', { action: '{{ $viewId ? route('admin.companies.branches.people.user.password', [$company, $branch, $person]) . '?view_id=' . $viewId : route('admin.companies.branches.people.user.password', [$company, $branch, $person]) }}', person: @js($person->first_name . ' ' . $person->last_name) })"
+                                                        @click="$dispatch('open-reset-password', { action: '{{ route('admin.companies.branches.people.user.password', [$company, $branch, $person]) . ($viewId ? '?view_id=' . $viewId : '') . ($isFromConfig ? ($viewId ? '&' : '?') . 'from_config=1' : '') }}', person: @js($person->first_name . ' ' . $person->last_name) })"
                                                     >
                                                         <i class="{{ $operation->icon }}"></i>
                                                     </button>
@@ -299,6 +308,9 @@
                                                     @method('DELETE')
                                                     @if ($viewId)
                                                         <input type="hidden" name="view_id" value="{{ $viewId }}">
+                                                    @endif
+                                                    @if ($isFromConfig)
+                                                        <input type="hidden" name="from_config" value="1">
                                                     @endif
                                                     <x-ui.button
                                                         size="icon"

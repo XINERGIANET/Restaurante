@@ -507,6 +507,9 @@ Route::middleware('auth')->group(function () {
         ->parameters(['impresoras-sucursal' => 'printerBranch'])
         ->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
 
+    Route::get('/configuracion/personal', [PersonController::class, 'indexBranch'])
+        ->name('configuracion.personal.index');
+
     Route::prefix('qz-tray')->name('qz.')->group(function () {
         Route::get('/certificate', [QzTrayController::class, 'certificate'])->name('certificate');
         Route::match(['GET', 'POST'], '/sign', [QzTrayController::class, 'sign'])->name('sign');

@@ -174,6 +174,25 @@ class PersonController extends Controller
     }
 
 
+    public function indexBranch(Request $request)
+    {
+        $branchId = $request->session()->get('branch_id');
+        if (!$branchId) {
+            $branchId = $request->user()?->person?->branch_id;
+        }
+
+        if (!$branchId) {
+            return redirect()->route('dashboard')->with('error', 'Debe seleccionar una sucursal.');
+        }
+
+        $branch = Branch::with('company')->findOrFail($branchId);
+        $company = $branch->company;
+
+        $request->merge(['from_config' => true]);
+
+        return $this->index($request, $company, $branch);
+    }
+
     public function index(Request $request, Company $company, Branch $branch)
     {
         $branch = $this->resolveBranch($company, $branch);
@@ -315,6 +334,13 @@ class PersonController extends Controller
         }
 
         $viewId = $request->input('view_id');
+        $fromConfig = $request->input('from_config');
+
+        if ($fromConfig) {
+            return redirect()
+                ->route('configuracion.personal.index', array_filter(['view_id' => $viewId, 'from_config' => 1]))
+                ->with('status', $alreadyExisted ? 'Cliente ya existente, se reutilizó el registro.' : 'Personal creado correctamente.');
+        }
 
         return redirect()
             ->route('admin.companies.branches.people.index', $viewId ? [$company, $branch, 'view_id' => $viewId] : [$company, $branch])
@@ -386,6 +412,13 @@ class PersonController extends Controller
         });
 
         $viewId = $request->input('view_id');
+        $fromConfig = $request->input('from_config');
+
+        if ($fromConfig) {
+            return redirect()
+                ->route('configuracion.personal.index', array_filter(['view_id' => $viewId, 'from_config' => 1]))
+                ->with('status', 'Personal actualizado correctamente.');
+        }
 
         return redirect()
             ->route('admin.companies.branches.people.index', $viewId ? [$company, $branch, 'view_id' => $viewId] : [$company, $branch])
@@ -399,6 +432,13 @@ class PersonController extends Controller
         $person->delete();
 
         $viewId = request()->input('view_id');
+        $fromConfig = request()->input('from_config');
+
+        if ($fromConfig) {
+            return redirect()
+                ->route('configuracion.personal.index', array_filter(['view_id' => $viewId, 'from_config' => 1]))
+                ->with('status', 'Personal eliminado correctamente.');
+        }
 
         return redirect()
             ->route('admin.companies.branches.people.index', $viewId ? [$company, $branch, 'view_id' => $viewId] : [$company, $branch])
@@ -428,6 +468,13 @@ class PersonController extends Controller
         ]);
 
         $viewId = $request->input('view_id');
+        $fromConfig = $request->input('from_config');
+
+        if ($fromConfig) {
+            return redirect()
+                ->route('configuracion.personal.index', array_filter(['view_id' => $viewId, 'from_config' => 1]))
+                ->with('status', 'Contraseña actualizada correctamente.');
+        }
 
         return redirect()
             ->route('admin.companies.branches.people.index', $viewId ? [$company, $branch, 'view_id' => $viewId] : [$company, $branch])

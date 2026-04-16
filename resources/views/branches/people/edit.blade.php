@@ -3,6 +3,10 @@
 @section('content')
     @php
         $viewId = request('view_id');
+        $isFromConfig = request('from_config');
+        $indexRoute = $isFromConfig
+            ? route('configuracion.personal.index', array_filter(['view_id' => $viewId, 'from_config' => 1]))
+            : ($viewId ? route('admin.companies.branches.people.index', [$company, $branch, 'view_id' => $viewId]) : route('admin.companies.branches.people.index', [$company, $branch]));
     @endphp
     <x-common.page-breadcrumb pageTitle="Personal" />
 
@@ -11,9 +15,9 @@
             open: true,
             close() {
                 if (window.Turbo && typeof window.Turbo.visit === 'function') {
-                    window.Turbo.visit('{{ $viewId ? route('admin.companies.branches.people.index', [$company, $branch, 'view_id' => $viewId]) : route('admin.companies.branches.people.index', [$company, $branch]) }}', { action: 'replace' });
+                    window.Turbo.visit('{{ $indexRoute }}', { action: 'replace' });
                 } else {
-                    window.location.href = '{{ $viewId ? route('admin.companies.branches.people.index', [$company, $branch, 'view_id' => $viewId]) : route('admin.companies.branches.people.index', [$company, $branch]) }}';
+                    window.location.href = '{{ $indexRoute }}';
                 }
             }
         }"
@@ -33,8 +37,8 @@
                     </div>
                 </div>
                 <a
-                    href="{{ $viewId ? route('admin.companies.branches.people.index', [$company, $branch, 'view_id' => $viewId]) : route('admin.companies.branches.people.index', [$company, $branch]) }}"
-                    onclick="if (window.Turbo && typeof window.Turbo.visit === 'function') { window.Turbo.visit('{{ $viewId ? route('admin.companies.branches.people.index', [$company, $branch, 'view_id' => $viewId]) : route('admin.companies.branches.people.index', [$company, $branch]) }}', { action: 'replace' }); return false; }"
+                    href="{{ $indexRoute }}"
+                    onclick="if (window.Turbo && typeof window.Turbo.visit === 'function') { window.Turbo.visit('{{ $indexRoute }}', { action: 'replace' }); return false; }"
                     class="flex h-11 w-11 items-center justify-center rounded-full bg-gray-100 text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
                     aria-label="Cerrar"
                 >
@@ -60,6 +64,9 @@
                 @if ($viewId)
                     <input type="hidden" name="view_id" value="{{ $viewId }}">
                 @endif
+                @if ($isFromConfig)
+                    <input type="hidden" name="from_config" value="1">
+                @endif
 
                 @include('branches.people._form', ['person' => $person])
 
@@ -71,8 +78,8 @@
                     <x-ui.link-button
                         size="md"
                         variant="outline"
-                        href="{{ $viewId ? route('admin.companies.branches.people.index', [$company, $branch, 'view_id' => $viewId]) : route('admin.companies.branches.people.index', [$company, $branch]) }}"
-                        onclick="if (window.Turbo && typeof window.Turbo.visit === 'function') { window.Turbo.visit('{{ $viewId ? route('admin.companies.branches.people.index', [$company, $branch, 'view_id' => $viewId]) : route('admin.companies.branches.people.index', [$company, $branch]) }}', { action: 'replace' }); return false; }"
+                        href="{{ $indexRoute }}"
+                        onclick="if (window.Turbo && typeof window.Turbo.visit === 'function') { window.Turbo.visit('{{ $indexRoute }}', { action: 'replace' }); return false; }"
                     >
                         <i class="ri-close-line"></i>
                         <span>Cancelar</span>
