@@ -245,6 +245,93 @@ class OrderController extends Controller
         ];
     }
 
+    /**
+     * Ítems para el POS (resumen / cobro): cantidades e importes pendientes tras cobros parciales por división de cuenta.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function mapOrderDetailsToPendingPosItems(OrderMovement $orderMovement): array
+    {
+        $orderMovement->loadMissing('details');
+        /** @var OrderPaymentSplitService $splitSvc */
+        $splitSvc = app(OrderPaymentSplitService::class);
+        $billed = $splitSvc->billedQuantityByDetailId($orderMovement);
+
+        return ($orderMovement->details ?? collect())
+            ->filter(fn ($d) => ($d->status ?? 'A') !== 'C')
+            ->map(function ($d) use ($billed) {
+                $qty = (float) ($d->quantity ?? 0);
+                $courtesyQty = max(0, min((float) ($d->courtesy_quantity ?? 0), $qty));
+                $billableQty = max(0, $qty - $courtesyQty);
+                $alreadyBilled = (float) ($billed[$d->id] ?? 0);
+                $remBillable = max(0, round($billableQty - $alreadyBilled, 6));
+                if ($remBillable <= 0.000001) {
+                    return null;
+                }
+
+                $amount = (float) ($d->amount ?? 0);
+                $paidQty = max(0, $qty - $courtesyQty);
+                $price = ($paidQty > 0)
+                    ? ($amount / $paidQty)
+                    : 0;
+
+                $rawComment = trim((string) ($d->comment ?? ''));
+                $note = $rawComment;
+                if ($note !== '' && preg_match('/^\d{2}:\d{2}\s*-\s*/', $note) === 1) {
+                    $note = preg_replace('/^\d{2}:\d{2}(?:\s*[ap]\.?m\.?)?\s*-\s*/i', '', $note);
+                    $note = trim($note);
+                }
+                $commandTime = $d->commanded_at
+                    ? $d->commanded_at->format('H:i')
+                    : ($d->created_at ? $d->created_at->format('H:i') : null);
+                $status = $d->status ?? 'A';
+                $takeawayQtyFull = max(0, min((float) ($d->takeaway_quantity ?? 0), $qty));
+
+                if ($alreadyBilled <= 0.000001) {
+                    return [
+                        'pId' => (int) ($d->product_id ?? 0),
+                        'name' => $d->description ?? '',
+                        'qty' => $qty,
+                        'price' => round($price, 6),
+                        'tax_rate' => 10,
+                        'priceManual' => true,
+                        'note' => $note,
+                        'commandTime' => $commandTime,
+                        'delivered' => $status === 'E',
+                        'courtesyQty' => $courtesyQty,
+                        'takeawayQty' => $takeawayQtyFull,
+                        'complements' => collect($d->complements ?? [])->map(fn ($item) => trim((string) $item))->filter()->values()->all(),
+                    ];
+                }
+
+                $unitBillable = $billableQty > 0 ? ($amount / $billableQty) : 0;
+                $scaledAmount = round($unitBillable * $remBillable, 2);
+                $qtyOut = $remBillable;
+                $priceOut = $remBillable > 0 ? ($scaledAmount / $remBillable) : 0;
+                $takeawayScaled = $billableQty > 0
+                    ? max(0, min(round($takeawayQtyFull * ($remBillable / $billableQty), 6), $remBillable))
+                    : 0;
+
+                return [
+                    'pId' => (int) ($d->product_id ?? 0),
+                    'name' => $d->description ?? '',
+                    'qty' => $qtyOut,
+                    'price' => round($priceOut, 6),
+                    'tax_rate' => 10,
+                    'priceManual' => true,
+                    'note' => $note,
+                    'commandTime' => $commandTime,
+                    'delivered' => $status === 'E',
+                    'courtesyQty' => 0,
+                    'takeawayQty' => $takeawayScaled,
+                    'complements' => collect($d->complements ?? [])->map(fn ($item) => trim((string) $item))->filter()->values()->all(),
+                ];
+            })
+            ->filter()
+            ->values()
+            ->all();
+    }
+
     public function validateWaiterPin(Request $request)
     {
         $branchId = (int) session('branch_id');
@@ -1042,47 +1129,9 @@ class OrderController extends Controller
         $pendingClientId = $pendingOrder?->movement?->person_id;
         $pendingClientName = $pendingOrder?->movement?->person_name;
 
-        // Solo detalles activos (no cancelados). Mismo producto se agrupa (x5, etc.). Entregado = estado 'E'.
+        // Solo detalles activos con cantidad pendiente de cobro (resta divisiones de cuenta ya cobradas).
         $pendingItemsRaw = $pendingOrder
-            ? ($pendingOrder->details ?? collect())
-            ->filter(fn($d) => ($d->status ?? 'A') !== 'C')
-            ->map(function ($d) {
-                $qty = (float) ($d->quantity ?? 0);
-                $courtesyQty = (float) ($d->courtesy_quantity ?? 0);
-                $amount = (float) ($d->amount ?? 0);
-                // Precio efectivo por unidad pagada (opcional, solo para mostrar)
-                $paidQty = max(0, $qty - $courtesyQty);
-                $price = ($paidQty > 0)
-                    ? ($amount / $paidQty)
-                    : 0;
-                $rawComment = trim((string) ($d->comment ?? ''));
-                $note = $rawComment;
-                if ($note !== '' && preg_match('/^\d{2}:\d{2}\s*-\s*/', $note) === 1) {
-                    $note = preg_replace('/^\d{2}:\d{2}(?:\s*[ap]\.?m\.?)?\s*-\s*/i', '', $note);
-                    $note = trim($note);
-                }
-                $commandTime = $d->commanded_at
-                    ? $d->commanded_at->format('H:i')
-                    : ($d->created_at ? $d->created_at->format('H:i') : null);
-                $status = $d->status ?? 'A';
-                $takeawayQty = (float) ($d->takeaway_quantity ?? 0);
-                $takeawayQty = max(0, min($takeawayQty, $qty));
-
-                return [
-                    'pId' => (int) ($d->product_id ?? 0),
-                    'name' => $d->description ?? '',
-                    'qty' => $qty,
-                    'price' => round($price, 6),
-                    'tax_rate' => 10,
-                    'priceManual' => true,
-                    'note' => $note,
-                    'commandTime' => $commandTime,
-                    'delivered' => $status === 'E',
-                    'courtesyQty' => $courtesyQty,
-                    'takeawayQty' => $takeawayQty,
-                    'complements' => collect($d->complements ?? [])->map(fn($item) => trim((string) $item))->filter()->values()->all(),
-                ];
-            })->values()->all()
+            ? $this->mapOrderDetailsToPendingPosItems($pendingOrder)
             : [];
 
         // Agrupar mismo producto en un solo ítem (ej. PB x5 + PB x1 → PB x6)
@@ -1424,44 +1473,7 @@ class OrderController extends Controller
         $pendingClientName = $pendingOrder?->movement?->person_name;
 
         $pendingItemsRaw = $pendingOrder
-            ? ($pendingOrder->details ?? collect())
-            ->filter(fn ($d) => ($d->status ?? 'A') !== 'C')
-            ->map(function ($d) {
-                $qty = (float) ($d->quantity ?? 0);
-                $courtesyQty = (float) ($d->courtesy_quantity ?? 0);
-                $amount = (float) ($d->amount ?? 0);
-                $paidQty = max(0, $qty - $courtesyQty);
-                $price = ($paidQty > 0)
-                    ? ($amount / $paidQty)
-                    : 0;
-                $rawComment = trim((string) ($d->comment ?? ''));
-                $note = $rawComment;
-                if ($note !== '' && preg_match('/^\d{2}:\d{2}\s*-\s*/', $note) === 1) {
-                    $note = preg_replace('/^\d{2}:\d{2}(?:\s*[ap]\.?m\.?)?\s*-\s*/i', '', $note);
-                    $note = trim($note);
-                }
-                $commandTime = $d->commanded_at
-                    ? $d->commanded_at->format('H:i')
-                    : ($d->created_at ? $d->created_at->format('H:i') : null);
-                $status = $d->status ?? 'A';
-                $takeawayQty = (float) ($d->takeaway_quantity ?? 0);
-                $takeawayQty = max(0, min($takeawayQty, $qty));
-
-                return [
-                    'pId' => (int) ($d->product_id ?? 0),
-                    'name' => $d->description ?? '',
-                    'qty' => $qty,
-                    'price' => round($price, 6),
-                    'tax_rate' => 10,
-                    'priceManual' => true,
-                    'note' => $note,
-                    'commandTime' => $commandTime,
-                    'delivered' => $status === 'E',
-                    'courtesyQty' => $courtesyQty,
-                    'takeawayQty' => $takeawayQty,
-                    'complements' => collect($d->complements ?? [])->map(fn ($item) => trim((string) $item))->filter()->values()->all(),
-                ];
-            })->values()->all()
+            ? $this->mapOrderDetailsToPendingPosItems($pendingOrder)
             : [];
 
         $pendingItems = collect($pendingItemsRaw)->groupBy(function ($item) {
