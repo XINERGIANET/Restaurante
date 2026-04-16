@@ -104,6 +104,7 @@ class ApisunatService
         $number = str_pad($suggestedNumber, 8, '0', STR_PAD_LEFT);
         $fileName = trim((string) ($branch?->ruc ?? '0')).'-'.$catalog['type'].'-'.$catalog['serie'].'-'.$number;
         $documentBody = $this->buildDocumentBody($sale, $catalog, $customerDocument, $customerDocType, $totals, $number);
+        $this->validateDocumentBodyForSunat($documentBody);
 
         $sendResp = Http::timeout(35)->post($apiUrl.'/personas/v1/sendBill', [
             'personaId' => (string) $config->persona_id,
@@ -486,6 +487,37 @@ class ApisunatService
         ];
 
         return $documentBody;
+    }
+
+    private function validateDocumentBodyForSunat(array $documentBody): void
+    {
+        $lines = data_get($documentBody, 'cac:InvoiceLine', []);
+        if (! is_array($lines) || count($lines) === 0) {
+            throw new \RuntimeException('No se puede emitir electrónicamente: el comprobante no tiene líneas válidas para SUNAT.');
+        }
+
+        foreach ($lines as $idx => $line) {
+            $lineNumber = $idx + 1;
+            $taxSchemeId = trim((string) data_get($line, 'cac:TaxTotal.cac:TaxSubtotal.0.cac:TaxCategory.cac:TaxScheme.cbc:ID._text', ''));
+            $taxSchemeName = trim((string) data_get($line, 'cac:TaxTotal.cac:TaxSubtotal.0.cac:TaxCategory.cac:TaxScheme.cbc:Name._text', ''));
+            $taxTypeCode = trim((string) data_get($line, 'cac:TaxTotal.cac:TaxSubtotal.0.cac:TaxCategory.cac:TaxScheme.cbc:TaxTypeCode._text', ''));
+            $taxReasonCode = trim((string) data_get($line, 'cac:TaxTotal.cac:TaxSubtotal.0.cac:TaxCategory.cbc:TaxExemptionReasonCode._text', ''));
+            $taxPercentRaw = data_get($line, 'cac:TaxTotal.cac:TaxSubtotal.0.cac:TaxCategory.cbc:Percent._text');
+            $taxAmountRaw = data_get($line, 'cac:TaxTotal.cbc:TaxAmount._text');
+
+            if ($taxSchemeId === '' || $taxSchemeName === '' || $taxTypeCode === '' || $taxReasonCode === '') {
+                throw new \RuntimeException('No se puede emitir electrónicamente: el item '.$lineNumber.' no tiene tributo IGV válido. Verifique configuración tributaria del producto.');
+            }
+
+            if (! is_numeric((string) $taxPercentRaw) || ! is_numeric((string) $taxAmountRaw)) {
+                throw new \RuntimeException('No se puede emitir electrónicamente: el item '.$lineNumber.' tiene datos tributarios inválidos (porcentaje/monto IGV).');
+            }
+        }
+
+        $headerTaxSchemeId = trim((string) data_get($documentBody, 'cac:TaxTotal.cac:TaxSubtotal.cac:TaxCategory.cac:TaxScheme.cbc:ID._text', ''));
+        if ($headerTaxSchemeId === '') {
+            throw new \RuntimeException('No se puede emitir electrónicamente: el resumen tributario del comprobante está incompleto.');
+        }
     }
 
     private function resolveDetailsForSale(Movement $sale): Collection

@@ -173,6 +173,13 @@
                     window.activeKey = activeKey;
                     window.db = db;
                     window.tableIsFree = tableIsFree;
+                    window.__splitAccount = {
+                        enabled: @json($split_account_enabled ?? false),
+                        lines: @json($pending_split_lines ?? []),
+                        remainingTotal: @json($pending_split_remaining_total),
+                        splitMode: @json($pending_split_mode),
+                        lockedToAmount: @json($split_locked_to_amount ?? false)
+                    };
                 })();
             </script>
 
@@ -533,6 +540,51 @@
                                             placeholder="Escribe el detalle que saldra en el comprobante">
                                     </div>
                                 </div>
+                                @if(!empty($split_account_enabled))
+                                <div id="split-account-panel"
+                                    class="rounded-xl border border-amber-200 dark:border-amber-500/40 bg-amber-50/80 dark:bg-amber-900/20 p-3 mb-3 space-y-3">
+                                    <div class="flex justify-between items-center gap-2">
+                                        <span class="text-xs font-bold text-amber-900 dark:text-amber-100 uppercase tracking-wide">División de cuenta</span>
+                                        <span id="split-remaining-badge"
+                                            class="text-xs font-semibold tabular-nums text-amber-900 dark:text-amber-100">Pendiente: S/ 0.00</span>
+                                    </div>
+                                    <label class="flex items-center gap-2 cursor-pointer">
+                                        <input type="checkbox" id="split-dividir-cuenta" class="rounded border-gray-300 text-[#FF4622] focus:ring-[#FF4622]"
+                                            onchange="toggleSplitDividirCuenta()">
+                                        <span class="text-sm font-medium text-slate-700 dark:text-slate-200">Dividir cuenta (cobro parcial)</span>
+                                    </label>
+                                    <div id="split-panel-body" class="hidden space-y-3">
+                                        <div>
+                                            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Modo</label>
+                                            <select id="split-mode"
+                                                class="w-full py-2.5 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-slate-700 dark:text-slate-200 text-sm"
+                                                onchange="onSplitModeChange()">
+                                                <option value="products">Por productos</option>
+                                                <option value="amount">Por monto</option>
+                                            </select>
+                                        </div>
+                                        <div id="split-products-wrap" class="space-y-2 max-h-44 overflow-y-auto pr-1">
+                                            <table class="w-full text-xs text-slate-700 dark:text-slate-200">
+                                                <thead>
+                                                    <tr class="border-b border-amber-200/60 dark:border-amber-500/30">
+                                                        <th class="text-left py-1 font-semibold">Producto</th>
+                                                        <th class="text-right py-1 font-semibold w-14">Pend.</th>
+                                                        <th class="text-right py-1 font-semibold w-20">Cobrar</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="split-products-tbody"></tbody>
+                                            </table>
+                                        </div>
+                                        <div id="split-amount-wrap" class="hidden">
+                                            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Monto a cobrar (S/)</label>
+                                            <input type="number" step="0.01" min="0" id="split-amount-input"
+                                                class="w-full py-2.5 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-slate-700 dark:text-slate-200 text-sm tabular-nums"
+                                                placeholder="0.00">
+                                        </div>
+                                        <p id="split-hint-locked" class="hidden text-xs text-amber-800 dark:text-amber-200">Este pedido ya inició división por monto; solo puede continuar en ese modo.</p>
+                                    </div>
+                                </div>
+                                @endif
                                 <div>
                                     <div class="flex items-center justify-between mb-2">
                                         <label
@@ -4226,6 +4278,141 @@
                         };
                     }
 
+                    function getOrderTotalForSplit() {
+                        const totals = getTotalsWithDelivery(currentTable.items || []);
+                        return totals.total;
+                    }
+
+                    function getSplitRemainingDisplayed() {
+                        const cfg = window.__splitAccount || {};
+                        if (cfg.enabled && cfg.remainingTotal !== null && cfg.remainingTotal !== undefined) {
+                            const x = parseFloat(cfg.remainingTotal);
+                            if (!isNaN(x)) return x;
+                        }
+                        return getOrderTotalForSplit();
+                    }
+
+                    function escapeSplitHtml(s) {
+                        const d = document.createElement('div');
+                        d.textContent = s == null ? '' : String(s);
+                        return d.innerHTML;
+                    }
+
+                    function renderSplitProductsTbody() {
+                        const tbody = document.getElementById('split-products-tbody');
+                        const cfg = window.__splitAccount || {};
+                        if (!tbody || !Array.isArray(cfg.lines)) return;
+                        tbody.innerHTML = '';
+                        cfg.lines.forEach(function (line) {
+                            const tr = document.createElement('tr');
+                            tr.className = 'border-b border-amber-100/80 dark:border-amber-900/40';
+                            tr.setAttribute('data-split-detail-id', String(line.detail_id));
+                            const rq = parseFloat(line.remaining_qty) || 0;
+                            tr.innerHTML = '<td class="py-1.5 pr-1">' + escapeSplitHtml(line.description || '') + '</td>' +
+                                '<td class="py-1.5 text-right tabular-nums">' + rq.toFixed(2) + '</td>' +
+                                '<td class="py-1.5 text-right"><input type="number" step="0.01" min="0" class="split-qty-input w-full py-1 px-1 rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-xs tabular-nums" data-max="' + rq + '" placeholder="0"></td>';
+                            tbody.appendChild(tr);
+                        });
+                    }
+
+                    function onSplitModeChange() {
+                        const mode = (document.getElementById('split-mode')?.value || 'products');
+                        const wrapP = document.getElementById('split-products-wrap');
+                        const wrapA = document.getElementById('split-amount-wrap');
+                        if (wrapP) wrapP.classList.toggle('hidden', mode !== 'products');
+                        if (wrapA) wrapA.classList.toggle('hidden', mode !== 'amount');
+                    }
+
+                    function toggleSplitDividirCuenta() {
+                        const cb = document.getElementById('split-dividir-cuenta');
+                        const body = document.getElementById('split-panel-body');
+                        const dm = document.getElementById('cobro-detail-mode');
+                        if (!cb || !body) return;
+                        const on = !!cb.checked;
+                        body.classList.toggle('hidden', !on);
+                        if (on && dm) {
+                            dm.value = 'DETALLADO';
+                            dm.disabled = true;
+                            toggleCobroDetailGlosa();
+                        } else if (dm) {
+                            dm.disabled = false;
+                        }
+                    }
+
+                    function initSplitPanel() {
+                        const panel = document.getElementById('split-account-panel');
+                        if (!panel) return;
+                        const cfg = window.__splitAccount || {};
+                        const badge = document.getElementById('split-remaining-badge');
+                        const r = getSplitRemainingDisplayed();
+                        if (badge) badge.textContent = 'Pendiente: S/ ' + r.toFixed(2);
+                        const modeSel = document.getElementById('split-mode');
+                        const optProd = modeSel ? modeSel.querySelector('option[value="products"]') : null;
+                        const hint = document.getElementById('split-hint-locked');
+                        if (cfg.lockedToAmount) {
+                            if (hint) hint.classList.remove('hidden');
+                            if (modeSel) modeSel.value = 'amount';
+                            if (optProd) optProd.disabled = true;
+                        } else {
+                            if (hint) hint.classList.add('hidden');
+                            if (optProd) optProd.disabled = false;
+                        }
+                        const amtIn = document.getElementById('split-amount-input');
+                        if (amtIn && !amtIn.value) amtIn.placeholder = r.toFixed(2);
+                        renderSplitProductsTbody();
+                        onSplitModeChange();
+                    }
+
+                    function buildSplitPayloadForPayment() {
+                        const cfg = window.__splitAccount || {};
+                        const cb = document.getElementById('split-dividir-cuenta');
+                        if (!cfg.enabled || !cb || !cb.checked) return null;
+                        const mode = (document.getElementById('split-mode')?.value || 'products');
+                        const rem = getSplitRemainingDisplayed();
+                        if (mode === 'amount') {
+                            const amt = parseFloat(document.getElementById('split-amount-input')?.value || '0');
+                            if (!(amt > 0)) {
+                                throw new Error('Ingrese un monto a cobrar mayor a cero.');
+                            }
+                            if (amt > rem + 0.02) {
+                                throw new Error('El monto excede lo pendiente por cobrar en el pedido.');
+                            }
+                            return { mode: 'amount', amount: Math.round(amt * 100) / 100 };
+                        }
+                        const items = [];
+                        document.querySelectorAll('#split-products-tbody tr[data-split-detail-id]').forEach(function (tr) {
+                            const id = parseInt(tr.getAttribute('data-split-detail-id'), 10);
+                            const inp = tr.querySelector('.split-qty-input');
+                            const max = parseFloat(inp?.getAttribute('data-max') || '0');
+                            let qty = parseFloat(inp?.value || '0');
+                            if (isNaN(qty) || qty <= 0) return;
+                            if (qty > max + 0.000001) {
+                                throw new Error('Cantidad a cobrar mayor a la pendiente en una línea.');
+                            }
+                            items.push({ detail_id: id, quantity: qty });
+                        });
+                        if (items.length === 0) {
+                            throw new Error('Seleccione al menos un producto con cantidad para dividir la cuenta.');
+                        }
+                        return { mode: 'products', items: items };
+                    }
+
+                    function computeSplitPartTotal(splitPayload) {
+                        if (!splitPayload) return getOrderTotalForSplit();
+                        if (splitPayload.mode === 'amount') return splitPayload.amount;
+                        const cfg = window.__splitAccount || {};
+                        let sum = 0;
+                        (splitPayload.items || []).forEach(function (it) {
+                            const line = (cfg.lines || []).find(function (l) {
+                                return parseInt(l.detail_id, 10) === parseInt(it.detail_id, 10);
+                            });
+                            if (line) {
+                                sum += (parseFloat(line.unit_amount) || 0) * (parseFloat(it.quantity) || 0);
+                            }
+                        });
+                        return Math.round(sum * 100) / 100;
+                    }
+
                     async function processOrderPayment() {
                         if (waiterPinEnabled && !isMozoProfile) {
                             const ok = await ensureWaiterPin();
@@ -4244,6 +4431,22 @@
                         }
                         const totals = getTotalsWithDelivery(items);
                         const total = totals.total;
+                        let cobroTotal = total;
+                        let splitPayload = null;
+                        try {
+                            splitPayload = buildSplitPayloadForPayment();
+                            if (splitPayload) {
+                                cobroTotal = computeSplitPartTotal(splitPayload);
+                            }
+                        } catch (e) {
+                            if (typeof showNotification === 'function') {
+                                showNotification('Error', e.message || 'Error en división de cuenta.', 'error');
+                            } else {
+                                alert(e.message || 'Error en división de cuenta.');
+                            }
+                            return;
+                        }
+
                         const paymentMethodsData = getCobroPaymentMethodsFromForm();
                         const totalPaid = paymentMethodsData.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
 
@@ -4255,11 +4458,11 @@
                             }
                             return;
                         }
-                        if (Math.abs(totalPaid - total) > 0.01) {
+                        if (Math.abs(totalPaid - cobroTotal) > 0.01) {
                             if (typeof showNotification === 'function') {
-                                showNotification('Error', 'La suma de los métodos de pago debe ser igual al total (S/ ' + total.toFixed(2) + ').', 'error');
+                                showNotification('Error', 'La suma de los métodos de pago debe ser igual al total (S/ ' + cobroTotal.toFixed(2) + ').', 'error');
                             } else {
-                                alert('La suma de los métodos de pago debe ser igual al total (S/ ' + total.toFixed(2) + ').');
+                                alert('La suma de los métodos de pago debe ser igual al total (S/ ' + cobroTotal.toFixed(2) + ').');
                             }
                             return;
                         }
@@ -4277,12 +4480,12 @@
                             if (typeof showNotification === 'function') showNotification('Error', msg, 'error'); else alert(msg);
                             return;
                         }
-                        if (selectedDoc.isBoleta && total > 700 && cleanDocument.length !== 8 && cleanDocument.length !== 11) {
+                        if (selectedDoc.isBoleta && cobroTotal > 700 && cleanDocument.length !== 8 && cleanDocument.length !== 11) {
                             const msg = 'Para emitir boleta mayor a S/ 700.00 debes seleccionar un cliente con DNI o RUC valido.';
                             if (typeof showNotification === 'function') showNotification('Error', msg, 'error'); else alert(msg);
                             return;
                         }
-                        if (detailMode === 'GLOSA' && !detailGlosa) {
+                        if (detailMode === 'GLOSA' && !detailGlosa && !splitPayload) {
                             const msg = 'Debes escribir la glosa que saldra en el comprobante.';
                             if (typeof showNotification === 'function') showNotification('Error', msg, 'error'); else alert(msg);
                             return;
@@ -4291,7 +4494,7 @@
                         if (window.Swal) {
                             const confirmPayment = await Swal.fire({
                                 title: 'Confirmar Cobro',
-                                text: `Total a cobrar: S/ ${total.toFixed(2)}. ¿Deseas proceder?`,
+                                text: `Total a cobrar: S/ ${cobroTotal.toFixed(2)}. ¿Deseas proceder?`,
                                 icon: 'question',
                                 showCancelButton: true,
                                 confirmButtonColor: '#FF4622',
@@ -4376,6 +4579,9 @@
                                 payment_methods: paymentMethodsData,
                                 notes: '',
                             };
+                            if (splitPayload) {
+                                paymentPayload.split = splitPayload;
+                            }
 
                             const payRes = await fetch('{{ route('orders.processOrderPayment') }}', {
                                 method: 'POST',
@@ -4395,7 +4601,13 @@
                                 throw new Error(payData?.message || payData?.error || 'Error al procesar el cobro.');
                             }
 
-                            const payMovementId = payData?.movement_id;
+                            if (payData.split_remaining_total !== undefined && payData.order_closed === false) {
+                                sessionStorage.setItem('flash_success_message', payData.message || 'Cobro parcial registrado.');
+                                window.location.reload();
+                                return;
+                            }
+
+                            const payMovementId = payData?.split_sale_movement_id || payData?.movement_id;
                             await sendThermalTicketAfterSale(payMovementId, payData);
 
                             if (db && activeKey && db[activeKey]) {
@@ -4580,6 +4792,7 @@
                                 searchInput.setAttribute('disabled', 'disabled');
                                 searchInput.classList.add('bg-gray-100', 'cursor-not-allowed');
                             }
+                            if (typeof initSplitPanel === 'function') initSplitPanel();
                         } else {
                             cobro?.classList.add('hidden');
                             cobro?.classList.remove('flex');
