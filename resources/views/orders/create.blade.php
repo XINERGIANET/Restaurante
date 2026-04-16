@@ -556,7 +556,7 @@
                                         <label
                                             class="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Métodos
                                             de pago</label>
-                                        <button type="button" onclick="addCobroPaymentMethod()"
+                                        <button type="button" id="cobro-btn-add-payment-method" onclick="addCobroPaymentMethod()"
                                             class="inline-flex items-center gap-1.5 rounded-lg bg-[#FF4622] px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-[#C43B25] active:scale-95 transition-colors shrink-0">
                                             <i class="ri-add-line text-sm"></i> Agregar
                                         </button>
@@ -3710,6 +3710,12 @@
                     function syncCobroAmountsWithCart(orderTotal) {
                         const list = document.getElementById('cobro-payment-methods-list');
                         if (!list) return;
+                        const cb = document.getElementById('split-dividir-cuenta');
+                        if (cb && cb.checked && window.__splitAccount && window.__splitAccount.enabled) {
+                            syncCobroPaymentAmountsToSplitPartInner();
+                            if (typeof updateCobroTotalPaid === 'function') updateCobroTotalPaid();
+                            return;
+                        }
                         const rows = list.querySelectorAll('.cobro-pm-row');
                         if (rows.length === 0) return;
                         if (rows.length === 1) {
@@ -4515,7 +4521,7 @@
                         closeSplitAccountModal();
                     }
 
-                    function syncCobroPaymentAmountsToSplitPart() {
+                    function syncCobroPaymentAmountsToSplitPartInner() {
                         const cb = document.getElementById('split-dividir-cuenta');
                         if (!cb || !cb.checked) return;
                         let part = 0;
@@ -4526,6 +4532,11 @@
                             return;
                         }
                         if (!(part > 0)) return;
+                        const list = document.getElementById('cobro-payment-methods-list');
+                        if (!list) return;
+                        while (list.querySelectorAll('.cobro-pm-row').length > 1) {
+                            list.querySelector('.cobro-pm-row:last-child')?.remove();
+                        }
                         let inputs = document.querySelectorAll('.cobro-pm-amount');
                         if (!inputs.length) {
                             addCobroPaymentMethod();
@@ -4534,6 +4545,15 @@
                         inputs.forEach(function (inp, i) {
                             inp.value = i === 0 ? part.toFixed(2) : '0.00';
                         });
+                    }
+
+                    function syncCobroPaymentAmountsToSplitPart() {
+                        window.__splitCobroSyncing = true;
+                        try {
+                            syncCobroPaymentAmountsToSplitPartInner();
+                        } finally {
+                            window.__splitCobroSyncing = false;
+                        }
                         updateCobroTotalPaid();
                     }
 
@@ -4553,6 +4573,15 @@
                             syncSplitQtyRow(tr);
                         });
                         closeSplitAccountModal();
+                        const listCobro = document.getElementById('cobro-payment-methods-list');
+                        if (listCobro) {
+                            while (listCobro.querySelectorAll('.cobro-pm-row').length > 1) {
+                                listCobro.querySelector('.cobro-pm-row:last-child')?.remove();
+                            }
+                            const fullT = getTotalsWithDelivery(currentTable?.items || []).total || 0;
+                            const inp = listCobro.querySelector('.cobro-pm-amount');
+                            if (inp) inp.value = fullT.toFixed(2);
+                        }
                         if (typeof updateCobroTotalPaid === 'function') updateCobroTotalPaid();
                     }
 
@@ -4663,6 +4692,10 @@
                         if (waiterPinEnabled && !isMozoProfile) {
                             const ok = await ensureWaiterPin();
                             if (!ok) return;
+                        }
+                        const cbSplitPay = document.getElementById('split-dividir-cuenta');
+                        if (cbSplitPay && cbSplitPay.checked && window.__splitAccount && window.__splitAccount.enabled) {
+                            syncCobroPaymentAmountsToSplitPartInner();
                         }
                         flushCartUnitPriceInputsFromDom();
                         renderTicket();
@@ -5039,6 +5072,10 @@
                                 searchInput.classList.add('bg-gray-100', 'cursor-not-allowed');
                             }
                             if (typeof initSplitPanel === 'function') initSplitPanel();
+                            const cbSplit = document.getElementById('split-dividir-cuenta');
+                            if (cbSplit && cbSplit.checked && typeof syncCobroPaymentAmountsToSplitPart === 'function') {
+                                syncCobroPaymentAmountsToSplitPart();
+                            }
                         } else {
                             cobro?.classList.add('hidden');
                             cobro?.classList.remove('flex');
@@ -5139,6 +5176,7 @@
 
                     function autocompleteCobroAmount(inputEl) {
                         if (!inputEl) return;
+                        if (inputEl.readOnly) return;
                         const val = parseFloat(inputEl.value || 0) || 0;
                         if (val > 0) {
                             inputEl.select();
@@ -5225,9 +5263,24 @@
                         }
                     }
 
+                    function removeCobroPaymentRow(btnEl) {
+                        const cb = document.getElementById('split-dividir-cuenta');
+                        if (cb && cb.checked && window.__splitAccount && window.__splitAccount.enabled) {
+                            return;
+                        }
+                        btnEl.closest('.cobro-pm-row')?.remove();
+                        updateCobroTotalPaid();
+                    }
+
                     function addCobroPaymentMethod() {
                         const list = document.getElementById('cobro-payment-methods-list');
                         if (!list) return;
+                        const cb = document.getElementById('split-dividir-cuenta');
+                        if (cb && cb.checked && window.__splitAccount && window.__splitAccount.enabled) {
+                            if (list.querySelectorAll('.cobro-pm-row').length > 0) {
+                                return;
+                            }
+                        }
                         const methods = cobroPaymentMethods || [];
                         const opts = methods.map(pm =>
                             `<option value="${pm.id}">${escapeHtml(pm.description || '')}</option>`
@@ -5249,7 +5302,7 @@
                                                                                                                                                                                                             class="w-full py-2 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm tabular-nums cobro-pm-amount"
                                                                                                                                                                                                             oninput="updateCobroTotalPaid()" onfocus="autocompleteCobroAmount(this)">
                                                                                                                                                                                                     </div>
-                                                                                                                                                                                                    <button type="button" onclick="this.closest('.cobro-pm-row').remove(); updateCobroTotalPaid();" class="p-2 h-9 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors shrink-0" title="Eliminar">
+                                                                                                                                                                                                    <button type="button" onclick="removeCobroPaymentRow(this)" class="cobro-pm-delete-btn p-2 h-9 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors shrink-0" title="Eliminar">
                                                                                                                                                                                                         <i class="ri-delete-bin-line text-lg"></i>
                                                                                                                                                                                                     </button>
                                                                                                                                                                                                 </div>
@@ -5286,23 +5339,60 @@
                                                                                                                                                                                             `;
                         list.appendChild(row);
                         toggleCobroExtraFields(row);
-                        updateCobroTotalPaid();
+                        if (!window.__splitCobroSyncing) {
+                            updateCobroTotalPaid();
+                        }
+                    }
+
+                    function applyCobroPaymentFieldsLocked(splitOn) {
+                        const addBtn = document.getElementById('cobro-btn-add-payment-method');
+                        if (addBtn) addBtn.classList.toggle('hidden', !!splitOn);
+                        document.querySelectorAll('.cobro-pm-amount').forEach(inp => {
+                            inp.readOnly = !!splitOn;
+                            inp.classList.toggle('bg-gray-100', !!splitOn);
+                            inp.classList.toggle('dark:bg-gray-700', !!splitOn);
+                            inp.classList.toggle('cursor-not-allowed', !!splitOn);
+                        });
+                        document.querySelectorAll('.cobro-pm-delete-btn').forEach(btn => {
+                            btn.classList.toggle('hidden', !!splitOn);
+                        });
                     }
 
                     function updateCobroTotalPaid() {
+                        const cb = document.getElementById('split-dividir-cuenta');
+                        const splitOn = !!(cb && cb.checked && window.__splitAccount && window.__splitAccount.enabled);
+                        if (splitOn && !window.__splitCobroSyncing) {
+                            window.__splitCobroSyncing = true;
+                            try {
+                                syncCobroPaymentAmountsToSplitPartInner();
+                            } finally {
+                                window.__splitCobroSyncing = false;
+                            }
+                        }
+                        applyCobroPaymentFieldsLocked(splitOn);
                         const inputs = document.querySelectorAll('.cobro-pm-amount');
                         let total = 0;
                         inputs.forEach(inp => {
                             total += parseFloat(inp.value || 0) || 0;
                         });
                         const el = document.getElementById('cobro-total-paid');
-                        if (el) el.textContent = 'S/ ' + total.toFixed(2);
+                        if (el) {
+                            if (splitOn) {
+                                try {
+                                    const p = buildSplitPayloadForPayment();
+                                    if (p) el.textContent = 'S/ ' + computeSplitPartTotal(p).toFixed(2);
+                                    else el.textContent = 'S/ ' + total.toFixed(2);
+                                } catch (e) {
+                                    el.textContent = 'S/ ' + total.toFixed(2);
+                                }
+                            } else {
+                                el.textContent = 'S/ ' + total.toFixed(2);
+                            }
+                        }
                         const lbl = document.getElementById('cobro-total-label');
                         const row = document.getElementById('cobro-order-total-row');
                         const orderDisp = document.getElementById('cobro-order-total-display');
                         const foot = document.getElementById('cobro-split-footnote');
-                        const cb = document.getElementById('split-dividir-cuenta');
-                        const splitOn = !!(cb && cb.checked && window.__splitAccount && window.__splitAccount.enabled);
                         if (lbl) {
                             lbl.textContent = splitOn ? 'Total dividido' : 'Total pagado';
                         }
@@ -5521,6 +5611,7 @@
                     window.switchAsideTab = switchAsideTab;
                     window.clearCobroClient = clearCobroClient;
                     window.addCobroPaymentMethod = addCobroPaymentMethod;
+                    window.removeCobroPaymentRow = removeCobroPaymentRow;
                     window.updateCobroTotalPaid = updateCobroTotalPaid;
                     window.autocompleteCobroAmount = autocompleteCobroAmount;
                     window.toggleCobroExtraFields = toggleCobroExtraFields;
