@@ -541,48 +541,14 @@
                                     </div>
                                 </div>
                                 @if(!empty($split_account_enabled))
-                                <div id="split-account-panel"
-                                    class="rounded-xl border border-amber-200 dark:border-amber-500/40 bg-amber-50/80 dark:bg-amber-900/20 p-3 mb-3 space-y-3">
-                                    <div class="flex justify-between items-center gap-2">
-                                        <span class="text-xs font-bold text-amber-900 dark:text-amber-100 uppercase tracking-wide">División de cuenta</span>
-                                        <span id="split-remaining-badge"
-                                            class="text-xs font-semibold tabular-nums text-amber-900 dark:text-amber-100">Pendiente: S/ 0.00</span>
-                                    </div>
-                                    <label class="flex items-center gap-2 cursor-pointer">
-                                        <input type="checkbox" id="split-dividir-cuenta" class="rounded border-gray-300 text-[#FF4622] focus:ring-[#FF4622]"
-                                            onchange="toggleSplitDividirCuenta()">
-                                        <span class="text-sm font-medium text-slate-700 dark:text-slate-200">Dividir cuenta (cobro parcial)</span>
-                                    </label>
-                                    <div id="split-panel-body" class="hidden space-y-3">
-                                        <div>
-                                            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Modo</label>
-                                            <select id="split-mode"
-                                                class="w-full py-2.5 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-slate-700 dark:text-slate-200 text-sm"
-                                                onchange="onSplitModeChange()">
-                                                <option value="products">Por productos</option>
-                                                <option value="amount">Por monto</option>
-                                            </select>
-                                        </div>
-                                        <div id="split-products-wrap" class="space-y-2 max-h-44 overflow-y-auto pr-1">
-                                            <table class="w-full text-xs text-slate-700 dark:text-slate-200">
-                                                <thead>
-                                                    <tr class="border-b border-amber-200/60 dark:border-amber-500/30">
-                                                        <th class="text-left py-1 font-semibold">Producto</th>
-                                                        <th class="text-right py-1 font-semibold w-14">Pend.</th>
-                                                        <th class="text-right py-1 font-semibold w-20">Cobrar</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody id="split-products-tbody"></tbody>
-                                            </table>
-                                        </div>
-                                        <div id="split-amount-wrap" class="hidden">
-                                            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Monto a cobrar (S/)</label>
-                                            <input type="number" step="0.01" min="0" id="split-amount-input"
-                                                class="w-full py-2.5 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-slate-700 dark:text-slate-200 text-sm tabular-nums"
-                                                placeholder="0.00">
-                                        </div>
-                                        <p id="split-hint-locked" class="hidden text-xs text-amber-800 dark:text-amber-200">Este pedido ya inició división por monto; solo puede continuar en ese modo.</p>
-                                    </div>
+                                <div class="flex flex-wrap items-center gap-2 mb-3">
+                                    <button type="button" onclick="openSplitAccountModal()"
+                                        class="inline-flex items-center gap-2 rounded-xl border border-amber-300 dark:border-amber-500/50 bg-amber-50 dark:bg-amber-900/30 px-3 py-2 text-sm font-semibold text-amber-900 dark:text-amber-100 hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors shadow-sm">
+                                        <i class="ri-scissors-cut-line text-lg"></i>
+                                        <span>Dividir cuenta</span>
+                                    </button>
+                                    <span id="split-inline-status" class="text-xs text-slate-500 dark:text-slate-400 max-w-[14rem]"></span>
+                                    <input type="checkbox" id="split-dividir-cuenta" class="hidden" aria-hidden="true">
                                 </div>
                                 @endif
                                 <div>
@@ -641,6 +607,64 @@
                 </aside>
 
             </div>
+
+            @if(!empty($split_account_enabled))
+            <div id="split-account-modal" class="fixed inset-0 z-[110] hidden" role="dialog" aria-modal="true" aria-labelledby="split-modal-title">
+                <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-[1px]" onclick="closeSplitAccountModal()"></div>
+                <div class="absolute inset-3 sm:inset-6 md:inset-auto md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:max-w-lg md:w-full max-h-[min(92vh,540px)] flex flex-col rounded-2xl bg-white dark:bg-gray-900 shadow-2xl border border-amber-200/80 dark:border-amber-900/40 overflow-hidden">
+                    <div class="flex items-center justify-between gap-3 px-4 py-3 border-b border-amber-100 dark:border-amber-900/40 bg-amber-50/90 dark:bg-amber-950/40 shrink-0">
+                        <div class="flex items-center gap-2 min-w-0">
+                            <i class="ri-scissors-cut-line text-xl text-amber-700 dark:text-amber-300 shrink-0"></i>
+                            <h2 id="split-modal-title" class="text-sm font-black uppercase tracking-wide text-amber-900 dark:text-amber-100 truncate">División de cuenta</h2>
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <span id="split-remaining-badge" class="text-xs font-bold tabular-nums text-amber-800 dark:text-amber-200 whitespace-nowrap">Pendiente: S/ 0.00</span>
+                            <button type="button" onclick="closeSplitAccountModal()" class="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-gray-800" aria-label="Cerrar"><i class="ri-close-line text-xl"></i></button>
+                        </div>
+                    </div>
+                    <div class="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Elige cómo cobrar <strong>esta parte</strong>. Luego ajusta los métodos de pago para que sumen exactamente ese monto.</p>
+                        <div>
+                            <span class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Modo</span>
+                            <div class="flex rounded-xl border border-gray-200 dark:border-gray-600 p-0.5 bg-gray-100/80 dark:bg-gray-800/80">
+                                <button type="button" id="split-mode-tab-products" onclick="setSplitModeTab('products')" class="split-mode-tab flex-1 py-2.5 px-3 rounded-lg text-sm font-semibold transition-colors">Por productos</button>
+                                <button type="button" id="split-mode-tab-amount" onclick="setSplitModeTab('amount')" class="split-mode-tab flex-1 py-2.5 px-3 rounded-lg text-sm font-semibold transition-colors">Por monto</button>
+                            </div>
+                            <select id="split-mode" class="sr-only" tabindex="-1" aria-hidden="true">
+                                <option value="products">Por productos</option>
+                                <option value="amount">Por monto</option>
+                            </select>
+                        </div>
+                        <div id="split-products-wrap" class="space-y-2">
+                            <div class="max-h-52 overflow-y-auto rounded-xl border border-amber-100 dark:border-amber-900/30">
+                                <table class="w-full text-xs text-slate-700 dark:text-slate-200">
+                                    <thead class="sticky top-0 z-[1] bg-amber-50/95 dark:bg-amber-950/50 backdrop-blur-sm">
+                                        <tr class="border-b border-amber-200/60 dark:border-amber-500/30">
+                                            <th class="text-left py-2 px-2 font-semibold">Producto</th>
+                                            <th class="text-center py-2 px-1 font-semibold w-14">Pend.</th>
+                                            <th class="text-right py-2 px-2 font-semibold min-w-[9rem]">Cobrar</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="split-products-tbody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div id="split-amount-wrap" class="hidden">
+                            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Monto a cobrar (S/)</label>
+                            <input type="number" step="0.01" min="0" id="split-amount-input"
+                                class="w-full py-2.5 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-slate-700 dark:text-slate-200 text-sm tabular-nums"
+                                placeholder="0.00">
+                        </div>
+                        <p id="split-hint-locked" class="hidden text-xs text-amber-800 dark:text-amber-200">Este pedido ya inició división por monto; solo puede continuar en ese modo.</p>
+                    </div>
+                    <div class="flex flex-wrap gap-2 justify-end px-4 py-3 border-t border-amber-100 dark:border-amber-900/40 bg-gray-50/90 dark:bg-gray-900/90 shrink-0">
+                        <button type="button" onclick="clearSplitDivision()" class="px-4 py-2 rounded-xl text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-gray-700">Quitar división</button>
+                        <button type="button" onclick="closeSplitAccountModal()" class="px-4 py-2 rounded-xl text-sm font-semibold border border-gray-300 dark:border-gray-600 text-slate-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-gray-800">Cancelar</button>
+                        <button type="button" onclick="applySplitAccountModal()" class="px-4 py-2 rounded-xl text-sm font-bold bg-[#FF4622] text-white hover:bg-[#C43B25] shadow">Aplicar</button>
+                    </div>
+                </div>
+            </div>
+            @endif
 
             {{-- Modal para crear/editar cliente rápido --}}
             <x-ui.modal x-data="{ open: false }" @open-person-modal.window="open = true"
@@ -4298,20 +4322,77 @@
                         return d.innerHTML;
                     }
 
+                    function splitQtyStepForMax(max) {
+                        const m = parseFloat(max) || 0;
+                        if (m > 0 && m % 1 < 0.000001) return 1;
+                        return 0.01;
+                    }
+
+                    function syncSplitQtyRow(tr) {
+                        const hid = tr.querySelector('.split-qty-input');
+                        const disp = tr.querySelector('.split-qty-display');
+                        if (!hid || !disp) return;
+                        let v = parseFloat(hid.value) || 0;
+                        const max = parseFloat(hid.getAttribute('data-max')) || 0;
+                        v = Math.max(0, Math.min(max, v));
+                        hid.value = String(v);
+                        const showDec = (max % 1 > 0.000001) || (v % 1 > 0.000001);
+                        disp.textContent = showDec ? v.toFixed(2) : String(Math.round(v));
+                    }
+
+                    function adjustSplitLineQty(tr, direction) {
+                        const hid = tr.querySelector('.split-qty-input');
+                        if (!hid) return;
+                        const max = parseFloat(hid.getAttribute('data-max')) || 0;
+                        const step = splitQtyStepForMax(max);
+                        let v = parseFloat(hid.value) || 0;
+                        if (direction > 0) {
+                            v = Math.min(max, v + step);
+                        } else {
+                            v = Math.max(0, v - step);
+                        }
+                        hid.value = String(Math.round(v * 10000) / 10000);
+                        syncSplitQtyRow(tr);
+                    }
+
                     function renderSplitProductsTbody() {
                         const tbody = document.getElementById('split-products-tbody');
                         const cfg = window.__splitAccount || {};
                         if (!tbody || !Array.isArray(cfg.lines)) return;
                         tbody.innerHTML = '';
+                        const snap = window.__splitAppliedSnapshot;
                         cfg.lines.forEach(function (line) {
                             const tr = document.createElement('tr');
                             tr.className = 'border-b border-amber-100/80 dark:border-amber-900/40';
                             tr.setAttribute('data-split-detail-id', String(line.detail_id));
                             const rq = parseFloat(line.remaining_qty) || 0;
-                            tr.innerHTML = '<td class="py-1.5 pr-1">' + escapeSplitHtml(line.description || '') + '</td>' +
-                                '<td class="py-1.5 text-right tabular-nums">' + rq.toFixed(2) + '</td>' +
-                                '<td class="py-1.5 text-right"><input type="number" step="0.01" min="0" class="split-qty-input w-full py-1 px-1 rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-xs tabular-nums" data-max="' + rq + '" placeholder="0"></td>';
+                            let initial = 0;
+                            if (snap && snap.mode === 'products' && Array.isArray(snap.items)) {
+                                const found = snap.items.find(function (it) {
+                                    return parseInt(it.detail_id, 10) === parseInt(line.detail_id, 10);
+                                });
+                                if (found) initial = parseFloat(found.quantity) || 0;
+                            }
+                            initial = Math.max(0, Math.min(rq, initial));
+                            const dec = (rq % 1 > 0.000001) || (initial % 1 > 0.000001);
+                            const dispVal = dec ? initial.toFixed(2) : String(Math.round(initial));
+                            tr.innerHTML = '<td class="py-2 px-2 align-middle">' + escapeSplitHtml(line.description || '') + '</td>' +
+                                '<td class="py-2 px-1 text-center tabular-nums align-middle">' + rq.toFixed(2) + '</td>' +
+                                '<td class="py-2 px-2 align-middle">' +
+                                '<div class="flex items-center justify-end gap-1">' +
+                                '<button type="button" class="split-qty-minus flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-amber-200 bg-white text-lg font-bold text-amber-800 hover:bg-amber-50 dark:border-amber-700 dark:bg-gray-800 dark:text-amber-200 dark:hover:bg-gray-700 leading-none" aria-label="Menos">−</button>' +
+                                '<span class="split-qty-display w-11 text-center text-sm font-bold tabular-nums text-slate-800 dark:text-slate-100">' + dispVal + '</span>' +
+                                '<input type="hidden" class="split-qty-input" value="' + initial + '" data-max="' + rq + '" />' +
+                                '<button type="button" class="split-qty-plus flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-amber-200 bg-white text-lg font-bold text-amber-800 hover:bg-amber-50 dark:border-amber-700 dark:bg-gray-800 dark:text-amber-200 dark:hover:bg-gray-700 leading-none" aria-label="Más">+</button>' +
+                                '</div></td>';
                             tbody.appendChild(tr);
+                            syncSplitQtyRow(tr);
+                            tr.querySelector('.split-qty-minus')?.addEventListener('click', function () {
+                                adjustSplitLineQty(tr, -1);
+                            });
+                            tr.querySelector('.split-qty-plus')?.addEventListener('click', function () {
+                                adjustSplitLineQty(tr, 1);
+                            });
                         });
                     }
 
@@ -4323,44 +4404,180 @@
                         if (wrapA) wrapA.classList.toggle('hidden', mode !== 'amount');
                     }
 
-                    function toggleSplitDividirCuenta() {
+                    function setSplitModeTab(mode) {
+                        const cfg = window.__splitAccount || {};
+                        if (cfg.lockedToAmount && mode === 'products') {
+                            mode = 'amount';
+                        }
+                        const sel = document.getElementById('split-mode');
+                        if (sel) sel.value = mode;
+                        const tp = document.getElementById('split-mode-tab-products');
+                        const ta = document.getElementById('split-mode-tab-amount');
+                        const active = 'bg-white dark:bg-gray-700 text-[#FF4622] shadow-sm ring-1 ring-amber-200/80 dark:ring-amber-800';
+                        const inactive = 'text-slate-600 dark:text-slate-300 hover:bg-white/70 dark:hover:bg-gray-700/50';
+                        if (tp) {
+                            tp.className = 'split-mode-tab flex-1 py-2.5 px-3 rounded-lg text-sm font-semibold transition-colors ' + (mode === 'products' ? active : inactive);
+                            tp.disabled = !!cfg.lockedToAmount;
+                            tp.classList.toggle('opacity-40', !!cfg.lockedToAmount);
+                            tp.classList.toggle('cursor-not-allowed', !!cfg.lockedToAmount);
+                        }
+                        if (ta) {
+                            ta.className = 'split-mode-tab flex-1 py-2.5 px-3 rounded-lg text-sm font-semibold transition-colors ' + (mode === 'amount' ? active : inactive);
+                        }
+                        onSplitModeChange();
+                    }
+
+                    function openSplitAccountModal() {
+                        const modal = document.getElementById('split-account-modal');
+                        if (!modal) return;
+                        initSplitPanel();
+                        modal.classList.remove('hidden');
+                        document.body.style.overflow = 'hidden';
+                        window.__splitModalOnKey = function (e) {
+                            if (e.key === 'Escape') closeSplitAccountModal();
+                        };
+                        document.addEventListener('keydown', window.__splitModalOnKey);
+                    }
+
+                    function closeSplitAccountModal() {
+                        const modal = document.getElementById('split-account-modal');
+                        if (modal) modal.classList.add('hidden');
+                        document.body.style.overflow = '';
+                        if (window.__splitModalOnKey) {
+                            document.removeEventListener('keydown', window.__splitModalOnKey);
+                            window.__splitModalOnKey = null;
+                        }
+                    }
+
+                    function collectSplitSnapshotFromDom() {
+                        const mode = document.getElementById('split-mode')?.value || 'products';
+                        if (mode === 'amount') {
+                            const amt = parseFloat(document.getElementById('split-amount-input')?.value || '0');
+                            return { mode: 'amount', amount: amt };
+                        }
+                        const items = [];
+                        document.querySelectorAll('#split-products-tbody tr[data-split-detail-id]').forEach(function (tr) {
+                            const id = parseInt(tr.getAttribute('data-split-detail-id'), 10);
+                            const hid = tr.querySelector('.split-qty-input');
+                            const q = parseFloat(hid?.value || '0');
+                            if (q > 0) items.push({ detail_id: id, quantity: q });
+                        });
+                        return { mode: 'products', items: items };
+                    }
+
+                    function applySplitAccountModal() {
+                        const cfg = window.__splitAccount || {};
+                        if (!cfg.enabled) return;
+                        const rem = getSplitRemainingDisplayed();
+                        const mode = document.getElementById('split-mode')?.value || 'products';
+                        if (mode === 'amount') {
+                            const amt = parseFloat(document.getElementById('split-amount-input')?.value || '0');
+                            if (!(amt > 0)) {
+                                if (typeof showNotification === 'function') showNotification('División', 'Ingrese un monto mayor a cero.', 'error');
+                                else alert('Ingrese un monto mayor a cero.');
+                                return;
+                            }
+                            if (amt > rem + 0.02) {
+                                if (typeof showNotification === 'function') showNotification('División', 'El monto excede lo pendiente del pedido.', 'error');
+                                else alert('El monto excede lo pendiente del pedido.');
+                                return;
+                            }
+                        } else {
+                            let any = false;
+                            document.querySelectorAll('#split-products-tbody tr[data-split-detail-id]').forEach(function (tr) {
+                                const hid = tr.querySelector('.split-qty-input');
+                                if (hid && parseFloat(hid.value) > 0) any = true;
+                            });
+                            if (!any) {
+                                if (typeof showNotification === 'function') showNotification('División', 'Indique cantidades a cobrar con + / −.', 'error');
+                                else alert('Indique cantidades a cobrar con + / −.');
+                                return;
+                            }
+                        }
+                        window.__splitAppliedSnapshot = collectSplitSnapshotFromDom();
                         const cb = document.getElementById('split-dividir-cuenta');
-                        const body = document.getElementById('split-panel-body');
+                        if (cb) cb.checked = true;
                         const dm = document.getElementById('cobro-detail-mode');
-                        if (!cb || !body) return;
-                        const on = !!cb.checked;
-                        body.classList.toggle('hidden', !on);
-                        if (on && dm) {
+                        if (dm) {
                             dm.value = 'DETALLADO';
                             dm.disabled = true;
                             toggleCobroDetailGlosa();
-                        } else if (dm) {
-                            dm.disabled = false;
+                        }
+                        updateSplitInlineStatus();
+                        closeSplitAccountModal();
+                        if (typeof updateCobroTotalPaid === 'function') updateCobroTotalPaid();
+                    }
+
+                    function clearSplitDivision() {
+                        window.__splitAppliedSnapshot = null;
+                        const cb = document.getElementById('split-dividir-cuenta');
+                        if (cb) cb.checked = false;
+                        const dm = document.getElementById('cobro-detail-mode');
+                        if (dm) dm.disabled = false;
+                        const amt = document.getElementById('split-amount-input');
+                        if (amt) amt.value = '';
+                        const st = document.getElementById('split-inline-status');
+                        if (st) st.textContent = '';
+                        document.querySelectorAll('#split-products-tbody tr[data-split-detail-id]').forEach(function (tr) {
+                            const hid = tr.querySelector('.split-qty-input');
+                            if (hid) hid.value = '0';
+                            syncSplitQtyRow(tr);
+                        });
+                        closeSplitAccountModal();
+                        if (typeof updateCobroTotalPaid === 'function') updateCobroTotalPaid();
+                    }
+
+                    function updateSplitInlineStatus() {
+                        const el = document.getElementById('split-inline-status');
+                        const cb = document.getElementById('split-dividir-cuenta');
+                        if (!el || !cb || !cb.checked) {
+                            if (el && (!cb || !cb.checked)) el.textContent = '';
+                            return;
+                        }
+                        try {
+                            const p = buildSplitPayloadForPayment();
+                            if (!p) {
+                                el.textContent = '';
+                                return;
+                            }
+                            const t = computeSplitPartTotal(p);
+                            el.textContent = 'Parte: S/ ' + t.toFixed(2);
+                        } catch (e) {
+                            el.textContent = 'División activa';
                         }
                     }
 
                     function initSplitPanel() {
-                        const panel = document.getElementById('split-account-panel');
-                        if (!panel) return;
+                        const modal = document.getElementById('split-account-modal');
+                        if (!modal) return;
                         const cfg = window.__splitAccount || {};
                         const badge = document.getElementById('split-remaining-badge');
                         const r = getSplitRemainingDisplayed();
                         if (badge) badge.textContent = 'Pendiente: S/ ' + r.toFixed(2);
                         const modeSel = document.getElementById('split-mode');
-                        const optProd = modeSel ? modeSel.querySelector('option[value="products"]') : null;
                         const hint = document.getElementById('split-hint-locked');
+                        let startMode = 'products';
                         if (cfg.lockedToAmount) {
                             if (hint) hint.classList.remove('hidden');
-                            if (modeSel) modeSel.value = 'amount';
-                            if (optProd) optProd.disabled = true;
+                            startMode = 'amount';
                         } else {
                             if (hint) hint.classList.add('hidden');
-                            if (optProd) optProd.disabled = false;
                         }
+                        if (window.__splitAppliedSnapshot && window.__splitAppliedSnapshot.mode) {
+                            startMode = window.__splitAppliedSnapshot.mode;
+                        }
+                        if (modeSel) modeSel.value = startMode;
                         const amtIn = document.getElementById('split-amount-input');
-                        if (amtIn && !amtIn.value) amtIn.placeholder = r.toFixed(2);
+                        if (amtIn) {
+                            if (window.__splitAppliedSnapshot && window.__splitAppliedSnapshot.mode === 'amount' && window.__splitAppliedSnapshot.amount != null) {
+                                amtIn.value = String(window.__splitAppliedSnapshot.amount);
+                            } else if (!amtIn.value) {
+                                amtIn.placeholder = r.toFixed(2);
+                            }
+                        }
+                        setSplitModeTab(startMode);
                         renderSplitProductsTbody();
-                        onSplitModeChange();
+                        updateSplitInlineStatus();
                     }
 
                     function buildSplitPayloadForPayment() {
@@ -4864,6 +5081,17 @@
                     }
 
                     function getCobroOrderTotal() {
+                        const cb = document.getElementById('split-dividir-cuenta');
+                        if (cb && cb.checked && window.__splitAccount && window.__splitAccount.enabled) {
+                            try {
+                                const p = buildSplitPayloadForPayment();
+                                if (p) {
+                                    return computeSplitPartTotal(p);
+                                }
+                            } catch (e) {
+                                /* ignore */
+                            }
+                        }
                         const totals = getTotalsWithDelivery(currentTable?.items || []);
                         return totals.total || 0;
                     }
@@ -5248,7 +5476,11 @@
                     window.updateTakeAwayInfo = updateTakeAwayInfo;
                     window.updateTakeawayDisposableInfo = updateTakeawayDisposableInfo;
                     window.toggleCobroDetailGlosa = toggleCobroDetailGlosa;
-                    window.toggleSplitDividirCuenta = toggleSplitDividirCuenta;
+                    window.openSplitAccountModal = openSplitAccountModal;
+                    window.closeSplitAccountModal = closeSplitAccountModal;
+                    window.applySplitAccountModal = applySplitAccountModal;
+                    window.clearSplitDivision = clearSplitDivision;
+                    window.setSplitModeTab = setSplitModeTab;
                     window.onSplitModeChange = onSplitModeChange;
                     window.initSplitPanel = initSplitPanel;
                     window.printPreAccountTicket = printPreAccountTicket;
