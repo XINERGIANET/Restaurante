@@ -5248,6 +5248,9 @@
                     window.updateTakeAwayInfo = updateTakeAwayInfo;
                     window.updateTakeawayDisposableInfo = updateTakeawayDisposableInfo;
                     window.toggleCobroDetailGlosa = toggleCobroDetailGlosa;
+                    window.toggleSplitDividirCuenta = toggleSplitDividirCuenta;
+                    window.onSplitModeChange = onSplitModeChange;
+                    window.initSplitPanel = initSplitPanel;
                     window.printPreAccountTicket = printPreAccountTicket;
                     window.openPreAccountPdfTab = openPreAccountPdfTab;
                     window.ensureWaiterPin = ensureWaiterPin;
