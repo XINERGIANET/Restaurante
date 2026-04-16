@@ -143,6 +143,7 @@
                             if (t > q) it.takeawayQty = q;
                             it.priceManual = true;
                         });
+                        currentTable.cancellations = [];
                         db[activeKey] = currentTable;
                         localStorage.setItem('restaurantDB', JSON.stringify(db));
                     } else {
@@ -443,8 +444,9 @@
                                         id="ticket-takeaway-disposable">$0.00</span>
                                 </div>
                                 <div class="border-t border-dashed border-gray-300 dark:border-gray-600 my-2"></div>
+                                <p id="ticket-split-remaining-hint" class="hidden text-[11px] text-slate-500 dark:text-slate-400 leading-snug mb-1"></p>
                                 <div class="flex justify-between items-center">
-                                    <span class="text-base sm:text-lg font-bold text-slate-800 dark:text-white">Total a
+                                    <span id="ticket-total-label" class="text-base sm:text-lg font-bold text-slate-800 dark:text-white">Total a
                                         Pagar</span>
                                     <span class="text-xl sm:text-2xl font-black text-[#FF4622] dark:text-[#FF4622]"
                                         id="ticket-total">$0.00</span>
@@ -3665,7 +3667,7 @@
                                 container.appendChild(row);
                             });
                         }
-                        const totals = getTotalsWithDelivery(currentTable.items || []);
+                        const totals = getTicketTotalsConsideringSplit();
                         const tax = totals.tax;
                         const total = totals.total;
                         subtotal = totals.subtotal;
@@ -3679,6 +3681,8 @@
                         const deliveryEl = document.getElementById('ticket-delivery');
                         const takeawayDispRow = document.getElementById('ticket-takeaway-disposable-row');
                         const takeawayDispEl = document.getElementById('ticket-takeaway-disposable');
+                        const ticketTotLabel = document.getElementById('ticket-total-label');
+                        const splitRemHint = document.getElementById('ticket-split-remaining-hint');
 
                         if (subtotalEl) subtotalEl.innerText = `S/ ${subtotal.toFixed(2)}`;
                         if (taxEl) taxEl.innerText = `S/ ${tax.toFixed(2)}`;
@@ -3699,6 +3703,18 @@
                             }
                         }
                         if (totalEl) totalEl.innerText = `S/ ${total.toFixed(2)}`;
+                        if (ticketTotLabel) {
+                            ticketTotLabel.textContent = totals.showSplitHint ? 'Saldo pendiente' : 'Total a Pagar';
+                        }
+                        if (splitRemHint) {
+                            if (totals.showSplitHint && totals.splitPart > 0) {
+                                splitRemHint.classList.remove('hidden');
+                                splitRemHint.textContent = 'Parte a cobrar en este movimiento: S/ ' + totals.splitPart.toFixed(2) + '. El importe en rojo es el saldo que quedará en el pedido.';
+                            } else {
+                                splitRemHint.classList.add('hidden');
+                                splitRemHint.textContent = '';
+                            }
+                        }
 
                         refreshRecipeStockLabelsInProductGrid();
                         syncTakeawayDisposablePanel();
@@ -4329,6 +4345,56 @@
                         return getOrderTotalForSplit();
                     }
 
+                    function isSplitDivisionActiveForTicket() {
+                        const cb = document.getElementById('split-dividir-cuenta');
+                        return !!(cb && cb.checked && window.__splitAccount && window.__splitAccount.enabled);
+                    }
+
+                    /**
+                     * Con división de cuenta aplicada: el ticket muestra el saldo pendiente del pedido
+                     * después de descontar la parte que se va a cobrar en este movimiento (no el total del carrito).
+                     */
+                    function getTicketTotalsConsideringSplit() {
+                        const full = getTotalsWithDelivery(currentTable.items || []);
+                        if (!isSplitDivisionActiveForTicket()) {
+                            return { ...full, showSplitHint: false, splitPart: 0 };
+                        }
+                        let part = 0;
+                        try {
+                            const p = buildSplitPayloadForPayment();
+                            if (p) part = computeSplitPartTotal(p);
+                        } catch (e) {
+                            return { ...full, showSplitHint: false, splitPart: 0 };
+                        }
+                        const pending = getSplitRemainingDisplayed();
+                        const after = Math.max(0, Math.round((pending - part) * 100) / 100);
+                        if (full.total <= 0) {
+                            return {
+                                subtotal: 0,
+                                tax: 0,
+                                total: after,
+                                deliveryFee: full.deliveryFee,
+                                takeawayDisposableFee: full.takeawayDisposableFee,
+                                productsTotal: 0,
+                                showSplitHint: true,
+                                splitPart: part,
+                                splitPending: pending,
+                            };
+                        }
+                        const r = Math.min(1, Math.max(0, after / full.total));
+                        return {
+                            subtotal: Math.round(full.subtotal * r * 100) / 100,
+                            tax: Math.round(full.tax * r * 100) / 100,
+                            total: after,
+                            deliveryFee: Math.round(full.deliveryFee * r * 100) / 100,
+                            takeawayDisposableFee: Math.round((full.takeawayDisposableFee || 0) * r * 100) / 100,
+                            productsTotal: Math.round((full.productsTotal || 0) * r * 100) / 100,
+                            showSplitHint: true,
+                            splitPart: part,
+                            splitPending: pending,
+                        };
+                    }
+
                     function escapeSplitHtml(s) {
                         const d = document.createElement('div');
                         d.textContent = s == null ? '' : String(s);
@@ -4366,6 +4432,8 @@
                         }
                         hid.value = String(Math.round(v * 10000) / 10000);
                         syncSplitQtyRow(tr);
+                        const cbSplit = document.getElementById('split-dividir-cuenta');
+                        if (cbSplit && cbSplit.checked && typeof renderTicket === 'function') renderTicket();
                     }
 
                     function renderSplitProductsTbody() {
@@ -4519,6 +4587,7 @@
                         updateSplitInlineStatus();
                         syncCobroPaymentAmountsToSplitPart();
                         closeSplitAccountModal();
+                        if (typeof renderTicket === 'function') renderTicket();
                     }
 
                     function syncCobroPaymentAmountsToSplitPartInner() {
@@ -4583,6 +4652,7 @@
                             if (inp) inp.value = fullT.toFixed(2);
                         }
                         if (typeof updateCobroTotalPaid === 'function') updateCobroTotalPaid();
+                        if (typeof renderTicket === 'function') renderTicket();
                     }
 
                     function updateSplitInlineStatus() {
@@ -4631,6 +4701,13 @@
                                 amtIn.value = String(window.__splitAppliedSnapshot.amount);
                             } else if (!amtIn.value) {
                                 amtIn.placeholder = r.toFixed(2);
+                            }
+                            if (!amtIn.dataset.splitAmountBound) {
+                                amtIn.dataset.splitAmountBound = '1';
+                                amtIn.addEventListener('input', function () {
+                                    const cb = document.getElementById('split-dividir-cuenta');
+                                    if (cb && cb.checked && typeof renderTicket === 'function') renderTicket();
+                                });
                             }
                         }
                         setSplitModeTab(startMode);
