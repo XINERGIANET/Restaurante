@@ -209,7 +209,6 @@
                     <thead class="text-white">
                         <tr style="background-color: #FF4622;" class="text-white text-theme-xs uppercase tracking-wider">
                             <th class="w-12 px-4 py-3 text-center first:rounded-tl-2xl sticky-left-header"></th>
-                            <th class="px-5 py-3 text-left sm:px-6 whitespace-nowrap">ID</th>
                             <th class="px-5 py-3 text-left sm:px-6 whitespace-nowrap">Documento</th>
                             <th class="px-3 py-3 text-left sm:px-6 whitespace-nowrap">Nombres</th>
                             <th class="px-5 py-3 text-left sm:px-6 whitespace-nowrap">Teléfono</th>
@@ -228,9 +227,6 @@
                                         <i class="ri-add-line" x-show="openRow !== {{ $person->id }}"></i>
                                         <i class="ri-subtract-line" x-show="openRow === {{ $person->id }}"></i>
                                     </button>
-                                </td>
-                                <td class="px-5 py-4 sm:px-6">
-                                    <p class="font-medium text-gray-700 text-theme-sm dark:text-gray-200">{{ $person->id }}</p>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
                                     <p class="font-medium text-gray-700 text-theme-sm dark:text-gray-200">{{ $person->document_number }}</p>
