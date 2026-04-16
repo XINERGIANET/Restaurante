@@ -234,14 +234,21 @@ class PersonController extends Controller
             $perPage = 10;
         }
 
+        $roleId = $request->input('role_id');
+
         $people = $branch->people()
-            ->with(['location', 'user.profile'])
+            ->with(['location', 'user.profile', 'roles'])
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
                     InsensitiveSearch::whereInsensitiveLike($inner, 'first_name', $search);
                     InsensitiveSearch::whereInsensitiveLike($inner, 'last_name', $search, 'or');
                     InsensitiveSearch::whereInsensitiveLike($inner, 'document_number', $search, 'or');
                     InsensitiveSearch::whereInsensitiveLike($inner, 'email', $search, 'or');
+                });
+            })
+            ->when($roleId, function($query) use ($roleId) {
+                $query->whereHas('roles', function($q) use ($roleId) {
+                    $q->where('roles.id', $roleId);
                 });
             })
             ->orderByDesc('id')
@@ -253,6 +260,7 @@ class PersonController extends Controller
             'branch' => $branch,
             'people' => $people,
             'search' => $search,
+            'roleId' => $roleId,
             'perPage' => $perPage,
             'roles' => $roles,
             'profiles' => $profiles,

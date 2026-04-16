@@ -139,9 +139,23 @@
                             type="text"
                             name="search"
                             value="{{ $search }}"
-                            placeholder="Buscar por nombre, documento o email"
+                            placeholder="Buscar por nombre, documento..."
                             class="dark:bg-dark-900 shadow-theme-xs focus:border-[#FF4622] focus:ring-[#FF4622]/10 dark:focus:border-[#FF4622] h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 pl-10 text-sm text-gray-800 placeholder:text-gray-400 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
                         />
+                    </div>
+
+                    <div class="relative min-w-[160px]">
+                        <select
+                            name="role_id"
+                            class="dark:bg-dark-900 shadow-theme-xs focus:border-[#FF4622] focus:ring-[#FF4622]/10 dark:focus:border-[#FF4622] h-11 w-full rounded-lg border border-gray-300 bg-transparent px-3 py-2 text-sm text-gray-700 focus:ring-3 focus:outline-hidden dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+                        >
+                            <option value="">Role: Todos</option>
+                            @foreach ($roles as $role)
+                                <option value="{{ $role->id }}" {{ $roleId == $role->id ? 'selected' : '' }}>
+                                    {{ $role->name }}
+                                </option>
+                            @endforeach
+                        </select>
                     </div>
                     <div class="flex flex-wrap gap-2">
                         <x-ui.button size="md" variant="primary" type="submit" class="flex-1 sm:flex-none h-11 px-4 shadow-sm hover:shadow-md transition-all duration-200 active:scale-95" style="background-color: #C43B25; border-color: #C43B25;">
@@ -195,12 +209,12 @@
                     <thead class="text-white">
                         <tr style="background-color: #FF4622;" class="text-white text-theme-xs uppercase tracking-wider">
                             <th class="w-12 px-4 py-3 text-center first:rounded-tl-2xl sticky-left-header"></th>
+                            <th class="px-5 py-3 text-left sm:px-6 whitespace-nowrap">ID</th>
+                            <th class="px-5 py-3 text-left sm:px-6 whitespace-nowrap">Documento</th>
                             <th class="px-3 py-3 text-left sm:px-6 whitespace-nowrap">Nombres</th>
-                            <th class="px-5 py-3 text-left sm:px-6 whitespace-nowrap">Tipo</th>
-                            <th class="px-5 py-3 text-left sm:px-6 whitespace-nowrap">Nro. Documento</th>
-                            <th class="px-5 py-3 text-left sm:px-6 whitespace-nowrap">Fecha nac.</th>
-                            <th class="px-5 py-3 text-left sm:px-6 whitespace-nowrap">Genero</th>
-                            <th class="px-5 py-3 text-left sm:px-6 whitespace-nowrap">Ubicacion</th>
+                            <th class="px-5 py-3 text-left sm:px-6 whitespace-nowrap">Teléfono</th>
+                            <th class="px-5 py-3 text-left sm:px-6 whitespace-nowrap">Correo</th>
+                            <th class="px-5 py-3 text-left sm:px-6 whitespace-nowrap">Rol</th>
                             <th class="px-5 py-3 text-right sm:px-6 whitespace-nowrap last:rounded-tr-2xl">Acciones</th>
                         </tr>
                     </thead>
@@ -215,25 +229,33 @@
                                         <i class="ri-subtract-line" x-show="openRow === {{ $person->id }}"></i>
                                     </button>
                                 </td>
+                                <td class="px-5 py-4 sm:px-6">
+                                    <p class="font-medium text-gray-700 text-theme-sm dark:text-gray-200">{{ $person->id }}</p>
+                                </td>
+                                <td class="px-5 py-4 sm:px-6">
+                                    <p class="font-medium text-gray-700 text-theme-sm dark:text-gray-200">{{ $person->document_number }}</p>
+                                </td>
                                 <td class="px-3 py-4 sm:px-6">
                                     <p class="font-medium text-gray-800 text-theme-sm dark:text-white/90 truncate" title="{{ $person->first_name }} {{ $person->last_name }}">
                                         {{ $person->first_name }} {{ $person->last_name }}
                                     </p>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
-                                    <p class="text-gray-500 text-theme-sm dark:text-gray-400">{{ $person->person_type }}</p>
+                                    <p class="text-gray-500 text-theme-sm dark:text-gray-400">{{ $person->phone ?? '-' }}</p>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
-                                    <p class="font-medium text-gray-700 text-theme-sm dark:text-gray-200">{{ $person->document_number }}</p>
+                                    <p class="text-gray-500 text-theme-sm dark:text-gray-400 truncate" title="{{ $person->email }}">{{ $person->email ?? '-' }}</p>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
-                                    <p class="text-gray-500 text-theme-sm dark:text-gray-400">{{ $person->fecha_nacimiento ?? '-' }}</p>
-                                </td>
-                                <td class="px-5 py-4 sm:px-6">
-                                    <p class="text-gray-500 text-theme-sm dark:text-gray-400">{{ $person->genero ?? '-' }}</p>
-                                </td>
-                                <td class="px-5 py-4 sm:px-6">
-                                    <p class="text-gray-500 text-theme-sm dark:text-gray-400">{{ $person->location?->name ?? '-' }}</p>
+                                    <div class="flex flex-wrap gap-1">
+                                        @forelse($person->roles as $role)
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                                                {{ $role->name }}
+                                            </span>
+                                        @empty
+                                            <span class="text-gray-400 text-xs">-</span>
+                                        @endforelse
+                                    </div>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
                                     <div class="flex items-center justify-end gap-2">

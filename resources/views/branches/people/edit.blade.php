@@ -13,6 +13,13 @@
     <x-ui.modal
         x-data="{
             open: true,
+            init() {
+                this.$watch('open', value => {
+                    if (!value) {
+                        this.close();
+                    }
+                });
+            },
             close() {
                 if (window.Turbo && typeof window.Turbo.visit === 'function') {
                     window.Turbo.visit('{{ $indexRoute }}', { action: 'replace' });
