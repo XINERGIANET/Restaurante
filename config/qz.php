@@ -52,4 +52,10 @@ return [
         FILTER_VALIDATE_BOOL
     ),
 
+    // Comanda desde celular: no usar QZ (no existe en el móvil); enviar al servidor para ticketera por IP o Windows del host Laravel.
+    'kitchen_comanda_disable_client_qz_on_touch_devices' => filter_var(
+        env('QZ_KITCHEN_COMANDA_DISABLE_CLIENT_ON_TOUCH', true),
+        FILTER_VALIDATE_BOOL
+    ),
+
 ];

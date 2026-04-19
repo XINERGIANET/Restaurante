@@ -7,6 +7,7 @@
     <script>
         window.__qzSecondaryFirstPrinterNames = @json(config('qz.secondary_first_printer_names', []));
         window.__qzKitchenSkipClientQzWhenPrinterHasIp = @json((bool) config('qz.kitchen_skip_client_qz_when_printer_has_ip', true));
+        window.__qzKitchenComandaDisableClientOnTouch = @json((bool) config('qz.kitchen_comanda_disable_client_qz_on_touch_devices', true));
     </script>
     @vite(['resources/js/qz-tray-init.js'])
     <meta name="turbo-visit-control" content="reload">
@@ -2334,8 +2335,21 @@
                     /**
                      * Solo en PC terminal (default BARRA2 / cert qz2): comanda vía QZ en el navegador.
                      * En PC principal (default BARRA): sin QZ en comanda (evita Allow) — solo servidor / ticketera con IP.
+                     * En celulares (sin QZ Tray): false → comanda por servidor (misma PC que Laravel o ticketera con IP en LAN).
                      */
                     function kitchenComandaAllowClientQz() {
+                        if (window.__qzKitchenComandaDisableClientOnTouch) {
+                            try {
+                                const ua = navigator.userAgent || '';
+                                const coarseMobile = /Android|webOS|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+                                const isPad = /iPad/i.test(ua) || (navigator.platform === 'MacIntel' && (navigator.maxTouchPoints || 0) > 1);
+                                if (coarseMobile && !isPad) {
+                                    return false;
+                                }
+                            } catch (e) {
+                                /* ignore */
+                            }
+                        }
                         const d = String(window.__qzConfig?.defaultPrinterName || window.__qzConfig?.printerName || '').trim();
                         if (typeof window.__qzPrinterRequiresSecondaryCertFirst === 'function') {
                             return window.__qzPrinterRequiresSecondaryCertFirst(d);
