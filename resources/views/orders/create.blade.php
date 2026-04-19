@@ -1638,7 +1638,20 @@
                         if (window.__qzKitchenSkipClientQzWhenPrinterHasIp === false) {
                             return false;
                         }
-                        const target = String(printerName || '').trim().toLowerCase();
+                        const rawName = String(printerName || '').trim();
+                        const target = rawName.toLowerCase();
+                        // Misma ticketera que el cobro en la 2.ª PC (BARRA2 / qz2): la comanda debe ir por QZ
+                        // en este navegador. Si en BD hay IP, el RAW desde el servidor no llega al USB/local de la PC2.
+                        if (typeof window.__qzPrinterRequiresSecondaryCertFirst === 'function') {
+                            if (window.__qzPrinterRequiresSecondaryCertFirst(rawName)) {
+                                return false;
+                            }
+                        } else {
+                            const compact = target.replace(/\s+/g, '');
+                            if (compact === 'barra2' || compact.startsWith('barra2')) {
+                                return false;
+                            }
+                        }
                         if (!target || !Array.isArray(serverProductBranches)) {
                             return false;
                         }
