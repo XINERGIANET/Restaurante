@@ -2352,30 +2352,79 @@
                         ];
                         if (!activeItems.length && !mergedCancellations.length) return true;
                         const qzApi = window.qz;
-                        const byPrinter = {};
+
+                        function dedupeKitchenPrinterNameList(list) {
+                            const out = [];
+                            const seen = new Set();
+                            (Array.isArray(list) ? list : []).forEach((raw) => {
+                                const n = String(raw || '').trim();
+                                const k = n.toLowerCase();
+                                if (!k || seen.has(k)) return;
+                                seen.add(k);
+                                out.push(n);
+                            });
+                            return out;
+                        }
+
+                        function mergeKitchenBucketsSharedCanon(activeSrc, cancelSrc) {
+                            const canon = Object.create(null);
+                            const touch = (raw) => {
+                                const t = String(raw || '').trim();
+                                const low = t.toLowerCase();
+                                if (!low) return;
+                                if (!canon[low]) {
+                                    canon[low] = t;
+                                }
+                            };
+                            Object.keys(activeSrc || {}).forEach((k) => touch(k));
+                            Object.keys(cancelSrc || {}).forEach((k) => touch(k));
+                            const disp = (raw) => {
+                                const low = String(raw || '').trim().toLowerCase();
+                                return low ? canon[low] : '';
+                            };
+                            const byPrinterOut = {};
+                            Object.keys(activeSrc || {}).forEach((k) => {
+                                const d = disp(k);
+                                if (!d) return;
+                                if (!byPrinterOut[d]) byPrinterOut[d] = [];
+                                (activeSrc[k] || []).forEach((row) => byPrinterOut[d].push(row));
+                            });
+                            const canceledByPrinterOut = {};
+                            Object.keys(cancelSrc || {}).forEach((k) => {
+                                const d = disp(k);
+                                if (!d) return;
+                                if (!canceledByPrinterOut[d]) canceledByPrinterOut[d] = [];
+                                (cancelSrc[k] || []).forEach((row) => canceledByPrinterOut[d].push(row));
+                            });
+                            return { byPrinter: byPrinterOut, canceledByPrinter: canceledByPrinterOut };
+                        }
+
+                        const byPrinterAcc = {};
                         activeItems.forEach((it) => {
                             const pId = parseInt(it.pId, 10) || 0;
                             if (!pId) return;
                             const pdefs = resolveQzPrinters(pId);
-                            const pnames = pdefs.length ? pdefs.map(p => p.name) : resolveQzPrinterNames(pId);
+                            const pnamesRaw = pdefs.length ? pdefs.map(p => p.name) : resolveQzPrinterNames(pId);
+                            const pnames = dedupeKitchenPrinterNameList(pnamesRaw);
                             if (!pnames.length) return;
                             // Si un producto está asignado a varias impresoras (pivote), se imprime en todas.
                             pnames.forEach((pname) => {
-                                if (!byPrinter[pname]) byPrinter[pname] = [];
-                                byPrinter[pname].push(it);
+                                if (!byPrinterAcc[pname]) byPrinterAcc[pname] = [];
+                                byPrinterAcc[pname].push(it);
                             });
                         });
-                        const canceledByPrinter = {};
+                        const canceledByPrinterAcc = {};
                         mergedCancellations.forEach((c) => {
                             const pId = parseInt(c?.pId ?? c?.product_id, 10) || 0;
                             const qty = parseFloat(c?.qtyCanceled ?? c?.quantity ?? 0) || 0;
                             if (!pId || qty <= 0) return;
                             const pdefs = resolveQzPrinters(pId);
-                            const pnames = pdefs.length ? pdefs.map(p => p.name) : resolveQzPrinterNames(pId);
+                            const pnamesRaw = pdefs.length ? pdefs.map(p => p.name) : resolveQzPrinterNames(pId);
+                            const pnames = dedupeKitchenPrinterNameList(pnamesRaw);
                             if (!pnames.length) return;
                             pnames.forEach((pname) => {
-                                if (!canceledByPrinter[pname]) canceledByPrinter[pname] = [];
-                                canceledByPrinter[pname].push({
+                                if (!canceledByPrinterAcc[pname]) canceledByPrinterAcc[pname] = [];
+                                canceledByPrinterAcc[pname].push({
                                     pId,
                                     name: String(c?.name ?? c?.description ?? 'Producto').trim(),
                                     qty,
@@ -2384,6 +2433,9 @@
                                 });
                             });
                         });
+                        const mergedBuckets = mergeKitchenBucketsSharedCanon(byPrinterAcc, canceledByPrinterAcc);
+                        const byPrinter = mergedBuckets.byPrinter;
+                        const canceledByPrinter = mergedBuckets.canceledByPrinter;
                         const names = Array.from(new Set([
                             ...Object.keys(byPrinter),
                             ...Object.keys(canceledByPrinter),
