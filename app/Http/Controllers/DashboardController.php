@@ -2,7 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\ShiftCashClosePdfService;
+use Barryvdh\Snappy\Facades\SnappyPdf as PDF;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 
 class DashboardController extends Controller
 {
@@ -301,6 +306,11 @@ class DashboardController extends Controller
         }
         usort($reportRows, fn($a, $b) => $b['total_dif'] <=> $a['total_dif']);
 
+        // Productos vendidos en el rango del filtro (mismos criterios que total ventas)
+        $productsSoldMovements = $this->salesMovementsForProductsSold($startDate, $endDate, $branchId, $cashRegisterId);
+        $productsSoldInFilter = app(ShiftCashClosePdfService::class)->consolidateProductsSold($productsSoldMovements);
+        usort($productsSoldInFilter, fn ($a, $b) => $b['amount'] <=> $a['amount']);
+
         // Totales para tarjetas
         $reportTotalVentas  = $reportRawVentas->sum('total');
         $reportTotalCompras = $reportRawCompras->sum('total');
@@ -349,8 +359,82 @@ class DashboardController extends Controller
             'totalVentasAnual' => $totalVentasAnual,
             'mesesConVentas'   => $mesesConVentas,
             'ventasPromedio'   => $ventasPromedio,
+            'productsSoldInFilter' => $productsSoldInFilter,
         ];
 
         return view('pages.dashboard.ecommerce', compact('dashboardData'));
+    }
+
+    public function productsSoldPdf(Request $request)
+    {
+        $startDate = $request->input('start_date') ? Carbon::parse($request->input('start_date'))->startOfDay() : now()->startOfDay();
+        $endDate = $request->input('end_date') ? Carbon::parse($request->input('end_date'))->endOfDay() : now()->endOfDay();
+
+        $branchId = session('branch_id');
+        $cashRegisterId = session('cash_register_id');
+
+        $movements = $this->salesMovementsForProductsSold($startDate, $endDate, $branchId, $cashRegisterId);
+        $rows = app(ShiftCashClosePdfService::class)->consolidateProductsSold($movements);
+        usort($rows, fn ($a, $b) => $b['amount'] <=> $a['amount']);
+
+        $totalQty = array_sum(array_column($rows, 'qty'));
+        $totalAmount = array_sum(array_column($rows, 'amount'));
+
+        $fileName = 'productos-vendidos-' . $startDate->format('Y-m-d') . '-' . $endDate->format('Y-m-d') . '.pdf';
+        $fileName = preg_replace('/[^\p{L}\p{N}_\-.]+/u', '-', (string) $fileName);
+
+        try {
+            $pdf = PDF::loadView('pages.dashboard.products-sold-pdf', [
+                'rows' => $rows,
+                'startDate' => $startDate,
+                'endDate' => $endDate,
+                'totalQty' => $totalQty,
+                'totalAmount' => $totalAmount,
+            ]);
+
+            $pdf->setPaper('a4')
+                ->setOption('margin-bottom', 10)
+                ->setOption('encoding', 'utf-8')
+                ->setOption('enable-local-file-access', true);
+
+            return $pdf->download($fileName);
+        } catch (\Throwable $e) {
+            Log::warning('PDF productos vendidos dashboard (Snappy): '.$e->getMessage(), [
+                'exception' => $e,
+            ]);
+
+            return response()
+                ->view('pages.dashboard.products-sold-pdf', [
+                    'rows' => $rows,
+                    'startDate' => $startDate,
+                    'endDate' => $endDate,
+                    'totalQty' => $totalQty,
+                    'totalAmount' => $totalAmount,
+                    'pdfGenerationFailed' => true,
+                ], 200)
+                ->header('X-Pdf-Error', '1');
+        }
+    }
+
+    /**
+     * @return Collection<int, \App\Models\SalesMovement>
+     */
+    private function salesMovementsForProductsSold(Carbon $startDate, Carbon $endDate, $branchId, $cashRegisterId): Collection
+    {
+        return \App\Models\SalesMovement::query()
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->when($cashRegisterId, fn ($q) => $q->whereExists(function ($sub) use ($cashRegisterId) {
+                $sub->selectRaw('1')
+                    ->from('movements as m')
+                    ->join('cash_movements as cm', 'cm.movement_id', '=', 'm.id')
+                    ->whereColumn('m.parent_movement_id', 'sales_movements.movement_id')
+                    ->where('cm.cash_register_id', $cashRegisterId)
+                    ->whereNull('cm.deleted_at');
+            }))
+            ->with(['details' => function ($q) {
+                $q->where('status', '!=', 'C');
+            }])
+            ->get();
     }
 }

@@ -260,6 +260,8 @@ Route::middleware('auth')->group(function () {
 
     // Dashboard pages
     Route::get('/', [\App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard/productos-vendidos/pdf', [\App\Http\Controllers\DashboardController::class, 'productsSoldPdf'])
+        ->name('dashboard.productsSoldPdf');
 
     // calender pages
     Route::get('/calendar', function () {
