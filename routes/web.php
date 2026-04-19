@@ -457,6 +457,8 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/caja/turno-caja/{shiftCash}/print', [ShiftCashController::class, 'print'])
         ->name('shift-cash.print');
+    Route::get('/caja/turno-caja/{shiftCash}/ventas-productos', [ShiftCashController::class, 'productsSold'])
+        ->name('shift-cash.products-sold');
 
     //tasa de impuesto
     Route::resource('/admin/herramientas/tasas-impuesto', TaxRateController::class)
