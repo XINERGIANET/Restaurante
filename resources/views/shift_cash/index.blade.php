@@ -276,24 +276,25 @@
 
                                 {{-- 6. ACCIONES --}}
                                 <td class="px-5 py-4 text-right">
+                                    @php
+                                        $productsSoldUrl = route('shift-cash.products-sold', $shift) . ($viewId ? '?view_id=' . urlencode($viewId) : '');
+                                        $pdfTitle = $shift->cashMovementEnd ? 'PDF cierre de caja' : 'PDF del turno (en curso hasta ahora)';
+                                    @endphp
                                     <div class="flex justify-end gap-2">
                                         @if($rowOperations->isNotEmpty())
                                             @foreach ($rowOperations as $op)
                                                 @php $url = $resolveActionUrl($op->action, $shift, $op); @endphp
                                                 @if ($op->action == 'shift-cash.print')
-                                                    {{-- Botón de imprimir solo si el turno ya tiene movimiento de cierre --}}
-                                                    @if ($shift->cashMovementEnd)
-                                                        <x-ui.button
-                                                            size="icon"
-                                                            type="button"
-                                                            @click="$dispatch('open-shift-cash-modal', { shiftId: {{ $shift->id }} })"
-                                                            style="background-color: {{ $op->color }}; color: white;"
-                                                            className="rounded-lg"
-                                                            title="Imprimir cierre de caja"
-                                                        >
-                                                            <i class="{{ $op->icon }}"></i>
-                                                        </x-ui.button>
-                                                    @endif
+                                                    <x-ui.button
+                                                        size="icon"
+                                                        type="button"
+                                                        @click="$dispatch('open-shift-cash-modal', { shiftId: {{ $shift->id }} })"
+                                                        style="background-color: {{ $op->color }}; color: white;"
+                                                        className="rounded-lg"
+                                                        title="{{ $pdfTitle }}"
+                                                    >
+                                                        <i class="{{ $op->icon }}"></i>
+                                                    </x-ui.button>
                                                 @else
                                                     <x-ui.button
                                                         size="icon"
@@ -306,8 +307,16 @@
                                                     </x-ui.button>
                                                 @endif
                                             @endforeach
-                                        
                                         @endif
+                                        <a
+                                            href="{{ $productsSoldUrl }}"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            class="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-slate-800 text-white shadow-theme-xs transition hover:bg-slate-900 dark:bg-slate-600 dark:hover:bg-slate-500"
+                                            title="Ventas por producto (este turno)"
+                                        >
+                                            <i class="ri-price-tag-3-line text-lg"></i>
+                                        </a>
                                     </div>
                                 </td>
                             </tr>
@@ -394,8 +403,8 @@
                     <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                         <div class="flex items-center gap-4">
                             <div>
-                                <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Imprimir PDF de cierre de caja</h3>
-                                <p class="mt-1 text-sm text-gray-500">Elige informacion para el PDF.</p>
+                                <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Imprimir PDF del turno de caja</h3>
+                                <p class="mt-1 text-sm text-gray-500">Turno cerrado o en curso: en curso incluye movimientos hasta ahora. Elige las secciones del PDF.</p>
                             </div>
                         </div>
                     </div>

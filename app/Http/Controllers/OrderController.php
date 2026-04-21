@@ -17,6 +17,8 @@ use App\Models\MovementType;
 use App\Models\Operation;
 use App\Models\OrderMovement;
 use App\Models\OrderMovementDetail;
+use App\Models\OrderPaymentSplit;
+use App\Models\OrderPaymentSplitDetail;
 use App\Models\PaymentConcept;
 use App\Models\PaymentGateways;
 use App\Models\PaymentMethod;
@@ -36,6 +38,7 @@ use App\Models\Table;
 use App\Models\Unit;
 use App\Models\User;
 use App\Services\ApisunatService;
+use App\Services\OrderPaymentSplitService;
 use App\Services\KardexSyncService;
 use App\Services\ThermalNetworkPrintService;
 use App\Support\InsensitiveSearch;
@@ -186,6 +189,147 @@ class OrderController extends Controller
         $disposable = (float) ($orderMovement->takeaway_disposable_amount ?? 0);
 
         return round($base + $deliveryFee + $disposable, 2);
+    }
+
+    private function splitAccountViewData(?OrderMovement $pendingOrder): array
+    {
+        $enabled = (bool) config('orders.split_account_enabled', true);
+        $branchId = (int) (session('branch_id') ?? 0);
+        $splitBranchIds = config('orders.split_account_branch_ids', []);
+        if (is_array($splitBranchIds) && count($splitBranchIds) > 0 && ! in_array($branchId, $splitBranchIds, true)) {
+            $enabled = false;
+        }
+        if (! $pendingOrder || ! $enabled) {
+            return [
+                'split_account_enabled' => $enabled,
+                'pending_split_remaining_total' => null,
+                'pending_split_mode' => null,
+                'split_locked_to_amount' => false,
+                'pending_split_lines' => [],
+            ];
+        }
+
+        $pendingOrder->loadMissing('details');
+        $svc = app(OrderPaymentSplitService::class);
+        $remaining = $svc->remainingOrderTotal($pendingOrder);
+        $billed = $svc->billedQuantityByDetailId($pendingOrder);
+        $lines = $pendingOrder->details
+            ->filter(fn ($d) => ($d->status ?? 'A') !== 'C')
+            ->map(function ($d) use ($billed) {
+                $qty = (float) $d->quantity;
+                $courtesy = max(0, min((float) ($d->courtesy_quantity ?? 0), $qty));
+                $billable = max(0, $qty - $courtesy);
+                $already = (float) ($billed[$d->id] ?? 0);
+                $remQty = max(0, $billable - $already);
+                $unitGross = $billable > 0 ? ((float) ($d->amount ?? 0)) / $billable : 0;
+
+                return [
+                    'detail_id' => $d->id,
+                    'description' => $d->description ?? '',
+                    'remaining_qty' => round($remQty, 6),
+                    'unit_amount' => round($unitGross, 6),
+                    'line_remaining_total' => round($unitGross * $remQty, 2),
+                ];
+            })
+            ->values()
+            ->filter(fn ($r) => (float) ($r['remaining_qty'] ?? 0) > 0.000001)
+            ->values()
+            ->all();
+
+        return [
+            'split_account_enabled' => true,
+            'pending_split_remaining_total' => round($remaining, 2),
+            'pending_split_mode' => $pendingOrder->split_mode,
+            'split_locked_to_amount' => (bool) $pendingOrder->split_locked_to_amount,
+            'pending_split_lines' => $lines,
+        ];
+    }
+
+    /**
+     * Ítems para el POS (resumen / cobro): cantidades e importes pendientes tras cobros parciales por división de cuenta.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function mapOrderDetailsToPendingPosItems(OrderMovement $orderMovement): array
+    {
+        $orderMovement->loadMissing('details');
+        /** @var OrderPaymentSplitService $splitSvc */
+        $splitSvc = app(OrderPaymentSplitService::class);
+        $billed = $splitSvc->billedQuantityByDetailId($orderMovement);
+
+        return ($orderMovement->details ?? collect())
+            ->filter(fn ($d) => ($d->status ?? 'A') !== 'C')
+            ->map(function ($d) use ($billed) {
+                $qty = (float) ($d->quantity ?? 0);
+                $courtesyQty = max(0, min((float) ($d->courtesy_quantity ?? 0), $qty));
+                $billableQty = max(0, $qty - $courtesyQty);
+                $alreadyBilled = (float) ($billed[$d->id] ?? 0);
+                $remBillable = max(0, round($billableQty - $alreadyBilled, 6));
+                if ($remBillable <= 0.000001) {
+                    return null;
+                }
+
+                $amount = (float) ($d->amount ?? 0);
+                $paidQty = max(0, $qty - $courtesyQty);
+                $price = ($paidQty > 0)
+                    ? ($amount / $paidQty)
+                    : 0;
+
+                $rawComment = trim((string) ($d->comment ?? ''));
+                $note = $rawComment;
+                if ($note !== '' && preg_match('/^\d{2}:\d{2}\s*-\s*/', $note) === 1) {
+                    $note = preg_replace('/^\d{2}:\d{2}(?:\s*[ap]\.?m\.?)?\s*-\s*/i', '', $note);
+                    $note = trim($note);
+                }
+                $commandTime = $d->commanded_at
+                    ? $d->commanded_at->format('H:i')
+                    : ($d->created_at ? $d->created_at->format('H:i') : null);
+                $status = $d->status ?? 'A';
+                $takeawayQtyFull = max(0, min((float) ($d->takeaway_quantity ?? 0), $qty));
+
+                if ($alreadyBilled <= 0.000001) {
+                    return [
+                        'pId' => (int) ($d->product_id ?? 0),
+                        'name' => $d->description ?? '',
+                        'qty' => $qty,
+                        'price' => round($price, 6),
+                        'tax_rate' => 10,
+                        'priceManual' => true,
+                        'note' => $note,
+                        'commandTime' => $commandTime,
+                        'delivered' => $status === 'E',
+                        'courtesyQty' => $courtesyQty,
+                        'takeawayQty' => $takeawayQtyFull,
+                        'complements' => collect($d->complements ?? [])->map(fn ($item) => trim((string) $item))->filter()->values()->all(),
+                    ];
+                }
+
+                $unitBillable = $billableQty > 0 ? ($amount / $billableQty) : 0;
+                $scaledAmount = round($unitBillable * $remBillable, 2);
+                $qtyOut = $remBillable;
+                $priceOut = $remBillable > 0 ? ($scaledAmount / $remBillable) : 0;
+                $takeawayScaled = $billableQty > 0
+                    ? max(0, min(round($takeawayQtyFull * ($remBillable / $billableQty), 6), $remBillable))
+                    : 0;
+
+                return [
+                    'pId' => (int) ($d->product_id ?? 0),
+                    'name' => $d->description ?? '',
+                    'qty' => $qtyOut,
+                    'price' => round($priceOut, 6),
+                    'tax_rate' => 10,
+                    'priceManual' => true,
+                    'note' => $note,
+                    'commandTime' => $commandTime,
+                    'delivered' => $status === 'E',
+                    'courtesyQty' => 0,
+                    'takeawayQty' => $takeawayScaled,
+                    'complements' => collect($d->complements ?? [])->map(fn ($item) => trim((string) $item))->filter()->values()->all(),
+                ];
+            })
+            ->filter()
+            ->values()
+            ->all();
     }
 
     public function validateWaiterPin(Request $request)
@@ -985,47 +1129,9 @@ class OrderController extends Controller
         $pendingClientId = $pendingOrder?->movement?->person_id;
         $pendingClientName = $pendingOrder?->movement?->person_name;
 
-        // Solo detalles activos (no cancelados). Mismo producto se agrupa (x5, etc.). Entregado = estado 'E'.
+        // Solo detalles activos con cantidad pendiente de cobro (resta divisiones de cuenta ya cobradas).
         $pendingItemsRaw = $pendingOrder
-            ? ($pendingOrder->details ?? collect())
-            ->filter(fn($d) => ($d->status ?? 'A') !== 'C')
-            ->map(function ($d) {
-                $qty = (float) ($d->quantity ?? 0);
-                $courtesyQty = (float) ($d->courtesy_quantity ?? 0);
-                $amount = (float) ($d->amount ?? 0);
-                // Precio efectivo por unidad pagada (opcional, solo para mostrar)
-                $paidQty = max(0, $qty - $courtesyQty);
-                $price = ($paidQty > 0)
-                    ? ($amount / $paidQty)
-                    : 0;
-                $rawComment = trim((string) ($d->comment ?? ''));
-                $note = $rawComment;
-                if ($note !== '' && preg_match('/^\d{2}:\d{2}\s*-\s*/', $note) === 1) {
-                    $note = preg_replace('/^\d{2}:\d{2}(?:\s*[ap]\.?m\.?)?\s*-\s*/i', '', $note);
-                    $note = trim($note);
-                }
-                $commandTime = $d->commanded_at
-                    ? $d->commanded_at->format('H:i')
-                    : ($d->created_at ? $d->created_at->format('H:i') : null);
-                $status = $d->status ?? 'A';
-                $takeawayQty = (float) ($d->takeaway_quantity ?? 0);
-                $takeawayQty = max(0, min($takeawayQty, $qty));
-
-                return [
-                    'pId' => (int) ($d->product_id ?? 0),
-                    'name' => $d->description ?? '',
-                    'qty' => $qty,
-                    'price' => round($price, 6),
-                    'tax_rate' => 10,
-                    'priceManual' => true,
-                    'note' => $note,
-                    'commandTime' => $commandTime,
-                    'delivered' => $status === 'E',
-                    'courtesyQty' => $courtesyQty,
-                    'takeawayQty' => $takeawayQty,
-                    'complements' => collect($d->complements ?? [])->map(fn($item) => trim((string) $item))->filter()->values()->all(),
-                ];
-            })->values()->all()
+            ? $this->mapOrderDetailsToPendingPosItems($pendingOrder)
             : [];
 
         // Agrupar mismo producto en un solo ítem (ej. PB x5 + PB x1 → PB x6)
@@ -1156,7 +1262,7 @@ class OrderController extends Controller
 
         $viewIdForPos = $request->query('view_id');
         $recipeStockData = $this->buildRecipeStockData($branchId, $branch?->company_id);
-        $response = response()->view('orders.create', [
+        $response = response()->view('orders.create', array_merge([
             'user' => $user,
             'person' => $person,
             'profile' => $profile,
@@ -1205,7 +1311,7 @@ class OrderController extends Controller
             'allowZeroStockSales' => (bool) ($branch?->allow_zero_stock_sales ?? true),
             'recipeStockData' => $recipeStockData,
             'afterPaymentIndexUrl' => route('orders.index', $viewIdForPos ? ['view_id' => $viewIdForPos] : []),
-        ]);
+        ], $this->splitAccountViewData($pendingOrder)));
         $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
         $response->headers->set('Pragma', 'no-cache');
 
@@ -1367,44 +1473,7 @@ class OrderController extends Controller
         $pendingClientName = $pendingOrder?->movement?->person_name;
 
         $pendingItemsRaw = $pendingOrder
-            ? ($pendingOrder->details ?? collect())
-            ->filter(fn ($d) => ($d->status ?? 'A') !== 'C')
-            ->map(function ($d) {
-                $qty = (float) ($d->quantity ?? 0);
-                $courtesyQty = (float) ($d->courtesy_quantity ?? 0);
-                $amount = (float) ($d->amount ?? 0);
-                $paidQty = max(0, $qty - $courtesyQty);
-                $price = ($paidQty > 0)
-                    ? ($amount / $paidQty)
-                    : 0;
-                $rawComment = trim((string) ($d->comment ?? ''));
-                $note = $rawComment;
-                if ($note !== '' && preg_match('/^\d{2}:\d{2}\s*-\s*/', $note) === 1) {
-                    $note = preg_replace('/^\d{2}:\d{2}(?:\s*[ap]\.?m\.?)?\s*-\s*/i', '', $note);
-                    $note = trim($note);
-                }
-                $commandTime = $d->commanded_at
-                    ? $d->commanded_at->format('H:i')
-                    : ($d->created_at ? $d->created_at->format('H:i') : null);
-                $status = $d->status ?? 'A';
-                $takeawayQty = (float) ($d->takeaway_quantity ?? 0);
-                $takeawayQty = max(0, min($takeawayQty, $qty));
-
-                return [
-                    'pId' => (int) ($d->product_id ?? 0),
-                    'name' => $d->description ?? '',
-                    'qty' => $qty,
-                    'price' => round($price, 6),
-                    'tax_rate' => 10,
-                    'priceManual' => true,
-                    'note' => $note,
-                    'commandTime' => $commandTime,
-                    'delivered' => $status === 'E',
-                    'courtesyQty' => $courtesyQty,
-                    'takeawayQty' => $takeawayQty,
-                    'complements' => collect($d->complements ?? [])->map(fn ($item) => trim((string) $item))->filter()->values()->all(),
-                ];
-            })->values()->all()
+            ? $this->mapOrderDetailsToPendingPosItems($pendingOrder)
             : [];
 
         $pendingItems = collect($pendingItemsRaw)->groupBy(function ($item) {
@@ -1536,7 +1605,7 @@ class OrderController extends Controller
         $posStorageKey = 'counter-b'.$branchId.'-u'.(int) $userId;
         $recipeStockData = $this->buildRecipeStockData($branchId, $branch?->company_id);
 
-        $response = response()->view('orders.create', [
+        $response = response()->view('orders.create', array_merge([
             'user' => $user,
             'person' => $person,
             'profile' => $profile,
@@ -1588,7 +1657,7 @@ class OrderController extends Controller
             'posStorageKey' => $posStorageKey,
             'afterPaymentIndexUrl' => $salesIndexUrl,
             'viewId' => $viewId,
-        ]);
+        ], $this->splitAccountViewData($pendingOrder)));
         $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
         $response->headers->set('Pragma', 'no-cache');
 
@@ -1702,6 +1771,7 @@ class OrderController extends Controller
                     'tax' => round($omTax, 2),
                     'total' => round($omTotal, 2),
                 ];
+                $draftOrder = array_merge($draftOrder, $this->splitAccountViewData($om));
             }
             // Venta: SalesMovement + detalles
             if (! $draftOrder && $movement && $movement->salesMovement) {
@@ -2816,10 +2886,96 @@ class OrderController extends Controller
                 ->first();
         }
 
-        $cashEntryMovement = null;
-        if ($orderMovement) {
+        if (! $orderMovement) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No se encontró un pedido pendiente para esta mesa. Guarda el pedido antes de cobrar.',
+            ], 404);
+        }
+
+        $splitPayload = $request->input('split');
+        if (is_array($splitPayload) && ! empty($splitPayload['mode'])) {
+            $splitBranchIds = config('orders.split_account_branch_ids', []);
+            if (is_array($splitBranchIds) && count($splitBranchIds) > 0 && ! in_array($branchId, $splitBranchIds, true)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'La división de cuenta no está habilitada para esta sucursal.',
+                ], 422);
+            }
+            if (! (bool) config('orders.split_account_enabled', true)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'La división de cuenta no está habilitada para esta instalación.',
+                ], 422);
+            }
+            if (! in_array((string) ($orderMovement->status ?? ''), ['PENDIENTE', 'P'], true)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'El pedido no está pendiente de cobro.',
+                ], 422);
+            }
             DB::beginTransaction();
             try {
+                $splitResult = $this->processOrderPaymentSplit(
+                    $request,
+                    $orderMovement,
+                    $branchId,
+                    $branch,
+                    $user,
+                    $clientPerson,
+                    $clientName,
+                    $clientNameFromRequest,
+                    $clientPersonId,
+                    $paymentMethods,
+                    $cashRegisterId,
+                    $detailMode,
+                    $detailGlosa
+                );
+                DB::commit();
+                $orderPaymentSplit = $splitResult['order_payment_split'];
+                $saleMovement = $splitResult['sale_movement'];
+                $electronicInvoice = $this->syncElectronicInvoiceForSale($saleMovement, app(ApisunatService::class));
+                if ($orderPaymentSplit) {
+                    $orderPaymentSplit->electronic_invoice_status = $electronicInvoice['status'] ?? null;
+                    $orderPaymentSplit->save();
+                }
+                $thermalPrinterAvailable = PrinterBranch::query()
+                    ->where('branch_id', $branchId)
+                    ->where('status', 'E')
+                    ->whereNotNull('ip')
+                    ->where('ip', '!=', '')
+                    ->exists();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Cobro parcial (división) procesado correctamente',
+                    'movement_id' => $orderMovement->movement_id,
+                    'order_movement_id' => $orderMovement->id,
+                    'split_sale_movement_id' => $saleMovement->id,
+                    'cash_movement_id' => $splitResult['cash_entry_movement_id'] ?? null,
+                    'electronic_invoice' => $electronicInvoice,
+                    'split_remaining_total' => $splitResult['remaining_after_total'],
+                    'order_closed' => $splitResult['order_closed'],
+                    'client_on_local_network' => LocalNetworkClient::isOnLocalNetwork($request),
+                    'thermal_printer_available' => $thermalPrinterAvailable,
+                ]);
+            } catch (\Throwable $e) {
+                DB::rollBack();
+                Log::error('Error al procesar cobro dividido de pedido', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                ], $e instanceof \InvalidArgumentException ? 422 : 500);
+            }
+        }
+
+        $cashEntryMovement = null;
+        DB::beginTransaction();
+        try {
                 $orderMovement->status = 'FINALIZADO';
                 $orderMovement->finished_at = now();
                 $orderMovement->save();
@@ -3150,12 +3306,394 @@ class OrderController extends Controller
                     'message' => $e->getMessage(),
                 ], $e instanceof \InvalidArgumentException ? 422 : 500);
             }
+    }
+
+    /**
+     * @return array{
+     *   order_payment_split: OrderPaymentSplit,
+     *   sale_movement: Movement,
+     *   cash_entry_movement_id: int|null,
+     *   remaining_after_total: float,
+     *   order_closed: bool
+     * }
+     */
+    private function processOrderPaymentSplit(
+        Request $request,
+        OrderMovement $orderMovement,
+        ?int $branchId,
+        ?Branch $branch,
+        $user,
+        ?Person $clientPerson,
+        ?string $clientName,
+        ?string $clientNameFromRequest,
+        $clientPersonId,
+        $paymentMethods,
+        int $cashRegisterId,
+        string $detailMode,
+        string $detailGlosa
+    ): array {
+        $branchId = (int) $branchId;
+        $orderMovement = OrderMovement::with(['movement', 'details' => function ($q) {
+            $q->with('taxRate');
+        }])
+            ->where('id', $orderMovement->id)
+            ->lockForUpdate()
+            ->firstOrFail();
+
+        $splitPayload = $request->input('split', []);
+        $mode = strtolower(trim((string) ($splitPayload['mode'] ?? '')));
+        if (! in_array($mode, ['products', 'amount'], true)) {
+            throw new \InvalidArgumentException('Modo de división inválido (use products o amount).');
         }
 
-        return response()->json([
-            'success' => false,
-            'message' => 'No se encontró un pedido pendiente para esta mesa. Guarda el pedido antes de cobrar.',
-        ], 404);
+        if ($orderMovement->split_locked_to_amount && $mode !== 'amount') {
+            throw new \InvalidArgumentException('Este pedido ya inició división por monto; solo puede continuar en ese modo.');
+        }
+        if ((string) ($orderMovement->split_mode ?? '') === 'amount' && $mode !== 'amount') {
+            throw new \InvalidArgumentException('Este pedido solo permite división por monto en las siguientes partes.');
+        }
+
+        /** @var OrderPaymentSplitService $splitService */
+        $splitService = app(OrderPaymentSplitService::class);
+
+        if ($mode === 'products') {
+            $items = $splitPayload['items'] ?? $splitPayload['selection'] ?? [];
+            if (! is_array($items)) {
+                $items = [];
+            }
+            $draft = $splitService->buildProductSplit($orderMovement, $items);
+        } else {
+            $amount = (float) ($splitPayload['amount'] ?? 0);
+            $draft = $splitService->buildAmountSplit($orderMovement, $amount);
+        }
+
+        $remaining = $splitService->remainingOrderTotal($orderMovement);
+        if ($draft['total'] > $remaining + 0.02) {
+            throw new \InvalidArgumentException('El importe a cobrar excede el pendiente del pedido.');
+        }
+
+        if ($paymentMethods->isEmpty()) {
+            throw new \InvalidArgumentException('Debe indicar al menos un método de pago.');
+        }
+        $pmTotal = round((float) $paymentMethods->sum(fn ($r) => (float) ($r['amount'] ?? 0)), 2);
+        if (abs($pmTotal - $draft['total']) > 0.02) {
+            throw new \InvalidArgumentException('La suma de métodos de pago debe coincidir con el total de la parte a cobrar.');
+        }
+
+        $requestDocumentTypeId = $request->input('document_type_id');
+        $defaultDocumentTypeId = effective_default_sale_document_type_id($branchId, [2]);
+        $resolvedDocumentTypeId = ($requestDocumentTypeId && DocumentType::where('id', $requestDocumentTypeId)->exists())
+            ? (int) $requestDocumentTypeId
+            : $defaultDocumentTypeId;
+        $resolvedDocumentType = $resolvedDocumentTypeId
+            ? DocumentType::find((int) $resolvedDocumentTypeId)
+            : null;
+        if (! $resolvedDocumentTypeId || ! $resolvedDocumentType) {
+            throw new \InvalidArgumentException('Seleccione un tipo de comprobante válido para emitir la parte cobrada.');
+        }
+
+        if (! $clientPerson && $clientNameFromRequest) {
+            $clientPerson = $this->resolveOrCreateClientPerson(
+                $branchId ?: null,
+                $branch,
+                $clientPersonId ? (int) $clientPersonId : null,
+                $clientNameFromRequest
+            );
+            if ($clientPerson) {
+                $clientName = trim(($clientPerson->first_name ?? '') . ' ' . ($clientPerson->last_name ?? ''));
+            }
+        }
+
+        $validationMessage = $this->validateCustomerForDocumentType(
+            $resolvedDocumentType,
+            $clientPerson,
+            (float) $draft['total']
+        );
+        if ($validationMessage) {
+            throw new \InvalidArgumentException($validationMessage);
+        }
+
+        $salesMovementType = MovementType::where('description', 'like', '%venta%')
+            ->orWhere('description', 'like', '%sale%')
+            ->orWhere('description', 'like', '%Venta%')
+            ->first();
+        if (! $salesMovementType) {
+            $salesMovementType = MovementType::query()->orderBy('id')->first();
+        }
+        if (! $salesMovementType) {
+            throw new \Exception('No se encontró tipo de movimiento de venta.');
+        }
+
+        $number = $this->generateSaleNumberForSplit((int) $resolvedDocumentTypeId, $cashRegisterId);
+
+        $branch = $branch ?: Branch::find($branchId);
+        if (! $branch) {
+            throw new \Exception('Sucursal no encontrada.');
+        }
+
+        $splitSaleMovement = Movement::create([
+            'number' => $number,
+            'moved_at' => now(),
+            'user_id' => $user?->id,
+            'user_name' => $user?->name ?? 'Sistema',
+            'person_id' => $clientPerson?->id,
+            'person_name' => $clientName ?: 'Publico General',
+            'responsible_id' => $user?->id,
+            'responsible_name' => $user?->person ? trim(($user->person->first_name ?? '') . ' ' . ($user->person->last_name ?? '')) : ($user?->name ?? 'Sistema'),
+            'comment' => 'Venta parcial (división de pedido) ' . ($orderMovement->movement?->number ?? ''),
+            'status' => 'A',
+            'movement_type_id' => $salesMovementType->id,
+            'document_type_id' => (int) $resolvedDocumentTypeId,
+            'branch_id' => $branchId,
+            'parent_movement_id' => $orderMovement->movement_id,
+        ]);
+
+        $cashRegister = CashRegister::find($cashRegisterId);
+        $activeSeries = $cashRegister?->series ?? '001';
+
+        $salesMovement = SalesMovement::create([
+            'branch_snapshot' => [
+                'id' => $branch->id,
+                'legal_name' => $branch->legal_name,
+            ],
+            'series' => $activeSeries,
+            'year' => now()->year,
+            'detail_type' => 'DETALLADO',
+            'consumption' => 'N',
+            'payment_type' => 'CONTADO',
+            'status' => 'N',
+            'sale_type' => 'MINORISTA',
+            'currency' => 'PEN',
+            'exchange_rate' => 1.0,
+            'subtotal' => $draft['subtotal'],
+            'tax' => $draft['tax'],
+            'total' => $draft['total'],
+            'movement_id' => $splitSaleMovement->id,
+            'branch_id' => $branchId,
+        ]);
+
+        foreach ($draft['lines'] as $line) {
+            /** @var OrderMovementDetail $d */
+            $d = $line['detail'];
+            SalesMovementDetail::create([
+                'detail_type' => 'DETAILED',
+                'sales_movement_id' => $salesMovement->id,
+                'code' => $d->code,
+                'description' => $d->description,
+                'product_id' => $d->product_id,
+                'product_snapshot' => $d->product_snapshot,
+                'unit_id' => $d->unit_id,
+                'tax_rate_id' => $d->tax_rate_id,
+                'tax_rate_snapshot' => $d->tax_rate_snapshot,
+                'quantity' => $line['quantity'],
+                'courtesy_quantity' => 0,
+                'amount' => $line['amount'],
+                'discount_percentage' => 0,
+                'original_amount' => $line['line_subtotal'],
+                'comment' => $d->comment,
+                'complements' => $d->complements ?? [],
+                'status' => 'A',
+                'branch_id' => $branchId,
+            ]);
+        }
+
+        $paymentConcept = $this->resolveOrderPaymentConcept();
+        $cashMovementTypeId = $this->resolveCashMovementTypeId();
+        $cashDocumentTypeId = $this->resolveCashIncomeDocumentTypeId($cashMovementTypeId);
+        $shift = Shift::where('branch_id', $branchId)->first() ?? Shift::first();
+        if (! $shift) {
+            throw new \Exception('No hay turno disponible para registrar el cobro.');
+        }
+
+        $cashEntryMovement = Movement::create([
+            'number' => $this->generateCashMovementNumber($branchId, (int) $cashRegisterId, (int) $paymentConcept->id),
+            'moved_at' => now(),
+            'user_id' => $user?->id,
+            'user_name' => $user?->name ?? 'Sistema',
+            'person_id' => $splitSaleMovement->person_id,
+            'person_name' => $splitSaleMovement->person_name ?? 'Publico General',
+            'responsible_id' => $user?->id,
+            'responsible_name' => $user?->person ? trim(($user->person->first_name ?? '') . ' ' . ($user->person->last_name ?? '')) : ($user?->name ?? 'Sistema'),
+            'comment' => 'Cobro parcial pedido ' . ($orderMovement->movement?->number ?? ''),
+            'status' => '1',
+            'movement_type_id' => $cashMovementTypeId,
+            'document_type_id' => $cashDocumentTypeId,
+            'branch_id' => $branchId,
+            'parent_movement_id' => $orderMovement->movement_id,
+        ]);
+
+        $cashMovement = CashMovements::create([
+            'payment_concept_id' => $paymentConcept->id,
+            'currency' => 'PEN',
+            'exchange_rate' => 1.000,
+            'total' => $draft['total'],
+            'cash_register_id' => $cashRegisterId,
+            'cash_register' => $cashRegister?->number ?? 'Caja Principal',
+            'shift_id' => $shift->id,
+            'shift_snapshot' => [
+                'name' => $shift->name,
+                'start_time' => $shift->start_time,
+                'end_time' => $shift->end_time,
+            ],
+            'movement_id' => $cashEntryMovement->id,
+            'branch_id' => $branchId,
+        ]);
+
+        foreach ($paymentMethods as $paymentMethodData) {
+            $paymentMethod = PaymentMethod::findOrFail((int) ($paymentMethodData['payment_method_id'] ?? 0));
+            $paymentGateway = ! empty($paymentMethodData['payment_gateway_id'])
+                ? PaymentGateways::find((int) $paymentMethodData['payment_gateway_id'])
+                : null;
+            $card = ! empty($paymentMethodData['card_id'])
+                ? Card::find((int) $paymentMethodData['card_id'])
+                : null;
+            $digitalWallet = ! empty($paymentMethodData['digital_wallet_id'])
+                ? DigitalWallet::find((int) $paymentMethodData['digital_wallet_id'])
+                : null;
+            $bank = ! empty($paymentMethodData['bank_id'])
+                ? Bank::find((int) $paymentMethodData['bank_id'])
+                : null;
+
+            DB::table('cash_movement_details')->insert([
+                'cash_movement_id' => $cashMovement->id,
+                'type' => 'PAGADO',
+                'paid_at' => now(),
+                'payment_method_id' => $paymentMethod->id,
+                'payment_method' => $paymentMethod->description ?? '',
+                'number' => $cashEntryMovement->number,
+                'card_id' => $card?->id,
+                'card' => $card?->description,
+                'bank_id' => $bank?->id,
+                'bank' => $bank?->description ?? '',
+                'digital_wallet_id' => $digitalWallet?->id,
+                'digital_wallet' => $digitalWallet?->description,
+                'payment_gateway_id' => $paymentGateway?->id,
+                'payment_gateway' => $paymentGateway?->description,
+                'amount' => (float) ($paymentMethodData['amount'] ?? 0),
+                'comment' => $request->input('notes') ?: 'Cobro parcial (división) ' . ($orderMovement->movement?->number ?? ''),
+                'status' => 'A',
+                'branch_id' => $branchId,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        $nextSeq = (int) (OrderPaymentSplit::where('order_movement_id', $orderMovement->id)->max('sequence') ?? 0) + 1;
+
+        $orderPaymentSplit = OrderPaymentSplit::create([
+            'order_movement_id' => $orderMovement->id,
+            'sequence' => $nextSeq,
+            'mode' => $mode,
+            'subtotal' => $draft['subtotal'],
+            'tax' => $draft['tax'],
+            'total' => $draft['total'],
+            'status' => 'COMPLETED',
+            'movement_id' => $splitSaleMovement->id,
+            'electronic_invoice_status' => null,
+        ]);
+
+        foreach ($draft['lines'] as $line) {
+            OrderPaymentSplitDetail::create([
+                'order_payment_split_id' => $orderPaymentSplit->id,
+                'order_movement_detail_id' => $line['order_movement_detail_id'],
+                'quantity' => $line['quantity'],
+                'amount' => $line['amount'],
+                'tax_rate_snapshot' => $line['tax_rate_snapshot'],
+                'product_snapshot' => $line['product_snapshot'],
+            ]);
+        }
+
+        if ($mode === 'amount') {
+            $orderMovement->split_mode = 'amount';
+            $orderMovement->split_locked_to_amount = true;
+        } elseif (! $orderMovement->split_mode) {
+            $orderMovement->split_mode = 'products';
+        }
+        $orderMovement->save();
+
+        $remainingAfter = $splitService->remainingOrderTotal($orderMovement->fresh());
+        $orderClosed = false;
+        if ($remainingAfter <= 0.02) {
+            $orderMovement->status = 'FINALIZADO';
+            $orderMovement->finished_at = now();
+            $orderMovement->save();
+            $tableIdToFree = $request->input('table_id') ?? $orderMovement->table_id;
+            if ($tableIdToFree) {
+                Table::where('id', $tableIdToFree)->update([
+                    'situation' => 'libre',
+                    'opened_at' => null,
+                ]);
+            }
+            $orderClosed = true;
+        }
+
+        return [
+            'order_payment_split' => $orderPaymentSplit,
+            'sale_movement' => $splitSaleMovement->fresh(),
+            'cash_entry_movement_id' => $cashEntryMovement->id,
+            'remaining_after_total' => round($remainingAfter, 2),
+            'order_closed' => $orderClosed,
+        ];
+    }
+
+    /**
+     * Correlativo de venta por tipo de documento y caja (misma lógica que ventas).
+     */
+    private function generateSaleNumberForSplit(int $documentTypeId, int $cashRegisterId): string
+    {
+        $documentType = DocumentType::find($documentTypeId);
+        if (! $documentType) {
+            throw new \Exception('Tipo de documento no encontrado.');
+        }
+
+        $cashRegister = CashRegister::find($cashRegisterId);
+        if (! $cashRegister) {
+            throw new \Exception('Caja no encontrada.');
+        }
+
+        $branchId = (int) session('branch_id');
+        if (! $branchId) {
+            throw new \Exception('No se encontro sucursal en sesion.');
+        }
+
+        $year = (int) now()->year;
+
+        $query = Movement::query()
+            ->where('branch_id', $branchId)
+            ->where('document_type_id', $documentTypeId)
+            ->whereYear('moved_at', $year);
+
+        $query->lockForUpdate();
+
+        $lastCorrelative = 0;
+        $numbers = $query->pluck('number');
+
+        foreach ($numbers as $number) {
+            $raw = trim((string) $number);
+            if ($raw === '') {
+                continue;
+            }
+
+            if (preg_match('/^\d+$/', $raw) === 1) {
+                $value = (int) $raw;
+                if ($value > $lastCorrelative) {
+                    $lastCorrelative = $value;
+                }
+
+                continue;
+            }
+
+            if (preg_match('/(\d+)-\d{4}$/', $raw, $matches) === 1) {
+                $value = (int) $matches[1];
+                if ($value > $lastCorrelative) {
+                    $lastCorrelative = $value;
+                }
+            }
+        }
+
+        $nextCorrelative = $lastCorrelative + 1;
+
+        return str_pad((string) $nextCorrelative, 8, '0', STR_PAD_LEFT);
     }
 
     /**

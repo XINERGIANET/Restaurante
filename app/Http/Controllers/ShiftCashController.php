@@ -245,4 +245,38 @@ class ShiftCashController extends Controller
                 ->header('X-Pdf-Error', '1');
         }
     }
+
+    /**
+     * Consolidado de productos vendidos en el turno (ventas cobradas en caja),
+     * sin depender del kardex. Incluye turnos en curso hasta el momento actual.
+     */
+    public function productsSold(Request $request, CashShiftRelation $shiftCash)
+    {
+        $branchId = \effective_branch_id();
+        if ($branchId !== null && (int) $shiftCash->branch_id !== (int) $branchId) {
+            abort(403);
+        }
+
+        $shiftCash->load([
+            'cashMovementStart.cashRegister',
+            'branch.company',
+        ]);
+
+        $svc = app(ShiftCashClosePdfService::class);
+        $cashMovements = $svc->operationalCashMovements($shiftCash);
+        $saleMovements = $svc->collectSaleMovementsFromCash($cashMovements);
+        $productsSold = $svc->consolidateProductsSold($saleMovements);
+        $totals = $svc->sumQtyAmountRows($productsSold);
+        $window = $svc->timeWindow($shiftCash);
+        $enCurso = $shiftCash->ended_at === null;
+
+        return view('shift_cash.products_sold', [
+            'shift' => $shiftCash,
+            'productsSold' => $productsSold,
+            'totals' => $totals,
+            'window' => $window,
+            'enCurso' => $enCurso,
+            'viewId' => $request->input('view_id'),
+        ]);
+    }
 }

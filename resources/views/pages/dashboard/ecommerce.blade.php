@@ -10,10 +10,21 @@
             <div>
                 <h2 class="text-xl font-bold text-gray-800 dark:text-white">Dashboard</h2>
                 <p class="text-xs text-gray-400 mt-0.5">
-                    Mostrando datos del día:
-                    <span class="font-semibold text-gray-600 dark:text-gray-300">
-                        {{ \Carbon\Carbon::parse($dashboardData['startDate'])->format('d/m/Y') }}
-                    </span>
+                    @if($dashboardData['startDate'] === $dashboardData['endDate'])
+                        Mostrando datos del día:
+                        <span class="font-semibold text-gray-600 dark:text-gray-300">
+                            {{ \Carbon\Carbon::parse($dashboardData['startDate'])->format('d/m/Y') }}
+                        </span>
+                    @else
+                        Mostrando datos del
+                        <span class="font-semibold text-gray-600 dark:text-gray-300">
+                            {{ \Carbon\Carbon::parse($dashboardData['startDate'])->format('d/m/Y') }}
+                        </span>
+                        al
+                        <span class="font-semibold text-gray-600 dark:text-gray-300">
+                            {{ \Carbon\Carbon::parse($dashboardData['endDate'])->format('d/m/Y') }}
+                        </span>
+                    @endif
                 </p>
             </div>
 
@@ -47,6 +58,14 @@
 
         <!-- Summary Metrics -->
         <x-ecommerce.ecommerce-metrics :accounts="$dashboardData['accounts']" />
+
+        <div class="mt-6">
+            <x-ecommerce.products-sold-period
+                :productsSold="$dashboardData['productsSoldInFilter']"
+                :startDate="$dashboardData['startDate']"
+                :endDate="$dashboardData['endDate']"
+            />
+        </div>
 
         <!-- Tendencia Diaria -->
         <x-ecommerce.daily-trend :dateRange="$dashboardData['dateRange']" :dailySales="$dashboardData['dailySales']" :dailyPurchases="$dashboardData['dailyPurchases']" :dailyEntradas="$dashboardData['dailyEntradas']"

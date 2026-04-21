@@ -27,6 +27,8 @@ class OrderMovement extends Model
         'delivery_time',
         'service_type',
         'status',
+        'split_mode',
+        'split_locked_to_amount',
         'movement_id',
         'branch_id',
     ];
@@ -51,6 +53,11 @@ class OrderMovement extends Model
         return $this->belongsTo(Movement::class);
     }
 
+    public function paymentSplits()
+    {
+        return $this->hasMany(OrderPaymentSplit::class);
+    }
+
     public function branch()
     {
         return $this->belongsTo(Branch::class);
@@ -58,5 +65,6 @@ class OrderMovement extends Model
 
     protected $casts = [
         'finished_at' => 'datetime',
+        'split_locked_to_amount' => 'boolean',
     ];
 }

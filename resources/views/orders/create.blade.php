@@ -7,6 +7,7 @@
     <script>
         window.__qzSecondaryFirstPrinterNames = @json(config('qz.secondary_first_printer_names', []));
         window.__qzKitchenSkipClientQzWhenPrinterHasIp = @json((bool) config('qz.kitchen_skip_client_qz_when_printer_has_ip', true));
+        window.__qzKitchenComandaDisableClientOnTouch = @json((bool) config('qz.kitchen_comanda_disable_client_qz_on_touch_devices', true));
     </script>
     @vite(['resources/js/qz-tray-init.js'])
     <meta name="turbo-visit-control" content="reload">
@@ -143,6 +144,7 @@
                             if (t > q) it.takeawayQty = q;
                             it.priceManual = true;
                         });
+                        currentTable.cancellations = [];
                         db[activeKey] = currentTable;
                         localStorage.setItem('restaurantDB', JSON.stringify(db));
                     } else {
@@ -173,6 +175,13 @@
                     window.activeKey = activeKey;
                     window.db = db;
                     window.tableIsFree = tableIsFree;
+                    window.__splitAccount = {
+                        enabled: @json($split_account_enabled ?? false),
+                        lines: @json($pending_split_lines ?? []),
+                        remainingTotal: @json($pending_split_remaining_total),
+                        splitMode: @json($pending_split_mode),
+                        lockedToAmount: @json($split_locked_to_amount ?? false)
+                    };
                 })();
             </script>
 
@@ -436,8 +445,9 @@
                                         id="ticket-takeaway-disposable">$0.00</span>
                                 </div>
                                 <div class="border-t border-dashed border-gray-300 dark:border-gray-600 my-2"></div>
+                                <p id="ticket-split-remaining-hint" class="hidden text-[11px] text-slate-500 dark:text-slate-400 leading-snug mb-1"></p>
                                 <div class="flex justify-between items-center">
-                                    <span class="text-base sm:text-lg font-bold text-slate-800 dark:text-white">Total a
+                                    <span id="ticket-total-label" class="text-base sm:text-lg font-bold text-slate-800 dark:text-white">Total a
                                         Pagar</span>
                                     <span class="text-xl sm:text-2xl font-black text-[#FF4622] dark:text-[#FF4622]"
                                         id="ticket-total">$0.00</span>
@@ -533,25 +543,40 @@
                                             placeholder="Escribe el detalle que saldra en el comprobante">
                                     </div>
                                 </div>
+                                @if(!empty($split_account_enabled))
+                                <div class="flex flex-wrap items-center gap-2 mb-3">
+                                    <button type="button" onclick="openSplitAccountModal()"
+                                        class="inline-flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/80 px-3 py-2 text-sm font-semibold text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors shadow-sm">
+                                        <i class="ri-scissors-cut-line text-lg text-[#FF4622]"></i>
+                                        <span>Dividir cuenta</span>
+                                    </button>
+                                    <span id="split-inline-status" class="text-xs text-slate-500 dark:text-slate-400 max-w-[14rem]"></span>
+                                    <input type="checkbox" id="split-dividir-cuenta" class="hidden" aria-hidden="true">
+                                </div>
+                                @endif
                                 <div>
                                     <div class="flex items-center justify-between mb-2">
                                         <label
                                             class="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Métodos
                                             de pago</label>
-                                        <button type="button" onclick="addCobroPaymentMethod()"
+                                        <button type="button" id="cobro-btn-add-payment-method" onclick="addCobroPaymentMethod()"
                                             class="inline-flex items-center gap-1.5 rounded-lg bg-[#FF4622] px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-[#C43B25] active:scale-95 transition-colors shrink-0">
                                             <i class="ri-add-line text-sm"></i> Agregar
                                         </button>
                                     </div>
                                     <div id="cobro-payment-methods-list" class="space-y-3 max-h-48 overflow-y-auto pr-1"></div>
                                     <div
-                                        class="mt-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-100 dark:bg-gray-800/80 px-3 py-2.5">
-                                        <div class="flex justify-between items-center">
-                                            <span class="text-xs font-semibold text-gray-600 dark:text-gray-300">Total
-                                                pagado</span>
+                                        class="mt-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-100 dark:bg-gray-800/80 px-3 py-2.5 space-y-2">
+                                        <div id="cobro-order-total-row" class="hidden flex justify-between items-center gap-2 border-b border-gray-200/80 dark:border-gray-600/80 pb-2">
+                                            <span class="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Total del pedido</span>
+                                            <span class="text-xs font-semibold tabular-nums text-slate-600 dark:text-slate-300" id="cobro-order-total-display">S/ 0.00</span>
+                                        </div>
+                                        <div class="flex justify-between items-center gap-2">
+                                            <span class="text-xs font-semibold text-gray-600 dark:text-gray-300" id="cobro-total-label">Total pagado</span>
                                             <span class="text-base font-bold text-slate-800 dark:text-white tabular-nums"
                                                 id="cobro-total-paid">S/ 0.00</span>
                                         </div>
+                                        <p id="cobro-split-footnote" class="hidden text-[11px] leading-snug text-slate-500 dark:text-slate-400">Este cobro es por una parte del pedido. La mesa no se libera hasta saldar el saldo pendiente.</p>
                                     </div>
                                 </div>
                             </div>
@@ -577,11 +602,12 @@
                         </div>
                         {{-- Footer Cobro: solo Cobrar (oculto para Mozo) --}}
                         @if($canCharge ?? true)
-                            <div id="footer-cobro" class="hidden flex justify-end">
+                            <div id="footer-cobro" class="hidden flex flex-col items-end gap-1.5">
+                                <p id="cobro-split-footer-hint" class="hidden max-w-[18rem] text-right text-[10px] text-slate-500 dark:text-slate-400 leading-tight">Si queda saldo pendiente en el pedido, la mesa sigue ocupada hasta el cobro final.</p>
                                 <button type="button" onclick="processOrderPayment()"
                                     class="py-2.5 px-4 rounded-xl bg-[#FF4622] text-white font-bold text-xs sm:text-sm shadow-lg hover:bg-[#C43B25] active:scale-95 transition-all flex justify-center items-center gap-2">
                                     <i class="ri-bank-card-line text-base"></i>
-                                    <span>Cobrar</span>
+                                    <span id="footer-cobro-btn-label">Cobrar</span>
                                 </button>
                             </div>
                         @endif
@@ -589,6 +615,66 @@
                 </aside>
 
             </div>
+
+            @if(!empty($split_account_enabled))
+            <div id="split-account-modal" class="fixed inset-0 z-[110] hidden" role="dialog" aria-modal="true" aria-labelledby="split-modal-title">
+                <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-[1px]" onclick="closeSplitAccountModal()"></div>
+                <div class="absolute inset-3 sm:inset-6 md:inset-auto md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:max-w-lg md:w-full max-h-[min(92vh,540px)] flex flex-col rounded-2xl bg-white dark:bg-gray-900 shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden relative z-10">
+                    <div class="flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shrink-0">
+                        <div class="flex items-center gap-2 min-w-0">
+                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#FF4622]/10 text-[#FF4622] dark:bg-[#FF4622]/20">
+                                <i class="ri-scissors-cut-line text-xl"></i>
+                            </div>
+                            <h2 id="split-modal-title" class="text-sm font-black uppercase tracking-wide text-slate-800 dark:text-white truncate">División de cuenta</h2>
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <span id="split-remaining-badge" class="text-xs font-bold tabular-nums text-slate-600 dark:text-slate-300 whitespace-nowrap">Pendiente: S/ 0.00</span>
+                            <button type="button" onclick="closeSplitAccountModal()" class="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-gray-800" aria-label="Cerrar"><i class="ri-close-line text-xl"></i></button>
+                        </div>
+                    </div>
+                    <div class="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Elige cómo cobrar <strong>esta parte</strong>. Luego ajusta los métodos de pago para que sumen exactamente ese monto.</p>
+                        <div>
+                            <span class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Modo</span>
+                            <div class="flex rounded-xl border border-gray-200 dark:border-gray-600 p-0.5 bg-gray-100/80 dark:bg-gray-800/80">
+                                <button type="button" id="split-mode-tab-products" onclick="setSplitModeTab('products')" class="split-mode-tab flex-1 py-2.5 px-3 rounded-lg text-sm font-semibold transition-colors">Por productos</button>
+                                <button type="button" id="split-mode-tab-amount" onclick="setSplitModeTab('amount')" class="split-mode-tab flex-1 py-2.5 px-3 rounded-lg text-sm font-semibold transition-colors">Por monto</button>
+                            </div>
+                            <select id="split-mode" class="sr-only" tabindex="-1" aria-hidden="true">
+                                <option value="products">Por productos</option>
+                                <option value="amount">Por monto</option>
+                            </select>
+                        </div>
+                        <div id="split-products-wrap" class="space-y-2">
+                            <div class="max-h-52 overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-600">
+                                <table class="w-full text-xs text-slate-700 dark:text-slate-200">
+                                    <thead class="sticky top-0 z-[1] bg-slate-100/95 dark:bg-slate-800/95 backdrop-blur-sm">
+                                        <tr class="border-b border-gray-200 dark:border-gray-600">
+                                            <th class="text-left py-2 px-2 font-semibold">Producto</th>
+                                            <th class="text-center py-2 px-1 font-semibold w-14">Pend.</th>
+                                            <th class="text-right py-2 px-2 font-semibold min-w-[9rem]">Cobrar</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="split-products-tbody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div id="split-amount-wrap" class="hidden">
+                            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Monto a cobrar (S/)</label>
+                            <input type="number" step="0.01" min="0" id="split-amount-input"
+                                class="w-full py-2.5 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-slate-700 dark:text-slate-200 text-sm tabular-nums"
+                                placeholder="0.00">
+                        </div>
+                        <p id="split-hint-locked" class="hidden text-xs text-slate-600 dark:text-slate-400">Este pedido ya inició división por monto; solo puede continuar en ese modo.</p>
+                    </div>
+                    <div class="flex flex-wrap gap-2 justify-end px-4 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/95 shrink-0">
+                        <button type="button" onclick="clearSplitDivision()" class="px-4 py-2 rounded-xl text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-gray-700">Quitar división</button>
+                        <button type="button" onclick="closeSplitAccountModal()" class="px-4 py-2 rounded-xl text-sm font-semibold border border-gray-300 dark:border-gray-600 text-slate-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-gray-800">Cancelar</button>
+                        <button type="button" onclick="applySplitAccountModal()" class="px-4 py-2 rounded-xl text-sm font-bold bg-[#FF4622] text-white hover:bg-[#C43B25] shadow">Aplicar</button>
+                    </div>
+                </div>
+            </div>
+            @endif
 
             {{-- Modal para crear/editar cliente rápido --}}
             <x-ui.modal x-data="{ open: false }" @open-person-modal.window="open = true"
@@ -1553,7 +1639,20 @@
                         if (window.__qzKitchenSkipClientQzWhenPrinterHasIp === false) {
                             return false;
                         }
-                        const target = String(printerName || '').trim().toLowerCase();
+                        const rawName = String(printerName || '').trim();
+                        const target = rawName.toLowerCase();
+                        // Misma ticketera que el cobro en la 2.ª PC (BARRA2 / qz2): la comanda debe ir por QZ
+                        // en este navegador. Si en BD hay IP, el RAW desde el servidor no llega al USB/local de la PC2.
+                        if (typeof window.__qzPrinterRequiresSecondaryCertFirst === 'function') {
+                            if (window.__qzPrinterRequiresSecondaryCertFirst(rawName)) {
+                                return false;
+                            }
+                        } else {
+                            const compact = target.replace(/\s+/g, '');
+                            if (compact === 'barra2' || compact.startsWith('barra2')) {
+                                return false;
+                            }
+                        }
                         if (!target || !Array.isArray(serverProductBranches)) {
                             return false;
                         }
@@ -2236,8 +2335,21 @@
                     /**
                      * Solo en PC terminal (default BARRA2 / cert qz2): comanda vía QZ en el navegador.
                      * En PC principal (default BARRA): sin QZ en comanda (evita Allow) — solo servidor / ticketera con IP.
+                     * En celulares (sin QZ Tray): false → comanda por servidor (misma PC que Laravel o ticketera con IP en LAN).
                      */
                     function kitchenComandaAllowClientQz() {
+                        if (window.__qzKitchenComandaDisableClientOnTouch) {
+                            try {
+                                const ua = navigator.userAgent || '';
+                                const coarseMobile = /Android|webOS|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+                                const isPad = /iPad/i.test(ua) || (navigator.platform === 'MacIntel' && (navigator.maxTouchPoints || 0) > 1);
+                                if (coarseMobile && !isPad) {
+                                    return false;
+                                }
+                            } catch (e) {
+                                /* ignore */
+                            }
+                        }
                         const d = String(window.__qzConfig?.defaultPrinterName || window.__qzConfig?.printerName || '').trim();
                         if (typeof window.__qzPrinterRequiresSecondaryCertFirst === 'function') {
                             return window.__qzPrinterRequiresSecondaryCertFirst(d);
@@ -2254,30 +2366,79 @@
                         ];
                         if (!activeItems.length && !mergedCancellations.length) return true;
                         const qzApi = window.qz;
-                        const byPrinter = {};
+
+                        function dedupeKitchenPrinterNameList(list) {
+                            const out = [];
+                            const seen = new Set();
+                            (Array.isArray(list) ? list : []).forEach((raw) => {
+                                const n = String(raw || '').trim();
+                                const k = n.toLowerCase();
+                                if (!k || seen.has(k)) return;
+                                seen.add(k);
+                                out.push(n);
+                            });
+                            return out;
+                        }
+
+                        function mergeKitchenBucketsSharedCanon(activeSrc, cancelSrc) {
+                            const canon = Object.create(null);
+                            const touch = (raw) => {
+                                const t = String(raw || '').trim();
+                                const low = t.toLowerCase();
+                                if (!low) return;
+                                if (!canon[low]) {
+                                    canon[low] = t;
+                                }
+                            };
+                            Object.keys(activeSrc || {}).forEach((k) => touch(k));
+                            Object.keys(cancelSrc || {}).forEach((k) => touch(k));
+                            const disp = (raw) => {
+                                const low = String(raw || '').trim().toLowerCase();
+                                return low ? canon[low] : '';
+                            };
+                            const byPrinterOut = {};
+                            Object.keys(activeSrc || {}).forEach((k) => {
+                                const d = disp(k);
+                                if (!d) return;
+                                if (!byPrinterOut[d]) byPrinterOut[d] = [];
+                                (activeSrc[k] || []).forEach((row) => byPrinterOut[d].push(row));
+                            });
+                            const canceledByPrinterOut = {};
+                            Object.keys(cancelSrc || {}).forEach((k) => {
+                                const d = disp(k);
+                                if (!d) return;
+                                if (!canceledByPrinterOut[d]) canceledByPrinterOut[d] = [];
+                                (cancelSrc[k] || []).forEach((row) => canceledByPrinterOut[d].push(row));
+                            });
+                            return { byPrinter: byPrinterOut, canceledByPrinter: canceledByPrinterOut };
+                        }
+
+                        const byPrinterAcc = {};
                         activeItems.forEach((it) => {
                             const pId = parseInt(it.pId, 10) || 0;
                             if (!pId) return;
                             const pdefs = resolveQzPrinters(pId);
-                            const pnames = pdefs.length ? pdefs.map(p => p.name) : resolveQzPrinterNames(pId);
+                            const pnamesRaw = pdefs.length ? pdefs.map(p => p.name) : resolveQzPrinterNames(pId);
+                            const pnames = dedupeKitchenPrinterNameList(pnamesRaw);
                             if (!pnames.length) return;
                             // Si un producto está asignado a varias impresoras (pivote), se imprime en todas.
                             pnames.forEach((pname) => {
-                                if (!byPrinter[pname]) byPrinter[pname] = [];
-                                byPrinter[pname].push(it);
+                                if (!byPrinterAcc[pname]) byPrinterAcc[pname] = [];
+                                byPrinterAcc[pname].push(it);
                             });
                         });
-                        const canceledByPrinter = {};
+                        const canceledByPrinterAcc = {};
                         mergedCancellations.forEach((c) => {
                             const pId = parseInt(c?.pId ?? c?.product_id, 10) || 0;
                             const qty = parseFloat(c?.qtyCanceled ?? c?.quantity ?? 0) || 0;
                             if (!pId || qty <= 0) return;
                             const pdefs = resolveQzPrinters(pId);
-                            const pnames = pdefs.length ? pdefs.map(p => p.name) : resolveQzPrinterNames(pId);
+                            const pnamesRaw = pdefs.length ? pdefs.map(p => p.name) : resolveQzPrinterNames(pId);
+                            const pnames = dedupeKitchenPrinterNameList(pnamesRaw);
                             if (!pnames.length) return;
                             pnames.forEach((pname) => {
-                                if (!canceledByPrinter[pname]) canceledByPrinter[pname] = [];
-                                canceledByPrinter[pname].push({
+                                if (!canceledByPrinterAcc[pname]) canceledByPrinterAcc[pname] = [];
+                                canceledByPrinterAcc[pname].push({
                                     pId,
                                     name: String(c?.name ?? c?.description ?? 'Producto').trim(),
                                     qty,
@@ -2286,6 +2447,9 @@
                                 });
                             });
                         });
+                        const mergedBuckets = mergeKitchenBucketsSharedCanon(byPrinterAcc, canceledByPrinterAcc);
+                        const byPrinter = mergedBuckets.byPrinter;
+                        const canceledByPrinter = mergedBuckets.canceledByPrinter;
                         const names = Array.from(new Set([
                             ...Object.keys(byPrinter),
                             ...Object.keys(canceledByPrinter),
@@ -3582,7 +3746,7 @@
                                 container.appendChild(row);
                             });
                         }
-                        const totals = getTotalsWithDelivery(currentTable.items || []);
+                        const totals = getTicketTotalsConsideringSplit();
                         const tax = totals.tax;
                         const total = totals.total;
                         subtotal = totals.subtotal;
@@ -3596,6 +3760,8 @@
                         const deliveryEl = document.getElementById('ticket-delivery');
                         const takeawayDispRow = document.getElementById('ticket-takeaway-disposable-row');
                         const takeawayDispEl = document.getElementById('ticket-takeaway-disposable');
+                        const ticketTotLabel = document.getElementById('ticket-total-label');
+                        const splitRemHint = document.getElementById('ticket-split-remaining-hint');
 
                         if (subtotalEl) subtotalEl.innerText = `S/ ${subtotal.toFixed(2)}`;
                         if (taxEl) taxEl.innerText = `S/ ${tax.toFixed(2)}`;
@@ -3616,6 +3782,18 @@
                             }
                         }
                         if (totalEl) totalEl.innerText = `S/ ${total.toFixed(2)}`;
+                        if (ticketTotLabel) {
+                            ticketTotLabel.textContent = totals.showSplitHint ? 'Saldo pendiente' : 'Total a Pagar';
+                        }
+                        if (splitRemHint) {
+                            if (totals.showSplitHint && totals.splitPart > 0) {
+                                splitRemHint.classList.remove('hidden');
+                                splitRemHint.textContent = 'Parte a cobrar en este movimiento: S/ ' + totals.splitPart.toFixed(2) + '. El importe en rojo es el saldo que quedará en el pedido.';
+                            } else {
+                                splitRemHint.classList.add('hidden');
+                                splitRemHint.textContent = '';
+                            }
+                        }
 
                         refreshRecipeStockLabelsInProductGrid();
                         syncTakeawayDisposablePanel();
@@ -3627,6 +3805,12 @@
                     function syncCobroAmountsWithCart(orderTotal) {
                         const list = document.getElementById('cobro-payment-methods-list');
                         if (!list) return;
+                        const cb = document.getElementById('split-dividir-cuenta');
+                        if (cb && cb.checked && window.__splitAccount && window.__splitAccount.enabled) {
+                            syncCobroPaymentAmountsToSplitPartInner();
+                            if (typeof updateCobroTotalPaid === 'function') updateCobroTotalPaid();
+                            return;
+                        }
                         const rows = list.querySelectorAll('.cobro-pm-row');
                         if (rows.length === 0) return;
                         if (rows.length === 1) {
@@ -4226,10 +4410,448 @@
                         };
                     }
 
+                    function getOrderTotalForSplit() {
+                        const totals = getTotalsWithDelivery(currentTable.items || []);
+                        return totals.total;
+                    }
+
+                    function getSplitRemainingDisplayed() {
+                        const cfg = window.__splitAccount || {};
+                        if (cfg.enabled && cfg.remainingTotal !== null && cfg.remainingTotal !== undefined) {
+                            const x = parseFloat(cfg.remainingTotal);
+                            if (!isNaN(x)) return x;
+                        }
+                        return getOrderTotalForSplit();
+                    }
+
+                    function isSplitDivisionActiveForTicket() {
+                        const cb = document.getElementById('split-dividir-cuenta');
+                        return !!(cb && cb.checked && window.__splitAccount && window.__splitAccount.enabled);
+                    }
+
+                    /**
+                     * Con división de cuenta aplicada: el ticket muestra el saldo pendiente del pedido
+                     * después de descontar la parte que se va a cobrar en este movimiento (no el total del carrito).
+                     */
+                    function getTicketTotalsConsideringSplit() {
+                        const full = getTotalsWithDelivery(currentTable.items || []);
+                        if (!isSplitDivisionActiveForTicket()) {
+                            return { ...full, showSplitHint: false, splitPart: 0 };
+                        }
+                        let part = 0;
+                        try {
+                            const p = buildSplitPayloadForPayment();
+                            if (p) part = computeSplitPartTotal(p);
+                        } catch (e) {
+                            return { ...full, showSplitHint: false, splitPart: 0 };
+                        }
+                        const pending = getSplitRemainingDisplayed();
+                        const after = Math.max(0, Math.round((pending - part) * 100) / 100);
+                        if (full.total <= 0) {
+                            return {
+                                subtotal: 0,
+                                tax: 0,
+                                total: after,
+                                deliveryFee: full.deliveryFee,
+                                takeawayDisposableFee: full.takeawayDisposableFee,
+                                productsTotal: 0,
+                                showSplitHint: true,
+                                splitPart: part,
+                                splitPending: pending,
+                            };
+                        }
+                        const r = Math.min(1, Math.max(0, after / full.total));
+                        return {
+                            subtotal: Math.round(full.subtotal * r * 100) / 100,
+                            tax: Math.round(full.tax * r * 100) / 100,
+                            total: after,
+                            deliveryFee: Math.round(full.deliveryFee * r * 100) / 100,
+                            takeawayDisposableFee: Math.round((full.takeawayDisposableFee || 0) * r * 100) / 100,
+                            productsTotal: Math.round((full.productsTotal || 0) * r * 100) / 100,
+                            showSplitHint: true,
+                            splitPart: part,
+                            splitPending: pending,
+                        };
+                    }
+
+                    function escapeSplitHtml(s) {
+                        const d = document.createElement('div');
+                        d.textContent = s == null ? '' : String(s);
+                        return d.innerHTML;
+                    }
+
+                    function splitQtyStepForMax(max) {
+                        const m = parseFloat(max) || 0;
+                        if (m > 0 && m % 1 < 0.000001) return 1;
+                        return 0.01;
+                    }
+
+                    function syncSplitQtyRow(tr) {
+                        const hid = tr.querySelector('.split-qty-input');
+                        const disp = tr.querySelector('.split-qty-display');
+                        if (!hid || !disp) return;
+                        let v = parseFloat(hid.value) || 0;
+                        const max = parseFloat(hid.getAttribute('data-max')) || 0;
+                        v = Math.max(0, Math.min(max, v));
+                        hid.value = String(v);
+                        const showDec = (max % 1 > 0.000001) || (v % 1 > 0.000001);
+                        disp.textContent = showDec ? v.toFixed(2) : String(Math.round(v));
+                    }
+
+                    function adjustSplitLineQty(tr, direction) {
+                        const hid = tr.querySelector('.split-qty-input');
+                        if (!hid) return;
+                        const max = parseFloat(hid.getAttribute('data-max')) || 0;
+                        const step = splitQtyStepForMax(max);
+                        let v = parseFloat(hid.value) || 0;
+                        if (direction > 0) {
+                            v = Math.min(max, v + step);
+                        } else {
+                            v = Math.max(0, v - step);
+                        }
+                        hid.value = String(Math.round(v * 10000) / 10000);
+                        syncSplitQtyRow(tr);
+                        const cbSplit = document.getElementById('split-dividir-cuenta');
+                        if (cbSplit && cbSplit.checked && typeof renderTicket === 'function') renderTicket();
+                    }
+
+                    function renderSplitProductsTbody() {
+                        const tbody = document.getElementById('split-products-tbody');
+                        const cfg = window.__splitAccount || {};
+                        if (!tbody || !Array.isArray(cfg.lines)) return;
+                        tbody.innerHTML = '';
+                        const snap = window.__splitAppliedSnapshot;
+                        cfg.lines.forEach(function (line) {
+                            const tr = document.createElement('tr');
+                            tr.className = 'border-b border-gray-100 dark:border-gray-700/80';
+                            tr.setAttribute('data-split-detail-id', String(line.detail_id));
+                            const rq = parseFloat(line.remaining_qty) || 0;
+                            let initial = 0;
+                            if (snap && snap.mode === 'products' && Array.isArray(snap.items)) {
+                                const found = snap.items.find(function (it) {
+                                    return parseInt(it.detail_id, 10) === parseInt(line.detail_id, 10);
+                                });
+                                if (found) initial = parseFloat(found.quantity) || 0;
+                            }
+                            initial = Math.max(0, Math.min(rq, initial));
+                            const dec = (rq % 1 > 0.000001) || (initial % 1 > 0.000001);
+                            const dispVal = dec ? initial.toFixed(2) : String(Math.round(initial));
+                            tr.innerHTML = '<td class="py-2 px-2 align-middle">' + escapeSplitHtml(line.description || '') + '</td>' +
+                                '<td class="py-2 px-1 text-center tabular-nums align-middle">' + rq.toFixed(2) + '</td>' +
+                                '<td class="py-2 px-2 align-middle">' +
+                                '<div class="flex items-center justify-end gap-1">' +
+                                '<button type="button" class="split-qty-minus flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white text-lg font-bold text-slate-700 hover:bg-slate-50 dark:border-gray-600 dark:bg-gray-800 dark:text-slate-200 dark:hover:bg-gray-700 leading-none" aria-label="Menos">−</button>' +
+                                '<span class="split-qty-display w-11 text-center text-sm font-bold tabular-nums text-slate-800 dark:text-slate-100">' + dispVal + '</span>' +
+                                '<input type="hidden" class="split-qty-input" value="' + initial + '" data-max="' + rq + '" />' +
+                                '<button type="button" class="split-qty-plus flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white text-lg font-bold text-slate-700 hover:bg-slate-50 dark:border-gray-600 dark:bg-gray-800 dark:text-slate-200 dark:hover:bg-gray-700 leading-none" aria-label="Más">+</button>' +
+                                '</div></td>';
+                            tbody.appendChild(tr);
+                            syncSplitQtyRow(tr);
+                            tr.querySelector('.split-qty-minus')?.addEventListener('click', function () {
+                                adjustSplitLineQty(tr, -1);
+                            });
+                            tr.querySelector('.split-qty-plus')?.addEventListener('click', function () {
+                                adjustSplitLineQty(tr, 1);
+                            });
+                        });
+                    }
+
+                    function onSplitModeChange() {
+                        const mode = (document.getElementById('split-mode')?.value || 'products');
+                        const wrapP = document.getElementById('split-products-wrap');
+                        const wrapA = document.getElementById('split-amount-wrap');
+                        if (wrapP) wrapP.classList.toggle('hidden', mode !== 'products');
+                        if (wrapA) wrapA.classList.toggle('hidden', mode !== 'amount');
+                    }
+
+                    function setSplitModeTab(mode) {
+                        const cfg = window.__splitAccount || {};
+                        if (cfg.lockedToAmount && mode === 'products') {
+                            mode = 'amount';
+                        }
+                        const sel = document.getElementById('split-mode');
+                        if (sel) sel.value = mode;
+                        const tp = document.getElementById('split-mode-tab-products');
+                        const ta = document.getElementById('split-mode-tab-amount');
+                        const active = 'bg-white dark:bg-gray-700 text-[#FF4622] shadow-sm ring-1 ring-slate-200 dark:ring-slate-600';
+                        const inactive = 'text-slate-600 dark:text-slate-300 hover:bg-white/70 dark:hover:bg-gray-700/50';
+                        if (tp) {
+                            tp.className = 'split-mode-tab flex-1 py-2.5 px-3 rounded-lg text-sm font-semibold transition-colors ' + (mode === 'products' ? active : inactive);
+                            tp.disabled = !!cfg.lockedToAmount;
+                            tp.classList.toggle('opacity-40', !!cfg.lockedToAmount);
+                            tp.classList.toggle('cursor-not-allowed', !!cfg.lockedToAmount);
+                        }
+                        if (ta) {
+                            ta.className = 'split-mode-tab flex-1 py-2.5 px-3 rounded-lg text-sm font-semibold transition-colors ' + (mode === 'amount' ? active : inactive);
+                        }
+                        onSplitModeChange();
+                    }
+
+                    function openSplitAccountModal() {
+                        const modal = document.getElementById('split-account-modal');
+                        if (!modal) return;
+                        initSplitPanel();
+                        modal.classList.remove('hidden');
+                        document.body.style.overflow = 'hidden';
+                        window.__splitModalOnKey = function (e) {
+                            if (e.key === 'Escape') closeSplitAccountModal();
+                        };
+                        document.addEventListener('keydown', window.__splitModalOnKey);
+                    }
+
+                    function closeSplitAccountModal() {
+                        const modal = document.getElementById('split-account-modal');
+                        if (modal) modal.classList.add('hidden');
+                        document.body.style.overflow = '';
+                        if (window.__splitModalOnKey) {
+                            document.removeEventListener('keydown', window.__splitModalOnKey);
+                            window.__splitModalOnKey = null;
+                        }
+                    }
+
+                    function collectSplitSnapshotFromDom() {
+                        const mode = document.getElementById('split-mode')?.value || 'products';
+                        if (mode === 'amount') {
+                            const amt = parseFloat(document.getElementById('split-amount-input')?.value || '0');
+                            return { mode: 'amount', amount: amt };
+                        }
+                        const items = [];
+                        document.querySelectorAll('#split-products-tbody tr[data-split-detail-id]').forEach(function (tr) {
+                            const id = parseInt(tr.getAttribute('data-split-detail-id'), 10);
+                            const hid = tr.querySelector('.split-qty-input');
+                            const q = parseFloat(hid?.value || '0');
+                            if (q > 0) items.push({ detail_id: id, quantity: q });
+                        });
+                        return { mode: 'products', items: items };
+                    }
+
+                    function applySplitAccountModal() {
+                        const cfg = window.__splitAccount || {};
+                        if (!cfg.enabled) return;
+                        const rem = getSplitRemainingDisplayed();
+                        const mode = document.getElementById('split-mode')?.value || 'products';
+                        if (mode === 'amount') {
+                            const amt = parseFloat(document.getElementById('split-amount-input')?.value || '0');
+                            if (!(amt > 0)) {
+                                if (typeof showNotification === 'function') showNotification('División', 'Ingrese un monto mayor a cero.', 'error');
+                                else alert('Ingrese un monto mayor a cero.');
+                                return;
+                            }
+                            if (amt > rem + 0.02) {
+                                if (typeof showNotification === 'function') showNotification('División', 'El monto excede lo pendiente del pedido.', 'error');
+                                else alert('El monto excede lo pendiente del pedido.');
+                                return;
+                            }
+                        } else {
+                            let any = false;
+                            document.querySelectorAll('#split-products-tbody tr[data-split-detail-id]').forEach(function (tr) {
+                                const hid = tr.querySelector('.split-qty-input');
+                                if (hid && parseFloat(hid.value) > 0) any = true;
+                            });
+                            if (!any) {
+                                if (typeof showNotification === 'function') showNotification('División', 'Indique cantidades a cobrar con + / −.', 'error');
+                                else alert('Indique cantidades a cobrar con + / −.');
+                                return;
+                            }
+                        }
+                        window.__splitAppliedSnapshot = collectSplitSnapshotFromDom();
+                        const cb = document.getElementById('split-dividir-cuenta');
+                        if (cb) cb.checked = true;
+                        const dm = document.getElementById('cobro-detail-mode');
+                        if (dm) {
+                            dm.value = 'DETALLADO';
+                            dm.disabled = true;
+                            toggleCobroDetailGlosa();
+                        }
+                        updateSplitInlineStatus();
+                        syncCobroPaymentAmountsToSplitPart();
+                        closeSplitAccountModal();
+                        if (typeof renderTicket === 'function') renderTicket();
+                    }
+
+                    function syncCobroPaymentAmountsToSplitPartInner() {
+                        const cb = document.getElementById('split-dividir-cuenta');
+                        if (!cb || !cb.checked) return;
+                        let part = 0;
+                        try {
+                            const p = buildSplitPayloadForPayment();
+                            if (p) part = computeSplitPartTotal(p);
+                        } catch (e) {
+                            return;
+                        }
+                        if (!(part > 0)) return;
+                        const list = document.getElementById('cobro-payment-methods-list');
+                        if (!list) return;
+                        while (list.querySelectorAll('.cobro-pm-row').length > 1) {
+                            list.querySelector('.cobro-pm-row:last-child')?.remove();
+                        }
+                        let inputs = document.querySelectorAll('.cobro-pm-amount');
+                        if (!inputs.length) {
+                            addCobroPaymentMethod();
+                            inputs = document.querySelectorAll('.cobro-pm-amount');
+                        }
+                        inputs.forEach(function (inp, i) {
+                            inp.value = i === 0 ? part.toFixed(2) : '0.00';
+                        });
+                    }
+
+                    function syncCobroPaymentAmountsToSplitPart() {
+                        window.__splitCobroSyncing = true;
+                        try {
+                            syncCobroPaymentAmountsToSplitPartInner();
+                        } finally {
+                            window.__splitCobroSyncing = false;
+                        }
+                        updateCobroTotalPaid();
+                    }
+
+                    function clearSplitDivision() {
+                        window.__splitAppliedSnapshot = null;
+                        const cb = document.getElementById('split-dividir-cuenta');
+                        if (cb) cb.checked = false;
+                        const dm = document.getElementById('cobro-detail-mode');
+                        if (dm) dm.disabled = false;
+                        const amt = document.getElementById('split-amount-input');
+                        if (amt) amt.value = '';
+                        const st = document.getElementById('split-inline-status');
+                        if (st) st.textContent = '';
+                        document.querySelectorAll('#split-products-tbody tr[data-split-detail-id]').forEach(function (tr) {
+                            const hid = tr.querySelector('.split-qty-input');
+                            if (hid) hid.value = '0';
+                            syncSplitQtyRow(tr);
+                        });
+                        closeSplitAccountModal();
+                        const listCobro = document.getElementById('cobro-payment-methods-list');
+                        if (listCobro) {
+                            while (listCobro.querySelectorAll('.cobro-pm-row').length > 1) {
+                                listCobro.querySelector('.cobro-pm-row:last-child')?.remove();
+                            }
+                            const fullT = getTotalsWithDelivery(currentTable?.items || []).total || 0;
+                            const inp = listCobro.querySelector('.cobro-pm-amount');
+                            if (inp) inp.value = fullT.toFixed(2);
+                        }
+                        if (typeof updateCobroTotalPaid === 'function') updateCobroTotalPaid();
+                        if (typeof renderTicket === 'function') renderTicket();
+                    }
+
+                    function updateSplitInlineStatus() {
+                        const el = document.getElementById('split-inline-status');
+                        const cb = document.getElementById('split-dividir-cuenta');
+                        if (!el || !cb || !cb.checked) {
+                            if (el && (!cb || !cb.checked)) el.textContent = '';
+                            return;
+                        }
+                        try {
+                            const p = buildSplitPayloadForPayment();
+                            if (!p) {
+                                el.textContent = '';
+                                return;
+                            }
+                            const t = computeSplitPartTotal(p);
+                            el.textContent = 'Parte: S/ ' + t.toFixed(2);
+                        } catch (e) {
+                            el.textContent = 'División activa';
+                        }
+                    }
+
+                    function initSplitPanel() {
+                        const modal = document.getElementById('split-account-modal');
+                        if (!modal) return;
+                        const cfg = window.__splitAccount || {};
+                        const badge = document.getElementById('split-remaining-badge');
+                        const r = getSplitRemainingDisplayed();
+                        if (badge) badge.textContent = 'Pendiente: S/ ' + r.toFixed(2);
+                        const modeSel = document.getElementById('split-mode');
+                        const hint = document.getElementById('split-hint-locked');
+                        let startMode = 'products';
+                        if (cfg.lockedToAmount) {
+                            if (hint) hint.classList.remove('hidden');
+                            startMode = 'amount';
+                        } else {
+                            if (hint) hint.classList.add('hidden');
+                        }
+                        if (window.__splitAppliedSnapshot && window.__splitAppliedSnapshot.mode) {
+                            startMode = window.__splitAppliedSnapshot.mode;
+                        }
+                        if (modeSel) modeSel.value = startMode;
+                        const amtIn = document.getElementById('split-amount-input');
+                        if (amtIn) {
+                            if (window.__splitAppliedSnapshot && window.__splitAppliedSnapshot.mode === 'amount' && window.__splitAppliedSnapshot.amount != null) {
+                                amtIn.value = String(window.__splitAppliedSnapshot.amount);
+                            } else if (!amtIn.value) {
+                                amtIn.placeholder = r.toFixed(2);
+                            }
+                            if (!amtIn.dataset.splitAmountBound) {
+                                amtIn.dataset.splitAmountBound = '1';
+                                amtIn.addEventListener('input', function () {
+                                    const cb = document.getElementById('split-dividir-cuenta');
+                                    if (cb && cb.checked && typeof renderTicket === 'function') renderTicket();
+                                });
+                            }
+                        }
+                        setSplitModeTab(startMode);
+                        renderSplitProductsTbody();
+                        updateSplitInlineStatus();
+                    }
+
+                    function buildSplitPayloadForPayment() {
+                        const cfg = window.__splitAccount || {};
+                        const cb = document.getElementById('split-dividir-cuenta');
+                        if (!cfg.enabled || !cb || !cb.checked) return null;
+                        const mode = (document.getElementById('split-mode')?.value || 'products');
+                        const rem = getSplitRemainingDisplayed();
+                        if (mode === 'amount') {
+                            const amt = parseFloat(document.getElementById('split-amount-input')?.value || '0');
+                            if (!(amt > 0)) {
+                                throw new Error('Ingrese un monto a cobrar mayor a cero.');
+                            }
+                            if (amt > rem + 0.02) {
+                                throw new Error('El monto excede lo pendiente por cobrar en el pedido.');
+                            }
+                            return { mode: 'amount', amount: Math.round(amt * 100) / 100 };
+                        }
+                        const items = [];
+                        document.querySelectorAll('#split-products-tbody tr[data-split-detail-id]').forEach(function (tr) {
+                            const id = parseInt(tr.getAttribute('data-split-detail-id'), 10);
+                            const inp = tr.querySelector('.split-qty-input');
+                            const max = parseFloat(inp?.getAttribute('data-max') || '0');
+                            let qty = parseFloat(inp?.value || '0');
+                            if (isNaN(qty) || qty <= 0) return;
+                            if (qty > max + 0.000001) {
+                                throw new Error('Cantidad a cobrar mayor a la pendiente en una línea.');
+                            }
+                            items.push({ detail_id: id, quantity: qty });
+                        });
+                        if (items.length === 0) {
+                            throw new Error('Seleccione al menos un producto con cantidad para dividir la cuenta.');
+                        }
+                        return { mode: 'products', items: items };
+                    }
+
+                    function computeSplitPartTotal(splitPayload) {
+                        if (!splitPayload) return getOrderTotalForSplit();
+                        if (splitPayload.mode === 'amount') return splitPayload.amount;
+                        const cfg = window.__splitAccount || {};
+                        let sum = 0;
+                        (splitPayload.items || []).forEach(function (it) {
+                            const line = (cfg.lines || []).find(function (l) {
+                                return parseInt(l.detail_id, 10) === parseInt(it.detail_id, 10);
+                            });
+                            if (line) {
+                                sum += (parseFloat(line.unit_amount) || 0) * (parseFloat(it.quantity) || 0);
+                            }
+                        });
+                        return Math.round(sum * 100) / 100;
+                    }
+
                     async function processOrderPayment() {
                         if (waiterPinEnabled && !isMozoProfile) {
                             const ok = await ensureWaiterPin();
                             if (!ok) return;
+                        }
+                        const cbSplitPay = document.getElementById('split-dividir-cuenta');
+                        if (cbSplitPay && cbSplitPay.checked && window.__splitAccount && window.__splitAccount.enabled) {
+                            syncCobroPaymentAmountsToSplitPartInner();
                         }
                         flushCartUnitPriceInputsFromDom();
                         renderTicket();
@@ -4244,6 +4866,22 @@
                         }
                         const totals = getTotalsWithDelivery(items);
                         const total = totals.total;
+                        let cobroTotal = total;
+                        let splitPayload = null;
+                        try {
+                            splitPayload = buildSplitPayloadForPayment();
+                            if (splitPayload) {
+                                cobroTotal = computeSplitPartTotal(splitPayload);
+                            }
+                        } catch (e) {
+                            if (typeof showNotification === 'function') {
+                                showNotification('Error', e.message || 'Error en división de cuenta.', 'error');
+                            } else {
+                                alert(e.message || 'Error en división de cuenta.');
+                            }
+                            return;
+                        }
+
                         const paymentMethodsData = getCobroPaymentMethodsFromForm();
                         const totalPaid = paymentMethodsData.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
 
@@ -4255,11 +4893,11 @@
                             }
                             return;
                         }
-                        if (Math.abs(totalPaid - total) > 0.01) {
+                        if (Math.abs(totalPaid - cobroTotal) > 0.01) {
                             if (typeof showNotification === 'function') {
-                                showNotification('Error', 'La suma de los métodos de pago debe ser igual al total (S/ ' + total.toFixed(2) + ').', 'error');
+                                showNotification('Error', 'La suma de los métodos de pago debe ser igual al total (S/ ' + cobroTotal.toFixed(2) + ').', 'error');
                             } else {
-                                alert('La suma de los métodos de pago debe ser igual al total (S/ ' + total.toFixed(2) + ').');
+                                alert('La suma de los métodos de pago debe ser igual al total (S/ ' + cobroTotal.toFixed(2) + ').');
                             }
                             return;
                         }
@@ -4277,12 +4915,12 @@
                             if (typeof showNotification === 'function') showNotification('Error', msg, 'error'); else alert(msg);
                             return;
                         }
-                        if (selectedDoc.isBoleta && total > 700 && cleanDocument.length !== 8 && cleanDocument.length !== 11) {
+                        if (selectedDoc.isBoleta && cobroTotal > 700 && cleanDocument.length !== 8 && cleanDocument.length !== 11) {
                             const msg = 'Para emitir boleta mayor a S/ 700.00 debes seleccionar un cliente con DNI o RUC valido.';
                             if (typeof showNotification === 'function') showNotification('Error', msg, 'error'); else alert(msg);
                             return;
                         }
-                        if (detailMode === 'GLOSA' && !detailGlosa) {
+                        if (detailMode === 'GLOSA' && !detailGlosa && !splitPayload) {
                             const msg = 'Debes escribir la glosa que saldra en el comprobante.';
                             if (typeof showNotification === 'function') showNotification('Error', msg, 'error'); else alert(msg);
                             return;
@@ -4291,7 +4929,7 @@
                         if (window.Swal) {
                             const confirmPayment = await Swal.fire({
                                 title: 'Confirmar Cobro',
-                                text: `Total a cobrar: S/ ${total.toFixed(2)}. ¿Deseas proceder?`,
+                                text: `Total a cobrar: S/ ${cobroTotal.toFixed(2)}. ¿Deseas proceder?`,
                                 icon: 'question',
                                 showCancelButton: true,
                                 confirmButtonColor: '#FF4622',
@@ -4376,6 +5014,9 @@
                                 payment_methods: paymentMethodsData,
                                 notes: '',
                             };
+                            if (splitPayload) {
+                                paymentPayload.split = splitPayload;
+                            }
 
                             const payRes = await fetch('{{ route('orders.processOrderPayment') }}', {
                                 method: 'POST',
@@ -4395,7 +5036,15 @@
                                 throw new Error(payData?.message || payData?.error || 'Error al procesar el cobro.');
                             }
 
-                            const payMovementId = payData?.movement_id;
+                            if (payData.split_remaining_total !== undefined && payData.order_closed === false) {
+                                const splitSaleMovId = payData?.split_sale_movement_id || payData?.movement_id;
+                                await sendThermalTicketAfterSale(splitSaleMovId, payData);
+                                sessionStorage.setItem('flash_success_message', payData.message || 'Cobro parcial registrado.');
+                                window.location.reload();
+                                return;
+                            }
+
+                            const payMovementId = payData?.split_sale_movement_id || payData?.movement_id;
                             await sendThermalTicketAfterSale(payMovementId, payData);
 
                             if (db && activeKey && db[activeKey]) {
@@ -4580,6 +5229,11 @@
                                 searchInput.setAttribute('disabled', 'disabled');
                                 searchInput.classList.add('bg-gray-100', 'cursor-not-allowed');
                             }
+                            if (typeof initSplitPanel === 'function') initSplitPanel();
+                            const cbSplit = document.getElementById('split-dividir-cuenta');
+                            if (cbSplit && cbSplit.checked && typeof syncCobroPaymentAmountsToSplitPart === 'function') {
+                                syncCobroPaymentAmountsToSplitPart();
+                            }
                         } else {
                             cobro?.classList.add('hidden');
                             cobro?.classList.remove('flex');
@@ -4651,6 +5305,17 @@
                     }
 
                     function getCobroOrderTotal() {
+                        const cb = document.getElementById('split-dividir-cuenta');
+                        if (cb && cb.checked && window.__splitAccount && window.__splitAccount.enabled) {
+                            try {
+                                const p = buildSplitPayloadForPayment();
+                                if (p) {
+                                    return computeSplitPartTotal(p);
+                                }
+                            } catch (e) {
+                                /* ignore */
+                            }
+                        }
                         const totals = getTotalsWithDelivery(currentTable?.items || []);
                         return totals.total || 0;
                     }
@@ -4669,6 +5334,7 @@
 
                     function autocompleteCobroAmount(inputEl) {
                         if (!inputEl) return;
+                        if (inputEl.readOnly) return;
                         const val = parseFloat(inputEl.value || 0) || 0;
                         if (val > 0) {
                             inputEl.select();
@@ -4755,9 +5421,24 @@
                         }
                     }
 
+                    function removeCobroPaymentRow(btnEl) {
+                        const cb = document.getElementById('split-dividir-cuenta');
+                        if (cb && cb.checked && window.__splitAccount && window.__splitAccount.enabled) {
+                            return;
+                        }
+                        btnEl.closest('.cobro-pm-row')?.remove();
+                        updateCobroTotalPaid();
+                    }
+
                     function addCobroPaymentMethod() {
                         const list = document.getElementById('cobro-payment-methods-list');
                         if (!list) return;
+                        const cb = document.getElementById('split-dividir-cuenta');
+                        if (cb && cb.checked && window.__splitAccount && window.__splitAccount.enabled) {
+                            if (list.querySelectorAll('.cobro-pm-row').length > 0) {
+                                return;
+                            }
+                        }
                         const methods = cobroPaymentMethods || [];
                         const opts = methods.map(pm =>
                             `<option value="${pm.id}">${escapeHtml(pm.description || '')}</option>`
@@ -4779,7 +5460,7 @@
                                                                                                                                                                                                             class="w-full py-2 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm tabular-nums cobro-pm-amount"
                                                                                                                                                                                                             oninput="updateCobroTotalPaid()" onfocus="autocompleteCobroAmount(this)">
                                                                                                                                                                                                     </div>
-                                                                                                                                                                                                    <button type="button" onclick="this.closest('.cobro-pm-row').remove(); updateCobroTotalPaid();" class="p-2 h-9 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors shrink-0" title="Eliminar">
+                                                                                                                                                                                                    <button type="button" onclick="removeCobroPaymentRow(this)" class="cobro-pm-delete-btn p-2 h-9 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors shrink-0" title="Eliminar">
                                                                                                                                                                                                         <i class="ri-delete-bin-line text-lg"></i>
                                                                                                                                                                                                     </button>
                                                                                                                                                                                                 </div>
@@ -4816,17 +5497,83 @@
                                                                                                                                                                                             `;
                         list.appendChild(row);
                         toggleCobroExtraFields(row);
-                        updateCobroTotalPaid();
+                        if (!window.__splitCobroSyncing) {
+                            updateCobroTotalPaid();
+                        }
+                    }
+
+                    function applyCobroPaymentFieldsLocked(splitOn) {
+                        const addBtn = document.getElementById('cobro-btn-add-payment-method');
+                        if (addBtn) addBtn.classList.toggle('hidden', !!splitOn);
+                        document.querySelectorAll('.cobro-pm-amount').forEach(inp => {
+                            inp.readOnly = !!splitOn;
+                            inp.classList.toggle('bg-gray-100', !!splitOn);
+                            inp.classList.toggle('dark:bg-gray-700', !!splitOn);
+                            inp.classList.toggle('cursor-not-allowed', !!splitOn);
+                        });
+                        document.querySelectorAll('.cobro-pm-delete-btn').forEach(btn => {
+                            btn.classList.toggle('hidden', !!splitOn);
+                        });
                     }
 
                     function updateCobroTotalPaid() {
+                        const cb = document.getElementById('split-dividir-cuenta');
+                        const splitOn = !!(cb && cb.checked && window.__splitAccount && window.__splitAccount.enabled);
+                        if (splitOn && !window.__splitCobroSyncing) {
+                            window.__splitCobroSyncing = true;
+                            try {
+                                syncCobroPaymentAmountsToSplitPartInner();
+                            } finally {
+                                window.__splitCobroSyncing = false;
+                            }
+                        }
+                        applyCobroPaymentFieldsLocked(splitOn);
                         const inputs = document.querySelectorAll('.cobro-pm-amount');
                         let total = 0;
                         inputs.forEach(inp => {
                             total += parseFloat(inp.value || 0) || 0;
                         });
                         const el = document.getElementById('cobro-total-paid');
-                        if (el) el.textContent = 'S/ ' + total.toFixed(2);
+                        if (el) {
+                            if (splitOn) {
+                                try {
+                                    const p = buildSplitPayloadForPayment();
+                                    if (p) el.textContent = 'S/ ' + computeSplitPartTotal(p).toFixed(2);
+                                    else el.textContent = 'S/ ' + total.toFixed(2);
+                                } catch (e) {
+                                    el.textContent = 'S/ ' + total.toFixed(2);
+                                }
+                            } else {
+                                el.textContent = 'S/ ' + total.toFixed(2);
+                            }
+                        }
+                        const lbl = document.getElementById('cobro-total-label');
+                        const row = document.getElementById('cobro-order-total-row');
+                        const orderDisp = document.getElementById('cobro-order-total-display');
+                        const foot = document.getElementById('cobro-split-footnote');
+                        if (lbl) {
+                            lbl.textContent = splitOn ? 'Total dividido' : 'Total pagado';
+                        }
+                        if (row && orderDisp) {
+                            if (splitOn) {
+                                row.classList.remove('hidden');
+                                const orderTot = getTotalsWithDelivery(currentTable?.items || []).total || 0;
+                                orderDisp.textContent = 'S/ ' + orderTot.toFixed(2);
+                            } else {
+                                row.classList.add('hidden');
+                            }
+                        }
+                        if (foot) {
+                            foot.classList.toggle('hidden', !splitOn);
+                        }
+                        const btnLbl = document.getElementById('footer-cobro-btn-label');
+                        if (btnLbl) {
+                            btnLbl.textContent = splitOn ? 'Cobrar parte' : 'Cobrar';
+                        }
+                        const fh = document.getElementById('cobro-split-footer-hint');
+                        if (fh) {
+                            fh.classList.toggle('hidden', !splitOn);
+                        }
                     }
 
                     function changeClient(selectEl) {
@@ -5022,6 +5769,7 @@
                     window.switchAsideTab = switchAsideTab;
                     window.clearCobroClient = clearCobroClient;
                     window.addCobroPaymentMethod = addCobroPaymentMethod;
+                    window.removeCobroPaymentRow = removeCobroPaymentRow;
                     window.updateCobroTotalPaid = updateCobroTotalPaid;
                     window.autocompleteCobroAmount = autocompleteCobroAmount;
                     window.toggleCobroExtraFields = toggleCobroExtraFields;
@@ -5035,6 +5783,13 @@
                     window.updateTakeAwayInfo = updateTakeAwayInfo;
                     window.updateTakeawayDisposableInfo = updateTakeawayDisposableInfo;
                     window.toggleCobroDetailGlosa = toggleCobroDetailGlosa;
+                    window.openSplitAccountModal = openSplitAccountModal;
+                    window.closeSplitAccountModal = closeSplitAccountModal;
+                    window.applySplitAccountModal = applySplitAccountModal;
+                    window.clearSplitDivision = clearSplitDivision;
+                    window.setSplitModeTab = setSplitModeTab;
+                    window.onSplitModeChange = onSplitModeChange;
+                    window.initSplitPanel = initSplitPanel;
                     window.printPreAccountTicket = printPreAccountTicket;
                     window.openPreAccountPdfTab = openPreAccountPdfTab;
                     window.ensureWaiterPin = ensureWaiterPin;
