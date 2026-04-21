@@ -4,123 +4,130 @@
     <div class="px-4 pb-8">
         <x-common.page-breadcrumb path="Reportes" pageTitle="Consolidado de Productos" />
 
-        <div class="rounded-2xl border border-gray-200 bg-white shadow-sm p-5 mb-6">
-            <form action="{{ route('reports.consolidated_products') }}" method="GET">
-                @if(request('view_id'))
-                    <input type="hidden" name="view_id" value="{{ request('view_id') }}">
-                @endif
-                <div class="flex flex-wrap items-end gap-4">
-                    <div class="flex-1 min-w-[160px]">
-                        <x-form.date-picker name="date_from" label="Desde" :defaultDate="$dateFrom" dateFormat="Y-m-d" />
+        <div class="bg-white p-5 rounded">
+            <div class="rounded-2xl border border-gray-200 bg-white shadow-sm p-5 mb-6">
+                <form action="{{ route('reports.consolidated_products') }}" method="GET">
+                    @if(request('view_id'))
+                        <input type="hidden" name="view_id" value="{{ request('view_id') }}">
+                    @endif
+                    <div class="flex flex-wrap items-end gap-4">
+                        <div class="flex-1 min-w-[160px]">
+                            <x-form.date-picker name="date_from" label="Desde" :defaultDate="$dateFrom"
+                                dateFormat="Y-m-d" />
+                        </div>
+                        <div class="flex-1 min-w-[160px]">
+                            <x-form.date-picker name="date_to" label="Hasta" :defaultDate="$dateTo" dateFormat="Y-m-d" />
+                        </div>
+                        <!--Por defecto todas las categorias-->
+                        <div class="flex flex-col gap-1 flex-1 min-w-[180px]">
+                            <x-form.select.combobox :clearable="true" label="Categoría" :clearOnFocus="true"
+                                value="{{ $categoryId }}" :options="$categories" name="category_id" />
+                        </div>
+                        <!--Tipo de reporte (Mas vendidos, menos vendidos)-->
+                        <div class="flex flex-col gap-1 flex-1 min-w-[180px]">
+                            <label for="type" class="text-sm font-medium text-gray-700">Tipo</label>
+                            <select name="type" id="type"
+                                class="h-11 w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-800 focus:border-orange-500 focus:ring-1 focus:ring-orange-400 outline-none">
+                                <option value="mas_vendidos" @selected(request('type') == 'mas_vendidos')>Más vendidos
+                                </option>
+                                <option value="menos_vendidos" @selected(request('type') == 'menos_vendidos')>Menos vendidos
+                                </option>
+                            </select>
+                        </div>
+                        <div class="flex gap-2 items-end">
+                            <x-ui.link-button size="md" variant="outline"
+                                href="{{ route('reports.consolidated_products') }}"
+                                class="h-11 px-5 border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200">
+                                <i class="ri-refresh-line"></i>
+                                <span class="font-medium">Limpiar</span>
+                            </x-ui.link-button>
+                        </div>
+                        <x-ui.button size="md" variant="primary" type="submit"
+                            class="h-11 px-5 shadow-sm hover:shadow-md transition-all duration-200 active:scale-95"
+                            style="background-color: #C43B25; border-color: #C43B25;">
+                            <i class="ri-search-line text-gray-100"></i>
+                            <span class="font-medium text-gray-100">Buscar</span>
+                        </x-ui.button>
                     </div>
-                    <div class="flex-1 min-w-[160px]">
-                        <x-form.date-picker name="date_to" label="Hasta" :defaultDate="$dateTo" dateFormat="Y-m-d" />
-                    </div>
-                    <!--Por defecto todas las categorias-->
-                    <div class="flex flex-col gap-1 flex-1 min-w-[180px]">
-                        <x-form.select.combobox :clearable="true" label="Categoría" :clearOnFocus="true"
-                            value="{{ $categoryId }}" :options="$categories" name="category_id" />
-                    </div>
-                    <!--Tipo de reporte (Mas vendidos, menos vendidos)-->
-                    <div class="flex flex-col gap-1 flex-1 min-w-[180px]">
-                        <label for="type" class="text-sm font-medium text-gray-700">Tipo</label>
-                        <select name="type" id="type"
-                            class="h-11 w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-800 focus:border-orange-500 focus:ring-1 focus:ring-orange-400 outline-none">
-                            <option value="mas_vendidos" @selected(request('type') == 'mas_vendidos')>Más vendidos</option>
-                            <option value="menos_vendidos" @selected(request('type') == 'menos_vendidos')>Menos vendidos
-                            </option>
-                        </select>
-                    </div>
-                    <div class="flex gap-2 items-end">
-                        <x-ui.link-button size="md" variant="outline" href="{{ route('reports.consolidated_products') }}"
-                            class="h-11 px-5 border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200">
-                            <i class="ri-refresh-line"></i>
-                            <span class="font-medium">Limpiar</span>
-                        </x-ui.link-button>
-                    </div>
-                    <x-ui.button size="md" variant="primary" type="submit"
-                        class="h-11 px-5 shadow-sm hover:shadow-md transition-all duration-200 active:scale-95"
-                        style="background-color: #C43B25; border-color: #C43B25;">
-                        <i class="ri-search-line text-gray-100"></i>
-                        <span class="font-medium text-gray-100">Buscar</span>
-                    </x-ui.button>
-                </div>
-            </form>
-            <!--Exportar PDF y excel-->
-            <div class="flex gap-2 mt-4">
-                <x-ui.link-button size="md" style="background-color: #008b23; border-color: #008b23;" variant="primary"
-                    type="button" onclick="exportarExcel()">
-                    <i class="ri-file-excel-2-line"></i>
-                    <span>Excel</span>
-                </x-ui.link-button>
-                <x-ui.link-button size="md" style="background-color: #C43B25; border-color: #C43B25;" variant="primary"
-                    type="button" onclick="exportarPDF()">
-                    <i class="ri-file-pdf-line"></i>
-                    <span>PDF</span>
-                    </x-ui.button>
-            </div>
-        </div>
-        {{-- Tarjetas resumen y Gráfico --}}
-        @if(isset($rows) && $rows->isNotEmpty())
-            @php
-                $results = collect($rows);
-                $sortedRows = $results->sortByDesc('total_amount');
-                $topProducts = $sortedRows->take(10);
-                $otherTotal = $sortedRows->skip(10)->sum('total_amount');
-
-                $chartLabels = $topProducts->pluck('product_name')->toArray();
-                $chartData = $topProducts->pluck('total_amount')->map(fn($v) => round((float) $v, 2))->toArray();
-
-                if ($otherTotal > 0) {
-                    $chartLabels[] = 'Otros';
-                    $chartData[] = $otherTotal;
-                }
-            @endphp
-
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                {{-- Tarjetas resumen --}}
-                <div class="lg:col-span-2 grid grid-cols-2 gap-4">
-                    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 hover:shadow-md transition-shadow">
-                        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Total vendido</p>
-                        <p class="text-2xl font-bold text-gray-800">S/ {{ number_format($grandTotal, 2) }}</p>
-                        <p class="text-[10px] text-gray-400 mt-1">Total recaudado (con IGV)</p>
-                    </div>
-                    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 hover:shadow-md transition-shadow">
-                        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Venta Neta (Base)</p>
-                        <p class="text-2xl font-bold text-gray-800">S/ {{ number_format($grandTotalNet, 2) }}</p>
-                        <p class="text-[10px] text-gray-400 mt-1">Monto sin impuestos</p>
-                    </div>
-                    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 hover:shadow-md transition-shadow">
-                        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Impuestos (IGV)</p>
-                        <p class="text-2xl font-bold text-blue-600">S/ {{ number_format($grandTax, 2) }}</p>
-                        <p class="text-[10px] text-gray-400 mt-1">Impuesto generado</p>
-                    </div>
-                    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 hover:shadow-md transition-shadow">
-                        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Unidades vendidas</p>
-                        <p class="text-2xl font-bold text-gray-800">{{ number_format($grandQuantity, 0) }}</p>
-                        <p class="text-[10px] text-gray-400 mt-1">Cantidad total de productos</p>
-                    </div>
-                </div>
-
-                {{-- Gráfico de dona --}}
-                <div
-                    class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 flex flex-col hover:shadow-md transition-shadow lg:h-full min-h-[400px]">
-                    <h4 class="text-sm font-bold text-gray-700 mb-4">Ventas por Producto</h4>
-                    <div class="relative flex-1 flex items-center justify-center">
-                        <canvas id="productDoughnutChart" style="max-height: 350px;"></canvas>
-                    </div>
+                </form>
+                <!--Exportar PDF y excel-->
+                <div class="flex gap-2 mt-4">
+                    <x-ui.link-button size="md" style="background-color: #008b23; border-color: #008b23;" variant="primary"
+                        type="button" onclick="exportarExcel()">
+                        <i class="ri-file-excel-2-line"></i>
+                        <span>Excel</span>
+                    </x-ui.link-button>
+                    <x-ui.link-button size="md" style="background-color: #C43B25; border-color: #C43B25;" variant="primary"
+                        type="button" onclick="exportarPDF()">
+                        <i class="ri-file-pdf-line"></i>
+                        <span>PDF</span>
+                        </x-ui.button>
                 </div>
             </div>
-        @endif
+            {{-- Tarjetas resumen y Gráfico --}}
+            @if(isset($rows) && $rows->isNotEmpty())
+                @php
+                    $results = collect($rows);
+                    $sortedRows = $results->sortByDesc('total_amount');
+                    $topProducts = $sortedRows->take(10);
+                    $otherTotal = $sortedRows->skip(10)->sum('total_amount');
 
-        {{-- Tabla principal --}}
-        <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+                    $chartLabels = $topProducts->pluck('product_name')->toArray();
+                    $chartData = $topProducts->pluck('total_amount')->map(fn($v) => round((float) $v, 2))->toArray();
+
+                    if ($otherTotal > 0) {
+                        $chartLabels[] = 'Otros';
+                        $chartData[] = $otherTotal;
+                    }
+                @endphp
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                    {{-- Tarjetas resumen --}}
+                    <div class="lg:col-span-2 grid grid-cols-2 gap-4">
+                        <div
+                            class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 hover:shadow-md transition-shadow">
+                            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Total vendido</p>
+                            <p class="text-2xl font-bold text-gray-800">S/ {{ number_format($grandTotal, 2) }}</p>
+                            <p class="text-[10px] text-gray-400 mt-1">Total recaudado (con IGV)</p>
+                        </div>
+                        <div
+                            class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 hover:shadow-md transition-shadow">
+                            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Venta Neta (Base)</p>
+                            <p class="text-2xl font-bold text-gray-800">S/ {{ number_format($grandTotalNet, 2) }}</p>
+                            <p class="text-[10px] text-gray-400 mt-1">Monto sin impuestos</p>
+                        </div>
+                        <div
+                            class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 hover:shadow-md transition-shadow">
+                            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Impuestos (IGV)</p>
+                            <p class="text-2xl font-bold text-blue-600">S/ {{ number_format($grandTax, 2) }}</p>
+                            <p class="text-[10px] text-gray-400 mt-1">Impuesto generado</p>
+                        </div>
+                        <div
+                            class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 hover:shadow-md transition-shadow">
+                            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Unidades vendidas</p>
+                            <p class="text-2xl font-bold text-gray-800">{{ number_format($grandQuantity, 0) }}</p>
+                            <p class="text-[10px] text-gray-400 mt-1">Cantidad total de productos</p>
+                        </div>
+                    </div>
+
+                    {{-- Gráfico de dona --}}
+                    <div
+                        class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 flex flex-col hover:shadow-md transition-shadow lg:h-full min-h-[400px]">
+                        <h4 class="text-sm font-bold text-gray-700 mb-4">Ventas por Producto</h4>
+                        <div class="relative flex-1 flex items-center justify-center">
+                            <canvas id="productDoughnutChart" style="max-height: 350px;"></canvas>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
+            {{-- Tabla principal --}}
             <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
                 <h3 class="text-sm font-bold text-gray-700">Detalle por producto</h3>
             </div>
 
             <div class="overflow-x-auto">
-                <table id="tabla-consolidado" class="w-full text-sm border-collapse">
+                <table id="tabla-consolidado" class="w-full text-sm border rounded border-gray-200">
                     <thead class="bg-gray-50 text-xs font-bold text-gray-500 uppercase tracking-wide">
                         <tr>
                             <th class="px-3 py-3 text-center w-10">#</th>
@@ -197,6 +204,7 @@
                     @endif
                 </table>
             </div>
+
         </div>
     </div>
 
@@ -239,7 +247,7 @@
                             zeroRecords: 'Sin resultados',
                             emptyTable: 'No hay datos',
                         },
-                        dom: 'lrtip'
+                        dom: 'rt<"mt-6 flex flex-col md:flex-row justify-between items-center gap-4"lip>'
                     });
                 }
 
@@ -315,13 +323,13 @@
                     initChart();
                 }
 
-                // Manejo de eventos para carga normal y Turbo
-                if (document.readyState === 'loading') {
-                    document.addEventListener('DOMContentLoaded', boot);
-                } else {
+                if (document.readyState !== 'loading') {
                     boot();
+                } else {
+                    document.addEventListener('DOMContentLoaded', boot);
                 }
-                document.addEventListener('turbo:load', boot);
+
+                document.addEventListener('turbo:load', boot, { once: true });
 
                 // Exponer exportarExcel globalmente
                 window.exportarExcel = function () {
@@ -369,6 +377,19 @@
             background: #f97316 !important;
             border-color: #f97316 !important;
             color: white !important;
+        }
+
+        /* Ajustes para el nuevo wrapper de DataTables */
+        .dataTables_wrapper .dataTables_length,
+        .dataTables_wrapper .dataTables_info,
+        .dataTables_wrapper .dataTables_paginate {
+            float: none !important;
+            margin: 0 !important;
+            display: inline-block !important;
+        }
+
+        .dataTables_wrapper .dataTables_paginate {
+            text-align: right !important;
         }
     </style>
 @endsection

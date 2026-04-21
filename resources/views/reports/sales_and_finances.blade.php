@@ -198,6 +198,14 @@
                     const canvas = document.getElementById('financeComparisonChart');
                     if (!canvas) return;
 
+                    if (typeof Chart === 'undefined') {
+                        setTimeout(initChart, 200);
+                        return;
+                    }
+
+                    const existingChart = Chart.getChart(canvas);
+                    if (existingChart) existingChart.destroy();
+
                     const ctx = canvas.getContext('2d');
 
                     // Gradientes
@@ -209,7 +217,9 @@
                     purchasesGradient.addColorStop(0, 'rgba(239, 68, 68, 0.2)');
                     purchasesGradient.addColorStop(1, 'rgba(239, 68, 68, 0)');
 
-                    new Chart(ctx, {
+                    // Pequeño delay para asegurar que el contenedor tenga dimensiones
+                    setTimeout(() => {
+                        new Chart(canvas, {
                         type: 'line',
                         data: {
                             labels: @json($dates),
@@ -295,14 +305,15 @@
                             }
                         }
                     });
-                }
+                }, 50);
+            }
 
-                if (document.readyState === 'loading') {
-                    document.addEventListener('DOMContentLoaded', initChart);
-                } else {
+                if (document.readyState !== 'loading') {
                     initChart();
+                } else {
+                    document.addEventListener('DOMContentLoaded', initChart);
                 }
-                document.addEventListener('turbo:load', initChart);
+                document.addEventListener('turbo:load', initChart, { once: true });
             })();
 
             function exportarExcel() {

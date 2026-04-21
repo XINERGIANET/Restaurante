@@ -162,6 +162,52 @@ class ReportController extends Controller
             'chartData'
         ));
     }
+
+    public function paymentMethod(Request $request)
+    {
+        $branchId  = session('branch_id');
+        $dateFrom  = $request->input('date_from', now()->format('Y-m-d'));
+        $dateTo    = $request->input('date_to',   now()->format('Y-m-d'));
+
+        $query = DB::table('cash_movement_details')
+            ->join('cash_movements', 'cash_movements.id', '=', 'cash_movement_details.cash_movement_id')
+            ->join('payment_concepts', 'payment_concepts.id', '=', 'cash_movements.payment_concept_id')
+            ->select(
+                'cash_movement_details.payment_method',
+                DB::raw('COUNT(cash_movement_details.id) as transactions_count'),
+                DB::raw('SUM(cash_movement_details.amount) as total_amount')
+            )
+            ->where('payment_concepts.type', 'I') // Solo ingresos
+            ->where('payment_concepts.description', 'NOT LIKE', '%Apertura%') // Excluir apertura
+            ->whereNull('cash_movement_details.deleted_at')
+            ->whereNull('cash_movements.deleted_at')
+            ->whereBetween(DB::raw('DATE(cash_movement_details.created_at)'), [$dateFrom, $dateTo]);
+
+        if ($branchId) {
+            $query->where('cash_movement_details.branch_id', $branchId);
+        }
+
+        $rows = $query->groupBy('cash_movement_details.payment_method')
+            ->orderByDesc('total_amount')
+            ->get();
+
+        $grandTotal = $rows->sum('total_amount');
+        $grandCount = $rows->sum('transactions_count');
+
+        // Para el gráfico
+        $chartLabels = $rows->pluck('payment_method')->toArray();
+        $chartData   = $rows->pluck('total_amount')->map(fn($v) => round((float)$v, 2))->toArray();
+
+        return view('reports.payment_method', compact(
+            'dateFrom',
+            'dateTo',
+            'rows',
+            'grandTotal',
+            'grandCount',
+            'chartLabels',
+            'chartData'
+        ));
+    }
     public function salesAndFinances(Request $request)
     {
         $data = $this->getSalesAndFinancesData($request);

@@ -191,7 +191,7 @@
                             zeroRecords: 'Sin resultados',
                             emptyTable: 'No hay datos',
                         },
-                        dom: 'lrtip'
+                        dom: 'rt<"mt-6 flex flex-col md:flex-row justify-between items-center gap-4"lip>'
                     });
                 }
 
@@ -265,13 +265,47 @@
                     initChart();
                 }
 
-                if (document.readyState === 'loading') {
-                    document.addEventListener('DOMContentLoaded', boot);
-                } else {
+                if (document.readyState !== 'loading') {
                     boot();
+                } else {
+                    document.addEventListener('DOMContentLoaded', boot);
                 }
-                document.addEventListener('turbo:load', boot);
+                document.addEventListener('turbo:load', boot, { once: true });
             })();
         </script>
     @endpush
+    <style>
+        #tabla-clientes_wrapper .dataTables_filter input,
+        #tabla-clientes_wrapper .dataTables_length select {
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            padding: 4px 10px;
+            font-size: 13px;
+            outline: none;
+            margin-left: 4px;
+        }
+
+        #tabla-clientes_wrapper .dataTables_paginate .paginate_button {
+            border-radius: 6px !important;
+            padding: 4px 10px !important;
+        }
+
+        #tabla-clientes_wrapper .dataTables_paginate .paginate_button.current {
+            background: #f97316 !important;
+            border-color: #f97316 !important;
+            color: white !important;
+        }
+
+        .dataTables_wrapper .dataTables_length,
+        .dataTables_wrapper .dataTables_info,
+        .dataTables_wrapper .dataTables_paginate {
+            float: none !important;
+            margin: 0 !important;
+            display: inline-block !important;
+        }
+
+        .dataTables_wrapper .dataTables_paginate {
+            text-align: right !important;
+        }
+    </style>
 @endsection

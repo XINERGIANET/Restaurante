@@ -111,18 +111,23 @@
                 const canvas = document.getElementById('paymentsDoughnutChart');
                 if (!canvas) return;
 
+                // Si ya existe un gráfico en este canvas, destruirlo
+                const existingChart = Chart.getChart(canvas);
+                if (existingChart) {
+                    existingChart.destroy();
+                }
+
+                // Verificar si Chart.js está cargado
                 if (typeof Chart === 'undefined') {
                     setTimeout(initChart, 200);
                     return;
                 }
 
+                const ctx = canvas.getContext('2d');
+                if (!ctx) return;
+
+                // Pequeño delay para asegurar que el contenedor tenga dimensiones
                 setTimeout(() => {
-                    const ctx = canvas.getContext('2d');
-                    if (!ctx) return;
-
-                    const existingChart = Chart.getChart(canvas);
-                    if (existingChart) existingChart.destroy();
-
                     new Chart(canvas, {
                         type: 'doughnut',
                         data: {
@@ -168,15 +173,19 @@
                             }
                         }
                     });
-                }, 150);
+                }, 50);
             }
 
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', initChart);
-            } else {
+            // Ejecutar inmediatamente si el DOM ya está listo
+            if (document.readyState !== 'loading') {
                 initChart();
+            } else {
+                document.addEventListener('DOMContentLoaded', initChart);
             }
-            document.addEventListener('turbo:load', initChart);
+            
+            // Escuchar turbo:load para navegaciones subsiguientes
+            // Usamos { once: true } si el script se re-evalúa, o simplemente confiamos en initChart() directo
+            document.addEventListener('turbo:load', initChart, { once: true });
         })();
     </script>
 @endpush

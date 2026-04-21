@@ -290,133 +290,132 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
 
     </div>
 
-</body>
-
-@if (session('status'))
-<script>
-(function() {
-    const showStatusToast = () => {
-        const message = @json(session('status'));
-        const key = 'toast:status';
-        if (window.sessionStorage && sessionStorage.getItem(key) === message) {
-            return;
-        }
-        if (window.Swal) {
-            Swal.fire({
-                toast: true,
-                position: 'bottom-end',
-                icon: 'success',
-                title: message,
-                showConfirmButton: false,
-                timer: 3500,
-                timerProgressBar: true
-            });
-        }
-        if (window.sessionStorage) {
-            sessionStorage.setItem(key, message);
-        }
-    };
-    document.addEventListener('DOMContentLoaded', showStatusToast, { once: true });
-    document.addEventListener('turbo:load', showStatusToast);
-})();
-</script>
-@endif
-
-@php
-    $errorMessage = session('error');
-    if (empty($errorMessage) && isset($errors) && $errors->any()) {
-        $errorMessage = $errors->first();
-    }
-@endphp
-@if (!empty($errorMessage))
-<script>
-(function() {
-    const showErrorToast = () => {
-        const message = @json($errorMessage);
-        const key = 'toast:error';
-        if (window.sessionStorage && sessionStorage.getItem(key) === message) {
-            return;
-        }
-        if (window.Swal) {
-            Swal.fire({
-                toast: true,
-                position: 'bottom-end',
-                icon: 'error',
-                title: message,
-                showConfirmButton: false,
-                timer: 4000,
-                timerProgressBar: true
-            });
-        }
-        if (window.sessionStorage) {
-            sessionStorage.setItem(key, message);
-        }
-    };
-    document.addEventListener('DOMContentLoaded', showErrorToast, { once: true });
-    document.addEventListener('turbo:load', showErrorToast);
-})();
-</script>
-@endif
-<script>
-    if (!window.__globalSwalDeleteHandler) {
-        document.addEventListener('submit', (event) => {
-            const form = event.target.closest('.js-swal-delete');
-            if (!form) return;
-            if (form.dataset.swalBound === 'true') return;
-            event.preventDefault();
-            if (!window.Swal) {
-                form.submit();
+    @if (session('status'))
+    <script>
+    (function() {
+        const showStatusToast = () => {
+            const message = @json(session('status'));
+            const key = 'toast:status';
+            if (window.sessionStorage && sessionStorage.getItem(key) === message) {
                 return;
             }
-            const title = form.dataset.swalTitle || '¿Eliminar registro?';
-            const text = form.dataset.swalText || 'Esta acción no se puede deshacer.';
-            const icon = form.dataset.swalIcon || 'warning';
-            const confirmText = form.dataset.swalConfirm || 'Sí, eliminar';
-            const cancelText = form.dataset.swalCancel || 'Cancelar';
-            const confirmColor = form.dataset.swalConfirmColor || '#ef4444';
-            const cancelColor = form.dataset.swalCancelColor || '#6b7280';
+            if (window.Swal) {
+                Swal.fire({
+                    toast: true,
+                    position: 'bottom-end',
+                    icon: 'success',
+                    title: message,
+                    showConfirmButton: false,
+                    timer: 3500,
+                    timerProgressBar: true
+                });
+            }
+            if (window.sessionStorage) {
+                sessionStorage.setItem(key, message);
+            }
+        };
+        document.addEventListener('DOMContentLoaded', showStatusToast, { once: true });
+        document.addEventListener('turbo:load', showStatusToast);
+    })();
+    </script>
+    @endif
 
-            const isDark = document.documentElement.classList.contains('dark');
-            Swal.fire({
-                title,
-                text,
-                icon,
-                showCancelButton: true,
-                confirmButtonText: confirmText,
-                cancelButtonText: cancelText,
-                confirmButtonColor: confirmColor,
-                cancelButtonColor: cancelColor,
-                reverseButtons: true,
-                allowOutsideClick: false,
-                background: isDark ? '#111827' : '#ffffff',
-                color: isDark ? '#e5e7eb' : '#111827',
-                customClass: {
-                    backdrop: 'swal-backdrop-blur',
-                },
-                didOpen: (popup) => {
-                    popup.classList.toggle('swal-dark', isDark);
-                },
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    if (window.showLoadingModal) {
-                        window.showLoadingModal();
-                    }
-                    form.dataset.swalBound = 'true';
+    @php
+        $errorMessage = session('error');
+        if (empty($errorMessage) && isset($errors) && $errors->any()) {
+            $errorMessage = $errors->first();
+        }
+    @endphp
+    @if (!empty($errorMessage))
+    <script>
+    (function() {
+        const showErrorToast = () => {
+            const message = @json($errorMessage);
+            const key = 'toast:error';
+            if (window.sessionStorage && sessionStorage.getItem(key) === message) {
+                return;
+            }
+            if (window.Swal) {
+                Swal.fire({
+                    toast: true,
+                    position: 'bottom-end',
+                    icon: 'error',
+                    title: message,
+                    showConfirmButton: false,
+                    timer: 4000,
+                    timerProgressBar: true
+                });
+            }
+            if (window.sessionStorage) {
+                sessionStorage.setItem(key, message);
+            }
+        };
+        document.addEventListener('DOMContentLoaded', showErrorToast, { once: true });
+        document.addEventListener('turbo:load', showErrorToast);
+    })();
+    </script>
+    @endif
+    <script>
+        if (!window.__globalSwalDeleteHandler) {
+            document.addEventListener('submit', (event) => {
+                const form = event.target.closest('.js-swal-delete');
+                if (!form) return;
+                if (form.dataset.swalBound === 'true') return;
+                event.preventDefault();
+                if (!window.Swal) {
                     form.submit();
+                    return;
                 }
+                const title = form.dataset.swalTitle || '¿Eliminar registro?';
+                const text = form.dataset.swalText || 'Esta acción no se puede deshacer.';
+                const icon = form.dataset.swalIcon || 'warning';
+                const confirmText = form.dataset.swalConfirm || 'Sí, eliminar';
+                const cancelText = form.dataset.swalCancel || 'Cancelar';
+                const confirmColor = form.dataset.swalConfirmColor || '#ef4444';
+                const cancelColor = form.dataset.swalCancelColor || '#6b7280';
+
+                const isDark = document.documentElement.classList.contains('dark');
+                Swal.fire({
+                    title,
+                    text,
+                    icon,
+                    showCancelButton: true,
+                    confirmButtonText: confirmText,
+                    cancelButtonText: cancelText,
+                    confirmButtonColor: confirmColor,
+                    cancelButtonColor: cancelColor,
+                    reverseButtons: true,
+                    allowOutsideClick: false,
+                    background: isDark ? '#111827' : '#ffffff',
+                    color: isDark ? '#e5e7eb' : '#111827',
+                    customClass: {
+                        backdrop: 'swal-backdrop-blur',
+                    },
+                    didOpen: (popup) => {
+                        popup.classList.toggle('swal-dark', isDark);
+                    },
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        if (window.showLoadingModal) {
+                            window.showLoadingModal();
+                        }
+                        form.dataset.swalBound = 'true';
+                        form.submit();
+                    }
+                });
             });
-        });
-        window.__globalSwalDeleteHandler = true;
-    }
-</script>
-<style>
-    .swal2-container.swal2-backdrop-show .swal-backdrop-blur {
-        background-color: rgba(156, 163, 175, 0.5) !important;
-        opacity: 1 !important;
-        backdrop-filter: blur(32px) !important;
-        -webkit-backdrop-filter: blur(32px) !important;
-    }
-</style>
+            window.__globalSwalDeleteHandler = true;
+        }
+    </script>
+    <style>
+        .swal2-container.swal2-backdrop-show .swal-backdrop-blur {
+            background-color: rgba(156, 163, 175, 0.5) !important;
+            opacity: 1 !important;
+            backdrop-filter: blur(32px) !important;
+            -webkit-backdrop-filter: blur(32px) !important;
+        }
+    </style>
     @stack('scripts')
+</body>
 
 </html>
