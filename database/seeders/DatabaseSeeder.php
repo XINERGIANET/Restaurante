@@ -14,6 +14,8 @@ class DatabaseSeeder extends Seeder
         $this->call([
             PettyCashOperationSeeder::class,
             DefaultSaleDocumentTypeParameterSeeder::class,
+            ReportesMenuSeeder::class,
+            UserPermissionSeeder::class,
         ]);
     }
 }

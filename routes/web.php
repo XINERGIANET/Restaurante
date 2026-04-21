@@ -476,6 +476,24 @@ Route::middleware('auth')->group(function () {
         ->parameters(['movimientos_almacen' => 'warehouseMovement'])
         ->only(['index', 'store', 'show', 'edit', 'update', 'destroy']);
 
+    // Reportes
+    Route::get('/reportes/consolidado-productos', [\App\Http\Controllers\ReportController::class, 'consolidatedProducts'])
+        ->name('reports.consolidated_products');
+    Route::get('/reportes/consolidado-productos/excel', [\App\Http\Controllers\ReportController::class, 'consolidateProductsExcel'])
+        ->name('reports.consolidated_products.excel');
+    Route::get('/reportes/consolidado-productos/pdf', [\App\Http\Controllers\ReportController::class, 'consolidatedProductsPdf'])
+        ->name('reports.consolidated_products.pdf');
+    Route::get('/reportes/metodo-pago', [\App\Http\Controllers\ReportController::class, 'paymentMethod'])
+        ->name('reports.payment_method');
+    Route::get('/reportes/ventas-cliente', [\App\Http\Controllers\ReportController::class, 'salesByCustomer'])
+        ->name('reports.sales_by_customer');
+    Route::get('/reportes/ventas-finanzas', [\App\Http\Controllers\ReportController::class, 'salesAndFinances'])
+        ->name('reports.sales_and_finances');
+    Route::get('/reportes/ventas-finanzas/excel', [\App\Http\Controllers\ReportController::class, 'salesAndFinancesExcel'])
+        ->name('reports.sales_and_finances.excel');
+    Route::get('/reportes/ventas-finanzas/pdf', [\App\Http\Controllers\ReportController::class, 'salesAndFinancesPdf'])
+        ->name('reports.sales_and_finances.pdf');
+
     //Recetario
     Route::resource('/cocina/recetario', RecipeBookController::class)
         ->names('recipe-book')
