@@ -29,6 +29,7 @@ use App\Models\Operation;
 use App\Models\Role;
 use App\Services\KardexSyncService;
 use App\Support\InsensitiveSearch;
+use App\Models\Location;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -257,10 +258,14 @@ class PurchaseController extends Controller
 
         $viewId = $request->input('view_id');
 
+        $departments = Location::query()->where('type', 'department')->orderBy('name')->get(['id', 'name']);
+        $provinces   = Location::query()->where('type', 'province')->orderBy('name')->get(['id', 'name', 'parent_location_id']);
+        $districts   = Location::query()->where('type', 'district')->orderBy('name')->get(['id', 'name', 'parent_location_id']);
+
         return view('purchases._form', compact(
             'people', 'documentTypes', 'units', 'products', 'defaultTaxRate',
             'purchase', 'branches', 'branchId', 'cards', 'paymentGateways', 'digitalWallets', 'banks',
-            'categories', 'viewId', 'paymentMethods'
+            'categories', 'viewId', 'paymentMethods', 'departments', 'provinces', 'districts'
         ));
     }
 
@@ -915,11 +920,15 @@ class PurchaseController extends Controller
         $banks = Bank::all();
         $viewId = $request->input('view_id');
 
+        $departments = Location::query()->where('type', 'department')->orderBy('name')->get(['id', 'name']);
+        $provinces   = Location::query()->where('type', 'province')->orderBy('name')->get(['id', 'name', 'parent_location_id']);
+        $districts   = Location::query()->where('type', 'district')->orderBy('name')->get(['id', 'name', 'parent_location_id']);
+
         return view('purchases._form', compact(
             'purchaseMovement', 'purchase', 'people', 'documentTypes', 'units',
             'products', 'defaultTaxRate', 'branches', 'branchId',
             'cards', 'paymentGateways', 'digitalWallets', 'banks',
-            'categories', 'viewId', 'paymentMethods'
+            'categories', 'viewId', 'paymentMethods', 'departments', 'provinces', 'districts'
         ));
     }
 
@@ -939,17 +948,25 @@ class PurchaseController extends Controller
         }
 
         $data = $request->validate([
-            'first_name' => ['required', 'string', 'max:255'],
-            'last_name' => ['required', 'string', 'max:255'],
-            'person_type' => ['required', 'string', 'in:DNI,RUC,CARNET DE EXTRANGERIA,PASAPORTE'],
-            'document_number' => ['required', 'string', 'max:50'],
-            'phone' => ['required', 'string', 'max:50'],
-            'email' => ['required', 'email', 'max:255'],
-            'address' => ['required', 'string', 'max:255'],
-            'location_id' => ['nullable', 'integer', 'exists:locations,id'],
+            'first_name'       => ['required', 'string', 'max:255'],
+            'last_name'        => ['nullable', 'string', 'max:255'],
+            'person_type'      => ['required', 'string', 'in:DNI,RUC,CARNET DE EXTRANGERIA,PASAPORTE'],
+            'document_number'  => ['required', 'string', 'max:50'],
+            'phone'            => ['nullable', 'string', 'max:50'],
+            'email'            => ['nullable', 'email', 'max:255'],
+            'address'          => ['nullable', 'string', 'max:255'],
+            'fecha_nacimiento'  => ['nullable', 'date'],
+            'genero'           => ['nullable', 'string', 'max:20'],
+            'location_id'      => ['nullable', 'integer', 'exists:locations,id'],
         ]);
 
-        $data['branch_id'] = $branch->id;
+        // PostgreSQL no acepta NULL en columnas NOT NULL → forzar cadena vacía
+        $data['last_name']  = $data['last_name']  ?? '';
+        $data['phone']      = $data['phone']      ?? '';
+        $data['email']      = $data['email']      ?? '';
+        $data['address']    = $data['address']    ?? '';
+
+        $data['branch_id']   = $branch->id;
         $data['location_id'] = $data['location_id'] ?? $branch->location_id ?? 1477;
 
         $person = Person::create($data);

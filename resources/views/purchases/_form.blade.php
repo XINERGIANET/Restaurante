@@ -162,101 +162,163 @@
                         </div>
                     </div>
 
-                    {{-- Modal Crear proveedor --}}
+                    {{-- Modal Crear proveedor (mejorado) --}}
                     <div x-show="showModalProveedor" x-cloak
                         class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm"
                         x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0"
                         x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-150"
                         x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
                         @keydown.escape.window="closeModalProveedor()">
-                        <div class="w-full max-w-md rounded-2xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-900"
+                        <div class="w-full max-w-2xl rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-900"
                             @click.stop x-transition:enter="transition ease-out duration-200"
                             x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
                             x-transition:leave="transition ease-in duration-150"
                             x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95">
+
                             {{-- Header --}}
-                            <div
-                                class="flex items-center justify-between border-b border-gray-200 px-5 py-4 dark:border-gray-700">
-                                <h3 class="text-base font-semibold text-gray-800 dark:text-white">Crear proveedor</h3>
+                            <div class="flex items-center justify-between border-b border-gray-200 px-6 py-4 dark:border-gray-700 bg-gradient-to-r from-[#FF4622]/5 to-transparent rounded-t-2xl">
+                                <div class="flex items-center gap-3">
+                                    <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-[#FF4622]/10">
+                                        <i class="ri-user-add-line text-[#FF4622] text-lg"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-base font-bold text-gray-800 dark:text-white">Nuevo Proveedor</h3>
+                                        <p class="text-xs text-gray-500">Busca por DNI o RUC para autocompletar los datos</p>
+                                    </div>
+                                </div>
                                 <button type="button" @click="closeModalProveedor()"
-                                    class="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-300 transition-colors"
-                                    aria-label="Cerrar">
+                                    class="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 transition-colors">
                                     <i class="ri-close-line text-xl"></i>
                                 </button>
                             </div>
+
                             {{-- Body --}}
-                            <div class="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
-                                <p x-show="providerError" x-text="providerError"
-                                    class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-900/20 dark:text-red-400">
+                            <div class="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+
+                                {{-- Alerta de error --}}
+                                <p x-show="providerError" x-text="providerError" x-cloak
+                                    class="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600 flex items-center gap-2">
                                 </p>
-                                @php $inputClass = 'h-10 w-full rounded-lg border border-gray-300 px-3 text-sm focus:border-[#FF4622] focus:ring-1 focus:ring-[#FF4622] bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-white placeholder:text-gray-400'; @endphp
-                                <div class="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Tipo
-                                            doc.</label>
-                                        <select x-model="providerForm.person_type" class="{{ $inputClass }}">
+
+                                @php $iC = 'h-11 w-full rounded-xl border border-gray-300 bg-white px-4 text-sm text-gray-800 placeholder:text-gray-400 focus:border-[#FF4622] focus:ring-2 focus:ring-[#FF4622]/20 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white'; @endphp
+
+                                {{-- Tipo + Documento + Botón Buscar (una sola fila) --}}
+                                <div>
+                                    <label class="mb-1.5 block text-xs font-semibold text-[#2752FF] uppercase tracking-wider">
+                                        <i class="ri-search-eye-line mr-1"></i>Tipo y Documento
+                                        <span class="text-[10px] font-normal text-gray-400 normal-case">(Enter o clic en Buscar)</span>
+                                    </label>
+                                    <div class="flex gap-2">
+                                        <select x-model="providerForm.person_type" @change="onSupplierTypeChange()"
+                                            class="h-11 w-32 shrink-0 rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-800 focus:border-[#FF4622] focus:ring-2 focus:ring-[#FF4622]/20 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white">
                                             <option value="DNI">DNI</option>
                                             <option value="RUC">RUC</option>
-                                            <option value="CARNET DE EXTRANGERIA">Carné extranjería</option>
+                                            <option value="CARNET DE EXTRANGERIA">Carné ext.</option>
                                             <option value="PASAPORTE">Pasaporte</option>
+                                        </select>
+                                        <input type="text" x-model.trim="providerForm.document_number"
+                                            @keydown.enter.prevent="searchSupplierApi()"
+                                            :maxlength="providerForm.person_type === 'RUC' ? 11 : 8"
+                                            placeholder="Ej: 20123456789"
+                                            class="{{ $iC }} flex-1" />
+                                        <button type="button" @click="searchSupplierApi()" :disabled="supplierSearchLoading"
+                                            class="inline-flex h-11 shrink-0 items-center gap-2 rounded-xl bg-[#2752FF] px-4 text-sm font-semibold text-white hover:bg-[#1f45dc] disabled:opacity-60 transition-colors">
+                                            <i :class="supplierSearchLoading ? 'ri-loader-4-line animate-spin' : 'ri-search-line'"></i>
+                                            <span class="hidden sm:inline" x-text="supplierSearchLoading ? 'Buscando...' : 'Buscar'"></span>
+                                        </button>
+                                    </div>
+                                    <p x-show="supplierApiError" x-text="supplierApiError" class="mt-1 text-xs text-red-500"></p>
+                                </div>
+
+                                {{-- Nombre / Razón Social --}}
+                                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                    <div :class="providerForm.person_type === 'RUC' ? 'sm:col-span-2' : ''">
+                                        <label class="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-500"
+                                            x-text="providerForm.person_type === 'RUC' ? 'Razón social *' : 'Nombres *'"></label>
+                                        <input type="text" x-model="providerForm.first_name"
+                                            :placeholder="providerForm.person_type === 'RUC' ? 'Ingrese la razón social' : 'Ingrese los nombres'"
+                                            class="{{ $iC }}" />
+                                    </div>
+                                    <div x-show="providerForm.person_type !== 'RUC'" x-cloak>
+                                        <label class="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-500">Apellidos</label>
+                                        <input type="text" x-model="providerForm.last_name"
+                                            placeholder="Ingrese los apellidos" class="{{ $iC }}" />
+                                    </div>
+                                </div>
+
+                                {{-- Contacto --}}
+                                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                    <div x-show="providerForm.person_type !== 'RUC'" x-cloak>
+                                        <label class="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-500">F. Nacimiento</label>
+                                        <input type="date" x-model="providerForm.fecha_nacimiento" class="{{ $iC }}" />
+                                    </div>
+                                    <div x-show="providerForm.person_type !== 'RUC'" x-cloak>
+                                        <label class="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-500">Género</label>
+                                        <select x-model="providerForm.genero" class="{{ $iC }}">
+                                            <option value="">Seleccione</option>
+                                            <option value="MASCULINO">Masculino</option>
+                                            <option value="FEMENINO">Femenino</option>
+                                            <option value="OTRO">Otro</option>
                                         </select>
                                     </div>
                                     <div>
-                                        <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Nº
-                                            documento <span class="text-red-500">*</span></label>
-                                        <input type="text" x-model="providerForm.document_number"
-                                            placeholder="Ej. 20123456789" class="{{ $inputClass }}" />
+                                        <label class="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-500">Teléfono</label>
+                                        <input type="text" x-model="providerForm.phone" placeholder="999888777" class="{{ $iC }}" />
+                                    </div>
+                                    <div>
+                                        <label class="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-500">Email</label>
+                                        <input type="email" x-model="providerForm.email" placeholder="proveedor@correo.com" class="{{ $iC }}" />
                                     </div>
                                 </div>
-                                <div class="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label
-                                            class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Nombres
-                                            <span class="text-red-500">*</span></label>
-                                        <input type="text" x-model="providerForm.first_name" placeholder="Ej. Juan"
-                                            class="{{ $inputClass }}" />
-                                    </div>
-                                    <div>
-                                        <label
-                                            class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Apellidos
-                                            <span class="text-red-500">*</span></label>
-                                        <input type="text" x-model="providerForm.last_name" placeholder="Ej. Pérez"
-                                            class="{{ $inputClass }}" />
-                                    </div>
-                                </div>
-                                <div class="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label
-                                            class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Teléfono
-                                            <span class="text-red-500">*</span></label>
-                                        <input type="text" x-model="providerForm.phone" placeholder="Ej. 999888777"
-                                            class="{{ $inputClass }}" />
-                                    </div>
-                                    <div>
-                                        <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Email
-                                            <span class="text-red-500">*</span></label>
-                                        <input type="email" x-model="providerForm.email" placeholder="proveedor@correo.com"
-                                            class="{{ $inputClass }}" />
-                                    </div>
-                                </div>
+
+                                {{-- Dirección --}}
                                 <div>
-                                    <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Dirección
-                                        <span class="text-red-500">*</span></label>
-                                    <input type="text" x-model="providerForm.address" placeholder="Ej. Av. Principal 123"
-                                        class="{{ $inputClass }}" />
+                                    <label class="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-500">Dirección</label>
+                                    <input type="text" x-model="providerForm.address" placeholder="Av. Principal 123..." class="{{ $iC }}" />
+                                </div>
+
+                                {{-- Ubicación --}}
+                                <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                                    <div>
+                                        <label class="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-500">Departamento</label>
+                                        <select x-model="supplierDeptId" @change="supplierProvId=''; supplierDistId=''" class="{{ $iC }}">
+                                            <option value="">Seleccione</option>
+                                            @foreach($departments ?? [] as $dept)
+                                                <option value="{{ $dept->id }}">{{ $dept->name }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-500">Provincia</label>
+                                        <select x-model="supplierProvId" @change="supplierDistId=''" class="{{ $iC }}">
+                                            <option value="">Seleccione</option>
+                                            <template x-for="p in supplierProvinces" :key="p.id">
+                                                <option :value="String(p.id)" x-text="p.name"></option>
+                                            </template>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-500">Distrito</label>
+                                        <select x-model="supplierDistId" @change="providerForm.location_id = $event.target.value" class="{{ $iC }}">
+                                            <option value="">Seleccione</option>
+                                            <template x-for="d in supplierDistricts" :key="d.id">
+                                                <option :value="String(d.id)" x-text="d.name"></option>
+                                            </template>
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
+
                             {{-- Footer --}}
-                            <div
-                                class="flex  justify-end gap-2 border-t border-gray-200 px-5 py-4 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/30 rounded-b-2xl">
+                            <div class="flex justify-end gap-3 border-t border-gray-200 px-6 py-4 dark:border-gray-700 bg-gray-50/60 rounded-b-2xl">
                                 <button type="button" @click="closeModalProveedor()"
-                                    class="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 bg-white border border-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
+                                    class="px-5 py-2.5 rounded-xl text-sm font-medium text-gray-600 bg-white border border-gray-300 hover:bg-gray-50 transition-colors">
                                     Cancelar
                                 </button>
                                 <button type="button" @click="submitProviderModal()" :disabled="providerLoading"
-                                    class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-[#FF4622] hover:bg-[#C43B25] disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-                                    <span x-show="!providerLoading">Guardar proveedor</span>
-                                    <span x-show="providerLoading" x-cloak>Guardando...</span>
+                                    class="px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-[#FF4622] hover:bg-[#C43B25] disabled:opacity-50 transition-colors inline-flex items-center gap-2">
+                                    <i :class="providerLoading ? 'ri-loader-4-line animate-spin' : 'ri-save-line'"></i>
+                                    <span x-text="providerLoading ? 'Guardando...' : 'Guardar proveedor'"></span>
                                 </button>
                             </div>
                         </div>
@@ -748,22 +810,102 @@
                         selectedProviderId: initialProviderId || '',
                         providerOptions: Array.isArray(initialProviderOptions) ? initialProviderOptions : [],
                         showModalProveedor: false,
-                        providerForm: { first_name: '', last_name: '', person_type: 'RUC', document_number: '', phone: '', email: '', address: '' },
+                        providerForm: { first_name: '', last_name: '', person_type: 'RUC', document_number: '', phone: '', email: '', address: '', fecha_nacimiento: '', genero: '', location_id: '' },
                         providerLoading: false,
                         providerError: '',
+                        // Estado para búsqueda API en modal proveedor
+                        supplierSearchLoading: false,
+                        supplierApiError: '',
+                        supplierDeptId: '',
+                        supplierProvId: '',
+                        supplierDistId: '',
+                        allProvinces: @js(($provinces ?? collect())->map(fn($p) => ['id' => $p->id, 'name' => $p->name, 'parent_location_id' => $p->parent_location_id])->values()->all()),
+                        allDistricts: @js(($districts ?? collect())->map(fn($d) => ['id' => $d->id, 'name' => $d->name, 'parent_location_id' => $d->parent_location_id])->values()->all()),
+                        get supplierProvinces() {
+                            return this.allProvinces.filter(p => String(p.parent_location_id) === String(this.supplierDeptId));
+                        },
+                        get supplierDistricts() {
+                            return this.allDistricts.filter(d => String(d.parent_location_id) === String(this.supplierProvId));
+                        },
+                        onSupplierTypeChange() {
+                            this.supplierApiError = '';
+                            if (this.providerForm.person_type === 'RUC') {
+                                this.providerForm.last_name = '';
+                                this.providerForm.genero = '';
+                                this.providerForm.fecha_nacimiento = '';
+                                if (this.providerForm.document_number.length > 11)
+                                    this.providerForm.document_number = this.providerForm.document_number.slice(0, 11);
+                            } else if (this.providerForm.document_number.length > 8) {
+                                this.providerForm.document_number = this.providerForm.document_number.slice(0, 8);
+                            }
+                        },
+                        async searchSupplierApi() {
+                            const doc = this.providerForm.document_number.trim();
+                            const isRuc = this.providerForm.person_type === 'RUC';
+                            const expected = isRuc ? 11 : 8;
+                            if (doc.length !== expected) {
+                                this.supplierApiError = isRuc ? 'Ingrese un RUC de 11 dígitos.' : 'Ingrese un DNI de 8 dígitos.';
+                                return;
+                            }
+                            this.supplierSearchLoading = true;
+                            this.supplierApiError = '';
+                            try {
+                                const endpoint = isRuc ? `/api/ruc/${encodeURIComponent(doc)}` : `/api/dni/${encodeURIComponent(doc)}`;
+                                const response = await fetch(endpoint, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                                const data = await response.json();
+                                if (!response.ok) { this.supplierApiError = data.error || 'No se encontraron datos.'; return; }
+                                if (isRuc) {
+                                    this.providerForm.first_name = data.razon_social || '';
+                                    this.providerForm.last_name = '';
+                                    this.providerForm.address = data.direccion || this.providerForm.address;
+                                    this.providerForm.fecha_nacimiento = '';
+                                    this.setSupplierLocationByNames(data.departamento, data.provincia, data.distrito);
+                                } else {
+                                    this.providerForm.first_name = data.nombres || '';
+                                    this.providerForm.last_name = [data.apellido_paterno, data.apellido_materno].filter(Boolean).join(' ');
+                                    const raw = String(data.fecha_nacimiento || '').trim();
+                                    if (/^\d{2}\/\d{2}\/\d{4}$/.test(raw)) {
+                                        const [d, m, y] = raw.split('/');
+                                        this.providerForm.fecha_nacimiento = `${y}-${m}-${d}`;
+                                    }
+                                    const g = String(data.genero || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
+                                    this.providerForm.genero = (g === 'M' || g === 'MASCULINO') ? 'MASCULINO' : (g === 'F' || g === 'FEMENINO') ? 'FEMENINO' : (g ? 'OTRO' : '');
+                                }
+                            } catch (e) {
+                                this.supplierApiError = 'No se pudo consultar el documento.';
+                            } finally {
+                                this.supplierSearchLoading = false;
+                            }
+                        },
+                        setSupplierLocationByNames(deptName, provName, distName) {
+                            const norm = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
+                            const allDepts = @js(($departments ?? collect())->map(fn($d) => ['id' => $d->id, 'name' => $d->name])->values()->all());
+                            const dept = allDepts.find(d => norm(d.name) === norm(deptName));
+                            this.supplierDeptId = dept ? String(dept.id) : '';
+                            const prov = this.supplierProvinces.find(p => norm(p.name) === norm(provName));
+                            this.supplierProvId = prov ? String(prov.id) : '';
+                            const dist = this.supplierDistricts.find(d => norm(d.name) === norm(distName));
+                            this.supplierDistId = dist ? String(dist.id) : '';
+                            this.providerForm.location_id = dist ? String(dist.id) : '';
+                        },
                         openModalCreateProveedor() {
                             this.providerError = '';
-                            this.providerForm = { first_name: '', last_name: '', person_type: 'RUC', document_number: '', phone: '', email: '', address: '' };
+                            this.supplierApiError = '';
+                            this.supplierDeptId = '';
+                            this.supplierProvId = '';
+                            this.supplierDistId = '';
+                            this.providerForm = { first_name: '', last_name: '', person_type: 'RUC', document_number: '', phone: '', email: '', address: '', fecha_nacimiento: '', genero: '', location_id: '' };
                             this.showModalProveedor = true;
                         },
                         closeModalProveedor() {
                             this.showModalProveedor = false;
                             this.providerError = '';
+                            this.supplierApiError = '';
                         },
                         async submitProviderModal() {
                             this.providerError = '';
-                            if (!this.providerForm.first_name?.trim() || !this.providerForm.last_name?.trim() || !this.providerForm.document_number?.trim() || !this.providerForm.phone?.trim() || !this.providerForm.email?.trim() || !this.providerForm.address?.trim()) {
-                                this.providerError = 'Complete todos los campos obligatorios.';
+                            if (!this.providerForm.first_name?.trim() || !this.providerForm.document_number?.trim()) {
+                                this.providerError = 'Complete los campos obligatorios (nombre y documento).';
                                 return;
                             }
                             this.providerLoading = true;
@@ -776,8 +918,7 @@
                                 const data = await res.json().catch(() => ({}));
                                 if (!res.ok) {
                                     const validationMessage = (data.errors && typeof data.errors === 'object')
-                                        ? Object.values(data.errors).flat().join(' ')
-                                        : '';
+                                        ? Object.values(data.errors).flat().join(' ') : '';
                                     this.providerError = validationMessage || data.message || 'Error al crear el proveedor.';
                                     return;
                                 }
