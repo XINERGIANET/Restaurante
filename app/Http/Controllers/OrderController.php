@@ -1605,6 +1605,16 @@ class OrderController extends Controller
         $posStorageKey = 'counter-b'.$branchId.'-u'.(int) $userId;
         $recipeStockData = $this->buildRecipeStockData($branchId, $branch?->company_id);
 
+        // Mostrador: venta directa (no OrderMovement / pedido). Carrito en cliente; "Guardar" abre /ventas/cobrar.
+        $pendingOrder = null;
+        $pendingItems = [];
+        $pendingCancelledDetails = [];
+        $pendingOrderMovementId = null;
+        $pendingMovementId = null;
+        $pendingClientId = null;
+        $pendingClientName = null;
+        $startFresh = true;
+
         $response = response()->view('orders.create', array_merge([
             'user' => $user,
             'person' => $person,

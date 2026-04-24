@@ -315,12 +315,12 @@
                     class="lg:w-[450px] w-full md:w-[350px] lg:shrink-0 mx-auto lg:mx-0 flex-none bg-white dark:bg-gray-900 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-800 flex flex-col min-h-[520px] rounded-2xl overflow-hidden shadow-sm">
                     {{-- Tabs Resumen | Cobro (Cobro oculto para Mozo) --}}
                     <div class="w-full shrink-0 px-3 pt-3">
-                        <div class="grid grid-cols-2 gap-3">
+                        <div class="grid gap-3 {{ !empty($isCounterSale) ? 'grid-cols-1' : 'grid-cols-2' }}">
                             <button type="button" id="tab-resumen" onclick="switchAsideTab('resumen')"
-                                class="py-3 px-4 text-sm font-bold transition-all rounded-full bg-[#FF4622] text-white shadow-sm border border-[#FF4622]">
+                                class="py-3 px-4 text-sm font-bold transition-all rounded-full bg-[#FF4622] text-white shadow-sm border border-[#FF4622] {{ !empty($isCounterSale) ? 'w-full' : '' }}">
                                 Resumen
                             </button>
-                            @if($canCharge ?? true)
+                            @if(empty($isCounterSale) && ($canCharge ?? true))
                                 <button type="button" id="tab-cobro" onclick="switchAsideTab('cobro')"
                                     class="py-3 px-4 text-sm font-bold transition-all rounded-full bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:border-[#FF4622]/30 hover:text-[#FF4622] dark:hover:text-[#FF4622]">
                                     Cobro
@@ -596,8 +596,13 @@
                             </button>
                             <button type="button" id="btn-guardar" onclick="processOrder()"
                                 class="py-2.5 px-4 rounded-xl bg-gray-500 text-white font-bold text-xs sm:text-sm shadow-lg hover:bg-gray-600 active:scale-95 transition-all flex justify-center items-center gap-2">
+                                @if(!empty($isCounterSale))
+                                <i class="ri-save-line text-base"></i>
+                                <span>Guardar</span>
+                                @else
                                 <i class="ri-send-plane-2-line text-base"></i>
                                 <span>Enviar</span>
+                                @endif
                             </button>
                         </div>
                         {{-- Footer Cobro: solo Cobrar (oculto para Mozo) --}}
@@ -909,6 +914,9 @@
                     const kitchenThermalPrintUrl = @json(route('orders.print.kitchen.thermal'));
                     const orderPreAccountPrintUrl = @json(route('orders.print.preaccount.thermal'));
                     const orderPreAccountPdfLinkUrl = @json(route('orders.print.preaccount.pdf.link'));
+                    const salesDraftUrl = @json(route('sales.draft'));
+                    const salesChargeUrl = @json(route('sales.charge'));
+                    const salesViewIdParam = @json($viewId ?? null);
 
                     let autoSaveTimer = null;
 
@@ -1147,9 +1155,6 @@
                         renderTicket();
                         syncPreAccountVisibility();
                         syncCobroTabState();
-                        if (counterPosMode && !isMozoProfile && typeof switchAsideTab === 'function') {
-                            switchAsideTab('cobro');
-                        }
                         renderCancelledSection();
                         fixScrollLayout();
                         function updateSearchClearVisibility() {
@@ -1238,6 +1243,11 @@
                     function syncPreAccountVisibility() {
                         const btnPrecuenta = document.getElementById('btn-precuenta');
                         if (!btnPrecuenta) return;
+                        if (counterPosMode) {
+                            btnPrecuenta.classList.add('hidden');
+                            btnPrecuenta.style.display = 'none';
+                            return;
+                        }
                         const items = Array.isArray(currentTable?.items) ? currentTable.items : [];
                         const hasItems = items.length > 0;
                         const hasCommandedItems = hasItems && items.some(item => {
@@ -1254,6 +1264,9 @@
                     }
 
                     function canAccessCobroTab() {
+                        if (counterPosMode) {
+                            return false;
+                        }
                         const items = Array.isArray(currentTable?.items) ? currentTable.items : [];
                         const hasItems = items.length > 0;
                         const hasCommandedItems = hasItems && items.some(item => {
@@ -1641,10 +1654,21 @@
                         }
                         const rawName = String(printerName || '').trim();
                         const target = rawName.toLowerCase();
+                        // Misma ticketera que el cobro en la 2.ª PC (BARRA2 / qz2): la comanda debe ir por QZ
+                        // en este navegador. Si en BD hay IP de producto, el RAW desde el servidor no llega al USB/local de la PC2.
+                        if (typeof window.__qzPrinterRequiresSecondaryCertFirst === 'function') {
+                            if (window.__qzPrinterRequiresSecondaryCertFirst(rawName)) {
+                                return false;
+                            }
+                        } else {
+                            const compact = target.replace(/\s+/g, '');
+                            if (compact === 'barra2' || compact.startsWith('barra2')) {
+                                return false;
+                            }
+                        }
                         if (!target || !Array.isArray(serverProductBranches)) {
                             return false;
                         }
-                        // 1) Red (IP en sucursal): como COCINA — RAW desde el servidor, también desde móvil en la LAN.
                         for (let i = 0; i < serverProductBranches.length; i++) {
                             const plist = serverProductBranches[i]?.qz_printers;
                             if (!Array.isArray(plist)) {
@@ -1659,17 +1683,6 @@
                                 if (ip !== '') {
                                     return true;
                                 }
-                            }
-                        }
-                        // 2) Sin IP (USB en PC, BARRA2 / cert qz2): comanda vía QZ en ese PC; móvil sin QZ irá a else (servidor Windows / mismo host Laravel).
-                        if (typeof window.__qzPrinterRequiresSecondaryCertFirst === 'function') {
-                            if (window.__qzPrinterRequiresSecondaryCertFirst(rawName)) {
-                                return false;
-                            }
-                        } else {
-                            const compact = target.replace(/\s+/g, '');
-                            if (compact === 'barra2' || compact.startsWith('barra2')) {
-                                return false;
                             }
                         }
                         return false;
@@ -4019,6 +4032,9 @@
 
                     function autoSaveToServer() {
                         autoSaveTimer = null;
+                        if (counterPosMode) {
+                            return;
+                        }
                         const items = currentTable.items || [];
                         if (items.length === 0 && (!currentTable.cancellations || currentTable.cancellations.length === 0)) return;
                         // No auto-guardar si hay cancelaciones pendientes de razón (se pide al hacer Guardar / Cobrar)
@@ -4106,6 +4122,137 @@
                         return true;
                     }
 
+                    function resetBtnGuardarLabel() {
+                        const btnGuardar = document.getElementById('btn-guardar');
+                        if (!btnGuardar) {
+                            return;
+                        }
+                        if (counterPosMode) {
+                            btnGuardar.innerHTML = '<i class="ri-save-line text-base"></i><span>Guardar</span>';
+                        } else {
+                            btnGuardar.innerHTML = '<i class="ri-send-plane-2-line text-base"></i><span>Enviar</span>';
+                        }
+                    }
+
+                    async function processCounterSaveDraft() {
+                        flushCartUnitPriceInputsFromDom();
+                        const items = getItemsGroupedByProduct();
+                        if (!items.length) {
+                            if (typeof showNotification === 'function') {
+                                showNotification('Nueva venta', 'Agrega al menos un producto.', 'warning');
+                            } else {
+                                alert('Agrega al menos un producto.');
+                            }
+                            return;
+                        }
+                        const payloadItems = items.filter((it) => (parseFloat(it.qty) || 0) > 0).map((it) => {
+                            const q = parseFloat(it.qty) || 0;
+                            let cq = Math.max(0, parseFloat(it.courtesyQty) || 0);
+                            if (cq > q) {
+                                cq = q;
+                            }
+                            const n = (it.note != null && String(it.note).trim() !== '') ? String(it.note).trim() : null;
+                            return {
+                                pId: parseInt(it.pId, 10),
+                                qty: q,
+                                price: parseFloat(it.price) || 0,
+                                courtesyQty: cq,
+                                note: n,
+                            };
+                        });
+                        if (!payloadItems.length) {
+                            if (typeof showNotification === 'function') {
+                                showNotification('Nueva venta', 'No hay líneas válidas para guardar.', 'warning');
+                            } else {
+                                alert('No hay líneas válidas para guardar.');
+                            }
+                            return;
+                        }
+                        const docTypeEl = document.getElementById('cobro-document-type');
+                        const body = { items: payloadItems };
+                        if (docTypeEl && docTypeEl.value) {
+                            const dti = parseInt(docTypeEl.value, 10);
+                            if (Number.isFinite(dti) && dti > 0) {
+                                body.document_type_id = dti;
+                            }
+                        }
+                        const btnGuardar = document.getElementById('btn-guardar');
+                        if (btnGuardar) {
+                            btnGuardar.disabled = true;
+                            btnGuardar.innerHTML = '<i class="ri-loader-4-line text-base animate-spin"></i><span>Guardando...</span>';
+                        }
+                        try {
+                            const response = await fetch(salesDraftUrl, {
+                                method: 'POST',
+                                cache: 'no-store',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                                    'Accept': 'application/json',
+                                    'X-Requested-With': 'XMLHttpRequest',
+                                },
+                                body: JSON.stringify(body),
+                            });
+                            const data = response.headers.get('content-type')?.includes('application/json')
+                                ? await response.json()
+                                : null;
+                            if (response.status === 419) {
+                                if (typeof showNotification === 'function') {
+                                    showNotification('Sesión', 'Sesión expirada. Recarga la página.', 'error');
+                                } else {
+                                    alert('Sesión expirada. Recarga la página.');
+                                }
+                                return;
+                            }
+                            if (!response.ok || !data || !data.success) {
+                                const msg = (data && data.message)
+                                    || (data && data.errors && JSON.stringify(data.errors))
+                                    || 'No se pudo guardar el borrador.';
+                                if (typeof showNotification === 'function') {
+                                    showNotification('Nueva venta', msg, 'error');
+                                } else {
+                                    alert(msg);
+                                }
+                                return;
+                            }
+                            const mid = data.data && data.data.movement_id != null
+                                ? parseInt(String(data.data.movement_id), 10)
+                                : null;
+                            if (!mid) {
+                                if (typeof showNotification === 'function') {
+                                    showNotification('Nueva venta', 'El servidor no devolvió el movimiento de venta.', 'error');
+                                } else {
+                                    alert('El servidor no devolvió el movimiento de venta.');
+                                }
+                                return;
+                            }
+                            if (db && activeKey) {
+                                if (db[activeKey]) {
+                                    delete db[activeKey];
+                                }
+                                localStorage.setItem('restaurantDB', JSON.stringify(db));
+                            }
+                            const u = new URL(salesChargeUrl, window.location.href);
+                            u.searchParams.set('movement_id', String(mid));
+                            if (salesViewIdParam) {
+                                u.searchParams.set('view_id', String(salesViewIdParam));
+                            }
+                            window.location.href = u.toString();
+                        } catch (e) {
+                            console.error('processCounterSaveDraft', e);
+                            if (typeof showNotification === 'function') {
+                                showNotification('Nueva venta', 'Error de red al guardar la venta.', 'error');
+                            } else {
+                                alert('Error de red al guardar la venta.');
+                            }
+                        } finally {
+                            if (btnGuardar) {
+                                btnGuardar.disabled = false;
+                            }
+                            resetBtnGuardarLabel();
+                        }
+                    }
+
                     async function processOrder() {
                         if (waiterPinEnabled && !isMozoProfile) {
                             const ok = await ensureWaiterPin();
@@ -4113,6 +4260,10 @@
                         }
                         const okReason = await ensureCancellationReasons();
                         if (!okReason) return;
+                        if (counterPosMode) {
+                            await processCounterSaveDraft();
+                            return;
+                        }
                         flushCartUnitPriceInputsFromDom();
                         renderTicket();
                         const btnGuardar = document.getElementById('btn-guardar');
@@ -5196,6 +5347,9 @@
                     }
 
                     function switchAsideTab(tab) {
+                        if (tab === 'cobro' && counterPosMode) {
+                            return;
+                        }
                         const resumen = document.getElementById('aside-resumen');
                         const cobro = document.getElementById('aside-cobro');
                         const btnResumen = document.getElementById('tab-resumen');
