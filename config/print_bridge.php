@@ -19,4 +19,10 @@ return [
 
     'max_queue_length' => (int) env('PRINT_BRIDGE_MAX_JOBS', 200),
 
+    /*
+     * Token para /print-bridge/kiosk en la PC2 sin iniciar sesión (solo LAN; cadena larga aleatoria).
+     * El branch_id en la URL debe coincidir con la sucursal del POS móvil (session branch_id al comandar).
+     */
+    'kiosk_token' => trim((string) env('PRINT_BRIDGE_KIOSK_TOKEN', '')),
+
 ];

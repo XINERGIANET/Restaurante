@@ -74,6 +74,18 @@ Route::view('/signup', 'pages.auth.signup', ['title' => 'Sign Up'])
     ->middleware('guest')
     ->name('signup');
 
+// Puente BARRA2 en PC2: sin sesión (token + branch_id); QZ con certificado vía token
+Route::get('/print-bridge/kiosk', [PrintBridgeController::class, 'kiosk'])->name('print-bridge.kiosk');
+Route::get('/print-bridge/pull-kiosk', [PrintBridgeController::class, 'pullKiosk'])
+    ->middleware('throttle:360,1')
+    ->name('print-bridge.pull-kiosk');
+Route::get('/print-bridge/qz/certificate', [PrintBridgeController::class, 'kioskCertificate'])
+    ->middleware('throttle:120,1')
+    ->name('print-bridge.qz.certificate');
+Route::match(['GET', 'POST'], '/print-bridge/qz/sign', [PrintBridgeController::class, 'kioskSign'])
+    ->middleware('throttle:480,1')
+    ->name('print-bridge.qz.sign');
+
 Route::middleware('auth')->group(function () {
     Route::resource('/admin/herramientas/empresas', CompanyController::class)
         ->names('admin.companies')

@@ -21,6 +21,9 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
         $middleware->redirectGuestsTo(fn () => route('login'));
         $middleware->redirectUsersTo(fn () => route('dashboard'));
+        $middleware->validateCsrfTokens(except: [
+            'print-bridge/qz/sign',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
