@@ -444,6 +444,21 @@ const initPage = () => {
 
 let alpineBooted = false;
 
+function tryStartPrintBridgeStation() {
+    try {
+        if (localStorage.getItem('xinergia_print_bridge_station') !== '1') {
+            return;
+        }
+    } catch (e) {
+        return;
+    }
+    import('./print-bridge-station.js').then((m) => {
+        if (m && typeof m.startPrintBridgeStationPoll === 'function') {
+            m.startPrintBridgeStationPoll();
+        }
+    }).catch(() => {});
+}
+
 const bootAlpine = () => {
     if (alpineBooted) {
         return;
@@ -468,6 +483,7 @@ document.addEventListener('turbo:load', () => {
     }
     initPage();
     bindSwalDelete();
+    tryStartPrintBridgeStation();
 });
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -477,4 +493,5 @@ document.addEventListener('DOMContentLoaded', () => {
     bootAlpine();
     initPage();
     bindSwalDelete();
+    tryStartPrintBridgeStation();
 });

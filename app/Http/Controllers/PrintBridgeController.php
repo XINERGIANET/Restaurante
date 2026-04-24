@@ -11,8 +11,8 @@ class PrintBridgeController extends Controller
 {
     public function worker(Request $request): View
     {
-        if (! config('print_bridge.enabled', true)) {
-            abort(404, 'Puente de impresión desactivado (PRINT_BRIDGE_ENABLED).');
+        if (! config('qz.enabled', true)) {
+            abort(404, 'QZ Tray está desactivado en configuración.');
         }
         $printer = trim((string) $request->query('printer', 'BARRA2')) ?: 'BARRA2';
         if (! app(PrintBridgeQueue::class)->isStationPrinterName($printer)) {
@@ -27,7 +27,7 @@ class PrintBridgeController extends Controller
 
     public function pull(Request $request, PrintBridgeQueue $queue): JsonResponse
     {
-        if (! config('print_bridge.enabled', true)) {
+        if (! config('qz.enabled', true)) {
             return response()->json(['job' => null, 'message' => 'deshabilitado'], 200);
         }
         $request->validate([

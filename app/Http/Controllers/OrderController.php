@@ -2841,7 +2841,7 @@ class OrderController extends Controller
     }
 
     /**
-     * Comanda / precuenta hacia BARRA2 (USB en otra PC): cola en caché; la PC con QZ abre /print-bridge/worker.
+     * Comanda / precuenta hacia BARRA2 (USB en otra PC): cola en caché; la PC con QZ activa el puente (worker o escucha global).
      */
     private function maybeQueuePrintBridge(PrinterBranch $printer, int $branchId, string $escposPayload, string $kind = 'comanda'): ?\Illuminate\Http\JsonResponse
     {
@@ -2851,7 +2851,7 @@ class OrderController extends Controller
         }
         $queue->push($branchId, (string) $printer->name, $escposPayload);
         if ($kind === 'precuenta') {
-            $msg = 'Precuenta en cola para la estación (QZ en la PC con BARRA2). Mantenga abierta /print-bridge/worker.';
+            $msg = 'Precuenta en cola para la estación (QZ en la PC con BARRA2). En esa PC, inicie sesión y active el puente (página /print-bridge/worker o “escuchar en todas las pantallas”).';
 
             return response()->json([
                 'success' => true,
@@ -2862,7 +2862,7 @@ class OrderController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Comanda en cola para la estación (QZ en la PC con BARRA2). Mantenga abierta /print-bridge/worker con la misma sucursal en sesión.',
+            'message' => 'Comanda en cola para la estación (QZ en la PC con BARRA2). En esa PC, misma sucursal en sesión y puente activo (/print-bridge/worker o escuchar en todas las pantallas).',
             'print_bridge' => true,
         ]);
     }

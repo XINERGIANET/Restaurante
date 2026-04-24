@@ -15,9 +15,19 @@
     <div class="p-4 max-w-xl mx-auto" data-turbo="false">
         <h1 class="text-lg font-bold text-slate-800 dark:text-white mb-2">Puente de impresión (BARRA2 / QZ)</h1>
         <p class="text-sm text-slate-600 dark:text-slate-300 mb-4">
-            Deje esta ventana <strong>abierta</strong> en la PC que tiene BARRA2 por USB y QZ Tray. Los pedidos
-            hechos desde el celular en la misma red y sucursal se imprimen aquí.
+            En la PC que tiene BARRA2 por USB y QZ Tray: puede dejar solo esta pestaña, o activar el puente para
+            <strong>todas las pantallas</strong> del navegador (dashboard, pedidos, etc.) sin depender de esta URL.
         </p>
+        <div class="flex flex-wrap gap-2 mb-4">
+            <button type="button" id="bridge-activate-all"
+                class="rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-3 py-2">
+                Activar escucha en todas las pantallas (esta PC)
+            </button>
+            <button type="button" id="bridge-deactivate-all"
+                class="rounded-md border border-slate-300 dark:border-slate-600 text-sm px-3 py-2 text-slate-700 dark:text-slate-200">
+                Desactivar escucha global
+            </button>
+        </div>
         <p class="text-xs text-slate-500 mb-2">Sucursal en sesión: <strong id="bridge-branch">—</strong> ·
             Impresora: <strong>{{ $targetPrinter }}</strong></p>
         <div id="bridge-status" class="rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/80 p-3 text-sm font-mono min-h-[3rem]">
@@ -34,6 +44,26 @@
             const st = document.getElementById('bridge-status');
             const bEl = document.getElementById('bridge-branch');
             if (bEl) bEl.textContent = @json((string) (session('branch_id') ?? ''));
+            const btnAll = document.getElementById('bridge-activate-all');
+            const btnOff = document.getElementById('bridge-deactivate-all');
+            if (btnAll) {
+                btnAll.addEventListener('click', function () {
+                    try {
+                        localStorage.setItem('xinergia_print_bridge_station', '1');
+                        localStorage.setItem('xinergia_print_bridge_printer', targetPrinter);
+                    } catch (e) {}
+                    window.location.href = @json(url('/'));
+                });
+            }
+            if (btnOff) {
+                btnOff.addEventListener('click', function () {
+                    try {
+                        localStorage.removeItem('xinergia_print_bridge_station');
+                        localStorage.removeItem('xinergia_print_bridge_printer');
+                    } catch (e) {}
+                    if (st) st.textContent = 'Escucha global desactivada. Recargue otras pestañas si hace falta.';
+                });
+            }
 
             function log(msg) {
                 if (st) st.textContent = msg;

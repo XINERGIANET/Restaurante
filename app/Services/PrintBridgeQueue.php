@@ -4,22 +4,32 @@ namespace App\Services;
 
 use App\Models\PrinterBranch;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class PrintBridgeQueue
 {
+    /**
+     * Misma lista que BARRA2 / certificado secondary (app/qz2) en qz.php — sin variables nuevas.
+     */
+    public function stationPrinterNames(): array
+    {
+        return array_values(array_unique(array_filter(array_map(
+            'trim',
+            config('qz.secondary_first_printer_names', ['BARRA2'])
+        ))));
+    }
+
     public function shouldQueueToStation(PrinterBranch $printer): bool
     {
-        if (! config('print_bridge.enabled', true)) {
+        if (! config('qz.enabled', true)) {
             return false;
         }
         if (filled((string) $printer->ip)) {
             return false;
         }
         $n = mb_strtolower(trim($printer->name));
-        $targets = config('print_bridge.station_printer_names', ['BARRA2']);
-        foreach ($targets as $t) {
+        foreach ($this->stationPrinterNames() as $t) {
             if ($n === mb_strtolower(trim($t))) {
                 return true;
             }
@@ -34,7 +44,7 @@ class PrintBridgeQueue
         if ($n === '') {
             return false;
         }
-        foreach (config('print_bridge.station_printer_names', ['BARRA2']) as $t) {
+        foreach ($this->stationPrinterNames() as $t) {
             if ($n === mb_strtolower(trim($t))) {
                 return true;
             }

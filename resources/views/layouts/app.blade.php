@@ -6,6 +6,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="turbo-cache-control" content="{{ $turboCacheControl ?? (session('status') || session('error') ? 'no-cache' : 'no-preview') }}">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    @auth
+        <script>
+            window.__printBridgePullUrl = @json(route('print-bridge.pull'));
+        </script>
+    @endauth
     @php
         $qzDefaultPrinter = in_array(strtolower(request()->getHost()), ['localhost', '127.0.0.1', '::1']) ? 'BARRA' : 'BARRA2';
     @endphp
