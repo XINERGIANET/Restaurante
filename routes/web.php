@@ -42,6 +42,7 @@ use App\Http\Controllers\CashRegisterController;
 use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\BranchParameterController;
 use App\Http\Controllers\ProductTypeController;
+use App\Http\Controllers\PrintBridgeController;
 use App\Http\Controllers\PrinterBranchController;
 use App\Http\Controllers\QzTrayController;
 
@@ -537,4 +538,10 @@ Route::middleware('auth')->group(function () {
         Route::match(['GET', 'POST'], '/sign', [QzTrayController::class, 'sign'])->name('sign');
         Route::get('/prueba', [QzTrayController::class, 'test'])->name('test');
     });
+
+    // Puente: celular → servidor (cola) → PC con QZ + BARRA2 USB
+    Route::get('/print-bridge/worker', [PrintBridgeController::class, 'worker'])->name('print-bridge.worker');
+    Route::get('/print-bridge/pull', [PrintBridgeController::class, 'pull'])
+        ->middleware('throttle:120,1')
+        ->name('print-bridge.pull');
 });

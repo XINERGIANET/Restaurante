@@ -40,6 +40,7 @@ use App\Models\User;
 use App\Services\ApisunatService;
 use App\Services\OrderPaymentSplitService;
 use App\Services\KardexSyncService;
+use App\Services\PrintBridgeQueue;
 use App\Services\ThermalNetworkPrintService;
 use App\Support\InsensitiveSearch;
 use App\Support\LocalNetworkClient;
@@ -2538,6 +2539,10 @@ class OrderController extends Controller
         }
 
         $payload = $this->buildKitchenEscPosPayload((string) $validated['ticket_text']);
+        $bridgeResponse = $this->maybeQueuePrintBridge($printer, $branchId, $payload, 'comanda');
+        if ($bridgeResponse) {
+            return $bridgeResponse;
+        }
         $printerService = app(ThermalNetworkPrintService::class);
         $timeout = (int) config('local_network.thermal_timeout_seconds', 4);
 
@@ -2619,6 +2624,10 @@ class OrderController extends Controller
         }
 
         $payload = $this->buildKitchenEscPosPayload((string) $validated['ticket_text']);
+        $bridgeResponse = $this->maybeQueuePrintBridge($printer, $branchId, $payload, 'precuenta');
+        if ($bridgeResponse) {
+            return $bridgeResponse;
+        }
         $printerService = app(ThermalNetworkPrintService::class);
         $timeout = (int) config('local_network.thermal_timeout_seconds', 4);
 
@@ -2829,6 +2838,33 @@ class OrderController extends Controller
             ->orderByRaw('LENGTH(TRIM(name)) DESC')
             ->orderBy('id')
             ->first();
+    }
+
+    /**
+     * Comanda / precuenta hacia BARRA2 (USB en otra PC): cola en caché; la PC con QZ abre /print-bridge/worker.
+     */
+    private function maybeQueuePrintBridge(PrinterBranch $printer, int $branchId, string $escposPayload, string $kind = 'comanda'): ?\Illuminate\Http\JsonResponse
+    {
+        $queue = app(PrintBridgeQueue::class);
+        if (! $queue->shouldQueueToStation($printer)) {
+            return null;
+        }
+        $queue->push($branchId, (string) $printer->name, $escposPayload);
+        if ($kind === 'precuenta') {
+            $msg = 'Precuenta en cola para la estación (QZ en la PC con BARRA2). Mantenga abierta /print-bridge/worker.';
+
+            return response()->json([
+                'success' => true,
+                'message' => $msg,
+                'print_bridge' => true,
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Comanda en cola para la estación (QZ en la PC con BARRA2). Mantenga abierta /print-bridge/worker con la misma sucursal en sesión.',
+            'print_bridge' => true,
+        ]);
     }
 
     private function buildKitchenEscPosPayload(string $plainText): string
