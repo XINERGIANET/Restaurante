@@ -91,5 +91,44 @@ class ReportesMenuSeeder extends Seeder
         }
 
         $this->command->info("✅ Seeder finalizado. $inserted opciones de menú insertadas.");
+
+        // 4. Asignar permisos a Admin. de sistema (1) y Admin. general (2)
+        $this->command->info('Asignando permisos a administradores...');
+        $targetProfileIds = [1, 2];
+        $branches = DB::table('branches')->whereNull('deleted_at')->pluck('id');
+        $allReportOptions = DB::table('menu_option')
+            ->where('module_id', $moduleId)
+            ->whereNull('deleted_at')
+            ->get();
+
+        foreach ($branches as $branchId) {
+            foreach ($targetProfileIds as $profileId) {
+                foreach ($allReportOptions as $opt) {
+                    $upExists = DB::table('user_permission')
+                        ->where('profile_id', $profileId)
+                        ->where('branch_id', $branchId)
+                        ->where('menu_option_id', $opt->id)
+                        ->first();
+
+                    if (!$upExists) {
+                        DB::table('user_permission')->insert([
+                            'id'             => (string) \Illuminate\Support\Str::uuid(),
+                            'name'           => $opt->name,
+                            'profile_id'     => $profileId,
+                            'menu_option_id' => $opt->id,
+                            'branch_id'      => $branchId,
+                            'status'         => true,
+                            'created_at'     => now(),
+                            'updated_at'     => now(),
+                        ]);
+                    } elseif (!empty($upExists->deleted_at)) {
+                        DB::table('user_permission')
+                            ->where('id', $upExists->id)
+                            ->update(['deleted_at' => null, 'status' => true, 'updated_at' => now()]);
+                    }
+                }
+            }
+        }
+        $this->command->info('✅ Permisos asignados correctamente.');
     }
 }

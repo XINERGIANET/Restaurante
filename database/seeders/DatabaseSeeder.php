@@ -12,10 +12,8 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call([
-            PettyCashOperationSeeder::class,
-            DefaultSaleDocumentTypeParameterSeeder::class,
             ReportesMenuSeeder::class,
-            UserPermissionSeeder::class,
+            SalesAndFinancesReportSeeder::class,
         ]);
     }
 }
