@@ -1641,21 +1641,10 @@
                         }
                         const rawName = String(printerName || '').trim();
                         const target = rawName.toLowerCase();
-                        // Misma ticketera que el cobro en la 2.ª PC (BARRA2 / qz2): la comanda debe ir por QZ
-                        // en este navegador. Si en BD hay IP, el RAW desde el servidor no llega al USB/local de la PC2.
-                        if (typeof window.__qzPrinterRequiresSecondaryCertFirst === 'function') {
-                            if (window.__qzPrinterRequiresSecondaryCertFirst(rawName)) {
-                                return false;
-                            }
-                        } else {
-                            const compact = target.replace(/\s+/g, '');
-                            if (compact === 'barra2' || compact.startsWith('barra2')) {
-                                return false;
-                            }
-                        }
                         if (!target || !Array.isArray(serverProductBranches)) {
                             return false;
                         }
+                        // 1) Red (IP en sucursal): como COCINA — RAW desde el servidor, también desde móvil en la LAN.
                         for (let i = 0; i < serverProductBranches.length; i++) {
                             const plist = serverProductBranches[i]?.qz_printers;
                             if (!Array.isArray(plist)) {
@@ -1670,6 +1659,17 @@
                                 if (ip !== '') {
                                     return true;
                                 }
+                            }
+                        }
+                        // 2) Sin IP (USB en PC, BARRA2 / cert qz2): comanda vía QZ en ese PC; móvil sin QZ irá a else (servidor Windows / mismo host Laravel).
+                        if (typeof window.__qzPrinterRequiresSecondaryCertFirst === 'function') {
+                            if (window.__qzPrinterRequiresSecondaryCertFirst(rawName)) {
+                                return false;
+                            }
+                        } else {
+                            const compact = target.replace(/\s+/g, '');
+                            if (compact === 'barra2' || compact.startsWith('barra2')) {
+                                return false;
                             }
                         }
                         return false;
