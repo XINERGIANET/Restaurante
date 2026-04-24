@@ -1190,7 +1190,7 @@ class SalesController extends Controller
                 'person_name' => 'Público General',
                 'responsible_id' => $user?->id,
                 'responsible_name' => $user?->name ?? 'Sistema',
-                'comment' => ($request->notes ?? 'Venta pendiente de pago').' [BORRADOR]',
+                'comment' => ($request->notes ?? '').' [BORRADOR]',
                 'status' => 'P', // P = Pendiente
                 'movement_type_id' => $movementType->id,
                 'document_type_id' => $documentType->id,

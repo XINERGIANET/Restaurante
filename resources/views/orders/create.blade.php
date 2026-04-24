@@ -186,7 +186,6 @@
             </script>
 
             <!-- Barra de Información: Mesa, Mozo y Comensales -->
-            @unless(!empty($isCounterSale))
             <div class="px-3 sm:px-4 mb-2 flex-none">
                 <div
                     class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-3 sm:p-4 shadow-sm flex items-center justify-between gap-2 sm:gap-4">
@@ -277,7 +276,6 @@
                     </div>
                 </div>
             </div>
-            @endunless
 
             <div class="flex-1 flex flex-col lg:flex-row items-start bg-gray-50/50 dark:bg-gray-950/50 gap-3 p-3">
                 <div
@@ -315,12 +313,12 @@
                     class="lg:w-[450px] w-full md:w-[350px] lg:shrink-0 mx-auto lg:mx-0 flex-none bg-white dark:bg-gray-900 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-800 flex flex-col min-h-[520px] rounded-2xl overflow-hidden shadow-sm">
                     {{-- Tabs Resumen | Cobro (Cobro oculto para Mozo) --}}
                     <div class="w-full shrink-0 px-3 pt-3">
-                        <div class="grid gap-3 {{ !empty($isCounterSale) ? 'grid-cols-1' : 'grid-cols-2' }}">
+                        <div class="grid gap-3 {{ ($canCharge ?? true) ? 'grid-cols-2' : 'grid-cols-1' }}">
                             <button type="button" id="tab-resumen" onclick="switchAsideTab('resumen')"
-                                class="py-3 px-4 text-sm font-bold transition-all rounded-full bg-[#FF4622] text-white shadow-sm border border-[#FF4622] {{ !empty($isCounterSale) ? 'w-full' : '' }}">
+                                class="py-3 px-4 text-sm font-bold transition-all rounded-full bg-[#FF4622] text-white shadow-sm border border-[#FF4622] {{ !($canCharge ?? true) ? 'w-full' : '' }}">
                                 Resumen
                             </button>
-                            @if(empty($isCounterSale) && ($canCharge ?? true))
+                            @if($canCharge ?? true)
                                 <button type="button" id="tab-cobro" onclick="switchAsideTab('cobro')"
                                     class="py-3 px-4 text-sm font-bold transition-all rounded-full bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:border-[#FF4622]/30 hover:text-[#FF4622] dark:hover:text-[#FF4622]">
                                     Cobro
@@ -332,7 +330,6 @@
                     {{-- Contenido Resumen --}}
                     <div id="aside-resumen" class="mt-3 flex flex-col flex-1 min-h-0 overflow-hidden">
                         {{-- Datos Delivery --}}
-                        @unless(!empty($isCounterSale))
                         <div id="delivery-info-container"
                             class="hidden p-3 bg-[#FF4622]/5 dark:bg-[#FF4622]/10 border-b border-[#FF4622]/20 dark:border-[#FF4622]/30 space-y-2 overflow-hidden">
                             <div class="flex flex-col gap-2">
@@ -411,7 +408,6 @@
                                 </div>
                             </div>
                         </div>
-                        @endunless
 
                         <div id="cart-container"
                             class="flex-1 min-h-0 overflow-y-auto p-3 sm:p-4 space-y-2 sm:space-y-2.5 bg-white dark:bg-gray-900">
@@ -1243,11 +1239,6 @@
                     function syncPreAccountVisibility() {
                         const btnPrecuenta = document.getElementById('btn-precuenta');
                         if (!btnPrecuenta) return;
-                        if (counterPosMode) {
-                            btnPrecuenta.classList.add('hidden');
-                            btnPrecuenta.style.display = 'none';
-                            return;
-                        }
                         const items = Array.isArray(currentTable?.items) ? currentTable.items : [];
                         const hasItems = items.length > 0;
                         const hasCommandedItems = hasItems && items.some(item => {
@@ -1264,9 +1255,6 @@
                     }
 
                     function canAccessCobroTab() {
-                        if (counterPosMode) {
-                            return false;
-                        }
                         const items = Array.isArray(currentTable?.items) ? currentTable.items : [];
                         const hasItems = items.length > 0;
                         const hasCommandedItems = hasItems && items.some(item => {
@@ -1289,7 +1277,13 @@
                         btnCobro.classList.toggle('opacity-50', !enabled);
                         btnCobro.classList.toggle('cursor-not-allowed', !enabled);
                         btnCobro.classList.toggle('pointer-events-none', !enabled);
-                        btnCobro.title = enabled ? 'Cobro' : 'Disponible cuando el pedido ya fue enviado';
+                        if (enabled) {
+                            btnCobro.title = 'Cobro';
+                        } else if (counterPosMode) {
+                            btnCobro.title = 'En nueva venta, usa «Guardar» para ir a cobrar (sin comanda a cocina).';
+                        } else {
+                            btnCobro.title = 'Disponible cuando el pedido ya fue enviado';
+                        }
 
                         if (!enabled) {
                             const cobro = document.getElementById('aside-cobro');
@@ -5000,6 +4994,14 @@
                             const ok = await ensureWaiterPin();
                             if (!ok) return;
                         }
+                        if (counterPosMode) {
+                            if (typeof showNotification === 'function') {
+                                showNotification('Nueva venta', 'Usa «Guardar» para generar el borrador e ir a cobrar. Allí se emite el comprobante (solo movimiento y detalle, sin pedido ni comanda).', 'info');
+                            } else {
+                                alert('En nueva venta, usa «Guardar» para ir a cobrar.');
+                            }
+                            return;
+                        }
                         const cbSplitPay = document.getElementById('split-dividir-cuenta');
                         if (cbSplitPay && cbSplitPay.checked && window.__splitAccount && window.__splitAccount.enabled) {
                             syncCobroPaymentAmountsToSplitPartInner();
@@ -5347,9 +5349,6 @@
                     }
 
                     function switchAsideTab(tab) {
-                        if (tab === 'cobro' && counterPosMode) {
-                            return;
-                        }
                         const resumen = document.getElementById('aside-resumen');
                         const cobro = document.getElementById('aside-cobro');
                         const btnResumen = document.getElementById('tab-resumen');
