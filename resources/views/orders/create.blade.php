@@ -2455,12 +2455,46 @@
                             });
                         });
                         const mergedBuckets = mergeKitchenBucketsSharedCanon(byPrinterAcc, canceledByPrinterAcc);
-                        const byPrinter = mergedBuckets.byPrinter;
-                        const canceledByPrinter = mergedBuckets.canceledByPrinter;
-                        const names = Array.from(new Set([
-                            ...Object.keys(byPrinter),
-                            ...Object.keys(canceledByPrinter),
-                        ]));
+                        function mergePrinterBucketsByNameCase(mapByPrinter) {
+                            const out = Object.create(null);
+                            Object.keys(mapByPrinter || {}).forEach((k) => {
+                                const t = String(k || '').trim();
+                                if (!t) {
+                                    return;
+                                }
+                                const list = mapByPrinter[k] || [];
+                                const low = t.toLowerCase();
+                                let canon = null;
+                                for (const ek of Object.keys(out)) {
+                                    if (String(ek).trim().toLowerCase() === low) {
+                                        canon = ek;
+                                        break;
+                                    }
+                                }
+                                if (canon) {
+                                    out[canon].push.apply(out[canon], list);
+                                } else {
+                                    out[t] = list.slice();
+                                }
+                            });
+                            return out;
+                        }
+                        const byPrinter = mergePrinterBucketsByNameCase(mergedBuckets.byPrinter);
+                        const canceledByPrinter = mergePrinterBucketsByNameCase(mergedBuckets.canceledByPrinter);
+                        const names = (function() {
+                            const m = new Map();
+                            [...Object.keys(byPrinter), ...Object.keys(canceledByPrinter)].forEach((k) => {
+                                const t = String(k || '').trim();
+                                if (!t) {
+                                    return;
+                                }
+                                const key = t.toLowerCase();
+                                if (!m.has(key)) {
+                                    m.set(key, t);
+                                }
+                            });
+                            return Array.from(m.values());
+                        })();
                         if (!names.length) {
                             if (typeof showNotification === 'function') {
                                 showNotification('Comanda', 'No hay ticketera asignada a los productos. Configure impresoras en el producto o sucursal.', 'warning');

@@ -2529,19 +2529,11 @@ class OrderController extends Controller
         $defaultPrinterName = $isLocalhost ? 'barra' : 'barra2';
 
         $requestedName = trim((string) ($validated['printer_name'] ?? '')) ?: $defaultPrinterName;
-        $printer = (clone $printerBaseQuery)
-            ->whereRaw('LOWER(TRIM(name)) = ?', [mb_strtolower($requestedName)])
-            ->first();
-
-        if (! $printer) {
-            $printer = (clone $printerBaseQuery)
-                ->whereRaw('LOWER(TRIM(name)) LIKE ?', ['barra%'])
-                ->first();
-        }
+        $printer = $this->findPrinterBranchForBarTicket($printerBaseQuery, $requestedName, $defaultPrinterName);
         if (! $printer) {
             return response()->json([
                 'success' => false,
-                'message' => 'No hay una ticketera de barra configurada para la precuenta.',
+                'message' => 'No hay una ticketera de barra configurada para la comanda.',
             ], 422);
         }
 
@@ -2617,15 +2609,7 @@ class OrderController extends Controller
         $defaultPrinterName = $isLocalhost ? 'barra' : 'barra2';
 
         $requestedName = trim((string) ($validated['printer_name'] ?? '')) ?: $defaultPrinterName;
-        $printer = (clone $printerBaseQuery)
-            ->whereRaw('LOWER(TRIM(name)) = ?', [mb_strtolower($requestedName)])
-            ->first();
-
-        if (! $printer) {
-            $printer = (clone $printerBaseQuery)
-                ->whereRaw('LOWER(TRIM(name)) LIKE ?', ['barra%'])
-                ->first();
-        }
+        $printer = $this->findPrinterBranchForBarTicket($printerBaseQuery, $requestedName, $defaultPrinterName);
 
         if (! $printer) {
             return response()->json([
@@ -2800,6 +2784,51 @@ class OrderController extends Controller
         ], now()->addMinutes(10));
 
         return route('orders.print.ticket.pdf.show', ['token' => $token]);
+    }
+
+    /**
+     * Comanda / precuenta: resuelve la fila de ticketera por nombre sin confundir BARRA con BARRA2
+     * cuando un LIKE "barra%" o el orden de filas en BD entregaba la impresora incorrecta
+     * (móvil en la LAN enviando comanda a BARRA2 por USB vía IP en otra PC).
+     */
+    private function findPrinterBranchForBarTicket($printerBaseQuery, string $requestedName, string $defaultPrinterName): ?PrinterBranch
+    {
+        $n = trim($requestedName) !== '' ? trim($requestedName) : trim($defaultPrinterName);
+        if ($n === '') {
+            $n = $defaultPrinterName;
+        }
+        $ln = mb_strtolower($n);
+        $printer = (clone $printerBaseQuery)
+            ->whereRaw('LOWER(TRIM(name)) = ?', [mb_strtolower($n)])
+            ->first();
+        if ($printer) {
+            return $printer;
+        }
+        if ($ln !== '') {
+            $printer = (clone $printerBaseQuery)
+                ->whereRaw('LOWER(TRIM(name)) LIKE ?', [$ln . '%'])
+                ->orderByRaw('LENGTH(TRIM(name)) ASC')
+                ->orderBy('id')
+                ->first();
+            if ($printer) {
+                return $printer;
+            }
+        }
+        $def = trim($defaultPrinterName);
+        if ($def !== '') {
+            $printer = (clone $printerBaseQuery)
+                ->whereRaw('LOWER(TRIM(name)) = ?', [mb_strtolower($def)])
+                ->first();
+            if ($printer) {
+                return $printer;
+            }
+        }
+
+        return (clone $printerBaseQuery)
+            ->whereRaw('LOWER(TRIM(name)) LIKE ?', ['barra%'])
+            ->orderByRaw('LENGTH(TRIM(name)) DESC')
+            ->orderBy('id')
+            ->first();
     }
 
     private function buildKitchenEscPosPayload(string $plainText): string
