@@ -4308,14 +4308,31 @@
                     }
 
                     async function processOrder() {
+                        if (window.__processOrderInFlight) {
+                            if (typeof showNotification === 'function') {
+                                showNotification('Pedido', 'Ya se está procesando el envío. Espera un momento.', 'info');
+                            }
+                            return;
+                        }
+                        window.__processOrderInFlight = true;
+                        const releaseProcessOrder = () => {
+                            window.__processOrderInFlight = false;
+                        };
                         if (waiterPinEnabled && !isMozoProfile) {
                             const ok = await ensureWaiterPin();
-                            if (!ok) return;
+                            if (!ok) {
+                                releaseProcessOrder();
+                                return;
+                            }
                         }
                         const okReason = await ensureCancellationReasons();
-                        if (!okReason) return;
+                        if (!okReason) {
+                            releaseProcessOrder();
+                            return;
+                        }
                         if (counterPosMode) {
                             await processCounterSaveDraft();
+                            releaseProcessOrder();
                             return;
                         }
                         flushCartUnitPriceInputsFromDom();
@@ -4437,6 +4454,7 @@
                                     btnGuardar.disabled = false;
                                     btnGuardar.innerHTML = '<i class="ri-send-plane-2-line text-base"></i><span>Enviar</span>';
                                 }
+                                releaseProcessOrder();
                             })
                             .catch(error => {
                                 console.error('Error:', error);
@@ -4445,6 +4463,7 @@
                                     btnGuardar.disabled = false;
                                     btnGuardar.innerHTML = '<i class="ri-send-plane-2-line text-base"></i><span>Enviar</span>';
                                 }
+                                releaseProcessOrder();
                             });
 
                     }

@@ -2539,6 +2539,13 @@ class OrderController extends Controller
         }
 
         $payload = $this->buildKitchenEscPosPayload((string) $validated['ticket_text']);
+        if ($this->shouldSkipDuplicateKitchenThermal($branchId, (string) $printer->name, $payload, 'comanda')) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Comanda duplicada detectada: se omitió la reimpresión.',
+                'duplicate_skipped' => true,
+            ]);
+        }
         $bridgeResponse = $this->maybeQueuePrintBridge($printer, $branchId, $payload, 'comanda');
         if ($bridgeResponse) {
             return $bridgeResponse;
@@ -2624,6 +2631,13 @@ class OrderController extends Controller
         }
 
         $payload = $this->buildKitchenEscPosPayload((string) $validated['ticket_text']);
+        if ($this->shouldSkipDuplicateKitchenThermal($branchId, (string) $printer->name, $payload, 'precuenta')) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Precuenta duplicada detectada: se omitió la reimpresión.',
+                'duplicate_skipped' => true,
+            ]);
+        }
         $bridgeResponse = $this->maybeQueuePrintBridge($printer, $branchId, $payload, 'precuenta');
         if ($bridgeResponse) {
             return $bridgeResponse;
@@ -2865,6 +2879,21 @@ class OrderController extends Controller
             'message' => 'Comanda en cola para la estación (QZ en la PC con BARRA2). En esa PC, misma sucursal en sesión y puente activo (/print-bridge/worker o escuchar en todas las pantallas).',
             'print_bridge' => true,
         ]);
+    }
+
+    /**
+     * Evita doble impresión por doble POST consecutivo del mismo ticket.
+     */
+    private function shouldSkipDuplicateKitchenThermal(int $branchId, string $printerName, string $escposPayload, string $kind): bool
+    {
+        $pn = mb_strtolower(trim($printerName));
+        if ($branchId <= 0 || $pn === '' || $escposPayload === '') {
+            return false;
+        }
+        $hash = md5($escposPayload);
+        $key = 'kitchen_thermal_dupe:' . $kind . ':' . $branchId . ':' . md5($pn) . ':' . $hash;
+        // add() retorna false si ya existe: significa duplicado en ventana corta.
+        return ! Cache::add($key, 1, now()->addSeconds(6));
     }
 
     private function buildKitchenEscPosPayload(string $plainText): string
