@@ -2497,6 +2497,28 @@
                             return Array.from(m.values());
                         })();
                         (function collapseBarraPairBuckets() {
+                            const dedupeRows = (rows) => {
+                                const out = [];
+                                const seen = new Set();
+                                (Array.isArray(rows) ? rows : []).forEach((row) => {
+                                    const key = JSON.stringify({
+                                        pId: parseInt(row?.pId ?? row?.product_id ?? 0, 10) || 0,
+                                        name: String(row?.name || '').trim().toLowerCase(),
+                                        qty: Number(parseFloat(row?.qty ?? 0) || 0),
+                                        commandTime: String(row?.commandTime || '').trim(),
+                                        note: String(row?.note || '').trim(),
+                                        complements: normalizeComplements(row?.complements),
+                                        status: String(row?.status || '').trim().toUpperCase(),
+                                        reason: String(row?.reason || '').trim(),
+                                    });
+                                    if (seen.has(key)) {
+                                        return;
+                                    }
+                                    seen.add(key);
+                                    out.push(row);
+                                });
+                                return out;
+                            };
                             const normalize = (raw) => String(raw || '').trim().toLowerCase().replace(/\s+/g, '');
                             const barraKey = names.find((n) => normalize(n) === 'barra');
                             const barra2Key = names.find((n) => {
@@ -2513,8 +2535,8 @@
                             const keep = preferBarra2 ? barra2Key : barraKey;
                             const drop = preferBarra2 ? barraKey : barra2Key;
                             if (drop !== keep) {
-                                byPrinter[keep] = (byPrinter[keep] || []).concat(byPrinter[drop] || []);
-                                canceledByPrinter[keep] = (canceledByPrinter[keep] || []).concat(canceledByPrinter[drop] || []);
+                                byPrinter[keep] = dedupeRows((byPrinter[keep] || []).concat(byPrinter[drop] || []));
+                                canceledByPrinter[keep] = dedupeRows((canceledByPrinter[keep] || []).concat(canceledByPrinter[drop] || []));
                                 delete byPrinter[drop];
                                 delete canceledByPrinter[drop];
                                 names = names.filter((n) => n !== drop);
