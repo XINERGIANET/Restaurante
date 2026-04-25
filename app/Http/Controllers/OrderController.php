@@ -1263,6 +1263,22 @@ class OrderController extends Controller
 
         $viewIdForPos = $request->query('view_id');
         $recipeStockData = $this->buildRecipeStockData($branchId, $branch?->company_id);
+        $areaPrinterNames = $branchId
+            ? Area::query()
+            ->where('branch_id', $branchId)
+            ->with(['printers' => fn($q) => $q->select('printers_branch.id', 'name')])
+            ->get()
+            ->mapWithKeys(function ($a) {
+                $names = $a->printers
+                    ->pluck('name')
+                    ->map(fn($n) => trim((string) $n))
+                    ->filter(fn($n) => $n !== '')
+                    ->values()
+                    ->all();
+                return [(int) $a->id => $names];
+            })
+            ->all()
+            : [];
         $response = response()->view('orders.create', array_merge([
             'user' => $user,
             'person' => $person,
@@ -1311,6 +1327,7 @@ class OrderController extends Controller
             'turboCacheControl' => 'no-cache',
             'allowZeroStockSales' => (bool) ($branch?->allow_zero_stock_sales ?? true),
             'recipeStockData' => $recipeStockData,
+            'areaPrinterNames' => $areaPrinterNames,
             'afterPaymentIndexUrl' => route('orders.index', $viewIdForPos ? ['view_id' => $viewIdForPos] : []),
         ], $this->splitAccountViewData($pendingOrder)));
         $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
@@ -1605,6 +1622,22 @@ class OrderController extends Controller
         $salesIndexUrl = route('sales.index', $viewId ? ['view_id' => $viewId] : []);
         $posStorageKey = 'counter-b'.$branchId.'-u'.(int) $userId;
         $recipeStockData = $this->buildRecipeStockData($branchId, $branch?->company_id);
+        $areaPrinterNames = $branchId
+            ? Area::query()
+            ->where('branch_id', $branchId)
+            ->with(['printers' => fn($q) => $q->select('printers_branch.id', 'name')])
+            ->get()
+            ->mapWithKeys(function ($a) {
+                $names = $a->printers
+                    ->pluck('name')
+                    ->map(fn($n) => trim((string) $n))
+                    ->filter(fn($n) => $n !== '')
+                    ->values()
+                    ->all();
+                return [(int) $a->id => $names];
+            })
+            ->all()
+            : [];
 
         // Mostrador: venta directa (no OrderMovement / pedido). Carrito en cliente; "Guardar" abre /ventas/cobrar.
         $pendingOrder = null;
@@ -1664,6 +1697,7 @@ class OrderController extends Controller
             'turboCacheControl' => 'no-cache',
             'allowZeroStockSales' => (bool) ($branch?->allow_zero_stock_sales ?? true),
             'recipeStockData' => $recipeStockData,
+            'areaPrinterNames' => $areaPrinterNames,
             'isCounterSale' => true,
             'posStorageKey' => $posStorageKey,
             'afterPaymentIndexUrl' => $salesIndexUrl,

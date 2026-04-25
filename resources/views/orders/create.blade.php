@@ -1323,6 +1323,7 @@
 
                     // Datos de productos, categorías y productBranches desde el servidor.
                     const serverProductBranches = @json($productBranches ?? []);
+                    const areaPrinterNames = @json($areaPrinterNames ?? []);
                     const serverCategories = @json(collect($categories ?? [])->map(fn($c) => ['id' => $c->id, 'name' => $c->description ?? '', 'img' => $c->image ? asset('storage/' . $c->image) : null])->values()->all());
                     const serverProductsRaw = @json($products ?? []);
 
@@ -2387,6 +2388,20 @@
                             });
                             return out;
                         }
+                        function resolveAreaAllowedPrinterNames(areaId) {
+                            const aid = parseInt(areaId, 10) || 0;
+                            if (!aid) return [];
+                            const raw = areaPrinterNames ? areaPrinterNames[String(aid)] ?? areaPrinterNames[aid] : null;
+                            return dedupeKitchenPrinterNameList(raw);
+                        }
+                        function filterByAreaPrinters(list, areaAllowedNames) {
+                            if (!Array.isArray(areaAllowedNames) || areaAllowedNames.length === 0) {
+                                return list;
+                            }
+                            const allowed = new Set(areaAllowedNames.map((n) => String(n || '').trim().toLowerCase()));
+                            return list.filter((n) => allowed.has(String(n || '').trim().toLowerCase()));
+                        }
+                        const areaAllowedPrinterNames = resolveAreaAllowedPrinterNames(table?.area_id);
 
                         function mergeKitchenBucketsSharedCanon(activeSrc, cancelSrc) {
                             const canon = Object.create(null);
@@ -2427,7 +2442,7 @@
                             if (!pId) return;
                             const pdefs = resolveQzPrinters(pId);
                             const pnamesRaw = pdefs.length ? pdefs.map(p => p.name) : resolveQzPrinterNames(pId);
-                            const pnames = dedupeKitchenPrinterNameList(pnamesRaw);
+                            const pnames = filterByAreaPrinters(dedupeKitchenPrinterNameList(pnamesRaw), areaAllowedPrinterNames);
                             if (!pnames.length) return;
                             // Si un producto está asignado a varias impresoras (pivote), se imprime en todas.
                             pnames.forEach((pname) => {
@@ -2442,7 +2457,7 @@
                             if (!pId || qty <= 0) return;
                             const pdefs = resolveQzPrinters(pId);
                             const pnamesRaw = pdefs.length ? pdefs.map(p => p.name) : resolveQzPrinterNames(pId);
-                            const pnames = dedupeKitchenPrinterNameList(pnamesRaw);
+                            const pnames = filterByAreaPrinters(dedupeKitchenPrinterNameList(pnamesRaw), areaAllowedPrinterNames);
                             if (!pnames.length) return;
                             pnames.forEach((pname) => {
                                 if (!canceledByPrinterAcc[pname]) canceledByPrinterAcc[pname] = [];

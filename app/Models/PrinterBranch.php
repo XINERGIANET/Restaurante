@@ -30,4 +30,14 @@ class PrinterBranch extends Model
             'product_branch_id'
         )->withTimestamps();
     }
+
+    public function areas()
+    {
+        return $this->belongsToMany(
+            Area::class,
+            'area_printer',
+            'printer_id',
+            'area_id'
+        )->withTimestamps();
+    }
 }

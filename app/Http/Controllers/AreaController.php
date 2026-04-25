@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Exports\PlantillaAreasTablesExport;
 use App\Imports\AreasTablesImport;
+use App\Models\PrinterBranch;
 use App\Support\InsensitiveSearch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -52,6 +53,7 @@ class AreaController extends Controller
 
         $areas = Area::query()
             ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+            ->with('printers:id,name')
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
                     InsensitiveSearch::whereInsensitiveLike($inner, 'name', $search);
@@ -64,13 +66,21 @@ class AreaController extends Controller
             ->paginate($perPage)
             ->withQueryString();
 
-        return view('areas.index', compact('areas', 'operaciones', 'search', 'perPage'));
+        $printers = PrinterBranch::query()
+            ->where('branch_id', $branchId)
+            ->where('status', 'E')
+            ->orderBy('name')
+            ->get(['id', 'name', 'ip']);
+
+        return view('areas.index', compact('areas', 'operaciones', 'search', 'perPage', 'printers'));
     }
 
     public function store(Request $request)
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'printer_ids' => ['nullable', 'array'],
+            'printer_ids.*' => ['integer'],
         ], [
             'name.required' => 'El nombre del area es obligatorio.',
             'name.string' => 'El nombre debe ser texto.',
@@ -78,10 +88,11 @@ class AreaController extends Controller
         ]);
 
         try {
-            Area::create([
+            $area = Area::create([
                 'name' => $validated['name'],
                 'branch_id' => session('branch_id'),
             ]);
+            $this->syncAreaPrinters($area, $request->input('printer_ids', []));
 
             // Si viene un redirect_to, volver a esa URL (ej. vista de Mesas)
             if ($request->filled('redirect_to')) {
@@ -118,13 +129,23 @@ class AreaController extends Controller
     public function edit(Request $request, Area $area)
     {
         $viewId = $request->input('view_id');
-        return view('areas.edit', compact('area', 'viewId'));
+        $branchId = (int) session('branch_id');
+        $printers = PrinterBranch::query()
+            ->where('branch_id', $branchId)
+            ->where('status', 'E')
+            ->orderBy('name')
+            ->get(['id', 'name', 'ip']);
+        $area->load('printers:id,name');
+
+        return view('areas.edit', compact('area', 'viewId', 'printers'));
     }
 
     public function update(Request $request, Area $area)
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'printer_ids' => ['nullable', 'array'],
+            'printer_ids.*' => ['integer'],
         ], [
             'name.required' => 'El nombre del area es obligatorio.',
             'name.string' => 'El nombre debe ser texto.',
@@ -136,6 +157,7 @@ class AreaController extends Controller
                 'name' => $validated['name'],
                 'branch_id' => session('branch_id'),
             ]);
+            $this->syncAreaPrinters($area, $request->input('printer_ids', []));
 
             $params = [];
             if ($request->filled('view_id')) {
@@ -145,7 +167,7 @@ class AreaController extends Controller
             return redirect()->route('areas.index', $params)
                 ->with('success', 'Area actualizada correctamente');
         } catch (\Exception $e) {
-            \Log::error('Error al actualizar el area: ' . $e->getMessage());
+            Log::error('Error al actualizar el area: ' . $e->getMessage());
 
             $params = [];
             if ($request->filled('view_id')) {
@@ -223,5 +245,27 @@ class AreaController extends Controller
     public function downloadTemplate()
     {
         return Excel::download(new PlantillaAreasTablesExport(), 'plantilla_areas_mesas.xlsx');
+    }
+
+    private function syncAreaPrinters(Area $area, $printerIdsInput): void
+    {
+        $branchId = (int) session('branch_id');
+        $ids = collect(is_array($printerIdsInput) ? $printerIdsInput : [])
+            ->map(fn($id) => is_numeric($id) ? (int) $id : null)
+            ->filter(fn($id) => $id && $id > 0)
+            ->unique()
+            ->values();
+        if ($ids->isEmpty()) {
+            $area->printers()->sync([]);
+            return;
+        }
+        $validIds = PrinterBranch::query()
+            ->where('branch_id', $branchId)
+            ->whereIn('id', $ids->all())
+            ->pluck('id')
+            ->map(fn($id) => (int) $id)
+            ->all();
+
+        $area->printers()->sync($validIds);
     }
 }
