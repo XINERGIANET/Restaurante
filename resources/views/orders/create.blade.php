@@ -1731,7 +1731,8 @@
                                 const line = rawLines[li];
                                 const trimmed = line.trim();
                                 const isSep = /^=+$/.test(trimmed);
-                                const isHeader = /^(Mesa|Mozo|Fecha\/Hora|Fecha|Area|Salon|Hora|Producto|Cant|Total|Subtotal)/.test(trimmed)
+                            const isHeader = li === 1
+                                || /^(Mesa|Mozo|Fecha\/Hora|Fecha|Area|Salon|Hora|Producto|Cant|Total|Subtotal)/.test(trimmed)
                                     || /^(Mesa |COMANDA|COCINA|PRECUENTA|ANULADO)/.test(trimmed);
                                 const isMeta = /^(Nota|Estado|Motivo|DETALLE|S\/\.)/.test(trimmed) || trimmed === '';
                                 if (li === 0) {
@@ -2502,6 +2503,27 @@
                             return false;
                         }
                         let printedDirectly = true;
+                        const kitchenRecentPrints = (window.__kitchenRecentPrints = window.__kitchenRecentPrints || new Map());
+
+                        function shouldSkipDuplicateKitchenTicket(printerName, ticketText) {
+                            const pn = String(printerName || '').trim().toLowerCase();
+                            const tt = String(ticketText || '');
+                            if (!pn || !tt) return false;
+                            const key = pn + '::' + tt;
+                            const now = Date.now();
+                            const prev = kitchenRecentPrints.get(key) || 0;
+                            // Evita doble impresión por doble disparo del flujo JS en pocos segundos.
+                            if (now - prev < 5000) {
+                                return true;
+                            }
+                            kitchenRecentPrints.set(key, now);
+                            if (kitchenRecentPrints.size > 200) {
+                                for (const [k, ts] of kitchenRecentPrints.entries()) {
+                                    if (now - ts > 60000) kitchenRecentPrints.delete(k);
+                                }
+                            }
+                            return false;
+                        }
 
                         async function sendKitchenTicketToServer(printerName, ticketText) {
                             const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
@@ -2586,7 +2608,7 @@
                             const orderNumber = String(table?.order_movement_number ?? '').trim();
                             const orderDate = String(table?.order_movement_date ?? '').trim();
                             const comandaLabel = [`COMANDA: ${table?.order_movement_id}`, orderNumber].filter(Boolean).join(': ');
-                            const comandaSub = orderDate ? orderDate : 'COCINA';
+                            const comandaSub = String(pname || '').trim() || 'COCINA';
                             const clientLabel = String(table?.clientName || table?.client || '').trim();
                             const header = padCenter(comandaLabel, LINE_WIDTH) + '\n' +
                                 padCenter(comandaSub, LINE_WIDTH) + '\n' +
@@ -2662,6 +2684,10 @@
                                 });
                             }
                             const data = header + body + '\n\n';
+                            if (shouldSkipDuplicateKitchenTicket(pname, data)) {
+                                console.warn('Comanda duplicada evitada en ' + pname);
+                                continue;
+                            }
                             try {
                                 if (kitchenComandaPrinterUsesServerThermal(pname)) {
                                     await sendKitchenTicketToServer(pname, data);
