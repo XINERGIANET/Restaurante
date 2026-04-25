@@ -2482,7 +2482,7 @@
                         }
                         const byPrinter = mergePrinterBucketsByNameCase(mergedBuckets.byPrinter);
                         const canceledByPrinter = mergePrinterBucketsByNameCase(mergedBuckets.canceledByPrinter);
-                        const names = (function() {
+                        let names = (function() {
                             const m = new Map();
                             [...Object.keys(byPrinter), ...Object.keys(canceledByPrinter)].forEach((k) => {
                                 const t = String(k || '').trim();
@@ -2495,6 +2495,30 @@
                                 }
                             });
                             return Array.from(m.values());
+                        })();
+                        (function collapseBarraPairBuckets() {
+                            const normalize = (raw) => String(raw || '').trim().toLowerCase().replace(/\s+/g, '');
+                            const barraKey = names.find((n) => normalize(n) === 'barra');
+                            const barra2Key = names.find((n) => {
+                                const t = normalize(n);
+                                return t === 'barra2' || t.startsWith('barra2');
+                            });
+                            if (!barraKey || !barra2Key) {
+                                return;
+                            }
+                            const defaultPrinter = String(window.__qzConfig?.defaultPrinterName || window.__qzConfig?.printerName || '').trim();
+                            const preferBarra2 = (typeof window.__qzPrinterRequiresSecondaryCertFirst === 'function')
+                                ? window.__qzPrinterRequiresSecondaryCertFirst(defaultPrinter || barra2Key)
+                                : normalize(defaultPrinter) === 'barra2';
+                            const keep = preferBarra2 ? barra2Key : barraKey;
+                            const drop = preferBarra2 ? barraKey : barra2Key;
+                            if (drop !== keep) {
+                                byPrinter[keep] = (byPrinter[keep] || []).concat(byPrinter[drop] || []);
+                                canceledByPrinter[keep] = (canceledByPrinter[keep] || []).concat(canceledByPrinter[drop] || []);
+                                delete byPrinter[drop];
+                                delete canceledByPrinter[drop];
+                                names = names.filter((n) => n !== drop);
+                            }
                         })();
                         if (!names.length) {
                             if (typeof showNotification === 'function') {
