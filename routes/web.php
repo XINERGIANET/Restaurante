@@ -38,6 +38,7 @@ use App\Http\Controllers\RecipeBookController;
 use App\Http\Controllers\UnitController;
 use App\Http\Controllers\WarehouseMovementController;
 use App\Http\Controllers\ShiftCashController;
+use App\Http\Controllers\AccountsReceivableController;
 use App\Http\Controllers\CashRegisterController;
 use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\BranchParameterController;
@@ -462,6 +463,13 @@ Route::middleware('auth')->group(function () {
         ->name('shift-cash.print');
     Route::get('/caja/turno-caja/{shiftCash}/ventas-productos', [ShiftCashController::class, 'productsSold'])
         ->name('shift-cash.products-sold');
+
+    Route::get('/caja/cuentas-por-cobrar', [AccountsReceivableController::class, 'index'])
+        ->name('accounts-receivable.index');
+    Route::get('/caja/cuentas-por-cobrar/{account_receivable_payable}/cobrar', [AccountsReceivableController::class, 'collect'])
+        ->name('accounts-receivable.collect');
+    Route::post('/caja/cuentas-por-cobrar/{account_receivable_payable}/cobrar', [AccountsReceivableController::class, 'storeCollection'])
+        ->name('accounts-receivable.collect.store');
 
     //tasa de impuesto
     Route::resource('/admin/herramientas/tasas-impuesto', TaxRateController::class)

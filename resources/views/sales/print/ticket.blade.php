@@ -320,6 +320,12 @@
             <td class="info-label">Forma pago:</td>
             <td class="info-value">{{ $paymentLabel }}</td>
         </tr>
+        @if (($sale->orderMovement?->payment_type ?? '') === 'CREDITO' || in_array((string) ($sale->salesMovement?->payment_type ?? ''), ['CREDIT', 'CREDITO'], true))
+            <tr>
+                <td class="info-label">Nota:</td>
+                <td class="info-value">Venta a crédito; el saldo queda pendiente de cobro.</td>
+            </tr>
+        @endif
     </table>
 
     <div class="separator"></div>

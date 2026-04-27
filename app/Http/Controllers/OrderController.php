@@ -37,6 +37,7 @@ use App\Models\Shift;
 use App\Models\Table;
 use App\Models\Unit;
 use App\Models\User;
+use App\Services\AccountReceivablePayableService;
 use App\Services\ApisunatService;
 use App\Services\OrderPaymentSplitService;
 use App\Services\KardexSyncService;
@@ -135,7 +136,7 @@ class OrderController extends Controller
             ->whereNull('deleted_at')
             ->get()
             ->first(function (Person $person) use ($normalizedName) {
-                $personFullName = trim(($person->first_name ?? '').' '.($person->last_name ?? ''));
+                $personFullName = trim(($person->first_name ?? '') . ' ' . ($person->last_name ?? ''));
                 $personNormalized = mb_strtolower(preg_replace('/\s+/', ' ', $personFullName), 'UTF-8');
                 $firstNameNormalized = mb_strtolower(preg_replace('/\s+/', ' ', trim((string) $person->first_name)), 'UTF-8');
 
@@ -215,7 +216,7 @@ class OrderController extends Controller
         $remaining = $svc->remainingOrderTotal($pendingOrder);
         $billed = $svc->billedQuantityByDetailId($pendingOrder);
         $lines = $pendingOrder->details
-            ->filter(fn ($d) => ($d->status ?? 'A') !== 'C')
+            ->filter(fn($d) => ($d->status ?? 'A') !== 'C')
             ->map(function ($d) use ($billed) {
                 $qty = (float) $d->quantity;
                 $courtesy = max(0, min((float) ($d->courtesy_quantity ?? 0), $qty));
@@ -233,7 +234,7 @@ class OrderController extends Controller
                 ];
             })
             ->values()
-            ->filter(fn ($r) => (float) ($r['remaining_qty'] ?? 0) > 0.000001)
+            ->filter(fn($r) => (float) ($r['remaining_qty'] ?? 0) > 0.000001)
             ->values()
             ->all();
 
@@ -259,7 +260,7 @@ class OrderController extends Controller
         $billed = $splitSvc->billedQuantityByDetailId($orderMovement);
 
         return ($orderMovement->details ?? collect())
-            ->filter(fn ($d) => ($d->status ?? 'A') !== 'C')
+            ->filter(fn($d) => ($d->status ?? 'A') !== 'C')
             ->map(function ($d) use ($billed) {
                 $qty = (float) ($d->quantity ?? 0);
                 $courtesyQty = max(0, min((float) ($d->courtesy_quantity ?? 0), $qty));
@@ -301,7 +302,7 @@ class OrderController extends Controller
                         'delivered' => $status === 'E',
                         'courtesyQty' => $courtesyQty,
                         'takeawayQty' => $takeawayQtyFull,
-                        'complements' => collect($d->complements ?? [])->map(fn ($item) => trim((string) $item))->filter()->values()->all(),
+                        'complements' => collect($d->complements ?? [])->map(fn($item) => trim((string) $item))->filter()->values()->all(),
                     ];
                 }
 
@@ -325,7 +326,7 @@ class OrderController extends Controller
                     'delivered' => $status === 'E',
                     'courtesyQty' => 0,
                     'takeawayQty' => $takeawayScaled,
-                    'complements' => collect($d->complements ?? [])->map(fn ($item) => trim((string) $item))->filter()->values()->all(),
+                    'complements' => collect($d->complements ?? [])->map(fn($item) => trim((string) $item))->filter()->values()->all(),
                 ];
             })
             ->filter()
@@ -1374,7 +1375,7 @@ class OrderController extends Controller
         $products = Product::where('type', 'PRODUCT')
             ->where(function ($q) {
                 $q->whereNull('product_type_id')
-                    ->orWhereHas('productType', fn ($q2) => $q2->whereIn('behavior', [
+                    ->orWhereHas('productType', fn($q2) => $q2->whereIn('behavior', [
                         ProductType::BEHAVIOR_SELLABLE,
                         ProductType::BEHAVIOR_BOTH,
                     ]));
@@ -1408,7 +1409,7 @@ class OrderController extends Controller
                     'img' => $imageUrl,
                     'category' => $product->category ? $product->category->description : 'Sin categoría',
                     'category_id' => $product->category_id,
-                    'detail_options' => collect($product->detail_options ?? [])->map(fn ($item) => trim((string) $item))->filter()->values()->all(),
+                    'detail_options' => collect($product->detail_options ?? [])->map(fn($item) => trim((string) $item))->filter()->values()->all(),
                     'table_id' => null,
                     'branch_id' => $branchId,
                 ];
@@ -1430,8 +1431,8 @@ class OrderController extends Controller
                 $taxRatePct = $productBranch->taxRate ? (float) $productBranch->taxRate->tax_rate : null;
                 $printerNames = $productBranch->printers
                     ->pluck('name')
-                    ->map(fn ($n) => trim((string) $n))
-                    ->filter(fn ($n) => $n !== '')
+                    ->map(fn($n) => trim((string) $n))
+                    ->filter(fn($n) => $n !== '')
                     ->values()
                     ->all();
                 $printers = $productBranch->printers
@@ -1468,7 +1469,7 @@ class OrderController extends Controller
             : collect();
 
         $categories = Category::query()
-            ->when($branchId, fn ($q) => $q->forBranchMenu($branchId, 'VENTAS_PEDIDOS'), function ($query) {
+            ->when($branchId, fn($q) => $q->forBranchMenu($branchId, 'VENTAS_PEDIDOS'), function ($query) {
                 $query->whereRaw('1 = 0');
             })
             ->orderBy('description')
@@ -1495,7 +1496,7 @@ class OrderController extends Controller
             : [];
 
         $pendingItems = collect($pendingItemsRaw)->groupBy(function ($item) {
-            $complements = collect($item['complements'] ?? [])->map(fn ($value) => trim((string) $value))->filter()->values()->all();
+            $complements = collect($item['complements'] ?? [])->map(fn($value) => trim((string) $value))->filter()->values()->all();
             sort($complements);
 
             return implode('|', [
@@ -1539,20 +1540,20 @@ class OrderController extends Controller
         })->values()->all();
 
         $pendingCancelledDetails = $pendingOrder
-            ? collect($pendingOrder->details->where('status', 'C')->map(fn ($d) => [
+            ? collect($pendingOrder->details->where('status', 'C')->map(fn($d) => [
                 'product_id' => (int) ($d->product_id ?? 0),
                 'description' => $d->description ?? 'Producto',
                 'quantity' => (float) $d->quantity,
                 'comment' => $d->comment ?? '',
-                'complements' => collect($d->complements ?? [])->map(fn ($item) => trim((string) $item))->filter()->values()->all(),
+                'complements' => collect($d->complements ?? [])->map(fn($item) => trim((string) $item))->filter()->values()->all(),
             ]))
             ->groupBy(function ($item) {
-                $complements = collect($item['complements'] ?? [])->map(fn ($value) => trim((string) $value))->filter()->values()->all();
+                $complements = collect($item['complements'] ?? [])->map(fn($value) => trim((string) $value))->filter()->values()->all();
                 sort($complements);
 
                 return implode('|', [(int) ($item['product_id'] ?? 0), md5(json_encode($complements))]);
             })
-            ->map(fn ($group) => [
+            ->map(fn($group) => [
                 'description' => $group->first()['description'],
                 'quantity' => $group->sum('quantity'),
                 'comment' => $group->first()['comment'],
@@ -1620,7 +1621,7 @@ class OrderController extends Controller
 
         $viewId = $request->query('view_id');
         $salesIndexUrl = route('sales.index', $viewId ? ['view_id' => $viewId] : []);
-        $posStorageKey = 'counter-b'.$branchId.'-u'.(int) $userId;
+        $posStorageKey = 'counter-b' . $branchId . '-u' . (int) $userId;
         $recipeStockData = $this->buildRecipeStockData($branchId, $branch?->company_id);
         $areaPrinterNames = $branchId
             ? Area::query()
@@ -2141,7 +2142,7 @@ class OrderController extends Controller
             if (! $existingOrderMovement && ! $tableId && $branchId && $user) {
                 $existingOrderMovement = OrderMovement::where('branch_id', $branchId)
                     ->whereNull('table_id')
-                    ->whereHas('movement', fn ($q) => $q->where('user_id', $user->id))
+                    ->whereHas('movement', fn($q) => $q->where('user_id', $user->id))
                     ->whereIn('status', ['PENDIENTE', 'P'])
                     ->orderByDesc('id')
                     ->first();
@@ -2296,7 +2297,7 @@ class OrderController extends Controller
                         return (float) ($rawItem['quantity'] ?? $rawItem['qty'] ?? 0);
                     });
                 })
-                ->filter(fn ($qty, $productId) => (int) $productId > 0);
+                ->filter(fn($qty, $productId) => (int) $productId > 0);
 
             if (empty($items)) {
                 $orderMovement->update(['status' => 'CANCELADO', 'finished_at' => now()]);
@@ -2388,7 +2389,7 @@ class OrderController extends Controller
                                 $ingredientName = Product::query()->where('id', $ingredientProductId)->value('description') ?? ('Ingrediente #' . $ingredientProductId);
                                 throw new \Exception(
                                     "Stock insuficiente para el ingrediente \"{$ingredientName}\". " .
-                                    "Stock disponible: {$ingredientStock}, Requerido: {$needed}"
+                                        "Stock disponible: {$ingredientStock}, Requerido: {$needed}"
                                 );
                             }
                         }
@@ -2396,7 +2397,7 @@ class OrderController extends Controller
                         if (! $branch->allow_zero_stock_sales && $currentStock < $deltaQty) {
                             throw new \Exception(
                                 "Stock insuficiente para el producto \"{$description}\". " .
-                                "Stock disponible: {$currentStock}, Cantidad solicitada: {$deltaQty}"
+                                    "Stock disponible: {$currentStock}, Cantidad solicitada: {$deltaQty}"
                             );
                         }
                     }
@@ -2953,7 +2954,7 @@ class OrderController extends Controller
         return str_replace("\r\n", "\n", (string) $value);
     }
 
-    public function processOrderPayment(Request $request)
+    public function processOrderPayment(Request $request, AccountReceivablePayableService $accountReceivablePayableService)
     {
 
         $profileId = session('profile_id') ?? $request->user()?->profile_id;
@@ -2984,6 +2985,15 @@ class OrderController extends Controller
         }
         $detailGlosa = trim((string) $request->input('detail_glosa', ''));
         $paymentMethods = collect($request->input('payment_methods', []));
+        $saleType = strtoupper(trim((string) $request->input(
+            'payment_type',
+            $request->input('sale_type', 'CONTADO')
+        )));
+        if (! in_array($saleType, ['CONTADO', 'CREDITO'], true)) {
+            $saleType = 'CONTADO';
+        }
+        $creditDays = (int) $request->input('credit_days', 0);
+        $dueDate = $request->input('debt_due_date', $request->input('due_date'));
 
         $restrictedPmIds = PaymentMethod::paymentMethodIdsForBranchOrNull($branchId ?: null);
         if ($restrictedPmIds !== null && $paymentMethods->isNotEmpty()) {
@@ -3067,7 +3077,8 @@ class OrderController extends Controller
                     $paymentMethods,
                     $cashRegisterId,
                     $detailMode,
-                    $detailGlosa
+                    $detailGlosa,
+                    $saleType
                 );
                 DB::commit();
                 $orderPaymentSplit = $splitResult['order_payment_split'];
@@ -3114,103 +3125,109 @@ class OrderController extends Controller
         $cashEntryMovement = null;
         DB::beginTransaction();
         try {
-                $orderMovement->status = 'FINALIZADO';
-                $orderMovement->finished_at = now();
-                $orderMovement->save();
+            $orderMovement->status = 'FINALIZADO';
+            $orderMovement->finished_at = now();
+            $orderMovement->payment_type = $saleType === 'CREDITO' ? 'CREDITO' : 'CONTADO';
+            $orderMovement->save();
 
-                $orderBaseMovement = Movement::find($orderMovement->movement_id);
-                if ($orderBaseMovement) {
-                    $updateData = [
-                        'status' => 'A',
-                        'moved_at' => now(),
-                    ];
-                    if ($clientPerson) {
-                        $updateData['person_id'] = $clientPerson->id;
+            $orderBaseMovement = Movement::find($orderMovement->movement_id);
+            if ($orderBaseMovement) {
+                $updateData = [
+                    'status' => 'A',
+                    'moved_at' => now(),
+                ];
+                if ($clientPerson) {
+                    $updateData['person_id'] = $clientPerson->id;
+                }
+                if ($clientName) {
+                    $updateData['person_name'] = $clientName;
+                }
+                $requestDocumentTypeId = $request->input('document_type_id');
+                $defaultDocumentTypeId = effective_default_sale_document_type_id($branchId, [2]);
+                $resolvedDocumentTypeId = ($requestDocumentTypeId && DocumentType::where('id', $requestDocumentTypeId)->exists())
+                    ? (int) $requestDocumentTypeId
+                    : $defaultDocumentTypeId;
+                $resolvedDocumentType = $resolvedDocumentTypeId
+                    ? DocumentType::find((int) $resolvedDocumentTypeId)
+                    : null;
+                if ($resolvedDocumentType) {
+                    $validationMessage = $this->validateCustomerForDocumentType(
+                        $resolvedDocumentType,
+                        $clientPerson,
+                        (float) ($orderMovement->total ?? 0)
+                    );
+                    if ($validationMessage) {
+                        throw new \InvalidArgumentException($validationMessage);
                     }
-                    if ($clientName) {
-                        $updateData['person_name'] = $clientName;
+                }
+                if ($detailMode === 'GLOSA' && $detailGlosa === '') {
+                    throw new \InvalidArgumentException('Debes ingresar la glosa que saldra en el comprobante.');
+                }
+                if (! $clientPerson && $clientNameFromRequest) {
+                    $clientPerson = $this->resolveOrCreateClientPerson(
+                        $branchId ?: null,
+                        $branch,
+                        $clientPersonId ? (int) $clientPersonId : null,
+                        $clientNameFromRequest
+                    );
+                    $clientName = trim(($clientPerson->first_name ?? '') . ' ' . ($clientPerson->last_name ?? ''));
+                }
+                if ($clientPerson) {
+                    $updateData['person_id'] = $clientPerson->id;
+                    $updateData['person_name'] = trim(($clientPerson->first_name ?? '') . ' ' . ($clientPerson->last_name ?? ''));
+                }
+                if ($resolvedDocumentTypeId && DocumentType::where('id', $resolvedDocumentTypeId)->exists()) {
+                    $updateData['document_type_id'] = (int) $resolvedDocumentTypeId;
+                }
+                $orderBaseMovement->update($updateData);
+                $orderBaseMovement->refresh();
+
+                // --- INTEGRACIÓN CON VENTAS: Cada pedido cobrado figura ahora en ventas ---
+                if (!SalesMovement::where('movement_id', $orderBaseMovement->id)->exists()) {
+                    $branch = Branch::find($branchId);
+
+                    // Determinar el tipo de movimiento para Ventas (tipo 2 por defecto, pero resolvemos dinámicamente)
+                    $salesMovementType = MovementType::where('description', 'like', '%venta%')
+                        ->orWhere('description', 'like', '%sale%')
+                        ->orWhere('description', 'like', '%Venta%')
+                        ->first();
+
+                    if ($salesMovementType) {
+                        $orderBaseMovement->update(['movement_type_id' => $salesMovementType->id]);
                     }
-                    $requestDocumentTypeId = $request->input('document_type_id');
-                    $defaultDocumentTypeId = effective_default_sale_document_type_id($branchId, [2]);
-                    $resolvedDocumentTypeId = ($requestDocumentTypeId && DocumentType::where('id', $requestDocumentTypeId)->exists())
-                        ? (int) $requestDocumentTypeId
-                        : $defaultDocumentTypeId;
-                    $resolvedDocumentType = $resolvedDocumentTypeId
-                        ? DocumentType::find((int) $resolvedDocumentTypeId)
-                        : null;
-                    if ($resolvedDocumentType) {
-                        $validationMessage = $this->validateCustomerForDocumentType(
-                            $resolvedDocumentType,
-                            $clientPerson,
-                            (float) ($orderMovement->total ?? 0)
-                        );
-                        if ($validationMessage) {
-                            throw new \InvalidArgumentException($validationMessage);
-                        }
-                    }
-                    if ($detailMode === 'GLOSA' && $detailGlosa === '') {
-                        throw new \InvalidArgumentException('Debes ingresar la glosa que saldra en el comprobante.');
-                    }
-                    if (! $clientPerson && $clientNameFromRequest) {
-                        $clientPerson = $this->resolveOrCreateClientPerson(
-                            $branchId ?: null,
-                            $branch,
-                            $clientPersonId ? (int) $clientPersonId : null,
-                            $clientNameFromRequest
-                        );
-                        $clientName = trim(($clientPerson->first_name ?? '') . ' ' . ($clientPerson->last_name ?? ''));
-                    }
-                    if ($resolvedDocumentTypeId && DocumentType::where('id', $resolvedDocumentTypeId)->exists()) {
-                        $updateData['document_type_id'] = (int) $resolvedDocumentTypeId;
-                    }
-                    $orderBaseMovement->update($updateData);
 
-                    // --- INTEGRACIÓN CON VENTAS: Cada pedido cobrado figura ahora en ventas ---
-                    if (!SalesMovement::where('movement_id', $orderBaseMovement->id)->exists()) {
-                        $branch = Branch::find($branchId);
+                    $cashRegisterId = effective_cash_register_id($branchId);
+                    $cashRegister = $cashRegisterId ? \App\Models\CashRegister::find($cashRegisterId) : null;
+                    $activeSeries = $cashRegister?->series ?? '001';
 
-                        // Determinar el tipo de movimiento para Ventas (tipo 2 por defecto, pero resolvemos dinámicamente)
-                        $salesMovementType = MovementType::where('description', 'like', '%venta%')
-                            ->orWhere('description', 'like', '%sale%')
-                            ->orWhere('description', 'like', '%Venta%')
-                            ->first();
+                    // Crear el registro de SalesMovement
+                    $salesMovement = SalesMovement::create([
+                        'branch_snapshot' => [
+                            'id' => $branch->id,
+                            'legal_name' => $branch->legal_name,
+                        ],
+                        'series' => $activeSeries,
+                        'year' => now()->year,
+                        'detail_type' => $detailMode === 'DETALLADO' ? 'DETALLADO' : 'GLOSA',
+                        'consumption' => $detailMode === 'CONSUMO' ? 'Y' : 'N',
+                        'payment_type' => $saleType === 'CREDITO' ? 'CREDIT' : 'CONTADO',
+                        'status' => 'N',
+                        'sale_type' => 'MINORISTA',
+                        'currency' => 'PEN',
+                        'exchange_rate' => 1.0,
+                        'subtotal' => $orderMovement->subtotal,
+                        'tax' => $orderMovement->tax,
+                        'total' => $orderMovement->total,
+                        'movement_id' => $orderBaseMovement->id,
+                        'branch_id' => $branchId,
+                    ]);
 
-                        if ($salesMovementType) {
-                            $orderBaseMovement->update(['movement_type_id' => $salesMovementType->id]);
-                        }
+                    // Crear detalles de venta a partir de los detalles del pedido
+                    $activeOrderDetails = $orderMovement->details
+                        ->filter(fn($orderDetail) => ($orderDetail->status ?? 'A') !== 'C')
+                        ->values();
 
-                        $cashRegisterId = effective_cash_register_id($branchId);
-                        $cashRegister = $cashRegisterId ? \App\Models\CashRegister::find($cashRegisterId) : null;
-                        $activeSeries = $cashRegister?->series ?? '001';
-
-                        // Crear el registro de SalesMovement
-                        $salesMovement = SalesMovement::create([
-                            'branch_snapshot' => [
-                                'id' => $branch->id,
-                                'legal_name' => $branch->legal_name,
-                            ],
-                            'series' => $activeSeries,
-                            'year' => now()->year,
-                            'detail_type' => $detailMode === 'DETALLADO' ? 'DETALLADO' : 'GLOSA',
-                            'consumption' => $detailMode === 'CONSUMO' ? 'Y' : 'N',
-                            'payment_type' => 'CONTADO',
-                            'status' => 'N',
-                            'sale_type' => 'MINORISTA',
-                            'currency' => 'PEN',
-                            'exchange_rate' => 1.0,
-                            'subtotal' => $orderMovement->subtotal,
-                            'tax' => $orderMovement->tax,
-                            'total' => $orderMovement->total,
-                            'movement_id' => $orderBaseMovement->id,
-                            'branch_id' => $branchId,
-                        ]);
-
-                        // Crear detalles de venta a partir de los detalles del pedido
-                        $activeOrderDetails = $orderMovement->details
-                            ->filter(fn ($orderDetail) => ($orderDetail->status ?? 'A') !== 'C')
-                            ->values();
-
-                        if ($detailMode === 'DETALLADO') {
+                    if ($detailMode === 'DETALLADO') {
                         foreach ($activeOrderDetails as $orderDetail) {
                             if (($orderDetail->status ?? 'A') === 'C') {
                                 continue;
@@ -3249,201 +3266,238 @@ class OrderController extends Controller
                                 'branch_id' => $branchId,
                             ]);
                         }
-                        } else {
-                            $referenceDetail = $activeOrderDetails->first();
-                            if (! $referenceDetail) {
-                                throw new \InvalidArgumentException('No hay detalles validos para generar la venta.');
-                            }
-
-                            SalesMovementDetail::create([
-                                'detail_type' => 'GLOSA',
-                                'sales_movement_id' => $salesMovement->id,
-                                'code' => 'GLOSA',
-                                'description' => $detailMode === 'CONSUMO' ? 'POR CONSUMO' : $detailGlosa,
-                                'product_id' => null,
-                                'product_snapshot' => [
-                                    'type' => $detailMode,
-                                    'source' => 'order_payment',
-                                ],
-                                'unit_id' => $referenceDetail->unit_id,
-                                'tax_rate_id' => $referenceDetail->tax_rate_id,
-                                'tax_rate_snapshot' => $referenceDetail->tax_rate_snapshot,
-                                'quantity' => 1,
-                                'courtesy_quantity' => 0,
-                                'amount' => (float) ($orderMovement->total ?? 0),
-                                'discount_percentage' => 0,
-                                'original_amount' => (float) ($orderMovement->subtotal ?? 0),
-                                'comment' => null,
-                                'complements' => [],
-                                'status' => 'A',
-                                'branch_id' => $branchId,
-                            ]);
+                    } else {
+                        $referenceDetail = $activeOrderDetails->first();
+                        if (! $referenceDetail) {
+                            throw new \InvalidArgumentException('No hay detalles validos para generar la venta.');
                         }
-                    }
-                    // --------------------------------------------------------------------------
-                }
 
-                $paymentConcept = $this->resolveOrderPaymentConcept();
-                $cashMovementTypeId = $this->resolveCashMovementTypeId();
-                $cashDocumentTypeId = $this->resolveCashIncomeDocumentTypeId($cashMovementTypeId);
-                $cashRegister = CashRegister::find($cashRegisterId);
-                $shift = Shift::where('branch_id', $branchId)->first() ?? Shift::first();
-                if (! $shift) {
-                    throw new \Exception('No hay turno disponible para registrar el cobro.');
-                }
-
-                // Movimiento de caja hijo del movimiento de pedido
-                $cashEntryMovement = $this->resolveCashEntryMovementByParentMovement((int) $orderMovement->movement_id);
-                if (! $cashEntryMovement) {
-                    $cashEntryMovement = Movement::create([
-                        'number' => $this->generateCashMovementNumber($branchId, (int) $cashRegisterId, (int) $paymentConcept->id),
-                        'moved_at' => now(),
-                        'user_id' => $user?->id,
-                        'user_name' => $user?->name ?? 'Sistema',
-                        'person_id' => $orderBaseMovement?->person_id,
-                        'person_name' => $orderBaseMovement?->person_name ?? 'Publico General',
-                        'responsible_id' => $user?->id,
-                        'responsible_name' => $user?->person ? trim(($user->person->first_name ?? '') . ' ' . ($user->person->last_name ?? '')) : ($user?->name ?? 'Sistema'),
-                        'comment' => 'Cobro de pedido ' . ($orderBaseMovement?->number ?? ''),
-                        'status' => '1',
-                        'movement_type_id' => $cashMovementTypeId,
-                        'document_type_id' => $cashDocumentTypeId,
-                        'branch_id' => $branchId,
-                        'parent_movement_id' => $orderMovement->movement_id,
-                    ]);
-                } else {
-                    $cashEntryMovement->update([
-                        'moved_at' => now(),
-                        'comment' => 'Cobro de pedido ' . ($orderBaseMovement?->number ?? ''),
-                        'status' => '1',
-                    ]);
-                }
-
-                $cashMovement = CashMovements::where('movement_id', $cashEntryMovement->id)->first();
-                $total = (float) ($orderMovement->total ?? 0);
-                if ($cashMovement) {
-                    $cashMovement->update([
-                        'payment_concept_id' => $paymentConcept->id,
-                        'currency' => 'PEN',
-                        'exchange_rate' => 1.000,
-                        'total' => $total,
-                        'cash_register_id' => $cashRegisterId,
-                        'cash_register' => $cashRegister?->number ?? 'Caja Principal',
-                        'shift_id' => $shift->id,
-                        'shift_snapshot' => [
-                            'name' => $shift->name,
-                            'start_time' => $shift->start_time,
-                            'end_time' => $shift->end_time,
-                        ],
-                        'branch_id' => $branchId,
-                    ]);
-                    DB::table('cash_movement_details')
-                        ->where('cash_movement_id', $cashMovement->id)
-                        ->delete();
-                } else {
-                    $cashMovement = CashMovements::create([
-                        'payment_concept_id' => $paymentConcept->id,
-                        'currency' => 'PEN',
-                        'exchange_rate' => 1.000,
-                        'total' => $total,
-                        'cash_register_id' => $cashRegisterId,
-                        'cash_register' => $cashRegister?->number ?? 'Caja Principal',
-                        'shift_id' => $shift->id,
-                        'shift_snapshot' => [
-                            'name' => $shift->name,
-                            'start_time' => $shift->start_time,
-                            'end_time' => $shift->end_time,
-                        ],
-                        'movement_id' => $cashEntryMovement->id,
-                        'branch_id' => $branchId,
-                    ]);
-                }
-
-                if ($paymentMethods->isNotEmpty()) {
-                    foreach ($paymentMethods as $paymentMethodData) {
-                        $paymentMethod = PaymentMethod::findOrFail((int) ($paymentMethodData['payment_method_id'] ?? 0));
-                        $paymentGateway = ! empty($paymentMethodData['payment_gateway_id'])
-                            ? PaymentGateways::find((int) $paymentMethodData['payment_gateway_id'])
-                            : null;
-                        $card = ! empty($paymentMethodData['card_id'])
-                            ? Card::find((int) $paymentMethodData['card_id'])
-                            : null;
-                        $digitalWallet = ! empty($paymentMethodData['digital_wallet_id'])
-                            ? DigitalWallet::find((int) $paymentMethodData['digital_wallet_id'])
-                            : null;
-                        $bank = ! empty($paymentMethodData['bank_id'])
-                            ? Bank::find((int) $paymentMethodData['bank_id'])
-                            : null;
-
-                        DB::table('cash_movement_details')->insert([
-                            'cash_movement_id' => $cashMovement->id,
-                            'type' => 'PAGADO',
-                            'paid_at' => now(),
-                            'payment_method_id' => $paymentMethod->id,
-                            'payment_method' => $paymentMethod->description ?? '',
-                            'number' => $cashEntryMovement->number,
-                            'card_id' => $card?->id,
-                            'card' => $card?->description,
-                            'bank_id' => $bank?->id,
-                            'bank' => $bank?->description ?? '',
-                            'digital_wallet_id' => $digitalWallet?->id,
-                            'digital_wallet' => $digitalWallet?->description,
-                            'payment_gateway_id' => $paymentGateway?->id,
-                            'payment_gateway' => $paymentGateway?->description,
-                            'amount' => (float) ($paymentMethodData['amount'] ?? 0),
-                            'comment' => $request->input('notes') ?: 'Cobro de pedido ' . ($orderBaseMovement?->number ?? ''),
+                        SalesMovementDetail::create([
+                            'detail_type' => 'GLOSA',
+                            'sales_movement_id' => $salesMovement->id,
+                            'code' => 'GLOSA',
+                            'description' => $detailMode === 'CONSUMO' ? 'POR CONSUMO' : $detailGlosa,
+                            'product_id' => null,
+                            'product_snapshot' => [
+                                'type' => $detailMode,
+                                'source' => 'order_payment',
+                            ],
+                            'unit_id' => $referenceDetail->unit_id,
+                            'tax_rate_id' => $referenceDetail->tax_rate_id,
+                            'tax_rate_snapshot' => $referenceDetail->tax_rate_snapshot,
+                            'quantity' => 1,
+                            'courtesy_quantity' => 0,
+                            'amount' => (float) ($orderMovement->total ?? 0),
+                            'discount_percentage' => 0,
+                            'original_amount' => (float) ($orderMovement->subtotal ?? 0),
+                            'comment' => null,
+                            'complements' => [],
                             'status' => 'A',
                             'branch_id' => $branchId,
-                            'created_at' => now(),
-                            'updated_at' => now(),
                         ]);
                     }
                 }
+                // --------------------------------------------------------------------------
+            }
 
-                // Al cobrar, liberar la mesa (update directo para asegurar que se persiste)
-                $tableIdToFree = $tableId ?? $orderMovement->table_id;
-                if ($tableIdToFree) {
-                    Table::where('id', $tableIdToFree)->update([
-                        'situation' => 'libre',
-                        'opened_at' => null,
+            $paymentConcept = $this->resolveOrderPaymentConcept();
+            $cashMovementTypeId = $this->resolveCashMovementTypeId();
+            $cashDocumentTypeId = $this->resolveCashIncomeDocumentTypeId($cashMovementTypeId);
+            $cashRegister = CashRegister::find($cashRegisterId);
+            $shift = Shift::where('branch_id', $branchId)->first() ?? Shift::first();
+            if (! $shift) {
+                throw new \Exception('No hay turno disponible para registrar el cobro.');
+            }
+
+            // Movimiento de caja hijo del movimiento de pedido
+            $cashEntryMovement = $this->resolveCashEntryMovementByParentMovement((int) $orderMovement->movement_id);
+            if (! $cashEntryMovement) {
+                $cashEntryMovement = Movement::create([
+                    'number' => $this->generateCashMovementNumber($branchId, (int) $cashRegisterId, (int) $paymentConcept->id),
+                    'moved_at' => now(),
+                    'user_id' => $user?->id,
+                    'user_name' => $user?->name ?? 'Sistema',
+                    'person_id' => $orderBaseMovement?->person_id,
+                    'person_name' => $orderBaseMovement?->person_name ?? 'Publico General',
+                    'responsible_id' => $user?->id,
+                    'responsible_name' => $user?->person ? trim(($user->person->first_name ?? '') . ' ' . ($user->person->last_name ?? '')) : ($user?->name ?? 'Sistema'),
+                    'comment' => 'Cobro de pedido ' . ($orderBaseMovement?->number ?? ''),
+                    'status' => '1',
+                    'movement_type_id' => $cashMovementTypeId,
+                    'document_type_id' => $cashDocumentTypeId,
+                    'branch_id' => $branchId,
+                    'parent_movement_id' => $orderMovement->movement_id,
+                ]);
+            } else {
+                $cashEntryMovement->update([
+                    'moved_at' => now(),
+                    'comment' => 'Cobro de pedido ' . ($orderBaseMovement?->number ?? ''),
+                    'status' => '1',
+                ]);
+            }
+
+            $cashMovement = CashMovements::where('movement_id', $cashEntryMovement->id)->first();
+            $total = (float) ($orderMovement->total ?? 0);
+            if ($cashMovement) {
+                $cashMovement->update([
+                    'payment_concept_id' => $paymentConcept->id,
+                    'currency' => 'PEN',
+                    'exchange_rate' => 1.000,
+                    'total' => $total,
+                    'cash_register_id' => $cashRegisterId,
+                    'cash_register' => $cashRegister?->number ?? 'Caja Principal',
+                    'shift_id' => $shift->id,
+                    'shift_snapshot' => [
+                        'name' => $shift->name,
+                        'start_time' => $shift->start_time,
+                        'end_time' => $shift->end_time,
+                    ],
+                    'branch_id' => $branchId,
+                ]);
+                DB::table('cash_movement_details')
+                    ->where('cash_movement_id', $cashMovement->id)
+                    ->delete();
+            } else {
+                $cashMovement = CashMovements::create([
+                    'payment_concept_id' => $paymentConcept->id,
+                    'currency' => 'PEN',
+                    'exchange_rate' => 1.000,
+                    'total' => $total,
+                    'cash_register_id' => $cashRegisterId,
+                    'cash_register' => $cashRegister?->number ?? 'Caja Principal',
+                    'shift_id' => $shift->id,
+                    'shift_snapshot' => [
+                        'name' => $shift->name,
+                        'start_time' => $shift->start_time,
+                        'end_time' => $shift->end_time,
+                    ],
+                    'movement_id' => $cashEntryMovement->id,
+                    'branch_id' => $branchId,
+                ]);
+            }
+
+            $orderTotalForCash = (float) ($orderMovement->total ?? 0);
+            $paymentMethodsSum = (float) $paymentMethods->sum(fn ($r) => (float) ($r['amount'] ?? 0));
+            // En crédito, la UI a veces envía los mismos importes de "contado" (total en métodos de pago).
+            // Eso no es un abono real: no debe registrar PAGADO ni saldar la cuenta por cobrar.
+            $creditIgnoresCashLines = $saleType === 'CREDITO'
+                && $orderTotalForCash > 0
+                && $paymentMethodsSum > 0
+                && $paymentMethodsSum >= $orderTotalForCash - 0.02;
+            $paymentMethodsForCashDetails = $creditIgnoresCashLines ? collect() : $paymentMethods;
+
+            if ($paymentMethodsForCashDetails->isNotEmpty()) {
+                foreach ($paymentMethodsForCashDetails as $paymentMethodData) {
+                    $paymentMethod = PaymentMethod::findOrFail((int) ($paymentMethodData['payment_method_id'] ?? 0));
+                    $paymentGateway = ! empty($paymentMethodData['payment_gateway_id'])
+                        ? PaymentGateways::find((int) $paymentMethodData['payment_gateway_id'])
+                        : null;
+                    $card = ! empty($paymentMethodData['card_id'])
+                        ? Card::find((int) $paymentMethodData['card_id'])
+                        : null;
+                    $digitalWallet = ! empty($paymentMethodData['digital_wallet_id'])
+                        ? DigitalWallet::find((int) $paymentMethodData['digital_wallet_id'])
+                        : null;
+                    $bank = ! empty($paymentMethodData['bank_id'])
+                        ? Bank::find((int) $paymentMethodData['bank_id'])
+                        : null;
+
+                    DB::table('cash_movement_details')->insert([
+                        'cash_movement_id' => $cashMovement->id,
+                        'type' => 'PAGADO',
+                        'paid_at' => now(),
+                        'payment_method_id' => $paymentMethod->id,
+                        'payment_method' => $paymentMethod->description ?? '',
+                        'number' => $cashEntryMovement->number,
+                        'card_id' => $card?->id,
+                        'card' => $card?->description,
+                        'bank_id' => $bank?->id,
+                        'bank' => $bank?->description ?? '',
+                        'digital_wallet_id' => $digitalWallet?->id,
+                        'digital_wallet' => $digitalWallet?->description,
+                        'payment_gateway_id' => $paymentGateway?->id,
+                        'payment_gateway' => $paymentGateway?->description,
+                        'amount' => (float) ($paymentMethodData['amount'] ?? 0),
+                        'comment' => $request->input('notes') ?: 'Cobro de pedido ' . ($orderBaseMovement?->number ?? ''),
+                        'status' => 'A',
+                        'branch_id' => $branchId,
+                        'created_at' => now(),
+                        'updated_at' => now(),
                     ]);
                 }
-
-                DB::commit();
-                $orderBaseMovement?->refresh();
-                $electronicInvoice = $orderBaseMovement
-                    ? $this->syncElectronicInvoiceForSale($orderBaseMovement, app(ApisunatService::class))
-                    : ['status' => 'SKIPPED', 'message' => 'No se encontró movimiento base para emitir.'];
-
-                $thermalPrinterAvailable = PrinterBranch::query()
-                    ->where('branch_id', $branchId)
-                    ->where('status', 'E')
-                    ->whereNotNull('ip')
-                    ->where('ip', '!=', '')
-                    ->exists();
-
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Cobro de pedido procesado correctamente',
-                    'movement_id' => $orderMovement?->movement_id,
-                    'order_movement_id' => $orderMovement?->id,
-                    'cash_movement_id' => $cashEntryMovement?->id,
-                    'electronic_invoice' => $electronicInvoice,
-                    'client_on_local_network' => LocalNetworkClient::isOnLocalNetwork($request),
-                    'thermal_printer_available' => $thermalPrinterAvailable,
-                ]);
-            } catch (\Throwable $e) {
-                DB::rollBack();
-                Log::error('Error al procesar cobro de pedido', [
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
-                ]);
-
-                return response()->json([
-                    'success' => false,
-                    'message' => $e->getMessage(),
-                ], $e instanceof \InvalidArgumentException ? 422 : 500);
             }
+
+            if ($saleType === 'CREDITO') {
+                if (! $orderBaseMovement) {
+                    throw new \InvalidArgumentException('No se encontró el movimiento del pedido para registrar el crédito.');
+                }
+                $personIdForDebt = (int) ($orderBaseMovement->person_id ?? 0);
+                if ($personIdForDebt <= 0) {
+                    throw new \InvalidArgumentException('Para venta a crédito debe asignar un cliente al pedido (persona identificada).');
+                }
+
+                $totalPaid = $creditIgnoresCashLines ? 0.0 : $paymentMethodsSum;
+                $dueAt = $dueDate ? \Carbon\Carbon::parse($dueDate) : now()->addDays(max(0, $creditDays));
+
+                $accountReceivablePayableService->syncDebtAccount(
+                    $branchId,
+                    $personIdForDebt,
+                    (int) $orderBaseMovement->id,
+                    $orderTotalForCash,
+                    $totalPaid,
+                    $dueAt,
+                    (int) $cashMovement->id,
+                    $cashEntryMovement,
+                    $orderMovement->fresh(),
+                    $creditDays,
+                    $request->input('notes') ? (string) $request->input('notes') : null
+                );
+            }
+
+            // Al cobrar, liberar la mesa (update directo para asegurar que se persiste)
+            $tableIdToFree = $tableId ?? $orderMovement->table_id;
+            if ($tableIdToFree) {
+                Table::where('id', $tableIdToFree)->update([
+                    'situation' => 'libre',
+                    'opened_at' => null,
+                ]);
+            }
+
+            DB::commit();
+            $orderBaseMovement?->refresh();
+            $electronicInvoice = $orderBaseMovement
+                ? $this->syncElectronicInvoiceForSale($orderBaseMovement, app(ApisunatService::class))
+                : ['status' => 'SKIPPED', 'message' => 'No se encontró movimiento base para emitir.'];
+
+            $thermalPrinterAvailable = PrinterBranch::query()
+                ->where('branch_id', $branchId)
+                ->where('status', 'E')
+                ->whereNotNull('ip')
+                ->where('ip', '!=', '')
+                ->exists();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Cobro de pedido procesado correctamente',
+                'movement_id' => $orderMovement?->movement_id,
+                'order_movement_id' => $orderMovement?->id,
+                'cash_movement_id' => $cashEntryMovement?->id,
+                'electronic_invoice' => $electronicInvoice,
+                'client_on_local_network' => LocalNetworkClient::isOnLocalNetwork($request),
+                'thermal_printer_available' => $thermalPrinterAvailable,
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Error al procesar cobro de pedido', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], $e instanceof \InvalidArgumentException ? 422 : 500);
+        }
     }
 
     /**
@@ -3468,7 +3522,8 @@ class OrderController extends Controller
         $paymentMethods,
         int $cashRegisterId,
         string $detailMode,
-        string $detailGlosa
+        string $detailGlosa,
+        string $saleType = 'CONTADO'
     ): array {
         $branchId = (int) $branchId;
         $orderMovement = OrderMovement::with(['movement', 'details' => function ($q) {
@@ -3513,7 +3568,7 @@ class OrderController extends Controller
         if ($paymentMethods->isEmpty()) {
             throw new \InvalidArgumentException('Debe indicar al menos un método de pago.');
         }
-        $pmTotal = round((float) $paymentMethods->sum(fn ($r) => (float) ($r['amount'] ?? 0)), 2);
+        $pmTotal = round((float) $paymentMethods->sum(fn($r) => (float) ($r['amount'] ?? 0)), 2);
         if (abs($pmTotal - $draft['total']) > 0.02) {
             throw new \InvalidArgumentException('La suma de métodos de pago debe coincidir con el total de la parte a cobrar.');
         }
@@ -3754,6 +3809,8 @@ class OrderController extends Controller
         if ($remainingAfter <= 0.02) {
             $orderMovement->status = 'FINALIZADO';
             $orderMovement->finished_at = now();
+            $st = strtoupper(trim($saleType));
+            $orderMovement->payment_type = $st === 'CREDITO' ? 'CREDITO' : 'CONTADO';
             $orderMovement->save();
             $tableIdToFree = $request->input('table_id') ?? $orderMovement->table_id;
             if ($tableIdToFree) {
@@ -3910,7 +3967,7 @@ class OrderController extends Controller
         }
 
         $byName = DocumentType::query()
-            ->tap(fn ($q) => InsensitiveSearch::whereInsensitiveLikePattern($q, 'name', '%pedido%'))
+            ->tap(fn($q) => InsensitiveSearch::whereInsensitiveLikePattern($q, 'name', '%pedido%'))
             ->orderBy('id')
             ->first();
 
@@ -3928,7 +3985,7 @@ class OrderController extends Controller
         if ($movementType) {
             $documentType = DocumentType::query()
                 ->where('movement_type_id', $movementType->id)
-                ->tap(fn ($q) => InsensitiveSearch::whereInsensitiveLikePattern($q, 'name', '%pedido%'))
+                ->tap(fn($q) => InsensitiveSearch::whereInsensitiveLikePattern($q, 'name', '%pedido%'))
                 ->orderBy('id')
                 ->first();
 
@@ -4181,8 +4238,8 @@ class OrderController extends Controller
         $affectedProductIds = $previousCommittedQtyByProduct
             ->keys()
             ->merge($newCommittedQtyByProduct->keys())
-            ->map(fn ($productId) => (int) $productId)
-            ->filter(fn ($productId) => $productId > 0)
+            ->map(fn($productId) => (int) $productId)
+            ->filter(fn($productId) => $productId > 0)
             ->unique()
             ->values();
 

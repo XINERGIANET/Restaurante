@@ -14,6 +14,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             ReportesMenuSeeder::class,
             SalesAndFinancesReportSeeder::class,
+            AccountsReceivableMenuSeeder::class,
         ]);
     }
 }

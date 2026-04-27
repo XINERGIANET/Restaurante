@@ -62,6 +62,7 @@ class MenuOptionSeeder extends Seeder
                 ['name' => 'Apertura y cierre',  'action' => '/admin/caja/aperturas',           'icon' => 'mdi-lock-open-outline'],
                 ['name' => 'Arqueos',            'action' => '/admin/caja/arqueos',             'icon' => 'mdi-cash-multiple'],
                 ['name' => 'Gastos',             'action' => '/admin/caja/gastos',              'icon' => 'mdi-cash-minus'],
+                ['name' => 'Cuentas por cobrar', 'action' => 'accounts-receivable.index',      'icon' => 'mdi-cash-clock'],
             ],
             'Configuraci�n' => [
                 ['name' => 'Parametros',         'action' => '/admin/configuracion/parametros', 'icon' => 'mdi-cog'],

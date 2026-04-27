@@ -30,6 +30,10 @@ class OrderMovement extends Model
         'split_mode',
         'split_locked_to_amount',
         'movement_id',
+        'account_receivable_payable_id',
+        'payment_type',
+        'credit_days',
+        'debt_due_at',
         'branch_id',
     ];
 
@@ -63,8 +67,14 @@ class OrderMovement extends Model
         return $this->belongsTo(Branch::class);
     }
 
+    public function accountReceivablePayable()
+    {
+        return $this->belongsTo(AccountReceivablePayable::class);
+    }
+
     protected $casts = [
         'finished_at' => 'datetime',
+        'debt_due_at' => 'datetime',
         'split_locked_to_amount' => 'boolean',
     ];
 }

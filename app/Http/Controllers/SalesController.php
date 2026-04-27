@@ -1487,8 +1487,8 @@ class SalesController extends Controller
 
     private function resolveSalePaymentLabel(Movement $sale): string
     {
-        if (($sale->salesMovement?->payment_type ?? null) === 'CREDIT') {
-            return 'Credito';
+        if ($this->saleMovementIsCredit($sale)) {
+            return 'Crédito';
         }
 
         $cashMovement = $sale->cashMovement ?: $this->resolveCashMovementBySaleMovement($sale->id);
@@ -1505,6 +1505,16 @@ class SalesController extends Controller
             ->value('pm.description');
 
         return $methodName ?: 'Mixto';
+    }
+
+    /** Pedido restaurante (CREDITO) o venta con payment_type CREDIT/CREDITO. */
+    private function saleMovementIsCredit(Movement $sale): bool
+    {
+        if (($sale->orderMovement?->payment_type ?? null) === 'CREDITO') {
+            return true;
+        }
+
+        return in_array($sale->salesMovement?->payment_type ?? null, ['CREDIT', 'CREDITO'], true);
     }
 
     public function printTicket(Request $request, Movement $sale)
@@ -1569,6 +1579,7 @@ class SalesController extends Controller
         $addressLines = max(1, (int) ceil(mb_strlen($this->resolveTicketAddressDisplay($sale)) / 24));
         $documentLines = max(1, (int) ceil(mb_strlen((string) ($sale->person?->document_number ?? '-')) / 24));
         $paymentLines = max(1, (int) ceil(mb_strlen((string) $this->resolveSalePaymentLabel($sale)) / 24));
+        $creditNoteLines = $this->saleMovementIsCredit($sale) ? 1 : 0;
         $notesLines = 0;
         if (filled((string) $sale->comment)) {
             $notesLines = max(1, (int) ceil(mb_strlen((string) $sale->comment) / 26));
@@ -1576,7 +1587,7 @@ class SalesController extends Controller
 
         $baseHeight = 106;
         $itemsHeight = $detailLines * 8;
-        $metaHeight = ($customerNameLines + $addressLines + $documentLines + $paymentLines) * 4;
+        $metaHeight = ($customerNameLines + $addressLines + $documentLines + $paymentLines + $creditNoteLines) * 4;
         $notesHeight = $notesLines * 5;
         $footerSafety = 18;
 
@@ -2885,6 +2896,9 @@ class SalesController extends Controller
         $lines[] = 'Dir. cliente: '.Str::ascii($ticketAddressDisplay);
         $lines[] = 'RUC/DNI: '.Str::ascii($sale->person?->document_number ?? '-');
         $lines[] = 'Forma pago: '.Str::ascii($paymentLabel);
+        if ($this->saleMovementIsCredit($sale)) {
+            $lines[] = Str::ascii('Venta a credito: saldo pendiente de cobro.');
+        }
         $lines[] = $sep;
         $lines[] = 'Prod.         Cant P.Unit  Subt';
 
@@ -3003,6 +3017,9 @@ class SalesController extends Controller
         $lines[] = 'Dir. cliente: '.Str::ascii($ticketAddressDisplay);
         $lines[] = 'RUC/DNI: '.Str::ascii($sale->person?->document_number ?? '-');
         $lines[] = 'Forma pago: '.Str::ascii($paymentLabel);
+        if ($this->saleMovementIsCredit($sale)) {
+            $lines[] = Str::ascii('Venta a credito: saldo pendiente de cobro.');
+        }
         $lines[] = $sep;
         $lines[] = $this->thermalPadEnd('Cant.', $colQty)
             .str_repeat(' ', $colGap)
