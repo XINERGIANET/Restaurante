@@ -312,7 +312,7 @@
                                 <i class="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
                                 <input type="text" id="search-products"
                                     class="w-full pl-10 pr-10 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-800 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-[#FF4622]/30 focus:border-[#FF4622] outline-none transition-all"
-                                    placeholder="Buscar producto...">
+                                    placeholder="Buscar por nombre o código interno (lector)...">
                                 <button type="button" id="search-products-clear" onclick="clearProductSearch()"
                                     class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hidden">
                                     <i class="ri-close-circle-fill text-lg"></i>
@@ -3340,6 +3340,41 @@
                         });
                     }
 
+                    function tryAutoAddByExactInternalCode(qNormalized) {
+                        if (!qNormalized || !Array.isArray(serverProducts)) {
+                            return false;
+                        }
+                        const matches = [];
+                        for (let i = 0; i < serverProducts.length; i++) {
+                            const p = serverProducts[i];
+                            const raw = p && p.code != null ? String(p.code).trim() : '';
+                            if (!raw) {
+                                continue;
+                            }
+                            if (raw.toLowerCase() === qNormalized) {
+                                matches.push(p);
+                            }
+                        }
+                        if (matches.length !== 1) {
+                            return false;
+                        }
+                        const pb = findProductBranchByProductId(matches[0].id);
+                        if (!pb) {
+                            return false;
+                        }
+                        const inp = document.getElementById('search-products');
+                        if (inp) {
+                            inp.value = '';
+                        }
+                        productSearchQuery = '';
+                        const btn = document.getElementById('search-products-clear');
+                        if (btn) {
+                            btn.classList.add('hidden');
+                        }
+                        addToCart(matches[0], pb);
+                        return true;
+                    }
+
                     function renderProducts() {
                         const grid = document.getElementById('products-grid');
                         if (!grid) return;
@@ -3357,6 +3392,11 @@
                             String(searchInput.value || '').trim().toLowerCase() :
                             String(productSearchQuery || '').trim().toLowerCase();
 
+                        if (q.length > 0 && tryAutoAddByExactInternalCode(q)) {
+                            renderProducts();
+                            return;
+                        }
+
                         let productsToShow = serverProducts;
                         if (q.length === 0) {
                             if (selectedCategoryId === CATEGORY_ALL_ID) {
@@ -3373,7 +3413,8 @@
                             productsToShow = productsToShow.filter(p => {
                                 const name = String(p.name || '').toLowerCase();
                                 const category = String(p.category || '').toLowerCase();
-                                const searchable = `${name} ${category}`;
+                                const code = String(p.code || '').toLowerCase();
+                                const searchable = `${name} ${category} ${code}`;
                                 return searchWords.every(word => searchable.includes(word));
                             });
                         }
