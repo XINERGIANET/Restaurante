@@ -89,6 +89,18 @@
             <div class="flex items-center gap-2 2xsm:gap-3">
                 @if (!($isMozo ?? false) && !empty($quickOptions) && $quickOptions->count())
                     <div class="hidden xl:flex items-center gap-3">
+                        @php
+                            $quickNewSaleUrl = \App\Helpers\MenuHelper::appendViewIdToPath(route('sales.create'), request('view_id'));
+                        @endphp
+                        <a href="{{ $quickNewSaleUrl }}"
+                            class="relative flex items-center justify-center transition-all bg-white/5 border border-white/10 rounded-full hover:text-white h-11 w-11 hover:bg-white/10 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white group"
+                            aria-label="Nueva venta">
+                            <i class="ri-cash-line text-lg text-white"></i>
+                            <span
+                                class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-white px-2 py-1 text-[10px] font-medium text-gray-900 opacity-0 shadow-lg transition-opacity group-hover:opacity-100 z-50">
+                                Nueva venta
+                            </span>
+                        </a>
                         @foreach ($quickOptions as $option)
                             @php
                                 $quickUrl = \App\Helpers\MenuHelper::appendViewIdToPath(route($option->action), $option->view_id);

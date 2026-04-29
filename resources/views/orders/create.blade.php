@@ -312,7 +312,7 @@
                                 <i class="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
                                 <input type="text" id="search-products"
                                     class="w-full pl-10 pr-10 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-800 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-[#FF4622]/30 focus:border-[#FF4622] outline-none transition-all"
-                                    placeholder="Buscar producto...">
+                                    placeholder="Buscar por nombre o código interno (lector)...">
                                 <button type="button" id="search-products-clear" onclick="clearProductSearch()"
                                     class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hidden">
                                     <i class="ri-close-circle-fill text-lg"></i>
@@ -552,7 +552,7 @@
                                         </select>
                                     </div>
                                 </div>
-                                <div class="grid grid-cols-1 gap-3">
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <div>
                                         <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">Tipo de venta</label>
                                         <select id="cobro-sale-type" class="w-full py-2.5 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-slate-700 dark:text-slate-200 text-sm" onchange="toggleCobroCreditFields()">
@@ -655,16 +655,13 @@
                                 <i class="ri-save-line text-base"></i>
                                 <span>Precuenta</span>
                             </button>
-                            <button type="button" id="btn-guardar" onclick="processOrder()"
-                                class="py-2.5 px-4 rounded-xl bg-gray-500 text-white font-bold text-xs sm:text-sm shadow-lg hover:bg-gray-600 active:scale-95 transition-all flex justify-center items-center gap-2">
-                                @if (!empty($isCounterSale))
-                                    <i class="ri-save-line text-base"></i>
-                                    <span>Guardar</span>
-                                @else
+                            @if (empty($isCounterSale))
+                                <button type="button" id="btn-guardar" onclick="processOrder()"
+                                    class="py-2.5 px-4 rounded-xl bg-gray-500 text-white font-bold text-xs sm:text-sm shadow-lg hover:bg-gray-600 active:scale-95 transition-all flex justify-center items-center gap-2">
                                     <i class="ri-send-plane-2-line text-base"></i>
                                     <span>Enviar</span>
-                                @endif
-                            </button>
+                                </button>
+                            @endif
                         </div>
                         {{-- Footer Cobro: solo Cobrar (oculto para Mozo) --}}
                         @if ($canCharge ?? true)
@@ -1299,6 +1296,8 @@
                             clearProductSearch();
                         });
                         updateSearchClearVisibility();
+                        ensureCounterSaleDefaultClientSelected();
+                        setTimeout(focusProductSearchInput, 80);
                         setTimeout(() => {
                             ensureMobileQuickFilters();
                         }, 120);
@@ -1373,6 +1372,9 @@
                     function canAccessCobroTab() {
                         const items = Array.isArray(currentTable?.items) ? currentTable.items : [];
                         const hasItems = items.length > 0;
+                        if (counterPosMode) {
+                            return hasItems;
+                        }
                         const hasCommandedItems = hasItems && items.some(item => {
                             const savedQty = parseFloat(item?.savedQty);
                             return Number.isFinite(savedQty) && savedQty > 0;
@@ -1389,14 +1391,18 @@
                         if (!btnCobro) return;
                         const enabled = canAccessCobroTab();
 
-                        btnCobro.disabled = !enabled;
+                        if (enabled) {
+                            btnCobro.removeAttribute('disabled');
+                        } else {
+                            btnCobro.setAttribute('disabled', 'disabled');
+                        }
                         btnCobro.classList.toggle('opacity-50', !enabled);
                         btnCobro.classList.toggle('cursor-not-allowed', !enabled);
                         btnCobro.classList.toggle('pointer-events-none', !enabled);
                         if (enabled) {
                             btnCobro.title = 'Cobro';
                         } else if (counterPosMode) {
-                            btnCobro.title = 'En nueva venta, usa «Guardar» para ir a cobrar (sin comanda a cocina).';
+                            btnCobro.title = 'Agrega al menos un producto para cobrar';
                         } else {
                             btnCobro.title = 'Disponible cuando el pedido ya fue enviado';
                         }
@@ -3340,6 +3346,41 @@
                         });
                     }
 
+                    function tryAutoAddByExactInternalCode(qNormalized) {
+                        if (!qNormalized || !Array.isArray(serverProducts)) {
+                            return false;
+                        }
+                        const matches = [];
+                        for (let i = 0; i < serverProducts.length; i++) {
+                            const p = serverProducts[i];
+                            const raw = p && p.code != null ? String(p.code).trim() : '';
+                            if (!raw) {
+                                continue;
+                            }
+                            if (raw.toLowerCase() === qNormalized) {
+                                matches.push(p);
+                            }
+                        }
+                        if (matches.length !== 1) {
+                            return false;
+                        }
+                        const pb = findProductBranchByProductId(matches[0].id);
+                        if (!pb) {
+                            return false;
+                        }
+                        const inp = document.getElementById('search-products');
+                        if (inp) {
+                            inp.value = '';
+                        }
+                        productSearchQuery = '';
+                        const btn = document.getElementById('search-products-clear');
+                        if (btn) {
+                            btn.classList.add('hidden');
+                        }
+                        addToCart(matches[0], pb);
+                        return true;
+                    }
+
                     function renderProducts() {
                         const grid = document.getElementById('products-grid');
                         if (!grid) return;
@@ -3357,6 +3398,11 @@
                             String(searchInput.value || '').trim().toLowerCase() :
                             String(productSearchQuery || '').trim().toLowerCase();
 
+                        if (q.length > 0 && tryAutoAddByExactInternalCode(q)) {
+                            renderProducts();
+                            return;
+                        }
+
                         let productsToShow = serverProducts;
                         if (q.length === 0) {
                             if (selectedCategoryId === CATEGORY_ALL_ID) {
@@ -3373,7 +3419,8 @@
                             productsToShow = productsToShow.filter(p => {
                                 const name = String(p.name || '').toLowerCase();
                                 const category = String(p.category || '').toLowerCase();
-                                const searchable = `${name} ${category}`;
+                                const code = String(p.code || '').toLowerCase();
+                                const searchable = `${name} ${category} ${code}`;
                                 return searchWords.every(word => searchable.includes(word));
                             });
                         }
@@ -4241,6 +4288,7 @@
                         syncTakeawayDisposablePanel();
                         syncCobroAmountsWithCart(total);
                         renderCancelledSection();
+                        syncCobroTabState();
                         if (typeof updateMobileSummary === 'function') updateMobileSummary();
                     }
 
@@ -4415,6 +4463,17 @@
                                 // scheduleAutoSave(); // Deshabilitado auto-guardado automático al servidor
                             }
                         }
+                    }
+
+                    function focusProductSearchInput() {
+                        const input = document.getElementById('search-products');
+                        if (!input) return;
+                        const isHidden = input.offsetParent === null;
+                        if (isHidden || input.disabled || input.readOnly) return;
+                        try {
+                            input.focus();
+                            input.select();
+                        } catch (e) {}
                     }
 
                     function goToIndexWithTurbo() {
@@ -4725,7 +4784,9 @@
                             return;
                         }
                         if (counterPosMode) {
-                            await processCounterSaveDraft();
+                            if (typeof switchAsideTab === 'function') {
+                                switchAsideTab('cobro');
+                            }
                             releaseProcessOrder();
                             return;
                         }
@@ -5640,16 +5701,6 @@
                             const ok = await ensureWaiterPin();
                             if (!ok) return;
                         }
-                        if (counterPosMode) {
-                            if (typeof showNotification === 'function') {
-                                showNotification('Nueva venta',
-                                    'Usa «Guardar» para generar el borrador e ir a cobrar. Allí se emite el comprobante (solo movimiento y detalle, sin pedido ni comanda).',
-                                    'info');
-                            } else {
-                                alert('En nueva venta, usa «Guardar» para ir a cobrar.');
-                            }
-                            return;
-                        }
                         const cbSplitPay = document.getElementById('split-dividir-cuenta');
                         if (cbSplitPay && cbSplitPay.checked && window.__splitAccount && window.__splitAccount.enabled) {
                             syncCobroPaymentAmountsToSplitPartInner();
@@ -6054,6 +6105,50 @@
                         }
                     }
 
+                    function ensureCounterSaleDefaultClientSelected() {
+                        if (!counterPosMode || !currentTable) return;
+                        if (currentTable.person_id) return;
+                        const opts = Array.isArray(window.__orderClientOptions) ? window.__orderClientOptions : [];
+                        const defaultOpt = opts.find((o) => {
+                            const desc = String(o?.description || '').toUpperCase();
+                            const name = String(o?.client_name || '').toUpperCase();
+                            return desc.includes('CLIENTES VARIOS') || name.includes('CLIENTES VARIOS');
+                        }) || null;
+                        if (!defaultOpt || !defaultOpt.id) return;
+                        currentTable.person_id = parseInt(defaultOpt.id, 10);
+                        currentTable.clientName = defaultOpt.client_name || defaultOpt.description || 'CLIENTES VARIOS';
+                        currentTable.clientLabel = defaultOpt.description || currentTable.clientName;
+                        saveDB();
+                        const picker = document.getElementById('order-client-picker');
+                        if (picker && window.Alpine) {
+                            const data = Alpine.$data(picker);
+                            if (data) data.clientId = currentTable.person_id;
+                        }
+                        const cobroInput = document.getElementById('cobro-client-input');
+                        if (cobroInput) cobroInput.value = currentTable.clientLabel || 'CLIENTES VARIOS';
+                    }
+
+                    function ensureCounterCobroAmountsReady() {
+                        if (!counterPosMode) return;
+                        const list = document.getElementById('cobro-payment-methods-list');
+                        if (!list) return;
+                        let rows = list.querySelectorAll('.cobro-pm-row');
+                        if (!rows.length && typeof addCobroPaymentMethod === 'function') {
+                            addCobroPaymentMethod();
+                            rows = list.querySelectorAll('.cobro-pm-row');
+                        }
+                        const total = getCobroOrderTotal();
+                        if (typeof syncCobroAmountsWithCart === 'function') {
+                            syncCobroAmountsWithCart(total);
+                        } else if (rows.length) {
+                            const firstInput = rows[0].querySelector('.cobro-pm-amount');
+                            if (firstInput) firstInput.value = total.toFixed(2);
+                        }
+                        if (typeof updateCobroTotalPaid === 'function') {
+                            updateCobroTotalPaid();
+                        }
+                    }
+
                     function switchAsideTab(tab) {
                         const resumen = document.getElementById('aside-resumen');
                         const cobro = document.getElementById('aside-cobro');
@@ -6068,6 +6163,7 @@
                             return;
                         }
                         if (tab === 'cobro') {
+                            ensureCounterSaleDefaultClientSelected();
                             resumen?.classList.add('hidden');
                             cobro?.classList.remove('hidden');
                             cobro?.classList.add('flex');
@@ -6095,6 +6191,7 @@
                             if (cbSplit && cbSplit.checked && typeof syncCobroPaymentAmountsToSplitPart === 'function') {
                                 syncCobroPaymentAmountsToSplitPart();
                             }
+                            ensureCounterCobroAmountsReady();
                         } else {
                             cobro?.classList.add('hidden');
                             cobro?.classList.remove('flex');
@@ -6695,6 +6792,7 @@
                         document.documentElement.style.removeProperty('overflow-y');
                         document.documentElement.style.removeProperty('overflow-x');
                         setTimeout(fixScrollLayout, 50);
+                        setTimeout(focusProductSearchInput, 80);
                     });
 
                     const quickClientForm = document.getElementById('quick-client-form');

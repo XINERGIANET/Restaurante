@@ -1043,6 +1043,7 @@ class OrderController extends Controller
                 return [
                     'id' => $product->id,
                     'name' => $product->description,
+                    'code' => filled(trim((string) ($product->code ?? ''))) ? trim((string) $product->code) : null,
                     'img' => $imageUrl,
                     'category' => $product->category ? $product->category->description : 'Sin categoría',
                     'category_id' => $product->category_id,
@@ -1406,6 +1407,7 @@ class OrderController extends Controller
                 return [
                     'id' => $product->id,
                     'name' => $product->description,
+                    'code' => filled(trim((string) ($product->code ?? ''))) ? trim((string) $product->code) : null,
                     'img' => $imageUrl,
                     'category' => $product->category ? $product->category->description : 'Sin categoría',
                     'category_id' => $product->category_id,

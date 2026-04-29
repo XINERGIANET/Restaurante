@@ -384,71 +384,47 @@
     </div>
 
     @if ($branch ?? null)
-    <x-ui.modal 
-        x-data="{ open: false }" 
-        @open-person-modal.window="open = true" 
-        @close-person-modal.window="open = false" 
-        :isOpen="false" 
-        :showCloseButton="false"
-        class="max-w-4xl z-[100]"
-    >
-        <div class="p-6 sm:p-8 bg-white dark:bg-gray-800">
-            
-            {{-- Header del Modal --}}
-            <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div class="flex items-center gap-4">
-                    <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400">
-                        <i class="ri-user-add-line text-2xl"></i>
+        <x-ui.modal x-data="{ open: false }" @open-person-modal.window="open = true"
+            @close-person-modal.window="open = false" :isOpen="false" :showCloseButton="false" class="max-w-4xl z-[100]">
+            <div class="p-6 sm:p-8 bg-white dark:bg-gray-800">
+                <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="flex items-center gap-4">
+                        <div
+                            class="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#FF4622]/10 text-[#FF4622] dark:bg-[#FF4622]/20 dark:text-[#FF4622]">
+                            <i class="ri-user-add-line text-2xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900 dark:text-white/90">Registrar / Editar Cliente</h3>
+                            <p class="mt-1 text-sm text-gray-500">Ingresa DNI y nombre de la persona.</p>
+                        </div>
                     </div>
-                    <div>
-                        <h3 class="text-lg font-bold text-gray-900 dark:text-white">Registrar Nuevo Cliente</h3>
-                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Ingresa la información personal.</p>
-                    </div>
+                    <button type="button" @click="open = false"
+                        class="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-500 transition-colors hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">
+                        <i class="ri-close-line text-xl"></i>
+                    </button>
                 </div>
-                <button
-                    type="button"
-                    @click="open = false"
-                    class="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600 transition-colors"
-                >
-                    <i class="ri-close-line text-xl"></i>
-                </button>
+
+                <form method="POST" data-quick-client-form data-client-combobox-name="client_id"
+                    action="{{ route('admin.companies.branches.people.store', [$branch->company_id ?? '0', $branch->id ?? '0']) }}"
+                    class="space-y-6">
+                    @csrf
+                    <input type="hidden" name="redirect_to" value="{{ request()->fullUrl() }}">
+                    <input type="hidden" name="from_pos" value="1">
+                    @include('orders._quick_client_form', ['person' => null])
+
+                    <div class="flex flex-wrap gap-3 justify-end pt-4 border-t border-gray-100 dark:border-gray-700">
+                        <button type="button" @click="open = false"
+                            class="px-5 py-2.5 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700 transition-colors">
+                            Cancelar
+                        </button>
+                        <button type="submit"
+                            class="px-5 py-2.5 rounded-xl bg-[#FF4622] text-white font-semibold hover:bg-[#C43B25] shadow-lg shadow-[#FF4622]/30 transition-all">
+                            <i class="ri-save-line mr-1"></i> Guardar Cliente
+                        </button>
+                    </div>
+                </form>
             </div>
-
-            {{-- Errores --}}
-            @if ($errors->any())
-                <div class="mb-5 p-4 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm">
-                    <p class="font-bold mb-1">Por favor corrige los siguientes errores:</p>
-                    <ul class="list-disc list-inside">
-                        @foreach ($errors->all() as $error)
-                            <li>{{ $error }}</li>
-                        @endforeach
-                    </ul>
-                </div>
-            @endif
-
-            {{-- Formulario --}}
-            <form method="POST" data-quick-client-form
-                action="{{ route('admin.companies.branches.people.store', [$company->id ?? '0', $branch->id ?? '0']) }}" 
-                class="space-y-6">
-                @csrf
-                <input type="hidden" name="redirect_to" value="{{ request()->fullUrl() }}">
-                <input type="hidden" name="location_id" value="{{ $branch->location_id ?? '' }}">
-                <input type="hidden" name="from_pos" value="1">
-
-                @include('branches.people._form', ['person' => null, 'hidePinAndRoles' => true])
-
-                {{-- Footer del Modal --}}
-                <div class="flex flex-wrap gap-3 justify-end pt-4 border-t border-gray-100 dark:border-gray-700">
-                    <button type="button" @click="open = false" class="px-5 py-2.5 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700 transition-colors">
-                        Cancelar
-                    </button>
-                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 shadow-lg shadow-blue-500/30 transition-all">
-                        <i class="ri-save-line mr-1"></i> Guardar Cliente
-                    </button>
-                </div>
-            </form>
-        </div>
-    </x-ui.modal>
+        </x-ui.modal>
     @endif
 
     <style>
@@ -603,6 +579,15 @@
             const cashRegisterInput = document.getElementById('cash-register-id');
             const cashRegisterDisplay = document.getElementById('cash-register-display');
 
+            function ensureDefaultClientSelected() {
+                if (!clientInput) return;
+                const current = String(clientInput.value || '').trim();
+                if (current !== '') return;
+                if (!defaultClientId) return;
+                clientInput.value = String(defaultClientId);
+                clientInput.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+
             document.getElementById('payment_type')?.addEventListener('change', toggleChargeSaleMode);
             document.getElementById('charge-credit-days')?.addEventListener('input', calculateChargeDueDateFromDays);
             document.getElementById('charge-due-date')?.addEventListener('change', calculateChargeDaysFromDueDate);
@@ -684,6 +669,7 @@
             });
 
             setupQuickClientCreate();
+            ensureDefaultClientSelected();
 
             const paymentMethodsList = document.getElementById('payment-methods-list');
             const addPaymentMethodBtn = document.getElementById('add-payment-method-btn');
