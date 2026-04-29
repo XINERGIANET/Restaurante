@@ -5936,7 +5936,9 @@
 
                             if (payData.split_remaining_total !== undefined && payData.order_closed === false) {
                                 const splitSaleMovId = payData?.split_sale_movement_id || payData?.movement_id;
-                                await sendThermalTicketAfterSale(splitSaleMovId, payData);
+                                if (!counterPosMode) {
+                                    await sendThermalTicketAfterSale(splitSaleMovId, payData);
+                                }
                                 sessionStorage.setItem('flash_success_message', payData.message ||
                                     'Cobro parcial registrado.');
                                 window.location.reload();
@@ -5944,7 +5946,9 @@
                             }
 
                             const payMovementId = payData?.split_sale_movement_id || payData?.movement_id;
-                            await sendThermalTicketAfterSale(payMovementId, payData);
+                            if (!counterPosMode) {
+                                await sendThermalTicketAfterSale(payMovementId, payData);
+                            }
 
                             if (db && activeKey && db[activeKey]) {
                                 delete db[activeKey];
