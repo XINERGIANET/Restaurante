@@ -1390,7 +1390,11 @@
                         if (!btnCobro) return;
                         const enabled = canAccessCobroTab();
 
-                        btnCobro.disabled = !enabled;
+                        if (enabled) {
+                            btnCobro.removeAttribute('disabled');
+                        } else {
+                            btnCobro.setAttribute('disabled', 'disabled');
+                        }
                         btnCobro.classList.toggle('opacity-50', !enabled);
                         btnCobro.classList.toggle('cursor-not-allowed', !enabled);
                         btnCobro.classList.toggle('pointer-events-none', !enabled);
@@ -4283,6 +4287,7 @@
                         syncTakeawayDisposablePanel();
                         syncCobroAmountsWithCart(total);
                         renderCancelledSection();
+                        syncCobroTabState();
                         if (typeof updateMobileSummary === 'function') updateMobileSummary();
                     }
 
