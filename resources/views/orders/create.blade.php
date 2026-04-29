@@ -655,16 +655,13 @@
                                 <i class="ri-save-line text-base"></i>
                                 <span>Precuenta</span>
                             </button>
-                            <button type="button" id="btn-guardar" onclick="processOrder()"
-                                class="py-2.5 px-4 rounded-xl bg-gray-500 text-white font-bold text-xs sm:text-sm shadow-lg hover:bg-gray-600 active:scale-95 transition-all flex justify-center items-center gap-2">
-                                @if (!empty($isCounterSale))
-                                    <i class="ri-save-line text-base"></i>
-                                    <span>Guardar</span>
-                                @else
+                            @if (empty($isCounterSale))
+                                <button type="button" id="btn-guardar" onclick="processOrder()"
+                                    class="py-2.5 px-4 rounded-xl bg-gray-500 text-white font-bold text-xs sm:text-sm shadow-lg hover:bg-gray-600 active:scale-95 transition-all flex justify-center items-center gap-2">
                                     <i class="ri-send-plane-2-line text-base"></i>
                                     <span>Enviar</span>
-                                @endif
-                            </button>
+                                </button>
+                            @endif
                         </div>
                         {{-- Footer Cobro: solo Cobrar (oculto para Mozo) --}}
                         @if ($canCharge ?? true)
@@ -4778,7 +4775,9 @@
                             return;
                         }
                         if (counterPosMode) {
-                            await processCounterSaveDraft();
+                            if (typeof switchAsideTab === 'function') {
+                                switchAsideTab('cobro');
+                            }
                             releaseProcessOrder();
                             return;
                         }
@@ -5692,16 +5691,6 @@
                         if (waiterPinEnabled && !isMozoProfile) {
                             const ok = await ensureWaiterPin();
                             if (!ok) return;
-                        }
-                        if (counterPosMode) {
-                            if (typeof showNotification === 'function') {
-                                showNotification('Nueva venta',
-                                    'Usa «Guardar» para generar el borrador e ir a cobrar. Allí se emite el comprobante (solo movimiento y detalle, sin pedido ni comanda).',
-                                    'info');
-                            } else {
-                                alert('En nueva venta, usa «Guardar» para ir a cobrar.');
-                            }
-                            return;
                         }
                         const cbSplitPay = document.getElementById('split-dividir-cuenta');
                         if (cbSplitPay && cbSplitPay.checked && window.__splitAccount && window.__splitAccount.enabled) {
