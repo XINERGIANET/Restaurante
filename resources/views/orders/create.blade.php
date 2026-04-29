@@ -1299,6 +1299,7 @@
                             clearProductSearch();
                         });
                         updateSearchClearVisibility();
+                        setTimeout(focusProductSearchInput, 80);
                         setTimeout(() => {
                             ensureMobileQuickFilters();
                         }, 120);
@@ -4458,6 +4459,17 @@
                         }
                     }
 
+                    function focusProductSearchInput() {
+                        const input = document.getElementById('search-products');
+                        if (!input) return;
+                        const isHidden = input.offsetParent === null;
+                        if (isHidden || input.disabled || input.readOnly) return;
+                        try {
+                            input.focus();
+                            input.select();
+                        } catch (e) {}
+                    }
+
                     function goToIndexWithTurbo() {
                         const u = new URL(afterPaymentIndexUrl, window.location.href);
                         u.searchParams.set('_', String(Date.now()));
@@ -6736,6 +6748,7 @@
                         document.documentElement.style.removeProperty('overflow-y');
                         document.documentElement.style.removeProperty('overflow-x');
                         setTimeout(fixScrollLayout, 50);
+                        setTimeout(focusProductSearchInput, 80);
                     });
 
                     const quickClientForm = document.getElementById('quick-client-form');
