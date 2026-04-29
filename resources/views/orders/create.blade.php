@@ -552,7 +552,7 @@
                                         </select>
                                     </div>
                                 </div>
-                                <div class="grid grid-cols-1 gap-3">
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <div>
                                         <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">Tipo de venta</label>
                                         <select id="cobro-sale-type" class="w-full py-2.5 px-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-slate-700 dark:text-slate-200 text-sm" onchange="toggleCobroCreditFields()">
