@@ -6128,6 +6128,27 @@
                         if (cobroInput) cobroInput.value = currentTable.clientLabel || 'CLIENTES VARIOS';
                     }
 
+                    function ensureCounterCobroAmountsReady() {
+                        if (!counterPosMode) return;
+                        const list = document.getElementById('cobro-payment-methods-list');
+                        if (!list) return;
+                        let rows = list.querySelectorAll('.cobro-pm-row');
+                        if (!rows.length && typeof addCobroPaymentMethod === 'function') {
+                            addCobroPaymentMethod();
+                            rows = list.querySelectorAll('.cobro-pm-row');
+                        }
+                        const total = getCobroOrderTotal();
+                        if (typeof syncCobroAmountsWithCart === 'function') {
+                            syncCobroAmountsWithCart(total);
+                        } else if (rows.length) {
+                            const firstInput = rows[0].querySelector('.cobro-pm-amount');
+                            if (firstInput) firstInput.value = total.toFixed(2);
+                        }
+                        if (typeof updateCobroTotalPaid === 'function') {
+                            updateCobroTotalPaid();
+                        }
+                    }
+
                     function switchAsideTab(tab) {
                         const resumen = document.getElementById('aside-resumen');
                         const cobro = document.getElementById('aside-cobro');
@@ -6170,6 +6191,7 @@
                             if (cbSplit && cbSplit.checked && typeof syncCobroPaymentAmountsToSplitPart === 'function') {
                                 syncCobroPaymentAmountsToSplitPart();
                             }
+                            ensureCounterCobroAmountsReady();
                         } else {
                             cobro?.classList.add('hidden');
                             cobro?.classList.remove('flex');
