@@ -1296,6 +1296,7 @@
                             clearProductSearch();
                         });
                         updateSearchClearVisibility();
+                        ensureCounterSaleDefaultClientSelected();
                         setTimeout(focusProductSearchInput, 80);
                         setTimeout(() => {
                             ensureMobileQuickFilters();
@@ -6104,6 +6105,29 @@
                         }
                     }
 
+                    function ensureCounterSaleDefaultClientSelected() {
+                        if (!counterPosMode || !currentTable) return;
+                        if (currentTable.person_id) return;
+                        const opts = Array.isArray(window.__orderClientOptions) ? window.__orderClientOptions : [];
+                        const defaultOpt = opts.find((o) => {
+                            const desc = String(o?.description || '').toUpperCase();
+                            const name = String(o?.client_name || '').toUpperCase();
+                            return desc.includes('CLIENTES VARIOS') || name.includes('CLIENTES VARIOS');
+                        }) || null;
+                        if (!defaultOpt || !defaultOpt.id) return;
+                        currentTable.person_id = parseInt(defaultOpt.id, 10);
+                        currentTable.clientName = defaultOpt.client_name || defaultOpt.description || 'CLIENTES VARIOS';
+                        currentTable.clientLabel = defaultOpt.description || currentTable.clientName;
+                        saveDB();
+                        const picker = document.getElementById('order-client-picker');
+                        if (picker && window.Alpine) {
+                            const data = Alpine.$data(picker);
+                            if (data) data.clientId = currentTable.person_id;
+                        }
+                        const cobroInput = document.getElementById('cobro-client-input');
+                        if (cobroInput) cobroInput.value = currentTable.clientLabel || 'CLIENTES VARIOS';
+                    }
+
                     function switchAsideTab(tab) {
                         const resumen = document.getElementById('aside-resumen');
                         const cobro = document.getElementById('aside-cobro');
@@ -6118,6 +6142,7 @@
                             return;
                         }
                         if (tab === 'cobro') {
+                            ensureCounterSaleDefaultClientSelected();
                             resumen?.classList.add('hidden');
                             cobro?.classList.remove('hidden');
                             cobro?.classList.add('flex');
