@@ -1371,6 +1371,9 @@
                     function canAccessCobroTab() {
                         const items = Array.isArray(currentTable?.items) ? currentTable.items : [];
                         const hasItems = items.length > 0;
+                        if (counterPosMode) {
+                            return hasItems;
+                        }
                         const hasCommandedItems = hasItems && items.some(item => {
                             const savedQty = parseFloat(item?.savedQty);
                             return Number.isFinite(savedQty) && savedQty > 0;
@@ -1394,7 +1397,7 @@
                         if (enabled) {
                             btnCobro.title = 'Cobro';
                         } else if (counterPosMode) {
-                            btnCobro.title = 'En nueva venta, usa «Guardar» para ir a cobrar (sin comanda a cocina).';
+                            btnCobro.title = 'Agrega al menos un producto para cobrar';
                         } else {
                             btnCobro.title = 'Disponible cuando el pedido ya fue enviado';
                         }
