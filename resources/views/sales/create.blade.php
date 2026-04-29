@@ -66,8 +66,8 @@
                         </div>
                     </div>
                     <aside
-                        class="lg:w-[450px] w-full md:w-[350px] lg:shrink-0 mx-auto lg:mx-0 flex-none bg-white dark:bg-gray-900 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-800 flex flex-col min-h-[450px] lg:min-h-0 overflow-hidden rounded-2xl shadow-sm"
-                        style="max-height: 80vh;">
+                        class="lg:w-[450px] w-full md:w-[350px] lg:shrink-0 mx-auto lg:mx-0 flex-none bg-white dark:bg-gray-900 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-800 flex flex-col min-h-[450px] lg:min-h-0 overflow-x-hidden rounded-2xl shadow-sm"
+es                        style="max-height: 80vh;">
                         <div class="flex w-full shrink-0 border-b border-gray-200 dark:border-gray-700">
                             <button type="button" id="tab-resumen" onclick="switchAsideTab('resumen')"
                                 class="flex-1 py-3 px-4 text-sm font-bold transition-colors rounded-tl-2xl bg-[#FF4622] text-white">
@@ -77,6 +77,31 @@
                                 class="flex-1 py-3 px-4 text-sm font-bold transition-colors bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-[#FF4622]/10 dark:hover:bg-[#FF4622]/20 hover:text-[#FF4622] dark:hover:text-[#FF4622]">
                                 Cobro
                             </button>
+                        </div>
+
+                        {{-- Fuera de aside-cobro / overflow-y-auto: el menú nativo del select no se recorta --}}
+                        <div id="pos-sale-condition"
+                            class="shrink-0 relative z-30 px-4 sm:px-5 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50/90 dark:bg-gray-900/90">
+                            <label for="cobro-sale-type"
+                                class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">Tipo
+                                de venta</label>
+                            <select id="cobro-sale-type"
+                                class="block w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm transition focus:border-[#FF4622] focus:outline-none focus:ring-2 focus:ring-[#FF4622]/20 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:focus:border-[#FF4622]"
+                                onchange="toggleCobroSaleMode()">
+                                <option value="CONTADO">Contado</option>
+                                <option value="CREDITO">Crédito / Deuda</option>
+                            </select>
+                            <div id="cobro-credit-fields" class="mt-3 hidden space-y-2">
+                                <div>
+                                    <label for="cobro-credit-days"
+                                        class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Días
+                                        de crédito</label>
+                                    <input type="number" id="cobro-credit-days" min="0" step="1" value="0"
+                                        class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm tabular-nums text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white">
+                                </div>
+                                <p class="text-[11px] text-amber-700 dark:text-amber-300/90">Sin anticipo o con abono parcial
+                                    en métodos de pago.</p>
+                            </div>
                         </div>
 
                         <div id="aside-resumen" class="flex flex-col flex-1 min-h-0 overflow-hidden">
@@ -1117,7 +1142,7 @@
                 const footerCobro = document.getElementById('footer-cobro');
                 const productsGrid = document.getElementById('products-grid');
                 const categoriesGrid = document.getElementById('categories-grid');
-                const searchInput = document.getElementById('search-products');
+                const searchInput = document.getElementById('product-search') || document.getElementById('search-products');
                 const searchClearBtn = document.getElementById('search-products-clear');
                 if (tab === 'cobro') {
                     resumen?.classList.add('hidden');
@@ -1169,14 +1194,22 @@
                         searchClearBtn.removeAttribute('disabled');
                     }
                 }
+                if (tab === 'cobro' && typeof toggleCobroSaleMode === 'function') {
+                    toggleCobroSaleMode();
+                }
+            }
+
+            function toggleCobroSaleMode() {
+                const el = document.getElementById('cobro-sale-type');
+                const credit = el?.value === 'CREDITO';
+                const wrap = document.getElementById('cobro-credit-fields');
+                if (wrap) wrap.classList.toggle('hidden', !credit);
             }
 
             function clearProductSearch() {
                 searchQuery = '';
-                const el = document.getElementById('search-products');
-                if (el) {
-                    el.value = '';
-                }
+                const el = document.getElementById('product-search') || document.getElementById('search-products');
+                if (el) el.value = '';
                 renderProducts();
             }
 
@@ -1607,21 +1640,35 @@
                 const paymentMethodsData = getCobroPaymentMethodsFromForm();
                 const totalPaid = paymentMethodsData.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
 
-                if (paymentMethodsData.length === 0) {
-                    showCobroNotification('Error', 'Agrega al menos un método de pago.', 'error');
-                    return;
-                }
-                if (Math.abs(totalPaid - total) > 0.01) {
-                    showCobroNotification('Error', 'La suma de los métodos de pago debe ser igual al total (S/ ' +
-                        total.toFixed(2) + ').', 'error');
-                    return;
-                }
+                const saleMode = document.getElementById('cobro-sale-type')?.value || 'CONTADO';
+                const creditDays = Math.max(0, parseInt(document.getElementById('cobro-credit-days')?.value || '0', 10) || 0);
 
                 const docTypeEl = document.getElementById('cobro-document-type');
                 const cashRegEl = document.getElementById('cobro-cash-register');
                 const headerClientHidden = document.querySelector('input[name="header_client_id"]');
                 const personId = currentSale.person_id || (headerClientHidden?.value ?
                     parseInt(headerClientHidden.value, 10) : null);
+
+                if (saleMode === 'CREDITO') {
+                    if (!personId) {
+                        showCobroNotification('Error', 'Para venta a crédito seleccione un cliente identificado.', 'error');
+                        return;
+                    }
+                    if (totalPaid > total + 0.01) {
+                        showCobroNotification('Error', 'El abono no puede ser mayor al total (S/ ' + total.toFixed(2) + ').', 'error');
+                        return;
+                    }
+                } else {
+                    if (paymentMethodsData.length === 0) {
+                        showCobroNotification('Error', 'Agrega al menos un método de pago.', 'error');
+                        return;
+                    }
+                    if (Math.abs(totalPaid - total) > 0.01) {
+                        showCobroNotification('Error', 'La suma de los métodos de pago debe ser igual al total (S/ ' +
+                            total.toFixed(2) + ').', 'error');
+                        return;
+                    }
+                }
 
                 const payload = {
                     items: items.map(it => ({
@@ -1635,6 +1682,8 @@
                     document_type_id: parseInt(docTypeEl?.value || 0),
                     cash_register_id: parseInt(cashRegEl?.value || 0),
                     person_id: personId,
+                    sale_payment_mode: saleMode,
+                    credit_days: creditDays,
                     payment_methods: paymentMethodsData.map(pm => ({
                         payment_method_id: pm.payment_method_id,
                         amount: parseFloat(pm.amount) || 0,
@@ -1646,10 +1695,12 @@
                     notes: '',
                 };
                 const selectedDocName = (docTypeEl?.selectedOptions?.[0]?.textContent || '').trim() || 'Documento no definido';
+                const creditHint = saleMode === 'CREDITO' ?
+                    `<br>Condición: <b>Crédito / Deuda</b> · Plazo: <b>${creditDays}</b> día(s)` : '';
                 if (window.Swal && typeof window.Swal.fire === 'function') {
                     const confirmPayment = await Swal.fire({
                         title: 'Confirmar cobro',
-                        html: `Se emitira: <b>${selectedDocName}</b><br>Total: <b>S/ ${total.toFixed(2)}</b>`,
+                        html: `Se emitira: <b>${selectedDocName}</b><br>Total: <b>S/ ${total.toFixed(2)}</b>${creditHint}`,
                         icon: 'warning',
                         showCancelButton: true,
                         confirmButtonColor: '#FF4622',
@@ -1761,13 +1812,6 @@
                 document.getElementById('add-to-cart-notification')?.classList.remove('notification-show');
             }
 
-            function clearProductSearch() {
-                const searchEl = document.getElementById('product-search');
-                if (searchEl) searchEl.value = '';
-                searchQuery = '';
-                renderProducts();
-            }
-
             // --- INICIALIZACIÓN ---
             function init() {
                 renderCategoryFilters();
@@ -1779,6 +1823,7 @@
                 if (document.getElementById('cobro-payment-methods-list')?.children.length === 0) {
                     addCobroPaymentMethod();
                 }
+                toggleCobroSaleMode();
                 const searchEl = document.getElementById('product-search');
                 if (searchEl) {
                     searchEl.addEventListener('input', function (e) {
@@ -1805,6 +1850,7 @@
             window.updateCobroTotalPaid = updateCobroTotalPaid;
             window.autocompleteCobroAmount = autocompleteCobroAmount;
             window.toggleCobroExtraFields = toggleCobroExtraFields;
+            window.toggleCobroSaleMode = toggleCobroSaleMode;
             window.processSale = processSale;
             window.hideStockError = hideStockError;
             window.hideNotification = hideNotification;

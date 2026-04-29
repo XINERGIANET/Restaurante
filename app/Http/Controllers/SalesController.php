@@ -32,6 +32,7 @@ use App\Models\Shift;
 use App\Models\TaxRate;
 use App\Models\Table;
 use App\Models\User;
+use App\Services\AccountReceivablePayableService;
 use App\Services\ApisunatService;
 use App\Services\KardexSyncService;
 use App\Services\ThermalNetworkPrintService;
@@ -406,10 +407,13 @@ class SalesController extends Controller
 
                 $defaultTaxRate = TaxRate::where('status', true)->orderBy('order_num')->first();
                 $defaultTaxPct = $defaultTaxRate ? (float) $defaultTaxRate->tax_rate : 18;
+                $sm = $movement->salesMovement;
                 $draftSale = [
                     'id' => $movement->id,
                     'number' => $movement->number,
                     'clientId' => $movement->person_id,
+                    'sale_payment_mode' => (($sm->payment_type ?? '') === 'CREDIT') ? 'CREDITO' : 'CONTADO',
+                    'credit_days' => max(0, (int) ($sm->credit_days ?? 0)),
                     'items' => $movement->salesMovement->details->map(function ($detail) use ($defaultTaxPct) {
                         $taxRatePct = $defaultTaxPct;
                         if ($detail->tax_rate_snapshot && isset($detail->tax_rate_snapshot['tax_rate'])) {
@@ -507,12 +511,15 @@ class SalesController extends Controller
                 'document_type_id' => 'required|integer|exists:document_types,id',
                 'cash_register_id' => 'nullable|integer|exists:cash_registers,id',
                 'person_id' => 'nullable|integer|exists:people,id',
-                'payment_methods' => 'required|array|min:1',
-                'payment_methods.*.payment_method_id' => $paymentMethodIdRules,
-                'payment_methods.*.amount' => 'required|numeric|min:0.01',
+                'payment_methods' => 'nullable|array',
+                'payment_methods.*.payment_method_id' => array_merge(['nullable', 'integer'], array_slice($paymentMethodIdRules, 1)),
+                'payment_methods.*.amount' => 'nullable|numeric|min:0',
                 'payment_methods.*.payment_gateway_id' => 'nullable|integer|exists:payment_gateways,id',
                 'payment_methods.*.card_id' => 'nullable|integer|exists:cards,id',
                 'payment_methods.*.digital_wallet_id' => 'nullable|integer|exists:digital_wallets,id',
+                'payment_methods.*.bank_id' => 'nullable|integer|exists:banks,id',
+                'sale_payment_mode' => 'nullable|string|in:CONTADO,CREDITO',
+                'credit_days' => 'nullable|integer|min:0|max:3650',
                 'notes' => 'nullable|string',
                 'movement_id' => 'nullable|integer|exists:movements,id', // ID del borrador a completar
             ]);
@@ -555,6 +562,70 @@ class SalesController extends Controller
             ], 422);
         }
         // ──────────────────────────────────────────────────────────────────────
+
+        $calcPreview = $this->calculateSubtotalAndTaxFromItems($request->items, $branchIdForCheck);
+        $totalPreview = round((float) $calcPreview['total'], 2);
+
+        $isDraft = $request->has('movement_id') && $request->movement_id;
+        $salePaymentMode = strtoupper((string) $request->input('sale_payment_mode', 'CONTADO'));
+        if (! in_array($salePaymentMode, ['CONTADO', 'CREDITO'], true)) {
+            $salePaymentMode = 'CONTADO';
+        }
+        $isCredit = ($salePaymentMode === 'CREDITO');
+        $creditDays = max(0, (int) $request->input('credit_days', 0));
+
+        $pmRaw = $request->input('payment_methods', []);
+        if (! is_array($pmRaw)) {
+            $pmRaw = [];
+        }
+        $pmSum = 0.0;
+        foreach ($pmRaw as $row) {
+            if (! is_array($row)) {
+                return response()->json(['success' => false, 'message' => 'Formato inválido en métodos de pago.'], 422);
+            }
+            $amt = round((float) ($row['amount'] ?? 0), 2);
+            $pmSum += $amt;
+            if ($amt > 0.02 && empty($row['payment_method_id'])) {
+                return response()->json(['success' => false, 'message' => 'Indique el método de pago en cada línea con importe mayor a cero.'], 422);
+            }
+        }
+        $pmSum = round($pmSum, 2);
+
+        if ($isCredit) {
+            if (empty($validated['person_id'])) {
+                return response()->json(['success' => false, 'message' => 'Para venta a crédito debe seleccionar un cliente identificado.'], 422);
+            }
+            if ($pmSum > $totalPreview + 0.02) {
+                return response()->json(['success' => false, 'message' => 'El total abonado no puede superar el importe de la venta.'], 422);
+            }
+        } else {
+            if (count($pmRaw) < 1) {
+                return response()->json(['success' => false, 'message' => 'Agregue al menos un método de pago.'], 422);
+            }
+            if (abs($pmSum - $totalPreview) > 0.02) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'La suma de los métodos de pago (S/ '.number_format($pmSum, 2, '.', '').') debe ser igual al total (S/ '.number_format($totalPreview, 2, '.', '').').',
+                ], 422);
+            }
+            foreach ($pmRaw as $row) {
+                $amt = round((float) ($row['amount'] ?? 0), 2);
+                if ($amt < 0.01) {
+                    return response()->json(['success' => false, 'message' => 'Cada método de pago debe tener un importe mayor a cero.'], 422);
+                }
+                $pid = (int) ($row['payment_method_id'] ?? 0);
+                if ($pid <= 0) {
+                    return response()->json(['success' => false, 'message' => 'Seleccione un método de pago válido en cada línea.'], 422);
+                }
+                $pmCheck = PaymentMethod::query()->where('id', $pid)->where('status', true)->first();
+                if (! $pmCheck) {
+                    return response()->json(['success' => false, 'message' => 'Método de pago no válido.'], 422);
+                }
+                if ($restrictedPmIds !== null && ! in_array($pid, $restrictedPmIds, true)) {
+                    return response()->json(['success' => false, 'message' => 'Método de pago no permitido en esta sucursal.'], 422);
+                }
+            }
+        }
 
         try {
             DB::beginTransaction();
@@ -639,23 +710,14 @@ class SalesController extends Controller
             // Caja obtenida desde la sesión
             $cashRegister = CashRegister::findOrFail($cashRegisterId);
 
-            // Validar que la suma de los métodos de pago sea igual al total
-            $totalPaymentMethods = array_sum(array_column($request->payment_methods, 'amount'));
-            if (abs($totalPaymentMethods - $total) > 0.01) {
-                throw new \Exception("La suma de los métodos de pago ({$totalPaymentMethods}) debe ser igual al total ({$total})");
-            }
-
-            // Recalcular con la misma regla (precio final con IGV incluido)
-            $calculated = $this->calculateSubtotalAndTaxFromItems($request->items, $branchId);
-            $subtotal = $calculated['subtotal'];
-            $tax = $calculated['tax'];
-            $total = $calculated['total'];
-
-            // Calcular el total recibido de todos los métodos de pago
-            $amountReceived = $totalPaymentMethods;
+            $smPaymentType = $isCredit ? 'CREDIT' : 'CONTADO';
+            $creditIgnoresCashLines = $isCredit
+                && (float) $total > 0
+                && $pmSum > 0
+                && $pmSum >= (float) $total - 0.02;
+            $paymentMethodsForCash = $creditIgnoresCashLines ? [] : $pmRaw;
 
             // Verificar si es un borrador a completar
-            $isDraft = $request->has('movement_id') && $request->movement_id;
             $movement = null;
             $number = null;
 
@@ -725,7 +787,7 @@ class SalesController extends Controller
                 // Actualizar el SalesMovement existente
                 $salesMovement = $movement->salesMovement;
                 $salesMovement->update([
-                    'payment_type' => 'CASH', // Siempre CASH (pago completo)
+                    'payment_type' => $smPaymentType,
                     'subtotal' => $subtotal,
                     'tax' => $tax,
                     'total' => $total,
@@ -741,7 +803,7 @@ class SalesController extends Controller
                     'year' => Carbon::now()->year,
                     'detail_type' => 'DETALLADO',
                     'consumption' => 'N',
-                    'payment_type' => 'CONTADO', // Siempre CASH (pago completo)
+                    'payment_type' => $smPaymentType,
                     'status' => 'N',
                     'sale_type' => 'MINORISTA',
                     'currency' => 'PEN',
@@ -1002,7 +1064,7 @@ class SalesController extends Controller
             }
 
             // Crear CashMovementDetail para cada método de pago
-            foreach ($request->payment_methods as $paymentMethodData) {
+            foreach ($paymentMethodsForCash as $paymentMethodData) {
                 $paymentMethod = PaymentMethod::findOrFail($paymentMethodData['payment_method_id']);
                 $paymentGateway = null;
                 $card = null;
@@ -1043,6 +1105,28 @@ class SalesController extends Controller
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
+            }
+
+            if ($isCredit) {
+                $personIdForDebt = (int) ($selectedPerson?->id ?? 0);
+                if ($personIdForDebt <= 0) {
+                    throw new \InvalidArgumentException('Para venta a crédito debe seleccionar un cliente identificado.');
+                }
+                $totalPaidForArp = $creditIgnoresCashLines ? 0.0 : $pmSum;
+                $dueAt = now()->addDays($creditDays);
+                app(AccountReceivablePayableService::class)->syncDebtAccountForDirectSale(
+                    (int) $branchId,
+                    $personIdForDebt,
+                    (int) $movement->id,
+                    (float) $total,
+                    $totalPaidForArp,
+                    $dueAt,
+                    (int) $cashMovement->id,
+                    $cashEntryMovement,
+                    $salesMovement->fresh(),
+                    $creditDays,
+                    $request->input('notes') ? (string) $request->input('notes') : null
+                );
             }
 
             app(KardexSyncService::class)->syncMovement($movement);

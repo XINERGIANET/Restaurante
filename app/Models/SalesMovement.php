@@ -26,6 +26,9 @@ class SalesMovement extends Model
         'total',
         'movement_id',
         'branch_id',
+        'account_receivable_payable_id',
+        'credit_days',
+        'debt_due_at',
     ];
 
     protected $casts = [
@@ -34,6 +37,7 @@ class SalesMovement extends Model
         'subtotal' => 'decimal:2',
         'tax' => 'decimal:2',
         'total' => 'decimal:2',
+        'debt_due_at' => 'datetime',
     ];
 
     public function movement()
@@ -44,6 +48,11 @@ class SalesMovement extends Model
     public function branch()
     {
         return $this->belongsTo(Branch::class);
+    }
+
+    public function accountReceivablePayable()
+    {
+        return $this->belongsTo(AccountReceivablePayable::class);
     }
 
     public function details()

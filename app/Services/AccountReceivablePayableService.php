@@ -19,6 +19,7 @@ use App\Models\PaymentConcept;
 use App\Models\PaymentGateways;
 use App\Models\PaymentMethod;
 use App\Models\Person;
+use App\Models\SalesMovement;
 use App\Models\Shift;
 use App\Models\User;
 use App\Support\InsensitiveSearch;
@@ -90,6 +91,81 @@ class AccountReceivablePayableService
                 'payment_gateway' => null,
                 'amount' => $balance,
                 'comment' => ($notes !== null && $notes !== '') ? $notes : 'Saldo pendiente por venta a crédito',
+                'status' => 'A',
+                'branch_id' => $branchId,
+            ]);
+        }
+
+        if ($totalPaid > 0) {
+            AccountReceivablePayableDetail::create([
+                'account_receivable_payable_id' => $arp->id,
+                'movement_id' => $cashEntryMovement->id,
+                'amount' => $totalPaid,
+                'branch_id' => $branchId,
+            ]);
+        }
+
+        return $arp;
+    }
+
+    /**
+     * Igual que {@see syncDebtAccount} pero para venta directa (POS): vincula {@see SalesMovement}.
+     */
+    public function syncDebtAccountForDirectSale(
+        int $branchId,
+        int $personId,
+        int $baseMovementId,
+        float $saleTotal,
+        float $totalPaid,
+        CarbonInterface $dueAt,
+        int $cashMovementId,
+        Movement $cashEntryMovement,
+        SalesMovement $salesMovement,
+        int $creditDays,
+        ?string $notes = null
+    ): AccountReceivablePayable {
+        $initialTotalPaid = round((float) $totalPaid, 2);
+        $balance = round((float) $saleTotal - $initialTotalPaid, 2);
+        $status = $balance <= 0 ? 'PAGADO' : ($initialTotalPaid > 0 ? 'PAGANDO' : 'NUEVO');
+        $paidAt = $balance <= 0 ? now() : null;
+
+        $arp = AccountReceivablePayable::create([
+            'type' => self::TYPE_RECEIVABLE,
+            'person_id' => $personId,
+            'movement_id' => $baseMovementId,
+            'total' => $saleTotal,
+            'balance' => max(0, $balance),
+            'total_paid' => $initialTotalPaid,
+            'due_at' => $dueAt,
+            'status' => $status,
+            'paid_at' => $paidAt,
+            'branch_id' => $branchId,
+        ]);
+
+        $salesMovement->account_receivable_payable_id = $arp->id;
+        $salesMovement->credit_days = $creditDays > 0 ? $creditDays : null;
+        $salesMovement->debt_due_at = $dueAt;
+        $salesMovement->save();
+
+        if ($balance > 0) {
+            CashMovementDetail::create([
+                'cash_movement_id' => $cashMovementId,
+                'type' => 'DEUDA',
+                'due_at' => $dueAt,
+                'paid_at' => null,
+                'payment_method_id' => null,
+                'payment_method' => 'DEUDA PENDIENTE',
+                'number' => $cashEntryMovement->number,
+                'card_id' => null,
+                'card' => null,
+                'bank_id' => null,
+                'bank' => null,
+                'digital_wallet_id' => null,
+                'digital_wallet' => null,
+                'payment_gateway_id' => null,
+                'payment_gateway' => null,
+                'amount' => $balance,
+                'comment' => ($notes !== null && $notes !== '') ? $notes : 'Saldo pendiente por venta a crédito (POS)',
                 'status' => 'A',
                 'branch_id' => $branchId,
             ]);

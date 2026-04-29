@@ -98,6 +98,27 @@
                             </div>
                         </div>
 
+                        <div class="rounded-xl border border-slate-200/90 bg-gradient-to-br from-slate-50 to-white p-3.5 dark:border-gray-600 dark:from-gray-800/90 dark:to-gray-900/80 shrink-0 shadow-sm">
+                            <p class="mb-2.5 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                                <i class="fas fa-receipt text-[11px] text-blue-600 dark:text-blue-400"></i>
+                                Totales (subtotal + IGV)
+                            </p>
+                            <div class="space-y-2 text-sm">
+                                <div class="flex justify-between items-center gap-3">
+                                    <span class="text-gray-600 dark:text-gray-400">Subtotal</span>
+                                    <span class="font-semibold tabular-nums text-gray-900 dark:text-white" id="subtotal">S/0.00</span>
+                                </div>
+                                <div class="flex justify-between items-center gap-3">
+                                    <span class="text-gray-600 dark:text-gray-400">IGV</span>
+                                    <span class="font-semibold tabular-nums text-gray-900 dark:text-white" id="tax">S/0.00</span>
+                                </div>
+                                <div class="mt-2 flex justify-between items-center gap-3 border-t border-slate-200 pt-2.5 dark:border-gray-600">
+                                    <span class="text-sm font-bold text-gray-900 dark:text-white">Total a pagar</span>
+                                    <span class="text-xl font-extrabold tabular-nums text-blue-600 dark:text-blue-400" id="total">S/0.00</span>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="rounded-xl border border-emerald-100 bg-emerald-50/35 p-3 dark:border-gray-600 dark:bg-gray-800 shadow-sm">
                             <label for="sale-notes" class="mb-1.5 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                                 <i class="fas fa-sticky-note text-[11px]"></i> Nota <span class="normal-case font-normal text-gray-400">(Opcional)</span>
@@ -107,31 +128,36 @@
                         </div>
                     </div>
 
-                    <div class="flex flex-col gap-3 lg:sticky lg:top-4 lg:max-h-[calc(100vh-180px)] min-h-0 lg:border-l lg:border-slate-200/80 lg:pl-3 dark:lg:border-gray-700">
-                        <div class="flex-1 min-h-0 overflow-y-auto space-y-3 custom-scrollbar pr-0.5">
-                            <div class="rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50 to-slate-50 p-4 dark:border-blue-800/50 dark:from-blue-950/60 dark:to-slate-900/80 shadow-sm">
-                                <div class="flex items-center justify-between mb-3">
-                                    <h3 class="text-xs font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400">Resumen</h3>
-                                    <i class="fas fa-calculator text-blue-600 dark:text-blue-400 text-sm"></i>
-                                </div>
-                                <div class="space-y-2">
-                                    <div class="flex justify-between items-center text-sm">
-                                        <span class="text-gray-500 dark:text-gray-400">Subtotal</span>
-                                        <span class="font-semibold text-gray-800 dark:text-gray-200" id="subtotal">S/0.00</span>
-                                    </div>
-                                    <div class="flex justify-between items-center text-sm">
-                                        <span class="text-gray-500 dark:text-gray-400">Impuestos</span>
-                                        <span class="font-semibold text-gray-800 dark:text-gray-200" id="tax">S/0.00</span>
-                                    </div>
-                                    <div class="mt-1 pt-2.5 border-t border-blue-200 dark:border-blue-800/50">
-                                        <div class="flex justify-between items-center">
-                                            <span class="text-base font-bold text-gray-900 dark:text-white">Total a pagar</span>
-                                            <span class="text-2xl font-extrabold text-blue-600 dark:text-blue-400 tabular-nums" id="total">S/0.00</span>
+                    <div class="flex flex-col gap-3 lg:sticky lg:top-4  min-h-0 lg:border-l lg:border-slate-200/80 lg:pl-3 dark:lg:border-gray-700">
+                        {{-- Sin overflow-y: el menú nativo del <select> no se recorta --}}
+                        <div class="shrink-0 space-y-3">
+                            <div class="rounded-xl border border-violet-100 bg-violet-50/40 p-3 dark:border-gray-600 dark:bg-gray-800 shadow-sm relative z-10">
+                                <label for="payment_type" class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Tipo de pago</label>
+                                <select name="payment_type" id="payment_type" class="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-3 pr-10 text-sm font-medium text-gray-900 shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400">
+                                    <option value="CONTADO">Contado</option>
+                                    <option value="CREDITO">Crédito / Deuda</option>
+                                </select>
+                                <div id="charge-credit-fields" class="hidden mt-3 space-y-3 border-t border-violet-200/80 pt-3 dark:border-gray-600">
+                                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                        <div>
+                                            <label for="charge-credit-days"
+                                                class="mb-1 block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Días
+                                                de crédito</label>
+                                            <input type="number" id="charge-credit-days" min="0" step="1" value="0"
+                                                class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm tabular-nums text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+                                        </div>
+                                        <div>
+                                            <label for="charge-due-date"
+                                                class="mb-1 block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Fecha
+                                                de vencimiento</label>
+                                            <input type="date" id="charge-due-date"
+                                                class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm tabular-nums text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
                                         </div>
                                     </div>
-                                </div>
                             </div>
+                        </div>
 
+                        <div class="flex-1 min-h-0 overflow-y-auto space-y-3 custom-scrollbar pr-0.5">
                             <div class="rounded-xl border border-violet-100 bg-violet-50/40 p-3 dark:border-gray-600 dark:bg-gray-800 shadow-sm">
                                 <p class="mb-2 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Comprobante</p>
                                 
@@ -462,7 +488,93 @@
             btn.classList.remove(...inactiveClasses);
             btn.classList.add(...activeClasses);
         }
-        
+
+        function chargeTodayLocalYmd() {
+            const d = new Date();
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+        }
+
+        function calculateChargeDueDateFromDays() {
+            const daysInput = document.getElementById('charge-credit-days');
+            const dueDateInput = document.getElementById('charge-due-date');
+            if (!daysInput || !dueDateInput) return;
+            const days = Math.max(0, parseInt(String(daysInput.value || '0'), 10) || 0);
+            const base = new Date();
+            base.setHours(0, 0, 0, 0);
+            base.setDate(base.getDate() + days);
+            const y = base.getFullYear();
+            const m = String(base.getMonth() + 1).padStart(2, '0');
+            const da = String(base.getDate()).padStart(2, '0');
+            dueDateInput.value = `${y}-${m}-${da}`;
+            dueDateInput.min = chargeTodayLocalYmd();
+        }
+
+        function calculateChargeDaysFromDueDate() {
+            const daysInput = document.getElementById('charge-credit-days');
+            const dueDateInput = document.getElementById('charge-due-date');
+            if (!daysInput || !dueDateInput?.value) return;
+            const raw = String(dueDateInput.value).trim();
+            const parts = raw.split('-').map((x) => parseInt(x, 10));
+            if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) return;
+            const due = new Date(parts[0], parts[1] - 1, parts[2]);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            due.setHours(0, 0, 0, 0);
+            const diff = Math.round((due.getTime() - today.getTime()) / 86400000);
+            daysInput.value = String(Math.max(0, diff));
+        }
+
+        /** Deshabilita el select de tipo de pago (p. ej. borrador desde servidor). */
+        function syncPaymentTypeButtonsDisabled(disabled) {
+            const sel = document.getElementById('payment_type');
+            if (!sel) return;
+            sel.disabled = !!disabled;
+            sel.classList.toggle('opacity-60', !!disabled);
+            sel.classList.toggle('cursor-not-allowed', !!disabled);
+            sel.classList.toggle('pointer-events-none', !!disabled);
+            sel.classList.toggle('bg-slate-100', !!disabled);
+            sel.classList.toggle('dark:bg-gray-800/80', !!disabled);
+            [document.getElementById('charge-credit-days'), document.getElementById('charge-due-date')].forEach((el) => {
+                if (!el) return;
+                el.disabled = !!disabled;
+                el.classList.toggle('opacity-60', !!disabled);
+                el.classList.toggle('cursor-not-allowed', !!disabled);
+            });
+        }
+
+        function toggleChargeSaleMode() {
+            const pt = document.getElementById('payment_type');
+            const credit = pt?.value === 'CREDITO';
+            const wrap = document.getElementById('charge-credit-fields');
+            if (wrap) wrap.classList.toggle('hidden', !credit);
+            if (credit) {
+                const dueEl = document.getElementById('charge-due-date');
+                if (dueEl) dueEl.min = chargeTodayLocalYmd();
+                calculateChargeDueDateFromDays();
+            }
+        }
+
+        function syncPaymentTypeSegment() {
+            /* Con <select> nativo no hay segmentos; reservado por si se reutiliza. */
+        }
+
+        function setPaymentType(mode) {
+            const el = document.getElementById('payment_type');
+            if (!el || el.disabled) return;
+            el.value = mode === 'CREDITO' ? 'CREDITO' : 'CONTADO';
+            toggleChargeSaleMode();
+        }
+
+        window.toggleChargeSaleMode = toggleChargeSaleMode;
+        window.syncPaymentTypeSegment = syncPaymentTypeSegment;
+        window.syncPaymentTypeButtonsDisabled = syncPaymentTypeButtonsDisabled;
+        window.setPaymentType = setPaymentType;
+        window.calculateChargeDueDateFromDays = calculateChargeDueDateFromDays;
+        window.calculateChargeDaysFromDueDate = calculateChargeDaysFromDueDate;
+
         document.addEventListener('DOMContentLoaded', function() {
             const documentTypes = @json($documentTypes ?? []);
             const paymentMethods = @json($paymentMethods ?? []);
@@ -490,6 +602,10 @@
             const clientInput = document.querySelector('input[name="client_id"]'); 
             const cashRegisterInput = document.getElementById('cash-register-id');
             const cashRegisterDisplay = document.getElementById('cash-register-display');
+
+            document.getElementById('payment_type')?.addEventListener('change', toggleChargeSaleMode);
+            document.getElementById('charge-credit-days')?.addEventListener('input', calculateChargeDueDateFromDays);
+            document.getElementById('charge-due-date')?.addEventListener('change', calculateChargeDaysFromDueDate);
 
             function setupQuickClientCreate() {
                 const form = document.querySelector('form[data-quick-client-form]');
@@ -1279,11 +1395,14 @@ pmSelectionButtons.forEach(btn => {
                 sale = {
                     id: draftSaleFromServer.id,
                     number: draftSaleFromServer.number,
+                    clientId: draftSaleFromServer.clientId != null ? draftSaleFromServer.clientId : null,
                     clientName: draftSaleFromServer.clientName || 'Público General',
                     items: validItems(draftSaleFromServer.items),
                     status: 'draft',
                     notes: draftSaleFromServer.notes || '',
-                    pendingAmount: draftSaleFromServer.pendingAmount || 0
+                    pendingAmount: draftSaleFromServer.pendingAmount || 0,
+                    sale_payment_mode: draftSaleFromServer.sale_payment_mode || null,
+                    credit_days: draftSaleFromServer.credit_days != null ? draftSaleFromServer.credit_days : null,
                 };
             } else if (sessionStorage.getItem('sales_charge_from_create') === '1') {
                 sessionStorage.removeItem('sales_charge_from_create');
@@ -1422,14 +1541,36 @@ pmSelectionButtons.forEach(btn => {
                     addPaymentMethod();
                 }
                 updatePaymentSummary();
-                
-                // Debug: verificar que se haya agregado el método
-                console.log('Métodos de pago después de inicializar:', paymentMethodsData);
-                
+
                 // Si es un borrador, establecer las notas
                 if (sale.notes && document.getElementById('sale-notes')) {
                     const notesText = sale.notes.replace(' [BORRADOR]', '').trim();
                     document.getElementById('sale-notes').value = notesText;
+                }
+
+                const paymentTypeEl = document.getElementById('payment_type');
+                if (paymentTypeEl) {
+                    syncPaymentTypeButtonsDisabled(false);
+                    paymentTypeEl.disabled = false;
+                    paymentTypeEl.classList.remove('opacity-60', 'cursor-not-allowed', 'pointer-events-none');
+                    paymentTypeEl.classList.remove('bg-slate-100', 'dark:bg-gray-800/80');
+                    paymentTypeEl.classList.add('bg-white', 'dark:bg-gray-700');
+                    const fromSale = sale.sale_payment_mode === 'CREDITO' || sale.sale_payment_mode === 'CONTADO'
+                        ? sale.sale_payment_mode
+                        : null;
+                    if (fromSale) {
+                        paymentTypeEl.value = fromSale;
+                    } else if (sale.status !== 'draft' && !paymentTypeEl.value) {
+                        paymentTypeEl.value = 'CONTADO';
+                    }
+                    const cdEl = document.getElementById('charge-credit-days');
+                    if (cdEl && sale.credit_days != null && sale.credit_days !== '') {
+                        cdEl.value = String(Math.max(0, parseInt(sale.credit_days, 10) || 0));
+                    }
+                    if (typeof calculateChargeDueDateFromDays === 'function') {
+                        calculateChargeDueDateFromDays();
+                    }
+                    toggleChargeSaleMode();
                 }
             }
 
@@ -1520,21 +1661,42 @@ pmSelectionButtons.forEach(btn => {
                 const total = parseFloat(totalText) || 0;
                 const totalPaid = calculateTotalPaid();
 
-                // Validar que haya al menos un método de pago
-                if (paymentMethodsData.length === 0) {
-                    showNotification('Error', 'Agrega al menos un método de pago', 'error');
-                    return;
+                const saleModeEl = document.getElementById('payment_type');
+                let saleMode = 'CONTADO';
+                if (saleModeEl && saleModeEl.value) {
+                    saleMode = String(saleModeEl.value).trim().toUpperCase();
                 }
+                if (saleMode !== 'CREDITO' && saleMode !== 'CONTADO') {
+                    saleMode = 'CONTADO';
+                }
+                const creditDays = Math.max(0, parseInt(document.getElementById('charge-credit-days')?.value || '0', 10) || 0);
+                const isCredit = saleMode === 'CREDITO';
 
-                // Validar que la suma de los métodos de pago sea igual al total
-                if (Math.abs(totalPaid - total) > 0.01) {
-                    showNotification('Error', `La suma de los métodos de pago (${fmtMoney(totalPaid)}) debe ser igual al total (${fmtMoney(total)})`, 'error');
+                if (isCredit) {
+                    const pid = clientInput?.value ? parseInt(clientInput.value, 10) : null;
+                    if (!pid || pid <= 0) {
+                        showNotification('Error', 'Para venta a crédito seleccione un cliente identificado.', 'error');
                         return;
                     }
+                    if (totalPaid > total + 0.01) {
+                        showNotification('Error', 'El abono no puede superar el total de la venta.', 'error');
+                        return;
+                    }
+                } else {
+                    if (paymentMethodsData.length === 0) {
+                        showNotification('Error', 'Agrega al menos un método de pago', 'error');
+                        return;
+                    }
+                    if (Math.abs(totalPaid - total) > 0.01) {
+                        showNotification('Error', `La suma de los métodos de pago (${fmtMoney(totalPaid)}) debe ser igual al total (${fmtMoney(total)})`, 'error');
+                        return;
+                    }
+                }
 
-                // Validar que todos los métodos de tarjeta tengan pasarela y tarjeta seleccionadas
                 for (let i = 0; i < paymentMethodsData.length; i++) {
                     const pm = paymentMethodsData[i];
+                    const amt = parseFloat(pm.amount) || 0;
+                    if (amt <= 0.005) continue;
                     if (pm.isCard) {
                         if (!pm.gatewayId || !pm.cardId) {
                             showNotification('Error', `El método de pago "${pm.methodName}" requiere seleccionar pasarela y tarjeta`, 'error');
@@ -1581,6 +1743,8 @@ pmSelectionButtons.forEach(btn => {
                         bank_id: pm.bankId ? parseInt(pm.bankId) : null,
                     })),
                     notes: document.getElementById('sale-notes')?.value || '',
+                    sale_payment_mode: saleMode,
+                    credit_days: creditDays,
                 };
                 
                 // Si es un borrador, agregar el movement_id para actualizar en lugar de crear
