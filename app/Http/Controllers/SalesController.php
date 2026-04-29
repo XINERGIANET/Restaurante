@@ -373,14 +373,25 @@ class SalesController extends Controller
             ->get(['id', 'number', 'status']);
         $people = $this->branchClientsForBranch($branchId);
 
-        $defaultClientId = Person::query()
-            ->when($branchId, fn ($query) => $query->where('branch_id', $branchId))
-            ->whereRaw('UPPER(first_name) = ?', ['CLIENTES'])
-            ->whereRaw('UPPER(last_name) = ?', ['VARIOS'])
-            ->value('id');
+        $defaultClientInList = $people->first(function ($p) {
+            $first = mb_strtoupper(trim((string) ($p->first_name ?? '')));
+            $last = mb_strtoupper(trim((string) ($p->last_name ?? '')));
+            return $first === 'CLIENTES' && $last === 'VARIOS';
+        });
+        $defaultClientId = $defaultClientInList?->id;
 
         if (! $defaultClientId) {
-            $defaultClientId = 4;
+            $defaultClientId = Person::query()
+                ->when($branchId, fn ($query) => $query->where('branch_id', $branchId))
+                ->whereRaw('UPPER(first_name) = ?', ['CLIENTES'])
+                ->whereRaw('UPPER(last_name) = ?', ['VARIOS'])
+                ->value('id');
+        }
+        if ($defaultClientId && ! $people->contains(fn ($p) => (int) $p->id === (int) $defaultClientId)) {
+            $defaultClient = Person::query()->find($defaultClientId);
+            if ($defaultClient) {
+                $people = $people->prepend($defaultClient)->unique('id')->values();
+            }
         }
 
         // Si se pasa un movement_id, cargar la venta pendiente o con pago parcial
