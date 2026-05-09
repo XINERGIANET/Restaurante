@@ -71,10 +71,9 @@ class PrintBridgeController extends Controller
             return response()->json(['success' => false, 'message' => 'job_id inválido'], 422);
         }
 
-        $removed = $queue->ack($branchId, $name, $jobId);
-        if (! $removed) {
-            return response()->json(['success' => false, 'message' => 'Trabajo no encontrado o ya confirmado'], 404);
-        }
+        $queue->ack($branchId, $name, $jobId);
+        // Idempotente: devolver éxito incluso si el trabajo ya no existe.
+        // El objetivo se logró: el trabajo no está en la cola.
 
         return response()->json(['success' => true]);
     }

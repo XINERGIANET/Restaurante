@@ -101,36 +101,63 @@
             }
 
             async function ackJob(job) {
-                const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-                const r = await fetch(ackBase, {
-                    method: 'POST',
-                    credentials: 'same-origin',
-                    cache: 'no-store',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': token,
-                        'Accept': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        printer_name: targetPrinter,
-                        job_id: String(job.id || ''),
-                    }),
-                });
-                if (!r.ok) {
-                    const response = await r.json().catch(() => null);
-                    throw new Error(response?.message || 'No se pudo confirmar la impresión.');
+                try {
+                    const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                    const r = await fetch(ackBase, {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        cache: 'no-store',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': token,
+                            'Accept': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            printer_name: targetPrinter,
+                            job_id: String(job.id || ''),
+                        }),
+                    });
+                    if (!r.ok) {
+                        const resp = await r.json().catch(() => null);
+                        console.warn('[print-bridge] Ack failed:', r.status, resp?.message);
+                        return false;
+                    }
+                    return true;
+                } catch (e) {
+                    console.warn('[print-bridge] Ack exception:', e.message);
+                    return false;
                 }
             }
 
             let busy = false;
             let currentJobId = null;
+            let failureCount = 0;
+            let lastAckFailTime = 0;
+            
             async function tick() {
                 if (busy) return;
                 busy = true;
                 try {
+                    // Si hay fallos previos de ack, esperar 3s antes de reintentar
+                    const now = Date.now();
+                    if (failureCount > 0 && lastAckFailTime > 0) {
+                        const elapsed = now - lastAckFailTime;
+                        if (elapsed < 3000) {
+                            const waitSecs = Math.ceil((3000 - elapsed) / 1000);
+                            if (waitSecs > 0) {
+                                log('Esperando ' + waitSecs + 's antes de reintentar ack...');
+                                return;
+                            }
+                        }
+                    }
+                    
                     const u = new URL(pullBase, window.location.origin);
                     u.searchParams.set('printer_name', targetPrinter);
-                    const r = await fetch(u.toString(), { credentials: 'same-origin', cache: 'no-store', headers: { 'Accept': 'application/json' } });
+                    const r = await fetch(u.toString(), { 
+                        credentials: 'same-origin', 
+                        cache: 'no-store', 
+                        headers: { 'Accept': 'application/json' } 
+                    });
                     if (r.status === 401 || r.status === 419) {
                         log('Sesión caducada. Vuelva a iniciar sesión y abra esta página de nuevo.');
                         return;
@@ -145,13 +172,31 @@
                         }
                         if (currentJobId && currentJobId !== jobId) {
                             log('Nuevo trabajo de impresión disponible.');
+                            failureCount = 0;
+                            lastAckFailTime = 0;
                         }
                         currentJobId = jobId;
                         log('Imprimiendo comanda / precuenta…');
                         await printJob(j.job);
-                        await ackJob(j.job);
-                        currentJobId = null;
-                        log('Listo. Esperando cola…');
+                        failureCount = 0;
+                        const ackOk = await ackJob(j.job);
+                        if (!ackOk) {
+                            failureCount++;
+                            lastAckFailTime = Date.now();
+                            if (failureCount >= 5) {
+                                log('Fallo confirmación 5+ veces. Asumiendo impreso, reseteando...');
+                                currentJobId = null;
+                                failureCount = 0;
+                                lastAckFailTime = 0;
+                            } else {
+                                log('Confirmación falló (intento ' + failureCount + '/5).');
+                            }
+                        } else {
+                            currentJobId = null;
+                            failureCount = 0;
+                            lastAckFailTime = 0;
+                            log('Listo. Esperando cola…');
+                        }
                     } else {
                         log('En espera (cola vacía)… ' + new Date().toLocaleTimeString());
                     }
