@@ -41,11 +41,41 @@ class PrintBridgeController extends Controller
         if (! $branchId) {
             return response()->json(['job' => null, 'message' => 'sin sucursal en sesión'], 200);
         }
-        $job = $queue->pop($branchId, $name);
+        $job = $queue->peek($branchId, $name);
         if ($job) {
             $job['printer_name'] = $name;
         }
 
         return response()->json(['job' => $job]);
+    }
+
+    public function ack(Request $request, PrintBridgeQueue $queue): JsonResponse
+    {
+        if (! config('qz.enabled', true)) {
+            return response()->json(['success' => false, 'message' => 'deshabilitado'], 200);
+        }
+        $request->validate([
+            'printer_name' => 'nullable|string|max:120',
+            'job_id' => 'required|string|max:120',
+        ]);
+        $name = trim((string) $request->input('printer_name', 'BARRA2')) ?: 'BARRA2';
+        if (! $queue->isStationPrinterName($name)) {
+            return response()->json(['success' => false, 'message' => 'impresora no permitida'], 422);
+        }
+        $branchId = (int) session('branch_id');
+        if (! $branchId) {
+            return response()->json(['success' => false, 'message' => 'sin sucursal en sesión'], 200);
+        }
+        $jobId = trim((string) $request->input('job_id'));
+        if ($jobId === '') {
+            return response()->json(['success' => false, 'message' => 'job_id inválido'], 422);
+        }
+
+        $removed = $queue->ack($branchId, $name, $jobId);
+        if (! $removed) {
+            return response()->json(['success' => false, 'message' => 'Trabajo no encontrado o ya confirmado'], 404);
+        }
+
+        return response()->json(['success' => true]);
     }
 }

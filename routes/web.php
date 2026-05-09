@@ -552,4 +552,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/print-bridge/pull', [PrintBridgeController::class, 'pull'])
         ->middleware('throttle:120,1')
         ->name('print-bridge.pull');
+    Route::post('/print-bridge/ack', [PrintBridgeController::class, 'ack'])
+        ->middleware('throttle:120,1')
+        ->name('print-bridge.ack');
 });

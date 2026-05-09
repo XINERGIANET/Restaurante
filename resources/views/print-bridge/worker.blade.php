@@ -41,6 +41,7 @@
         (function () {
             const targetPrinter = @json($targetPrinter);
             const pullBase = @json(route('print-bridge.pull'));
+            const ackBase = @json(route('print-bridge.ack'));
             const st = document.getElementById('bridge-status');
             const bEl = document.getElementById('bridge-branch');
             if (bEl) bEl.textContent = @json((string) (session('branch_id') ?? ''));
@@ -72,8 +73,7 @@
             async function printJob(job) {
                 const qzApi = window.qz;
                 if (!qzApi) {
-                    log('QZ Tray no está cargado en la página');
-                    return;
+                    throw new Error('QZ Tray no está cargado en la página');
                 }
                 const name = String(job.printer_name || targetPrinter).trim() || 'BARRA2';
                 if (typeof window.__qzApplyCertPairOverrideForPrinter === 'function') {
@@ -82,8 +82,7 @@
                 if (typeof window.__qzConnectWithCertPairFallback === 'function') {
                     const ok = await window.__qzConnectWithCertPairFallback(qzApi, name);
                     if (!ok) {
-                        log('No se pudo conectar QZ. Revise el certificado (qz2) en esta PC.');
-                        return;
+                        throw new Error('No se pudo conectar QZ. Revise el certificado (qz2) en esta PC.');
                     }
                 }
                 const paperMm = 80;
@@ -101,7 +100,30 @@
                 }]);
             }
 
+            async function ackJob(job) {
+                const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                const r = await fetch(ackBase, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    cache: 'no-store',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': token,
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        printer_name: targetPrinter,
+                        job_id: String(job.id || ''),
+                    }),
+                });
+                if (!r.ok) {
+                    const response = await r.json().catch(() => null);
+                    throw new Error(response?.message || 'No se pudo confirmar la impresión.');
+                }
+            }
+
             let busy = false;
+            let currentJobId = null;
             async function tick() {
                 if (busy) return;
                 busy = true;
@@ -116,15 +138,26 @@
                     const j = r.headers.get('content-type') && r.headers.get('content-type').includes('application/json')
                         ? await r.json() : null;
                     if (j && j.job && j.job.b64) {
+                        const jobId = String(j.job.id || '').trim();
+                        if (!jobId) {
+                            log('Trabajo inválido recibido.');
+                            return;
+                        }
+                        if (currentJobId && currentJobId !== jobId) {
+                            log('Nuevo trabajo de impresión disponible.');
+                        }
+                        currentJobId = jobId;
                         log('Imprimiendo comanda / precuenta…');
                         await printJob(j.job);
+                        await ackJob(j.job);
+                        currentJobId = null;
                         log('Listo. Esperando cola…');
                     } else {
                         log('En espera (cola vacía)… ' + new Date().toLocaleTimeString());
                     }
                 } catch (e) {
                     console.error(e);
-                    log('Error de red: ' + (e && e.message ? e.message : e));
+                    log('Error: ' + (e && e.message ? e.message : e));
                 } finally {
                     busy = false;
                 }

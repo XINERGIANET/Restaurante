@@ -102,4 +102,43 @@ class PrintBridgeQueue
             return is_array($job) ? $job : null;
         });
     }
+
+    public function peek(int $branchId, string $printerName): ?array
+    {
+        $k = $this->key($branchId, $printerName);
+
+        return Cache::lock('lock:' . $k, 5)->block(3, function () use ($k) {
+            $list = Cache::get($k, []);
+            if (empty($list) || ! is_array($list)) {
+                return null;
+            }
+
+            $job = reset($list);
+
+            return is_array($job) ? $job : null;
+        });
+    }
+
+    public function ack(int $branchId, string $printerName, string $jobId): bool
+    {
+        $k = $this->key($branchId, $printerName);
+
+        return Cache::lock('lock:' . $k, 5)->block(3, function () use ($k, $jobId) {
+            $list = Cache::get($k, []);
+            if (empty($list) || ! is_array($list)) {
+                return false;
+            }
+            $originalCount = count($list);
+            $list = array_values(array_filter($list, function ($job) use ($jobId) {
+                return ! (is_array($job) && isset($job['id']) && (string) $job['id'] === $jobId);
+            }));
+            if (count($list) === $originalCount) {
+                return false;
+            }
+            $ttl = (int) config('print_bridge.cache_ttl_seconds', 600);
+            Cache::put($k, $list, $ttl);
+
+            return true;
+        });
+    }
 }
