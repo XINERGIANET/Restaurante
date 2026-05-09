@@ -29,12 +29,15 @@
             </div>
 
             <form method="GET" action="{{ route('dashboard') }}" class="flex items-end gap-3" id="dashboardFilterForm">
-                <input type="hidden" name="start_date" id="hiddenStart" value="{{ $dashboardData['startDate'] }}">
-                <input type="hidden" name="end_date" id="hiddenEnd" value="{{ $dashboardData['endDate'] }}">
+                <div class="flex flex-col gap-1">
+                    <label class="text-[11px] font-semibold uppercase tracking-widest text-gray-400">Inicio</label>
+                    <x-form.date-picker name="start_date" :defaultDate="$dashboardData['startDate']" dateFormat="Y-m-d" :altInput="true"
+                        altFormat="d/m/Y" placeholder="{{ now()->format('d/m/Y') }}" />
+                </div>
 
                 <div class="flex flex-col gap-1">
-                    <label class="text-[11px] font-semibold uppercase tracking-widest text-gray-400">Fecha</label>
-                    <x-form.date-picker name="_fecha" :defaultDate="$dashboardData['startDate']" dateFormat="Y-m-d" :altInput="true"
+                    <label class="text-[11px] font-semibold uppercase tracking-widest text-gray-400">Fin</label>
+                    <x-form.date-picker name="end_date" :defaultDate="$dashboardData['endDate']" dateFormat="Y-m-d" :altInput="true"
                         altFormat="d/m/Y" placeholder="{{ now()->format('d/m/Y') }}" />
                 </div>
 
@@ -43,17 +46,6 @@
                     <i class="ri-search-line"></i> Buscar
                 </button>
             </form>
-
-            <script>
-                document.addEventListener('turbo:load', function() {
-                    var picker = document.querySelector('[name="_fecha"]');
-                    if (!picker) return;
-                    picker.addEventListener('change', function() {
-                        document.getElementById('hiddenStart').value = this.value;
-                        document.getElementById('hiddenEnd').value = this.value;
-                    });
-                });
-            </script>
         </div>
 
         <!-- Summary Metrics -->
