@@ -65,6 +65,24 @@ export function startPrintBridgeStationPoll() {
                 flavor: 'plain',
                 data,
             }]);
+
+            if (j.job.id) {
+                const ackUrl = pullBase.replace('/pull', '/ack');
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+                const fd = new FormData();
+                fd.append('printer_name', name);
+                fd.append('job_id', j.job.id);
+                
+                await fetch(ackUrl, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken || ''
+                    },
+                    body: fd
+                });
+            }
         } catch (e) {
             console.warn('[print-bridge-station]', e);
         }
