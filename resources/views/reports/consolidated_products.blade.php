@@ -211,7 +211,6 @@
     @push('scripts')
         {{-- DataTables --}}
         <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
-        <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
         <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
         <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -227,6 +226,12 @@
                 function initTabla() {
                     const tableEl = document.getElementById('tabla-consolidado');
                     if (!tableEl) return;
+
+                    // Esperar a que jQuery y DataTables estén listos
+                    if (typeof $ === 'undefined' || !$.fn || !$.fn.DataTable) {
+                        setTimeout(initTabla, 100);
+                        return;
+                    }
 
                     if ($.fn.DataTable.isDataTable('#tabla-consolidado')) {
                         $('#tabla-consolidado').DataTable().destroy();

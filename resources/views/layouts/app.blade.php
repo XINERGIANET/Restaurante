@@ -86,6 +86,9 @@
             }
         });
     </script>
+    <!-- jQuery (Global para DataTables y otros plugins) -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js" data-turbo-track="reload"></script>
+
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css">
 
@@ -275,8 +278,8 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
                 $isPosStyle = in_array($routeName, ['orders.create', 'sales.create', 'sales.charge', 'orders.charge']);
             @endphp
 
-            <main class="flex-1 w-full flex flex-col min-w-0 min-h-0 {{ $isPosStyle ? 'p-0 md:p-0 overflow-hidden' : 'p-4 md:p-6 overflow-y-auto overflow-x-hidden' }}">
-                <div class="flex-1 min-w-0 w-full {{ $isPosStyle ? 'h-full' : '' }}">
+            <main class="flex-1 w-full flex flex-col {{ $isPosStyle ? 'p-0 md:p-0' : 'min-w-0 min-h-0 p-4 md:p-6 overflow-y-auto overflow-x-hidden' }}">
+                <div class="flex-1 min-w-0 w-full">
                     @yield('content')
                 </div>
             </main>

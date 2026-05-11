@@ -24,13 +24,12 @@ class Category extends Model
 
     public function scopeForBranchMenu($query, int $branchId, string $menuType)
     {
-        return $query->whereExists(function ($sub) use ($branchId, $menuType) {
-            $sub->select(DB::raw(1))
+        return $query->whereIn('categories.id', function ($sub) use ($branchId, $menuType) {
+            $sub->select('category_id')
                 ->from('category_branch')
-                ->whereColumn('category_branch.category_id', 'categories.id')
-                ->where('category_branch.branch_id', $branchId)
-                ->whereIn('category_branch.menu_type', [$menuType, 'GENERAL'])
-                ->whereNull('category_branch.deleted_at');
+                ->where('branch_id', $branchId)
+                ->whereIn('menu_type', [$menuType, 'GENERAL'])
+                ->whereNull('deleted_at');
         });
     }
 }

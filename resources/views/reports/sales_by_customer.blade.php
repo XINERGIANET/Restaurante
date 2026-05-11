@@ -161,7 +161,6 @@
     @push('scripts')
         {{-- DataTables --}}
         <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
-        <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
         <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 
         {{-- Chart.js --}}
@@ -172,6 +171,12 @@
                 function initTabla() {
                     const tableEl = document.getElementById('tabla-clientes');
                     if (!tableEl) return;
+
+                    // Esperar a que jQuery y DataTables estén listos
+                    if (typeof $ === 'undefined' || !$.fn || !$.fn.DataTable) {
+                        setTimeout(initTabla, 100);
+                        return;
+                    }
 
                     if ($.fn.DataTable.isDataTable('#tabla-clientes')) {
                         $('#tabla-clientes').DataTable().destroy();

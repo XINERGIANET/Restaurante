@@ -150,14 +150,15 @@ class SalesController extends Controller
         }
 
         $query = Movement::query()
+            ->select('movements.*')
+            ->join('sales_movements', 'sales_movements.movement_id', '=', 'movements.id')
             ->with(['branch', 'person', 'movementType', 'documentType', 'salesMovement', 'orderMovement.table', 'movement.orderMovement.table'])
-            ->where('movement_type_id', 2)
-            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
-            ->when(! $branchId, fn ($q) => $q->whereRaw('1 = 0'))
-            ->whereHas('salesMovement');
+            ->where('movements.movement_type_id', 2)
+            ->when($branchId, fn ($q) => $q->where('movements.branch_id', $branchId))
+            ->when(! $branchId, fn ($q) => $q->whereRaw('1 = 0'));
 
         if ($documentTypeId !== null && $documentTypeId !== '' && is_numeric($documentTypeId)) {
-            $query->where('document_type_id', (int) $documentTypeId);
+            $query->where('movements.document_type_id', (int) $documentTypeId);
         }
 
         if ($search !== null && $search !== '') {
@@ -170,33 +171,33 @@ class SalesController extends Controller
 
         // Filtros Adicionales
         if ($personId !== null && $personId !== '') {
-            $query->where('person_id', $personId);
+            $query->where('movements.person_id', $personId);
         }
         if ($dateFrom !== null && $dateFrom !== '') {
-            $query->where('moved_at', '>=', $dateFrom.' 00:00:00');
+            $query->where('movements.moved_at', '>=', $dateFrom.' 00:00:00');
         }
         if ($dateTo !== null && $dateTo !== '') {
-            $query->where('moved_at', '<=', $dateTo.' 23:59:59');
+            $query->where('movements.moved_at', '<=', $dateTo.' 23:59:59');
         }
         if ($paymentMethodId) {
-            $query->whereExists(function ($sub) use ($paymentMethodId) {
-                $sub->select(DB::raw(1))
+            $query->whereIn('movements.id', function ($sub) use ($paymentMethodId) {
+                $sub->select('m.parent_movement_id')
                     ->from('movements as m')
                     ->join('cash_movements as cm', 'cm.movement_id', '=', 'm.id')
                     ->join('cash_movement_details as cmd', 'cmd.cash_movement_id', '=', 'cm.id')
-                    ->whereColumn('m.parent_movement_id', 'movements.id')
                     ->where('cmd.payment_method_id', $paymentMethodId)
+                    ->whereNotNull('m.parent_movement_id')
                     ->whereNull('cm.deleted_at')
                     ->whereNull('cmd.deleted_at');
             });
         }
         if ($effectiveCashRegisterId) {
-            $query->whereExists(function ($sub) use ($effectiveCashRegisterId) {
-                $sub->select(DB::raw(1))
+            $query->whereIn('movements.id', function ($sub) use ($effectiveCashRegisterId) {
+                $sub->select('m.parent_movement_id')
                     ->from('movements as m')
                     ->join('cash_movements as cm', 'cm.movement_id', '=', 'm.id')
-                    ->whereColumn('m.parent_movement_id', 'movements.id')
                     ->where('cm.cash_register_id', $effectiveCashRegisterId)
+                    ->whereNotNull('m.parent_movement_id')
                     ->whereNull('cm.deleted_at');
             });
         }
@@ -223,12 +224,10 @@ class SalesController extends Controller
             }
         }
         if ($saleType !== null && $saleType !== '') {
-            $query->whereHas('salesMovement', function ($sub) use ($saleType) {
-                $sub->where('detail_type', $saleType);
-            });
+            $query->where('sales_movements.detail_type', $saleType);
         }
 
-        $sales = $query->orderBy('moved_at', 'desc')
+        $sales = $query->orderBy('movements.moved_at', 'desc')
             ->paginate($perPage)
             ->withQueryString();
 
@@ -3231,17 +3230,19 @@ class SalesController extends Controller
     protected function branchClientsForBranch(?int $branchId): \Illuminate\Support\Collection
     {
         $q = Person::query()
-            ->orderBy('first_name')
-            ->orderBy('last_name')
-            ->whereHas('roles', function ($qq) use ($branchId) {
-                $qq->whereRaw("LOWER(TRIM(roles.name)) = 'cliente'")
-                    ->whereNull('role_person.deleted_at');
-                if ($branchId) {
-                    $qq->where('role_person.branch_id', $branchId);
-                }
-            });
+            ->select('people.id', 'people.first_name', 'people.last_name', 'people.document_number')
+            ->join('role_person', 'role_person.person_id', '=', 'people.id')
+            ->join('roles', 'roles.id', '=', 'role_person.role_id')
+            ->whereRaw("LOWER(TRIM(roles.name)) = 'cliente'")
+            ->whereNull('role_person.deleted_at')
+            ->orderBy('people.first_name')
+            ->orderBy('people.last_name');
 
-        return $q->get(['id', 'first_name', 'last_name', 'document_number']);
+        if ($branchId) {
+            $q->where('role_person.branch_id', $branchId);
+        }
+
+        return $q->distinct()->get();
     }
 
     private function isValidRuc(?string $document): bool

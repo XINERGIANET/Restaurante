@@ -1009,31 +1009,35 @@ class OrderController extends Controller
         $waiters = $this->resolveWaiters($branchId);
 
         // Mismo criterio que Ventas: solo productos vendibles (sin tipo o tipo con behavior SELLABLE/BOTH), con product_branch y categoría en la sucursal.
-        $products = Product::where('type', 'PRODUCT')
+        $products = Product::where('products.type', 'PRODUCT')
             ->where(function ($q) {
-                $q->whereNull('product_type_id')
-                    ->orWhereHas('productType', fn($q2) => $q2->whereIn('behavior', [
-                        ProductType::BEHAVIOR_SELLABLE,
-                        ProductType::BEHAVIOR_BOTH,
-                    ]));
+                $q->whereNull('products.product_type_id')
+                    ->orWhereIn('products.product_type_id', function ($sub) {
+                        $sub->select('id')->from('product_types')
+                            ->whereIn('behavior', [
+                                ProductType::BEHAVIOR_SELLABLE,
+                                ProductType::BEHAVIOR_BOTH,
+                            ])
+                            ->whereNull('deleted_at');
+                    });
             })
             ->when($branchId, function ($query) use ($branchId) {
-                $query->whereHas('productBranches', function ($q) use ($branchId) {
-                    $q->where('branch_id', $branchId);
+                $query->whereIn('products.id', function ($sub) use ($branchId) {
+                    $sub->select('product_id')->from('product_branch')
+                        ->where('branch_id', $branchId)
+                        ->whereNull('deleted_at');
                 })
-                    ->whereExists(function ($sub) use ($branchId) {
-                        $sub->select(DB::raw(1))
-                            ->from('category_branch')
-                            ->whereColumn('category_branch.category_id', 'products.category_id')
-                            ->where('category_branch.branch_id', $branchId)
-                            ->whereIn('category_branch.menu_type', ['VENTAS_PEDIDOS', 'COMPRAS', 'GENERAL'])
-                            ->whereNull('category_branch.deleted_at');
-                    });
+                ->whereIn('products.category_id', function ($sub) use ($branchId) {
+                    $sub->select('category_id')->from('category_branch')
+                        ->where('branch_id', $branchId)
+                        ->whereIn('menu_type', ['VENTAS_PEDIDOS', 'COMPRAS', 'GENERAL'])
+                        ->whereNull('deleted_at');
+                });
             }, function ($query) {
                 $query->whereRaw('1 = 0'); // sin sucursal = no productos
             })
             ->with('category')
-            ->orderBy('description')
+            ->orderBy('products.description')
             ->get()
             ->map(function ($product) use ($tableId, $branchId) {
                 $imageUrl = ($product->image && ! empty($product->image))
@@ -1055,17 +1059,21 @@ class OrderController extends Controller
 
         // Solo product_branches de esta sucursal cuyo producto es vendible (mismo criterio que Ventas).
         $productBranches = $branchId
-            ? ProductBranch::where('branch_id', $branchId)
-            ->with(['product.productType', 'taxRate', 'printers'])
-            ->get()
-            ->filter(function ($productBranch) {
-                if ($productBranch->product === null) {
-                    return false;
-                }
-                $pt = $productBranch->product->productType;
-
-                return $pt === null || $pt->isSellable();
+            ? ProductBranch::with(['product.productType', 'taxRate', 'printers'])
+            ->where('branch_id', $branchId)
+            ->whereIn('product_id', function ($q) {
+                $q->select('id')->from('products')
+                  ->whereNull('deleted_at')
+                  ->where(function ($sub) {
+                      $sub->whereNull('product_type_id')
+                          ->orWhereIn('product_type_id', function ($tSub) {
+                              $tSub->select('id')->from('product_types')
+                                  ->whereIn('behavior', [ProductType::BEHAVIOR_SELLABLE, ProductType::BEHAVIOR_BOTH])
+                                  ->whereNull('deleted_at');
+                          });
+                  });
             })
+            ->get()
             ->map(function ($productBranch) {
                 $taxRatePct = $productBranch->taxRate ? (float) $productBranch->taxRate->tax_rate : null;
                 $printerNames = $productBranch->printers
@@ -1373,31 +1381,35 @@ class OrderController extends Controller
         $people = $this->resolveClientPeople($branchId);
         $waiters = $this->resolveWaiters($branchId);
 
-        $products = Product::where('type', 'PRODUCT')
+        $products = Product::where('products.type', 'PRODUCT')
             ->where(function ($q) {
-                $q->whereNull('product_type_id')
-                    ->orWhereHas('productType', fn($q2) => $q2->whereIn('behavior', [
-                        ProductType::BEHAVIOR_SELLABLE,
-                        ProductType::BEHAVIOR_BOTH,
-                    ]));
+                $q->whereNull('products.product_type_id')
+                    ->orWhereIn('products.product_type_id', function ($sub) {
+                        $sub->select('id')->from('product_types')
+                            ->whereIn('behavior', [
+                                ProductType::BEHAVIOR_SELLABLE,
+                                ProductType::BEHAVIOR_BOTH,
+                            ])
+                            ->whereNull('deleted_at');
+                    });
             })
             ->when($branchId, function ($query) use ($branchId) {
-                $query->whereHas('productBranches', function ($q) use ($branchId) {
-                    $q->where('branch_id', $branchId);
+                $query->whereIn('products.id', function ($sub) use ($branchId) {
+                    $sub->select('product_id')->from('product_branch')
+                        ->where('branch_id', $branchId)
+                        ->whereNull('deleted_at');
                 })
-                    ->whereExists(function ($sub) use ($branchId) {
-                        $sub->select(DB::raw(1))
-                            ->from('category_branch')
-                            ->whereColumn('category_branch.category_id', 'products.category_id')
-                            ->where('category_branch.branch_id', $branchId)
-                            ->whereIn('category_branch.menu_type', ['VENTAS_PEDIDOS', 'COMPRAS', 'GENERAL'])
-                            ->whereNull('category_branch.deleted_at');
-                    });
+                ->whereIn('products.category_id', function ($sub) use ($branchId) {
+                    $sub->select('category_id')->from('category_branch')
+                        ->where('branch_id', $branchId)
+                        ->whereIn('menu_type', ['VENTAS_PEDIDOS', 'COMPRAS', 'GENERAL'])
+                        ->whereNull('deleted_at');
+                });
             }, function ($query) {
                 $query->whereRaw('1 = 0');
             })
             ->with('category')
-            ->orderBy('description')
+            ->orderBy('products.description')
             ->get()
             ->map(function ($product) use ($branchId) {
                 $imageUrl = ($product->image && ! empty($product->image))
@@ -1418,17 +1430,21 @@ class OrderController extends Controller
             });
 
         $productBranches = $branchId
-            ? ProductBranch::where('branch_id', $branchId)
-            ->with(['product.productType', 'taxRate', 'printers'])
-            ->get()
-            ->filter(function ($productBranch) {
-                if ($productBranch->product === null) {
-                    return false;
-                }
-                $pt = $productBranch->product->productType;
-
-                return $pt === null || $pt->isSellable();
+            ? ProductBranch::with(['product.productType', 'taxRate', 'printers'])
+            ->where('branch_id', $branchId)
+            ->whereIn('product_id', function ($q) {
+                $q->select('id')->from('products')
+                  ->whereNull('deleted_at')
+                  ->where(function ($sub) {
+                      $sub->whereNull('product_type_id')
+                          ->orWhereIn('product_type_id', function ($tSub) {
+                              $tSub->select('id')->from('product_types')
+                                  ->whereIn('behavior', [ProductType::BEHAVIOR_SELLABLE, ProductType::BEHAVIOR_BOTH])
+                                  ->whereNull('deleted_at');
+                          });
+                  });
             })
+            ->get()
             ->map(function ($productBranch) {
                 $taxRatePct = $productBranch->taxRate ? (float) $productBranch->taxRate->tax_rate : null;
                 $printerNames = $productBranch->printers
@@ -4507,17 +4523,23 @@ class OrderController extends Controller
     private function resolveClientPeople(?int $branchId): \Illuminate\Support\Collection
     {
         $q = Person::query()
-            ->orderBy('first_name')
-            ->orderBy('last_name')
-            ->whereHas('roles', function ($qq) use ($branchId) {
-                $qq->whereRaw("LOWER(TRIM(roles.name)) = 'cliente'")
+            ->select('people.*')
+            ->join('role_person', function ($join) use ($branchId) {
+                $join->on('role_person.person_id', '=', 'people.id')
                     ->whereNull('role_person.deleted_at');
                 if ($branchId) {
-                    $qq->where('role_person.branch_id', $branchId);
+                    $join->where('role_person.branch_id', $branchId);
                 }
-            });
+            })
+            ->join('roles', function ($join) {
+                $join->on('roles.id', '=', 'role_person.role_id')
+                    ->whereRaw("LOWER(TRIM(roles.name)) = 'cliente'")
+                    ->whereNull('roles.deleted_at');
+            })
+            ->orderBy('people.first_name')
+            ->orderBy('people.last_name');
 
-        return $q->get(['id', 'first_name', 'last_name', 'document_number'])
+        return $q->get(['people.id', 'people.first_name', 'people.last_name', 'people.document_number'])
             ->unique(function (Person $person) {
                 $document = trim((string) ($person->document_number ?? '0'));
                 $firstName = mb_strtolower(trim(preg_replace('/\s+/', ' ', (string) ($person->first_name ?? ''))), 'UTF-8');
@@ -4536,14 +4558,16 @@ class OrderController extends Controller
         }
 
         return Person::query()
-            ->where('branch_id', $branchId)
-            ->whereHas('user', function ($q) use ($mozoProfileId) {
-                $q->where('profile_id', $mozoProfileId)
-                    ->whereNull('deleted_at');
+            ->select('people.*')
+            ->where('people.branch_id', $branchId)
+            ->join('users', function ($join) use ($mozoProfileId) {
+                $join->on('users.person_id', '=', 'people.id')
+                    ->where('users.profile_id', $mozoProfileId)
+                    ->whereNull('users.deleted_at');
             })
-            ->orderBy('first_name')
-            ->orderBy('last_name')
-            ->get(['id', 'first_name', 'last_name', 'pin']);
+            ->orderBy('people.first_name')
+            ->orderBy('people.last_name')
+            ->get(['people.id', 'people.first_name', 'people.last_name', 'people.pin']);
     }
 
     private function isValidRuc(?string $document): bool

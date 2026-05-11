@@ -804,7 +804,7 @@
                         }
                         const target = new URL(this.createUrl, window.location.origin);
                         target.searchParams.set('table_id', table.id);
-                        target.searchParams.set('_t', Date.now()); // Evitar caché de Turbo
+                        target.searchParams.set('_t', Date.now()); // Evitar caché
                         if (window.Turbo && typeof window.Turbo.visit === 'function') {
                             window.Turbo.visit(target.toString(), {
                                 action: 'advance'

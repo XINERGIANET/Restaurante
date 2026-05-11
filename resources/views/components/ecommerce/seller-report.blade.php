@@ -80,8 +80,15 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
 
 <script>
-    document.addEventListener('turbo:load', function () {
+    document.addEventListener('turbo:load', function initSellerTable() {
         if (!document.getElementById('sellerReportTable')) return;
+        
+        // Esperar a que jQuery y DataTables estén listos
+        if (typeof $ === 'undefined' || !$.fn || !$.fn.DataTable) {
+            setTimeout(initSellerTable, 100);
+            return;
+        }
+
         if ($.fn.DataTable.isDataTable('#sellerReportTable')) {
             $('#sellerReportTable').DataTable().destroy();
         }

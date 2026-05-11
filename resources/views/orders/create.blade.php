@@ -10,35 +10,14 @@
         window.__qzKitchenComandaDisableClientOnTouch = @json((bool) config('qz.kitchen_comanda_disable_client_qz_on_touch_devices', true));
     </script>
     @vite(['resources/js/qz-tray-init.js'])
-    <meta name="turbo-visit-control" content="reload">
-    <script>
-        (function() {
-            const nav = performance.getEntriesByType('navigation')[0];
-            const navType = nav && nav.type ? nav.type : '';
-            const forceReloadKey = 'orders-create-hard-reload:' + window.location.pathname + window.location.search;
-            const cameFromTurboPreview = document.documentElement.hasAttribute('data-turbo-preview');
 
-            if (cameFromTurboPreview) {
-                window.location.replace(window.location.href);
-                return;
-            }
-
-            if (navType !== 'reload' && !sessionStorage.getItem(forceReloadKey)) {
-                sessionStorage.setItem(forceReloadKey, '1');
-                window.location.replace(window.location.href);
-                return;
-            }
-
-            sessionStorage.removeItem(forceReloadKey);
-        })();
-    </script>
 @endpush
 
 @section('title', 'Punto de Venta')
 
 @section('content')
-    <div class="px-4 md:px-6 pt-4 pb-2">
-        <div class="flex items-center justify-between"></div>
+    <div class="px-4 md:px-6 pt-4 pb-2 flex flex-col">
+        <div class="flex items-center justify-between shrink-0"></div>
         @php
             $isCounterSale = $isCounterSale ?? false;
             $viewId = request('view_id');
@@ -57,7 +36,7 @@
                 ]" />
         @endif
 
-        <div class="flex flex-col h-full bg-gray-50 dark:bg-gray-950">
+        <div class="flex flex-col bg-gray-50 dark:bg-gray-950">
             @php
                 $serverTableData = [
                     'id' => $table->id,
@@ -295,9 +274,8 @@
                 </div>
             </div>
 
-            <div class="flex-1 flex flex-col lg:flex-row items-start bg-gray-50/50 dark:bg-gray-950/50 gap-3 p-3">
-                <div
-                    class="flex-1 min-w-0 min-h-[320px] p-3 sm:p-4 bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 flex flex-col">
+            <div class="flex flex-col lg:flex-row bg-gray-50/50 dark:bg-gray-950/50 gap-3 p-3">
+                <div class="flex-1 min-w-0 p-3 sm:p-4 bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 flex flex-col">
                     <div class="flex flex-col flex-1 min-w-0">
                         <div class="shrink-0 border-gray-300 px-2 sm:px-4 pt-3 pb-4">
                             <div class="flex items-center justify-between">
@@ -320,15 +298,14 @@
                             </div>
 
                         </div>
-                        <div class="flex-1 overflow-y-auto pt-2 sm:pt-3">
+                        <div class="pt-2 sm:pt-3">
                             <div id="products-grid"
                                 class="px-2 sm:px-4 md:px-5 p-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2 sm:gap-4 content-start pb-6">
                             </div>
                         </div>
                     </div>
                 </div>
-                <aside
-                    class="lg:w-[450px] w-full md:w-[350px] lg:shrink-0 mx-auto lg:mx-0 flex-none bg-white dark:bg-gray-900 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-800 flex flex-col min-h-[520px] rounded-2xl overflow-hidden shadow-sm">
+                <aside class="lg:w-[450px] w-full md:w-[350px] lg:shrink-0 mx-auto lg:mx-0 flex-none bg-white dark:bg-gray-900 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-800 flex flex-col rounded-2xl overflow-hidden shadow-sm">
                     {{-- Tabs Resumen | Cobro (Cobro oculto para Mozo) --}}
                     <div class="w-full shrink-0 px-3 pt-3">
                         <div class="grid gap-3 {{ $canCharge ?? true ? 'grid-cols-2' : 'grid-cols-1' }}">
@@ -6788,7 +6765,7 @@
                     window.ensureWaiterPin = ensureWaiterPin;
 
                     // Fix scroll on page load
-                    window.addEventListener('turbo:load', () => {
+                    const initPosScroll = () => {
                         document.body.style.removeProperty('overflow');
                         document.body.style.removeProperty('overflow-y');
                         document.body.style.removeProperty('overflow-x');
@@ -6797,7 +6774,10 @@
                         document.documentElement.style.removeProperty('overflow-x');
                         setTimeout(fixScrollLayout, 50);
                         setTimeout(focusProductSearchInput, 80);
-                    });
+                    };
+                    initPosScroll();
+                    // Just in case it's a first page load
+                    document.addEventListener('turbo:load', initPosScroll, { once: true });
 
                     const quickClientForm = document.getElementById('quick-client-form');
                     if (quickClientForm) {
