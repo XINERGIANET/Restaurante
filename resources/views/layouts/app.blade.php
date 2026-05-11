@@ -278,7 +278,7 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
                 $isPosStyle = in_array($routeName, ['orders.create', 'sales.create', 'sales.charge', 'orders.charge']);
             @endphp
 
-            <main class="flex-1 w-full flex flex-col {{ $isPosStyle ? 'p-0 md:p-0' : 'min-w-0 min-h-0 p-4 md:p-6 overflow-y-auto overflow-x-hidden' }}">
+            <main class="flex-1 w-full flex flex-col {{ $isPosStyle ? 'p-0 md:p-0' : 'p-4 md:p-6' }}">
                 <div class="flex-1 min-w-0 w-full">
                     @yield('content')
                 </div>
