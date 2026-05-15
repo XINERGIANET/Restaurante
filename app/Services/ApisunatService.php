@@ -4,7 +4,9 @@ namespace App\Services;
 
 use App\Models\Branch;
 use App\Models\BranchElectronicBillingConfig;
+use App\Models\BranchParameter;
 use App\Models\Movement;
+use App\Models\TaxRate;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -289,6 +291,7 @@ class ApisunatService
         $branch = $sale->branch;
         $customerName = trim((string) ($sale->person_name ?: 'CLIENTES VARIOS'));
         $details = $this->resolveDetailsForSale($sale);
+        $defaultTaxPercent = $this->resolveDefaultTaxPercentForBranch($branch);
 
         $documentBody = [
             'cbc:UBLVersionID' => ['_text' => '2.1'],
@@ -359,7 +362,7 @@ class ApisunatService
             }
 
             $lineTotal = round((float) ($detail->amount ?? 0), 2);
-            $taxPercent = (float) data_get($detail->tax_rate_snapshot, 'tax_rate', data_get($detail, 'taxRate.tax_rate', 18));
+            $taxPercent = $defaultTaxPercent;
             $taxFactor = $taxPercent > 0 ? ($taxPercent / 100) : 0.18;
             $lineSubtotal = round($taxFactor > 0 ? ($lineTotal / (1 + $taxFactor)) : $lineTotal, 2);
             $lineIgv = round($lineTotal - $lineSubtotal, 2);
@@ -531,6 +534,32 @@ class ApisunatService
         }
 
         return collect();
+    }
+
+    private function resolveDefaultTaxPercentForBranch(?Branch $branch): float
+    {
+        $taxRateId = null;
+
+        if ($branch?->id) {
+            $taxRateId = BranchParameter::query()
+                ->join('parameters as p', 'p.id', '=', 'branch_parameters.parameter_id')
+                ->where('branch_parameters.branch_id', $branch->id)
+                ->whereRaw('LOWER(p.description) = ?', ['igv_defecto'])
+                ->value('branch_parameters.value');
+        }
+
+        $taxRate = $taxRateId
+            ? TaxRate::query()->whereKey((int) $taxRateId)->first()
+            : null;
+
+        if (! $taxRate) {
+            $taxRate = TaxRate::query()
+                ->where('status', true)
+                ->orderBy('order_num')
+                ->first();
+        }
+
+        return $taxRate ? (float) $taxRate->tax_rate : 18.0;
     }
 
     private function findUrlByKeyword(array $payload, array $keywords): ?string
