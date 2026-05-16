@@ -309,12 +309,12 @@
                     {{-- Tabs Resumen | Cobro (Cobro oculto para Mozo) --}}
                     <div class="w-full shrink-0 px-3 pt-3">
                         <div class="grid gap-3 {{ $canCharge ?? true ? 'grid-cols-2' : 'grid-cols-1' }}">
-                            <button type="button" id="tab-resumen" onclick="switchAsideTab('resumen')"
+                            <button type="button" id="tab-resumen" onclick="window.switchAsideTab?.('resumen')"
                                 class="py-3 px-4 text-sm font-bold transition-all rounded-full bg-[#FF4622] text-white shadow-sm border border-[#FF4622] {{ !($canCharge ?? true) ? 'w-full' : '' }}">
                                 Resumen
                             </button>
                             @if ($canCharge ?? true)
-                                <button type="button" id="tab-cobro" onclick="switchAsideTab('cobro')"
+                                <button type="button" id="tab-cobro" onclick="window.switchAsideTab?.('cobro')"
                                     class="py-3 px-4 text-sm font-bold transition-all rounded-full bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:border-[#FF4622]/30 hover:text-[#FF4622] dark:hover:text-[#FF4622]">
                                     Cobro
                                 </button>
@@ -6086,6 +6086,19 @@
                         }
                     }
 
+                    function safeSetAlpineDataProperty(root, property, value) {
+                        if (!root || !window.Alpine || typeof Alpine.$data !== 'function') return;
+
+                        try {
+                            const data = Alpine.$data(root);
+                            if (data && Object.prototype.hasOwnProperty.call(data, property)) {
+                                data[property] = value;
+                            }
+                        } catch (error) {
+                            console.warn('No se pudo sincronizar Alpine:', error);
+                        }
+                    }
+
                     function ensureCounterSaleDefaultClientSelected() {
                         if (!counterPosMode || !currentTable) return;
                         if (currentTable.person_id) return;
@@ -6101,10 +6114,7 @@
                         currentTable.clientLabel = defaultOpt.description || currentTable.clientName;
                         saveDB();
                         const picker = document.getElementById('order-client-picker');
-                        if (picker && window.Alpine) {
-                            const data = Alpine.$data(picker);
-                            if (data) data.clientId = currentTable.person_id;
-                        }
+                        safeSetAlpineDataProperty(picker, 'clientId', currentTable.person_id);
                         const cobroInput = document.getElementById('cobro-client-input');
                         if (cobroInput) cobroInput.value = currentTable.clientLabel || 'CLIENTES VARIOS';
                     }
@@ -6212,10 +6222,7 @@
                         const headerInput = document.getElementById('header-client-name');
                         if (headerInput) headerInput.value = '';
                         const picker = document.getElementById('order-client-picker');
-                        if (picker && window.Alpine) {
-                            const d = Alpine.$data(picker);
-                            if (d) d.clientId = null;
-                        }
+                        safeSetAlpineDataProperty(picker, 'clientId', null);
                         window.dispatchEvent(new CustomEvent('clear-combobox', {
                             detail: {
                                 name: 'header_client_id'
@@ -6597,12 +6604,7 @@
                         }
 
                         const picker = document.getElementById('order-client-picker');
-                        if (picker && window.Alpine) {
-                            const data = Alpine.$data(picker);
-                            if (data) {
-                                data.clientId = option.id;
-                            }
-                        }
+                        safeSetAlpineDataProperty(picker, 'clientId', option.id);
 
                         const headerInput = document.getElementById('header-client-name');
                         if (headerInput) {

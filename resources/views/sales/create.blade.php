@@ -69,11 +69,11 @@
                         class="lg:w-[450px] w-full md:w-[350px] lg:shrink-0 mx-auto lg:mx-0 flex-none bg-white dark:bg-gray-900 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-800 flex flex-col min-h-[450px] lg:min-h-0 overflow-x-hidden rounded-2xl shadow-sm"
 es                        style="max-height: 80vh;">
                         <div class="flex w-full shrink-0 border-b border-gray-200 dark:border-gray-700">
-                            <button type="button" id="tab-resumen" onclick="switchAsideTab('resumen')"
+                            <button type="button" id="tab-resumen" onclick="window.switchAsideTab?.('resumen')"
                                 class="flex-1 py-3 px-4 text-sm font-bold transition-colors rounded-tl-2xl bg-[#FF4622] text-white">
                                 Resumen
                             </button>
-                            <button type="button" id="tab-cobro" onclick="switchAsideTab('cobro')"
+                            <button type="button" id="tab-cobro" onclick="window.switchAsideTab?.('cobro')"
                                 class="flex-1 py-3 px-4 text-sm font-bold transition-colors bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-[#FF4622]/10 dark:hover:bg-[#FF4622]/20 hover:text-[#FF4622] dark:hover:text-[#FF4622]">
                                 Cobro
                             </button>
@@ -506,6 +506,19 @@ es                        style="max-height: 80vh;">
                     }
                     localStorage.removeItem(ACTIVE_SALE_KEY_STORAGE);
                 } catch (_) { }
+            }
+
+            function safeSetAlpineDataProperty(root, property, value) {
+                if (!root || !window.Alpine || typeof Alpine.$data !== 'function') return;
+
+                try {
+                    const data = Alpine.$data(root);
+                    if (data && Object.prototype.hasOwnProperty.call(data, property)) {
+                        data[property] = value;
+                    }
+                } catch (error) {
+                    console.warn('No se pudo sincronizar Alpine:', error);
+                }
             }
 
             /** Turbo 8 puede enviar detail.url como string o como URL */
@@ -1115,12 +1128,7 @@ es                        style="max-height: 80vh;">
                             }
                         }));
                         const root = document.getElementById('sales-client-picker');
-                        if (root && window.Alpine) {
-                            const d = Alpine.$data(root);
-                            if (d) {
-                                d.person_id = data.id;
-                            }
-                        }
+                        safeSetAlpineDataProperty(root, 'person_id', data.id);
                         window.dispatchEvent(new CustomEvent('close-person-modal'));
                     } catch (err) {
                         alert(err?.message || 'Error al crear cliente.');
@@ -1222,12 +1230,7 @@ es                        style="max-height: 80vh;">
                     saveDB();
                 }
                 const root = document.getElementById('sales-client-picker');
-                if (root && window.Alpine) {
-                    const d = Alpine.$data(root);
-                    if (d) {
-                        d.person_id = null;
-                    }
-                }
+                safeSetAlpineDataProperty(root, 'person_id', null);
                 window.dispatchEvent(new CustomEvent('clear-combobox', {
                     detail: {
                         name: 'header_client_id'
