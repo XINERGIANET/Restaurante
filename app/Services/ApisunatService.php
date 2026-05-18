@@ -362,6 +362,10 @@ class ApisunatService
             }
 
             $lineTotal = round((float) ($detail->amount ?? 0), 2);
+            if ($lineTotal <= 0) {
+                continue;
+            }
+
             $taxPercent = $defaultTaxPercent;
             $taxFactor = $taxPercent > 0 ? ($taxPercent / 100) : 0.18;
             $lineSubtotal = round($taxFactor > 0 ? ($lineTotal / (1 + $taxFactor)) : $lineTotal, 2);
@@ -507,6 +511,8 @@ class ApisunatService
             $taxReasonCode = trim((string) data_get($line, 'cac:TaxTotal.cac:TaxSubtotal.0.cac:TaxCategory.cbc:TaxExemptionReasonCode._text', ''));
             $taxPercentRaw = data_get($line, 'cac:TaxTotal.cac:TaxSubtotal.0.cac:TaxCategory.cbc:Percent._text');
             $taxAmountRaw = data_get($line, 'cac:TaxTotal.cbc:TaxAmount._text');
+            $grossUnitPriceRaw = data_get($line, 'cac:PricingReference.cac:AlternativeConditionPrice.cbc:PriceAmount._text');
+            $lineSubtotalRaw = data_get($line, 'cbc:LineExtensionAmount._text');
 
             if ($taxSchemeId === '' || $taxSchemeName === '' || $taxTypeCode === '' || $taxReasonCode === '') {
                 throw new \RuntimeException('No se puede emitir electrónicamente: el item '.$lineNumber.' no tiene tributo IGV válido. Verifique configuración tributaria del producto.');
@@ -514,6 +520,10 @@ class ApisunatService
 
             if (! is_numeric((string) $taxPercentRaw) || ! is_numeric((string) $taxAmountRaw)) {
                 throw new \RuntimeException('No se puede emitir electrónicamente: el item '.$lineNumber.' tiene datos tributarios inválidos (porcentaje/monto IGV).');
+            }
+
+            if (! is_numeric((string) $grossUnitPriceRaw) || (float) $grossUnitPriceRaw <= 0 || ! is_numeric((string) $lineSubtotalRaw) || (float) $lineSubtotalRaw <= 0) {
+                throw new \RuntimeException('No se puede emitir electrónicamente: el item '.$lineNumber.' tiene importe cero o inválido para SUNAT.');
             }
         }
 
