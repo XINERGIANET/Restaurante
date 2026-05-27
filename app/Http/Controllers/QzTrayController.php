@@ -42,7 +42,7 @@ class QzTrayController extends Controller
 
         try {
             $pair = strtolower(trim((string) $request->query('pair', '')));
-            if ($pair !== '' && ! in_array($pair, ['primary', 'secondary'], true)) {
+            if ($pair !== '' && ! in_array($pair, ['primary', 'secondary', 'tertiary'], true)) {
                 abort(400, 'Par de certificado QZ inválido.');
             }
 
@@ -84,7 +84,7 @@ class QzTrayController extends Controller
             $request->validate(['request' => 'required|string']);
             $payload = (string) $request->input('request');
             $pair = strtolower(trim((string) ($request->query('pair') ?? $request->input('pair') ?? '')));
-            if ($pair !== '' && ! in_array($pair, ['primary', 'secondary'], true)) {
+            if ($pair !== '' && ! in_array($pair, ['primary', 'secondary', 'tertiary'], true)) {
                 abort(400, 'Par de certificado QZ inválido.');
             }
 

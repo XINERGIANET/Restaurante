@@ -26,7 +26,7 @@ class QzTraySigningService
 
     /**
      * Certificado para un par explícito (sin mezclar con el otro).
-     * $pair: primary | secondary
+     * $pair: primary | secondary | tertiary
      */
     public function certificateContentsForPair(string $pair): ?string
     {
@@ -39,7 +39,7 @@ class QzTraySigningService
     }
 
     /**
-     * Firma usando solo el par indicado (primary o secondary).
+     * Firma usando solo el par indicado (primary, secondary o tertiary).
      */
     public function signForPair(string $pair, string $request): ?string
     {
@@ -105,6 +105,13 @@ class QzTraySigningService
                 'primary'
             );
         }
+        if ($p === 'tertiary') {
+            return $this->buildPairFromConfig(
+                'qz.certificate_path_tertiary',
+                'qz.private_key_path_tertiary',
+                'tertiary'
+            );
+        }
 
         return null;
     }
@@ -138,6 +145,18 @@ class QzTraySigningService
         if ($secondary !== null) {
             Log::info('QZ Tray: el par principal (app/qz) no está disponible o no es válido; usando el par secundario (app/qz2).');
             $this->activePair = $secondary;
+
+            return $this->activePair;
+        }
+
+        $tertiary = $this->buildPairFromConfig(
+            'qz.certificate_path_tertiary',
+            'qz.private_key_path_tertiary',
+            'tertiary'
+        );
+        if ($tertiary !== null) {
+            Log::info('QZ Tray: los pares primary/secondary no estÃ¡n disponibles; usando el par tertiary (app/qz3).');
+            $this->activePair = $tertiary;
 
             return $this->activePair;
         }

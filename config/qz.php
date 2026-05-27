@@ -13,6 +13,10 @@ return [
 
     'certificate_path_secondary' => env('QZ2_CERTIFICATE_PATH') ?: storage_path('app/qz2/digital-certificate.txt'),
 
+    'private_key_path_tertiary' => env('QZ3_PRIVATE_KEY_PATH') ?: storage_path('app/qz3/private-key.pem'),
+
+    'certificate_path_tertiary' => env('QZ3_CERTIFICATE_PATH') ?: storage_path('app/qz3/digital-certificate.txt'),
+
     'printer_name' => env('QZ_PRINTER_NAME', 'BARRA'),
 
     // Algoritmo de firma que validará QZ (debe coincidir con qz.security.setSignatureAlgorithm()).
@@ -36,7 +40,7 @@ return [
     // Si el primer par provoca rechazo en websocket.connect(), se prueba el siguiente.
     'cert_pair_try_order' => array_values(array_filter(array_map(
         'trim',
-        explode(',', (string) env('QZ_CERT_PAIR_TRY_ORDER', 'primary,secondary'))
+        explode(',', (string) env('QZ_CERT_PAIR_TRY_ORDER', 'primary,secondary,tertiary'))
     ))),
 
     // Nombres de ticketera (printers_branch.name) que deben usar primero el par secondary (app/qz2).
@@ -44,6 +48,11 @@ return [
     'secondary_first_printer_names' => array_values(array_filter(array_map(
         'trim',
         explode(',', (string) env('QZ_SECONDARY_FIRST_PRINTER_NAMES', 'BARRA2'))
+    ))),
+
+    'tertiary_first_printer_names' => array_values(array_filter(array_map(
+        'trim',
+        explode(',', (string) env('QZ_TERTIARY_FIRST_PRINTER_NAMES', 'BARRA3'))
     ))),
 
     // Comanda: ticketera con IP → RAW por servidor (sin QZ en el navegador). El resto usa QZ como cobro.

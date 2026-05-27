@@ -1503,14 +1503,27 @@ es                        style="max-height: 80vh;">
             }
 
             function resolveStrictLocalPrinterName() {
+                try {
+                    const localPrinter = String(localStorage.getItem('xinergia_local_printer_name') ||
+                        localStorage.getItem('xinergia_print_bridge_printer') || '').trim();
+                    if (localPrinter) return localPrinter;
+                } catch (e) {}
                 const host = String(window.location.hostname || '').trim().toLowerCase();
                 const isLocalhost = ['localhost', '127.0.0.1', '::1'].includes(host);
                 return isLocalhost ? 'BARRA' : 'BARRA2';
             }
 
             function requiresStrictLocalQz(printerName) {
+                if (typeof window.__qzPrinterRequiresTertiaryCertFirst === 'function' &&
+                    window.__qzPrinterRequiresTertiaryCertFirst(printerName)) {
+                    return true;
+                }
+                if (typeof window.__qzPrinterRequiresSecondaryCertFirst === 'function' &&
+                    window.__qzPrinterRequiresSecondaryCertFirst(printerName)) {
+                    return true;
+                }
                 const target = String(printerName || '').trim().toLowerCase();
-                return target === 'barra2' || target.startsWith('barra2');
+                return target === 'barra2' || target.startsWith('barra2') || target === 'barra3' || target.startsWith('barra3');
             }
 
             async function sendThermalTicketAfterSale(movementId, saleResponse) {
@@ -1522,7 +1535,8 @@ es                        style="max-height: 80vh;">
                 const preferredPrinterName = resolveStrictLocalPrinterName();
                 const strictLocalQz = requiresStrictLocalQz(preferredPrinterName);
                 const body = {
-                    movement_id: movementId
+                    movement_id: movementId,
+                    printer_name: preferredPrinterName || null
                 };
                 if (printerId) body.printer_id = printerId;
 

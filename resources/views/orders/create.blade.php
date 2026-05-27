@@ -6,6 +6,7 @@
     <meta name="qz-signature-algorithm" content="{{ config('qz.signature_algorithm', 'SHA512') }}">
     <script>
         window.__qzSecondaryFirstPrinterNames = @json(config('qz.secondary_first_printer_names', []));
+        window.__qzTertiaryFirstPrinterNames = @json(config('qz.tertiary_first_printer_names', []));
         window.__qzKitchenSkipClientQzWhenPrinterHasIp = @json((bool) config('qz.kitchen_skip_client_qz_when_printer_has_ip', true));
         window.__qzKitchenComandaDisableClientOnTouch = @json((bool) config('qz.kitchen_comanda_disable_client_qz_on_touch_devices', true));
     </script>
@@ -2310,14 +2311,27 @@
                     }
 
                     function resolvePreAccountPrinterName() {
+                        try {
+                            const localPrinter = String(localStorage.getItem('xinergia_local_printer_name') ||
+                                localStorage.getItem('xinergia_print_bridge_printer') || '').trim();
+                            if (localPrinter) return localPrinter;
+                        } catch (e) {}
                         const host = String(window.location.hostname || '').trim().toLowerCase();
                         const isLocalhost = ['localhost', '127.0.0.1', '::1'].includes(host);
                         return isLocalhost ? 'BARRA' : 'BARRA2';
                     }
 
                     function requiresStrictLocalQz(printerName) {
+                        if (typeof window.__qzPrinterRequiresTertiaryCertFirst === 'function' &&
+                            window.__qzPrinterRequiresTertiaryCertFirst(printerName)) {
+                            return true;
+                        }
+                        if (typeof window.__qzPrinterRequiresSecondaryCertFirst === 'function' &&
+                            window.__qzPrinterRequiresSecondaryCertFirst(printerName)) {
+                            return true;
+                        }
                         const target = String(printerName || '').trim().toLowerCase();
-                        return target === 'barra2' || target.startsWith('barra2');
+                        return target === 'barra2' || target.startsWith('barra2') || target === 'barra3' || target.startsWith('barra3');
                     }
 
                     function openPreAccountPdfTab() {
@@ -4987,7 +5001,8 @@
                         const printerName = resolvePreAccountPrinterName();
                         const strictLocalQz = requiresStrictLocalQz(printerName);
                         const body = {
-                            movement_id: movementId
+                            movement_id: movementId,
+                            printer_name: printerName || null
                         };
                         if (printerId) body.printer_id = printerId;
 

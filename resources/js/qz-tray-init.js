@@ -22,7 +22,7 @@ function qzCsrfToken() {
 
 function appendPairQuery(url, pair) {
     const u = new URL(url, window.location.href);
-    if (pair === 'primary' || pair === 'secondary') {
+    if (pair === 'primary' || pair === 'secondary' || pair === 'tertiary') {
         u.searchParams.set('pair', pair);
     } else {
         u.searchParams.delete('pair');
@@ -34,6 +34,33 @@ const MULTI_KITCHEN_SECONDARY_FIRST = '__MULTI_KITCHEN_SECONDARY_FIRST__';
 
 function matchesConfiguredSecondaryFirstList(printerName) {
     const list = Array.isArray(window.__qzSecondaryFirstPrinterNames) ? window.__qzSecondaryFirstPrinterNames : [];
+    const raw = String(printerName || '').trim().toLowerCase();
+    const compact = raw.replace(/\s+/g, '');
+    if (!raw) {
+        return false;
+    }
+    for (let i = 0; i < list.length; i++) {
+        const e = String(list[i] || '').trim().toLowerCase();
+        if (!e) {
+            continue;
+        }
+        const ec = e.replace(/\s+/g, '');
+        if (raw === e || compact === ec) {
+            return true;
+        }
+        if (e.length >= 6 && raw.includes(e)) {
+            return true;
+        }
+        if (ec.length >= 6 && compact.includes(ec)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function matchesConfiguredTertiaryFirstList(printerName) {
+    const list = Array.isArray(window.__qzTertiaryFirstPrinterNames) ? window.__qzTertiaryFirstPrinterNames : [];
     const raw = String(printerName || '').trim().toLowerCase();
     const compact = raw.replace(/\s+/g, '');
     if (!raw) {
@@ -89,8 +116,34 @@ export function printerRequiresSecondaryCertFirst(printerName) {
     return false;
 }
 
+export function printerRequiresTertiaryCertFirst(printerName) {
+    const raw = String(printerName || '').trim();
+    const lower = raw.toLowerCase();
+    if (!lower) {
+        return false;
+    }
+    if (matchesConfiguredTertiaryFirstList(printerName)) {
+        return true;
+    }
+    const compact = lower.replace(/\s+/g, '');
+    if (compact === 'barra3' || compact.startsWith('barra3')) {
+        return true;
+    }
+    if (/\bbarra\s*3\b/i.test(lower)) {
+        return true;
+    }
+    if (lower.includes('barra3')) {
+        return true;
+    }
+
+    return false;
+}
+
 export function applyQzCertPairOverrideForPrinter(printerName) {
-    if (printerRequiresSecondaryCertFirst(printerName)) {
+    if (printerRequiresTertiaryCertFirst(printerName)) {
+        window.__qzCertPairOrderOverride = ['tertiary', 'primary', 'secondary'];
+        console.info('[QZ Xinergia] Ticketera qz3 primero: orden tertiary â†’ primary â†’ secondary (app/qz3 antes que otros pares).');
+    } else if (printerRequiresSecondaryCertFirst(printerName)) {
         window.__qzCertPairOrderOverride = ['secondary', 'primary'];
         if (String(printerName || '').trim() === MULTI_KITCHEN_SECONDARY_FIRST) {
             console.info('[QZ Xinergia] Comanda a varias ticketeras: orden secondary → primary (qz2 primero).');
@@ -108,7 +161,7 @@ export function resetQzTraySecurityState() {
 }
 
 function resolveCertPairTryOrder() {
-    const allowed = ['primary', 'secondary'];
+    const allowed = ['primary', 'secondary', 'tertiary'];
     if (Array.isArray(window.__qzCertPairOrderOverride) && window.__qzCertPairOrderOverride.length > 0) {
         const order = [];
         const seen = new Set();
@@ -133,7 +186,7 @@ function resolveCertPairTryOrder() {
     if (Array.isArray(cfg.certPairTryOrder)) {
         raw = cfg.certPairTryOrder;
     } else {
-        raw = String(cfg.certPairTryOrder || 'primary,secondary')
+        raw = String(cfg.certPairTryOrder || 'primary,secondary,tertiary')
             .split(',')
             .map((s) => s.trim().toLowerCase())
             .filter(Boolean);
@@ -142,7 +195,7 @@ function resolveCertPairTryOrder() {
     const order = [];
     try {
         const pref = (window.localStorage?.getItem('qzCertPair') || '').trim().toLowerCase();
-        if (pref === 'primary' || pref === 'secondary') {
+        if (pref === 'primary' || pref === 'secondary' || pref === 'tertiary') {
             order.push(pref);
             seen.add(pref);
         }
@@ -157,14 +210,14 @@ function resolveCertPairTryOrder() {
         }
     }
     if (order.length === 0) {
-        return ['primary', 'secondary'];
+        return ['primary', 'secondary', 'tertiary'];
     }
     return order;
 }
 
 /**
  * Configura certificado y firma para un par explícito (primary = app/qz, secondary = app/qz2).
- * @param {string} pair 'primary' | 'secondary'
+ * @param {string} pair 'primary' | 'secondary' | 'tertiary'
  */
 export function configureQzSecurityForPair(pair) {
     const qzLib = getQz();
@@ -249,8 +302,19 @@ export async function connectQzWithCertPairFallback(qzApi, printerName) {
     applyQzCertPairOverrideForPrinter(printerName);
 
     const needSecondaryFirst = printerRequiresSecondaryCertFirst(printerName);
+    const needTertiaryFirst = printerRequiresTertiaryCertFirst(printerName);
     if (qzApi.websocket.isActive()) {
-        if (needSecondaryFirst) {
+        if (needTertiaryFirst) {
+            if (window.__qzSelectedCertPair === 'tertiary') {
+                return true;
+            }
+            console.warn('[QZ Xinergia] SesiÃ³n QZ activa pero no usa certificado tertiary; desconectando para BARRA3.');
+            try {
+                await qzApi.websocket.disconnect();
+            } catch (e) {
+                console.warn('[QZ Xinergia] disconnect:', e);
+            }
+        } else if (needSecondaryFirst) {
             if (window.__qzSelectedCertPair === 'secondary') {
                 return true;
             }
@@ -328,6 +392,7 @@ window.__qzConfigureQzSecurityForPair = configureQzSecurityForPair;
 window.__qzResolveCertPairTryOrder = resolveCertPairTryOrder;
 window.__qzApplyCertPairOverrideForPrinter = applyQzCertPairOverrideForPrinter;
 window.__qzPrinterRequiresSecondaryCertFirst = printerRequiresSecondaryCertFirst;
+window.__qzPrinterRequiresTertiaryCertFirst = printerRequiresTertiaryCertFirst;
 window.__qzMultiKitchenSecondaryFirstToken = MULTI_KITCHEN_SECONDARY_FIRST;
 
 initQzIfMetaPresent();

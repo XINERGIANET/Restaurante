@@ -6,6 +6,7 @@
     <meta name="qz-signature-algorithm" content="{{ config('qz.signature_algorithm', 'SHA512') }}">
     <script>
         window.__qzSecondaryFirstPrinterNames = @json(config('qz.secondary_first_printer_names', []));
+        window.__qzTertiaryFirstPrinterNames = @json(config('qz.tertiary_first_printer_names', []));
     </script>
     @vite(['resources/js/qz-tray-init.js'])
     <meta name="turbo-visit-control" content="no-cache">

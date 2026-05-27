@@ -1735,6 +1735,7 @@ class SalesController extends Controller
             $validated = $request->validate([
                 'movement_id' => ['required', 'integer', 'exists:movements,id'],
                 'printer_id' => ['nullable', 'integer', 'exists:printers_branch,id'],
+                'printer_name' => ['nullable', 'string', 'max:120'],
                 'ticket_text' => ['nullable', 'string'],
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -1768,6 +1769,15 @@ class SalesController extends Controller
                 ->where('id', $validated['printer_id'])
                 ->where('branch_id', $branchId)
                 ->where('status', 'E')
+                ->first();
+        }
+
+        if (! $printer && ! empty($validated['printer_name'])) {
+            $printerName = trim((string) $validated['printer_name']);
+            $printer = PrinterBranch::query()
+                ->where('branch_id', $branchId)
+                ->where('status', 'E')
+                ->whereRaw('LOWER(TRIM(name)) = ?', [mb_strtolower($printerName)])
                 ->first();
         }
 

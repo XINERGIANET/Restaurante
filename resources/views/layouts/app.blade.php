@@ -16,12 +16,14 @@
     @endphp
     @stack('head')
     <script>
+        window.__qzSecondaryFirstPrinterNames = @json(config('qz.secondary_first_printer_names', []));
+        window.__qzTertiaryFirstPrinterNames = @json(config('qz.tertiary_first_printer_names', []));
         // Config global para QZ (usado por resources/js/qz-tray-init.js si no hay metas en la vista)
         window.__qzConfig = {
             certificateUrl: @json(route('qz.certificate')),
             signUrl: @json(route('qz.sign')),
             signatureAlgorithm: @json(config('qz.signature_algorithm', 'SHA512')),
-            certPairTryOrder: @json(config('qz.cert_pair_try_order', ['primary', 'secondary'])),
+            certPairTryOrder: @json(config('qz.cert_pair_try_order', ['primary', 'secondary', 'tertiary'])),
             defaultPrinterName: @json($qzDefaultPrinter),
             printerName: @json($qzDefaultPrinter),
             printMode: @json(config('qz.print_mode', 'auto')),
