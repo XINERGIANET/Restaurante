@@ -14,7 +14,7 @@
                 <button
                     class="hidden xl:flex items-center justify-center w-10 h-10 text-white border border-white/10 rounded-xl hover:bg-white/10 hover:text-white transition-all duration-200 lg:h-11 lg:w-11"
                     :class="{ 'bg-white/10 text-white': !$store.sidebar.isExpanded }"
-                    @click="$store.sidebar.toggleExpanded()" aria-label="Toggle Sidebar">
+                    @click="$store.sidebar.toggleExpanded()" aria-label="Contraer sidebar">
                     <svg x-show="!$store.sidebar.isMobileOpen" width="16" height="12" viewBox="0 0 16 12" fill="none"
                         xmlns="http://www.w3.org/2000/svg">
                         <path fill-rule="evenodd" clip-rule="evenodd"

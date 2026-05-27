@@ -124,20 +124,13 @@
             Alpine.store('sidebar', {
                 // Mozo: siempre contraído. Varios módulos: siempre expandido. Otros: localStorage
                 isMozoUser: @json($isMozo ?? false),
-                isExpanded: (window.innerWidth >= 1280)
-                    ? (@json($isMozo ?? false) ? false : (@json($hasMultipleModules ?? false) ? true : (localStorage.getItem('sidebarExpanded') !== 'false')))
-                    : false,
+                isExpanded: false,
                 isMobileOpen: false,
                 isHovered: false,
 
                 toggleExpanded() {
-                    if (this.isMozoUser) return; // Mozo no puede expandir
-                    this.isExpanded = !this.isExpanded;
-                    // Save preference on desktop
-                    if (window.innerWidth >= 1280) {
-                        localStorage.setItem('sidebarExpanded', this.isExpanded);
-                    }
-                    // When toggling desktop sidebar, ensure mobile menu is closed
+                    this.isExpanded = false;
+                    this.isHovered = false;
                     this.isMobileOpen = false;
                 },
 
@@ -154,7 +147,7 @@
                 setHovered(val) {
                     // Mozo: no permitir hover. Otros: solo en desktop cuando está contraído
                     if (this.isMozoUser) return;
-                    if (window.innerWidth >= 1280 && !this.isExpanded) {
+                    if (window.innerWidth >= 1280) {
                         this.isHovered = val;
                     }
                 }
@@ -166,15 +159,10 @@
             const body = document.body;
             if (!body || !window.Alpine?.store?.('sidebar')) return;
             const isMozo = body.getAttribute('data-is-mozo') === 'true';
-            const hasMultiple = body.getAttribute('data-has-multiple-modules') === 'true';
             const store = Alpine.store('sidebar');
             store.isMozoUser = isMozo;
             store.isMobileOpen = false;
-            if (window.innerWidth >= 1280) {
-                store.isExpanded = isMozo ? false : (hasMultiple ? true : (localStorage.getItem('sidebarExpanded') !== 'false'));
-            } else {
-                store.isExpanded = false;
-            }
+            store.isExpanded = false;
         }
         document.addEventListener('turbo:load', syncSidebarFromBody);
         document.addEventListener('DOMContentLoaded', () => { setTimeout(syncSidebarFromBody, 0); });
@@ -235,9 +223,9 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
     data-has-multiple-modules="@json($hasMultipleModules ?? false)"
     x-init="
     const isMozo = @json($isMozo ?? false);
-    const hasMultipleModules = @json($hasMultipleModules ?? false);
     if ($store.sidebar) {
         $store.sidebar.isMozoUser = isMozo;
+        $store.sidebar.isExpanded = false;
     }
     const checkMobile = () => {
         if (!$store.sidebar) return;
@@ -247,7 +235,7 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
         } else {
             $store.sidebar.isMobileOpen = false;
             $store.sidebar.isMozoUser = isMozo;
-            $store.sidebar.isExpanded = isMozo ? false : (hasMultipleModules ? true : (localStorage.getItem('sidebarExpanded') !== 'false'));
+            $store.sidebar.isExpanded = false;
         }
     };
     if (window.__sidebarResizeHandler) {
