@@ -13,6 +13,7 @@
     @endauth
     @php
         $qzDefaultPrinter = in_array(strtolower(request()->getHost()), ['localhost', '127.0.0.1', '::1']) ? 'BARRA' : 'BARRA2';
+        $qzCertPairTryOrder = config('qz.cert_pair_try_order', ['primary', 'secondary', 'tertiary']);
     @endphp
     @stack('head')
     <script>
@@ -23,7 +24,7 @@
             certificateUrl: @json(route('qz.certificate')),
             signUrl: @json(route('qz.sign')),
             signatureAlgorithm: @json(config('qz.signature_algorithm', 'SHA512')),
-            certPairTryOrder: @json(config('qz.cert_pair_try_order', ['primary', 'secondary', 'tertiary'])),
+            certPairTryOrder: @json($qzCertPairTryOrder),
             defaultPrinterName: @json($qzDefaultPrinter),
             printerName: @json($qzDefaultPrinter),
             printMode: @json(config('qz.print_mode', 'auto')),
