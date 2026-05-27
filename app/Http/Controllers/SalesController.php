@@ -180,25 +180,45 @@ class SalesController extends Controller
             $query->where('movements.moved_at', '<=', $dateTo.' 23:59:59');
         }
         if ($paymentMethodId) {
-            $query->whereIn('movements.id', function ($sub) use ($paymentMethodId) {
-                $sub->select('m.parent_movement_id')
-                    ->from('movements as m')
-                    ->join('cash_movements as cm', 'cm.movement_id', '=', 'm.id')
-                    ->join('cash_movement_details as cmd', 'cmd.cash_movement_id', '=', 'cm.id')
-                    ->where('cmd.payment_method_id', $paymentMethodId)
-                    ->whereNotNull('m.parent_movement_id')
-                    ->whereNull('cm.deleted_at')
-                    ->whereNull('cmd.deleted_at');
+            $query->where(function ($cashFilter) use ($paymentMethodId) {
+                $cashFilter->whereIn('movements.id', function ($sub) use ($paymentMethodId) {
+                    $sub->select('m.parent_movement_id')
+                        ->from('movements as m')
+                        ->join('cash_movements as cm', 'cm.movement_id', '=', 'm.id')
+                        ->join('cash_movement_details as cmd', 'cmd.cash_movement_id', '=', 'cm.id')
+                        ->where('cmd.payment_method_id', $paymentMethodId)
+                        ->whereNotNull('m.parent_movement_id')
+                        ->whereNull('cm.deleted_at')
+                        ->whereNull('cmd.deleted_at');
+                })->orWhereIn('movements.parent_movement_id', function ($sub) use ($paymentMethodId) {
+                    $sub->select('m.parent_movement_id')
+                        ->from('movements as m')
+                        ->join('cash_movements as cm', 'cm.movement_id', '=', 'm.id')
+                        ->join('cash_movement_details as cmd', 'cmd.cash_movement_id', '=', 'cm.id')
+                        ->where('cmd.payment_method_id', $paymentMethodId)
+                        ->whereNotNull('m.parent_movement_id')
+                        ->whereNull('cm.deleted_at')
+                        ->whereNull('cmd.deleted_at');
+                });
             });
         }
         if ($effectiveCashRegisterId) {
-            $query->whereIn('movements.id', function ($sub) use ($effectiveCashRegisterId) {
-                $sub->select('m.parent_movement_id')
-                    ->from('movements as m')
-                    ->join('cash_movements as cm', 'cm.movement_id', '=', 'm.id')
-                    ->where('cm.cash_register_id', $effectiveCashRegisterId)
-                    ->whereNotNull('m.parent_movement_id')
-                    ->whereNull('cm.deleted_at');
+            $query->where(function ($cashFilter) use ($effectiveCashRegisterId) {
+                $cashFilter->whereIn('movements.id', function ($sub) use ($effectiveCashRegisterId) {
+                    $sub->select('m.parent_movement_id')
+                        ->from('movements as m')
+                        ->join('cash_movements as cm', 'cm.movement_id', '=', 'm.id')
+                        ->where('cm.cash_register_id', $effectiveCashRegisterId)
+                        ->whereNotNull('m.parent_movement_id')
+                        ->whereNull('cm.deleted_at');
+                })->orWhereIn('movements.parent_movement_id', function ($sub) use ($effectiveCashRegisterId) {
+                    $sub->select('m.parent_movement_id')
+                        ->from('movements as m')
+                        ->join('cash_movements as cm', 'cm.movement_id', '=', 'm.id')
+                        ->where('cm.cash_register_id', $effectiveCashRegisterId)
+                        ->whereNotNull('m.parent_movement_id')
+                        ->whereNull('cm.deleted_at');
+                });
             });
         }
 

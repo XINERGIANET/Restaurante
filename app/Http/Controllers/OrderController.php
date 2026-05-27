@@ -3782,7 +3782,7 @@ class OrderController extends Controller
             'movement_type_id' => $cashMovementTypeId,
             'document_type_id' => $cashDocumentTypeId,
             'branch_id' => $branchId,
-            'parent_movement_id' => $orderMovement->movement_id,
+            'parent_movement_id' => $splitSaleMovement->id,
         ]);
 
         $cashMovement = CashMovements::create([
