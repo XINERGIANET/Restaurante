@@ -3143,6 +3143,28 @@ class OrderController extends Controller
         $cashEntryMovement = null;
         DB::beginTransaction();
         try {
+            /** @var OrderPaymentSplitService $splitService */
+            $splitService = app(OrderPaymentSplitService::class);
+            $hasPreviousSplits = $splitService->totalPaidBySplits($orderMovement) > 0.02;
+            $remainingSaleDraft = null;
+            $saleSubtotal = (float) ($orderMovement->subtotal ?? 0);
+            $saleTax = (float) ($orderMovement->tax ?? 0);
+            $saleTotal = (float) ($orderMovement->total ?? 0);
+
+            if ($hasPreviousSplits) {
+                $orderMovement->loadMissing(['details' => function ($q) {
+                    $q->with('taxRate');
+                }]);
+                $remainingTotal = $splitService->remainingOrderTotal($orderMovement);
+                if ($remainingTotal <= 0.02) {
+                    throw new \InvalidArgumentException('Este pedido ya no tiene saldo pendiente por cobrar.');
+                }
+                $remainingSaleDraft = $splitService->buildAmountSplit($orderMovement, $remainingTotal);
+                $saleSubtotal = (float) $remainingSaleDraft['subtotal'];
+                $saleTax = (float) $remainingSaleDraft['tax'];
+                $saleTotal = (float) $remainingSaleDraft['total'];
+            }
+
             $orderMovement->status = 'FINALIZADO';
             $orderMovement->finished_at = now();
             $orderMovement->payment_type = $saleType === 'CREDITO' ? 'CREDITO' : 'CONTADO';
@@ -3172,7 +3194,7 @@ class OrderController extends Controller
                     $validationMessage = $this->validateCustomerForDocumentType(
                         $resolvedDocumentType,
                         $clientPerson,
-                        (float) ($orderMovement->total ?? 0)
+                        $saleTotal
                     );
                     if ($validationMessage) {
                         throw new \InvalidArgumentException($validationMessage);
@@ -3233,9 +3255,9 @@ class OrderController extends Controller
                         'sale_type' => 'MINORISTA',
                         'currency' => 'PEN',
                         'exchange_rate' => 1.0,
-                        'subtotal' => $orderMovement->subtotal,
-                        'tax' => $orderMovement->tax,
-                        'total' => $orderMovement->total,
+                        'subtotal' => $saleSubtotal,
+                        'tax' => $saleTax,
+                        'total' => $saleTotal,
                         'movement_id' => $orderBaseMovement->id,
                         'branch_id' => $branchId,
                     ]);
@@ -3246,7 +3268,34 @@ class OrderController extends Controller
                         ->values();
 
                     if ($detailMode === 'DETALLADO') {
-                        foreach ($activeOrderDetails as $orderDetail) {
+                        if ($remainingSaleDraft) {
+                            foreach ($remainingSaleDraft['lines'] as $line) {
+                                /** @var OrderMovementDetail $orderDetail */
+                                $orderDetail = $line['detail'];
+
+                                SalesMovementDetail::create([
+                                    'detail_type' => 'DETAILED',
+                                    'sales_movement_id' => $salesMovement->id,
+                                    'code' => $orderDetail->code,
+                                    'description' => $orderDetail->description,
+                                    'product_id' => $orderDetail->product_id,
+                                    'product_snapshot' => $orderDetail->product_snapshot,
+                                    'unit_id' => $orderDetail->unit_id,
+                                    'tax_rate_id' => $orderDetail->tax_rate_id,
+                                    'tax_rate_snapshot' => $orderDetail->tax_rate_snapshot,
+                                    'quantity' => $line['quantity'],
+                                    'courtesy_quantity' => 0,
+                                    'amount' => $line['amount'],
+                                    'discount_percentage' => 0,
+                                    'original_amount' => $line['line_subtotal'],
+                                    'comment' => $orderDetail->comment,
+                                    'complements' => $orderDetail->complements ?? [],
+                                    'status' => 'A',
+                                    'branch_id' => $branchId,
+                                ]);
+                            }
+                        } else {
+                            foreach ($activeOrderDetails as $orderDetail) {
                             if (($orderDetail->status ?? 'A') === 'C') {
                                 continue;
                             }
@@ -3283,9 +3332,12 @@ class OrderController extends Controller
                                 'status' => 'A',
                                 'branch_id' => $branchId,
                             ]);
+                            }
                         }
                     } else {
-                        $referenceDetail = $activeOrderDetails->first();
+                        $referenceDetail = $remainingSaleDraft
+                            ? ($remainingSaleDraft['lines'][0]['detail'] ?? null)
+                            : $activeOrderDetails->first();
                         if (! $referenceDetail) {
                             throw new \InvalidArgumentException('No hay detalles validos para generar la venta.');
                         }
@@ -3305,9 +3357,9 @@ class OrderController extends Controller
                             'tax_rate_snapshot' => $referenceDetail->tax_rate_snapshot,
                             'quantity' => 1,
                             'courtesy_quantity' => 0,
-                            'amount' => (float) ($orderMovement->total ?? 0),
+                            'amount' => $saleTotal,
                             'discount_percentage' => 0,
-                            'original_amount' => (float) ($orderMovement->subtotal ?? 0),
+                            'original_amount' => $saleSubtotal,
                             'comment' => null,
                             'complements' => [],
                             'status' => 'A',
@@ -3355,7 +3407,7 @@ class OrderController extends Controller
             }
 
             $cashMovement = CashMovements::where('movement_id', $cashEntryMovement->id)->first();
-            $total = (float) ($orderMovement->total ?? 0);
+            $total = $saleTotal;
             if ($cashMovement) {
                 $cashMovement->update([
                     'payment_concept_id' => $paymentConcept->id,
@@ -3394,7 +3446,7 @@ class OrderController extends Controller
                 ]);
             }
 
-            $orderTotalForCash = (float) ($orderMovement->total ?? 0);
+            $orderTotalForCash = $saleTotal;
             $paymentMethodsSum = (float) $paymentMethods->sum(fn ($r) => (float) ($r['amount'] ?? 0));
             // En crédito, la UI a veces envía los mismos importes de "contado" (total en métodos de pago).
             // Eso no es un abono real: no debe registrar PAGADO ni saldar la cuenta por cobrar.
