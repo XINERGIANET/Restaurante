@@ -838,14 +838,33 @@
                 }
 
                 function resolveStrictLocalPrinterName() {
+                    try {
+                        const localPrinter = String(localStorage.getItem('xinergia_local_printer_name') ||
+                            localStorage.getItem('xinergia_print_bridge_printer') || '').trim();
+                        if (localPrinter) return localPrinter;
+                    } catch (e) {}
+                    const sel = document.getElementById('sales-index-thermal-printer');
+                    if (sel && sel.value) {
+                        const opt = sel.options[sel.selectedIndex];
+                        const label = String(opt?.textContent || '').split('â€”')[0].trim();
+                        if (label) return label;
+                    }
                     const host = String(window.location.hostname || '').trim().toLowerCase();
                     const isLocalhost = ['localhost', '127.0.0.1', '::1'].includes(host);
                     return isLocalhost ? 'BARRA' : 'BARRA2';
                 }
 
                 function requiresStrictLocalQz(printerName) {
+                    if (typeof window.__qzPrinterRequiresTertiaryCertFirst === 'function' &&
+                        window.__qzPrinterRequiresTertiaryCertFirst(printerName)) {
+                        return true;
+                    }
+                    if (typeof window.__qzPrinterRequiresSecondaryCertFirst === 'function' &&
+                        window.__qzPrinterRequiresSecondaryCertFirst(printerName)) {
+                        return true;
+                    }
                     const target = String(printerName || '').trim().toLowerCase();
-                    return target === 'barra2' || target.startsWith('barra2');
+                    return target === 'barra2' || target.startsWith('barra2') || target === 'barra3' || target.startsWith('barra3');
                 }
 
                 function thermalPrintToast(title, message, icon) {
@@ -873,7 +892,10 @@
                     const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
                     const preferredPrinterName = resolveStrictLocalPrinterName();
                     const strictLocalQz = requiresStrictLocalQz(preferredPrinterName);
-                    const body = { movement_id: movementId };
+                    const body = {
+                        movement_id: movementId,
+                        printer_name: preferredPrinterName || null
+                    };
                     if (printerId) {
                         body.printer_id = printerId;
                     }
