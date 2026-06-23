@@ -1509,12 +1509,26 @@ class SalesController extends Controller
         $providedPassword = (string) request()->input('admin_delete_password', '');
 
         if ($configuredPassword === null || trim($configuredPassword) === '' || strtolower(trim($configuredPassword)) === 'no') {
+            if (request()->expectsJson() || request()->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No hay una clave configurada para eliminar ventas. Configúrala en Configuración de Sistema.',
+                ], 409);
+            }
+
             return redirect()
                 ->route('sales.index', request()->filled('view_id') ? ['view_id' => request()->input('view_id')] : [])
                 ->with('error', 'No hay una clave configurada para eliminar ventas. Configúrala en Configuración de Sistema.');
         }
 
         if ($providedPassword === '' || ! hash_equals((string) $configuredPassword, $providedPassword)) {
+            if (request()->expectsJson() || request()->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Clave incorrecta, contacta al administrador.',
+                ], 422);
+            }
+
             return redirect()
                 ->route('sales.index', request()->filled('view_id') ? ['view_id' => request()->input('view_id')] : [])
                 ->with('error', 'Clave incorrecta, contacta al administrador.');
@@ -1546,6 +1560,14 @@ class SalesController extends Controller
             app(KardexSyncService::class)->deleteMovement((int) $sale->id);
             $sale->delete();
         });
+
+        if (request()->expectsJson() || request()->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Venta eliminada correctamente.',
+                'sale_id' => $sale->id,
+            ]);
+        }
 
         return redirect()
             ->route('sales.index', request()->filled('view_id') ? ['view_id' => request()->input('view_id')] : [])

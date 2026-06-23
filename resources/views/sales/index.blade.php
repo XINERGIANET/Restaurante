@@ -314,7 +314,7 @@
                     </thead>
                     <tbody>
                         @forelse ($sales as $sale)
-                            <tr
+                            <tr data-sale-row="{{ $sale->id }}"
                                 class="border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-white/5">
                                 <td class="px-4 text-center justify-center py-4 sm:px-6 sticky-left">
                                     <div class="flex items-center justify-center gap-2">
@@ -587,7 +587,7 @@
                                     </div>
                                 </td>
                             </tr>
-                            <tr x-show="openRow === {{ $sale->id }}" x-cloak
+                            <tr x-show="openRow === {{ $sale->id }}" x-cloak data-sale-detail-row="{{ $sale->id }}"
                                 class="bg-gray-50/70 dark:bg-gray-800/40 border-b border-gray-100 justify-center dark:border-gray-800">
                                 <td colspan="8" class="px-6 py-5">
                                     <div class="rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900 overflow-hidden shadow-sm">

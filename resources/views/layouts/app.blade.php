@@ -410,35 +410,64 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
                     cancelButtonColor: cancelColor,
                     reverseButtons: true,
                     allowOutsideClick: false,
+                    showLoaderOnConfirm: true,
                     background: isDark ? '#111827' : '#ffffff',
                     color: isDark ? '#e5e7eb' : '#111827',
-                    preConfirm: () => {
+                    preConfirm: async () => {
                         const code = document.getElementById('swal-sale-delete-code')?.value || '';
                         if (!code.trim()) {
                             Swal.showValidationMessage(inputError);
                             return false;
                         }
 
-                        return code;
+                        const formData = new FormData(form);
+                        formData.set(inputName, code);
+
+                        try {
+                            const response = await fetch(form.action, {
+                                method: 'POST',
+                                headers: {
+                                    'Accept': 'application/json',
+                                    'X-Requested-With': 'XMLHttpRequest',
+                                },
+                                credentials: 'same-origin',
+                                body: formData,
+                            });
+
+                            const data = await response.json().catch(() => ({}));
+                            if (!response.ok || data?.success === false) {
+                                Swal.showValidationMessage(data?.message || 'No se pudo eliminar la venta.');
+                                return false;
+                            }
+
+                            return data;
+                        } catch (error) {
+                            Swal.showValidationMessage('No se pudo conectar con el servidor.');
+                            return false;
+                        }
                     },
                 }).then((result) => {
                     if (!result.isConfirmed) return;
 
-                    let hiddenInput = form.querySelector(`input[name="${inputName}"]`);
-                    if (!hiddenInput) {
-                        hiddenInput = document.createElement('input');
-                        hiddenInput.type = 'hidden';
-                        hiddenInput.name = inputName;
-                        form.appendChild(hiddenInput);
-                    }
-                    hiddenInput.value = String(result.value ?? '');
-
-                    if (window.showLoadingModal) {
-                        window.showLoadingModal();
+                    const row = form.closest('tr');
+                    const saleId = row?.dataset?.saleRow || result.value?.sale_id;
+                    if (row) {
+                        row.remove();
                     }
 
-                    form.dataset.swalBound = 'true';
-                    form.submit();
+                    if (saleId) {
+                        document.querySelector(`[data-sale-detail-row="${saleId}"]`)?.remove();
+                    }
+
+                    Swal.fire({
+                        toast: true,
+                        position: 'bottom-end',
+                        icon: 'success',
+                        title: result.value?.message || 'Venta eliminada correctamente.',
+                        showConfirmButton: false,
+                        timer: 3000,
+                        timerProgressBar: true,
+                    });
                 });
             }, true);
             window.__salesDeleteCodeHandler = true;
