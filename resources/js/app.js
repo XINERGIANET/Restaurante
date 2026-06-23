@@ -388,20 +388,34 @@ const bindSwalDelete = () => {
             const inputLabel = form.dataset.swalInputLabel || '';
             const inputPlaceholder = form.dataset.swalInputPlaceholder || '';
             const inputError = form.dataset.swalInputError || 'Este campo es obligatorio.';
+            const useSaleDeleteCodeInput = form.classList.contains('js-sale-delete-password');
+            const escapeHtml = (value) => String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
 
             Swal.fire({
                 title,
-                text,
+                text: useSaleDeleteCodeInput ? undefined : text,
+                html: useSaleDeleteCodeInput ? `
+                    <div class="text-center">
+                        <p class="swal2-html-container" style="display:block;margin:0 0 18px 0;">${escapeHtml(text)}</p>
+                        <label for="swal-sale-delete-code" style="display:block;text-align:left;margin:0 0 6px 0;font-size:13px;font-weight:700;color:#374151;">${escapeHtml(inputLabel || 'Código de eliminación')}</label>
+                        <input id="swal-sale-delete-code" type="password" autocomplete="new-password" autocapitalize="off" autocorrect="off" placeholder="${escapeHtml(inputPlaceholder || 'Ingresa el código de eliminación')}" style="display:block;width:100%;height:42px;box-sizing:border-box;border:1px solid #d1d5db;border-radius:8px;padding:8px 12px;font-size:14px;background:#ffffff;color:#111827;">
+                    </div>
+                ` : undefined,
                 icon,
                 showCancelButton: true,
                 confirmButtonText: confirmText,
                 cancelButtonText: cancelText,
                 confirmButtonColor: confirmColor,
                 cancelButtonColor: cancelColor,
-                input: inputType,
-                inputLabel,
-                inputPlaceholder,
-                inputAttributes: inputType === 'password' ? {
+                input: useSaleDeleteCodeInput ? null : inputType,
+                inputLabel: useSaleDeleteCodeInput ? '' : inputLabel,
+                inputPlaceholder: useSaleDeleteCodeInput ? '' : inputPlaceholder,
+                inputAttributes: !useSaleDeleteCodeInput && inputType === 'password' ? {
                     autocapitalize: 'off',
                     autocorrect: 'off',
                     autocomplete: 'new-password',
@@ -409,6 +423,16 @@ const bindSwalDelete = () => {
                 reverseButtons: true,
                 allowOutsideClick: false,
                 preConfirm: (value) => {
+                    if (useSaleDeleteCodeInput) {
+                        const code = document.getElementById('swal-sale-delete-code')?.value || '';
+                        if (!code.trim()) {
+                            Swal.showValidationMessage(inputError);
+                            return false;
+                        }
+
+                        return code;
+                    }
+
                     if (inputType && !String(value ?? '').trim()) {
                         Swal.showValidationMessage(inputError);
                         return false;
