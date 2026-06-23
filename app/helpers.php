@@ -138,3 +138,66 @@ if (!function_exists('effective_default_sale_document_type_id')) {
             ->value('id');
     }
 }
+
+if (!function_exists('effective_parameter_value_by_descriptions')) {
+    /**
+     * Resuelve el valor efectivo de un parámetro buscando por descripción.
+     * Prioriza branch_parameters -> parameters.value.
+     */
+    function effective_parameter_value_by_descriptions(array $descriptions, ?int $branchId = null): ?string
+    {
+        $normalized = collect($descriptions)
+            ->map(fn ($value) => mb_strtolower(trim((string) $value), 'UTF-8'))
+            ->filter()
+            ->values();
+
+        if ($normalized->isEmpty()) {
+            return null;
+        }
+
+        $branchId = $branchId ?? effective_branch_id() ?? (session('branch_id') !== null ? (int) session('branch_id') : null);
+
+        $parameter = \Illuminate\Support\Facades\DB::table('parameters')
+            ->whereNull('parameters.deleted_at')
+            ->where(function ($query) use ($normalized) {
+                foreach ($normalized as $description) {
+                    $query->orWhereRaw('LOWER(TRIM(parameters.description)) = ?', [$description]);
+                }
+            })
+            ->orderBy('parameters.id')
+            ->first(['parameters.id', 'parameters.value']);
+
+        if (! $parameter) {
+            return null;
+        }
+
+        if ($branchId) {
+            $branchValue = \Illuminate\Support\Facades\DB::table('branch_parameters')
+                ->whereNull('deleted_at')
+                ->where('branch_id', $branchId)
+                ->where('parameter_id', $parameter->id)
+                ->value('value');
+
+            if ($branchValue !== null) {
+                return (string) $branchValue;
+            }
+        }
+
+        return $parameter->value !== null ? (string) $parameter->value : null;
+    }
+}
+
+if (!function_exists('effective_sale_delete_admin_password')) {
+    /**
+     * Clave de administrador para eliminar ventas.
+     */
+    function effective_sale_delete_admin_password(?int $branchId = null): ?string
+    {
+        return effective_parameter_value_by_descriptions([
+            'Clave administrador eliminar venta',
+            'Clave de administrador para eliminar venta',
+            'Contraseña administrador eliminar venta',
+            'Password administrador eliminar venta',
+        ], $branchId);
+    }
+}

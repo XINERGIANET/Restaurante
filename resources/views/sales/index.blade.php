@@ -561,12 +561,18 @@
                                                 class="relative group js-swal-delete" data-swal-title="Eliminar venta?"
                                                 data-swal-text="{{ $deleteMessage }}"
                                                 data-swal-confirm="Si, eliminar" data-swal-cancel="Cancelar"
-                                                data-swal-confirm-color="#ef4444" data-swal-cancel-color="#6b7280">
+                                                data-swal-confirm-color="#ef4444" data-swal-cancel-color="#6b7280"
+                                                data-swal-input="password"
+                                                data-swal-input-name="admin_delete_password"
+                                                data-swal-input-label="Clave de administrador"
+                                                data-swal-input-placeholder="Ingresa la clave para eliminar la venta"
+                                                data-swal-input-error="Debes ingresar la clave de administrador.">
                                                 @csrf
                                                 @method('DELETE')
                                                 @if ($viewId)
                                                     <input type="hidden" name="view_id" value="{{ $viewId }}">
                                                 @endif
+                                                <input type="hidden" name="admin_delete_password" value="">
                                                 <x-ui.button size="icon" variant="eliminate" type="submit"
                                                     className="bg-error-500 text-white hover:bg-error-600 ring-0 rounded-full"
                                                     style="border-radius: 100%; background-color: #EF4444; color: #FFFFFF;"

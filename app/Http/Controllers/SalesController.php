@@ -1504,6 +1504,22 @@ class SalesController extends Controller
 
     public function destroy(Movement $sale)
     {
+        $branchId = $sale->branch_id ? (int) $sale->branch_id : (session('branch_id') !== null ? (int) session('branch_id') : null);
+        $configuredPassword = effective_sale_delete_admin_password($branchId);
+        $providedPassword = (string) request()->input('admin_delete_password', '');
+
+        if ($configuredPassword === null || trim($configuredPassword) === '' || strtolower(trim($configuredPassword)) === 'no') {
+            return redirect()
+                ->route('sales.index', request()->filled('view_id') ? ['view_id' => request()->input('view_id')] : [])
+                ->with('error', 'No hay una clave configurada para eliminar ventas. Configúrala en Configuración de Sistema.');
+        }
+
+        if ($providedPassword === '' || ! hash_equals((string) $configuredPassword, $providedPassword)) {
+            return redirect()
+                ->route('sales.index', request()->filled('view_id') ? ['view_id' => request()->input('view_id')] : [])
+                ->with('error', 'La clave de administrador es incorrecta. No se eliminó la venta.');
+        }
+
         DB::transaction(function () use ($sale) {
             $linkedOrderMovement = $this->resolveLinkedOrderMovementForSale($sale);
 

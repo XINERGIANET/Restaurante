@@ -372,6 +372,11 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
                 const cancelText = form.dataset.swalCancel || 'Cancelar';
                 const confirmColor = form.dataset.swalConfirmColor || '#ef4444';
                 const cancelColor = form.dataset.swalCancelColor || '#6b7280';
+                const inputType = form.dataset.swalInput || null;
+                const inputName = form.dataset.swalInputName || '';
+                const inputLabel = form.dataset.swalInputLabel || '';
+                const inputPlaceholder = form.dataset.swalInputPlaceholder || '';
+                const inputError = form.dataset.swalInputError || 'Este campo es obligatorio.';
 
                 const isDark = document.documentElement.classList.contains('dark');
                 Swal.fire({
@@ -383,6 +388,14 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
                     cancelButtonText: cancelText,
                     confirmButtonColor: confirmColor,
                     cancelButtonColor: cancelColor,
+                    input: inputType,
+                    inputLabel,
+                    inputPlaceholder,
+                    inputAttributes: inputType === 'password' ? {
+                        autocapitalize: 'off',
+                        autocorrect: 'off',
+                        autocomplete: 'new-password',
+                    } : {},
                     reverseButtons: true,
                     allowOutsideClick: false,
                     background: isDark ? '#111827' : '#ffffff',
@@ -390,11 +403,25 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
                     customClass: {
                         backdrop: 'swal-backdrop-blur',
                     },
+                    preConfirm: (value) => {
+                        if (inputType && !String(value ?? '').trim()) {
+                            Swal.showValidationMessage(inputError);
+                            return false;
+                        }
+
+                        return value;
+                    },
                     didOpen: (popup) => {
                         popup.classList.toggle('swal-dark', isDark);
                     },
                 }).then((result) => {
                     if (result.isConfirmed) {
+                        if (inputType && inputName) {
+                            const hiddenInput = form.querySelector(`input[name="${inputName}"]`);
+                            if (hiddenInput) {
+                                hiddenInput.value = String(result.value ?? '');
+                            }
+                        }
                         if (window.showLoadingModal) {
                             window.showLoadingModal();
                         }

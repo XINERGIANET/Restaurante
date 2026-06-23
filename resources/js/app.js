@@ -383,6 +383,11 @@ const bindSwalDelete = () => {
             const cancelText = form.dataset.swalCancel || 'Cancelar';
             const confirmColor = form.dataset.swalConfirmColor || '#ef4444';
             const cancelColor = form.dataset.swalCancelColor || '#6b7280';
+            const inputType = form.dataset.swalInput || null;
+            const inputName = form.dataset.swalInputName || '';
+            const inputLabel = form.dataset.swalInputLabel || '';
+            const inputPlaceholder = form.dataset.swalInputPlaceholder || '';
+            const inputError = form.dataset.swalInputError || 'Este campo es obligatorio.';
 
             Swal.fire({
                 title,
@@ -393,10 +398,32 @@ const bindSwalDelete = () => {
                 cancelButtonText: cancelText,
                 confirmButtonColor: confirmColor,
                 cancelButtonColor: cancelColor,
+                input: inputType,
+                inputLabel,
+                inputPlaceholder,
+                inputAttributes: inputType === 'password' ? {
+                    autocapitalize: 'off',
+                    autocorrect: 'off',
+                    autocomplete: 'new-password',
+                } : {},
                 reverseButtons: true,
                 allowOutsideClick: false,
+                preConfirm: (value) => {
+                    if (inputType && !String(value ?? '').trim()) {
+                        Swal.showValidationMessage(inputError);
+                        return false;
+                    }
+
+                    return value;
+                },
             }).then((result) => {
                 if (result.isConfirmed) {
+                    if (inputType && inputName) {
+                        const hiddenInput = form.querySelector(`input[name="${inputName}"]`);
+                        if (hiddenInput) {
+                            hiddenInput.value = String(result.value ?? '');
+                        }
+                    }
                     if (window.showLoadingModal) {
                         window.showLoadingModal();
                     }
