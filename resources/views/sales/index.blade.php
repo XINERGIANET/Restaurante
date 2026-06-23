@@ -1,24 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-    <div x-data="{
-        deleteSaleOpen: false,
-        deleteSaleAction: '',
-        deleteSaleMessage: '',
-        deleteSalePassword: '',
-        deleteSaleViewId: '{{ $viewId }}',
-        openDeleteSaleModal(detail) {
-            this.deleteSaleAction = detail.action || '';
-            this.deleteSaleMessage = detail.message || 'Esta accion no se puede deshacer.';
-            this.deleteSalePassword = '';
-            this.deleteSaleOpen = true;
-        },
-        closeDeleteSaleModal() {
-            this.deleteSaleOpen = false;
-            this.deleteSalePassword = '';
-        }
-    }"
-    x-on:open-sale-delete-modal.window="openDeleteSaleModal($event.detail)">
+    <div>
         @php
             use Illuminate\Support\Facades\Route;
 
@@ -573,21 +556,33 @@
                                                     }
                                                 }
                                             @endphp
-                                            <div class="relative group">
-                                                <x-ui.button size="icon" variant="eliminate" type="button"
+                                            <form method="POST"
+                                                action="{{ route('sales.destroy', array_merge([$sale], $viewId ? ['view_id' => $viewId] : [])) }}"
+                                                class="relative group js-swal-delete js-sale-delete-password" data-swal-title="Eliminar venta?"
+                                                data-swal-text="{{ $deleteMessage }}"
+                                                data-swal-confirm="Si, eliminar" data-swal-cancel="Cancelar"
+                                                data-swal-confirm-color="#ef4444" data-swal-cancel-color="#6b7280"
+                                                data-swal-input="password"
+                                                data-swal-input-name="admin_delete_password"
+                                                data-swal-input-label="Código de eliminación"
+                                                data-swal-input-placeholder="Ingresa el código de eliminación"
+                                                data-swal-input-error="Debes ingresar el código de eliminación.">
+                                                @csrf
+                                                @method('DELETE')
+                                                @if ($viewId)
+                                                    <input type="hidden" name="view_id" value="{{ $viewId }}">
+                                                @endif
+                                                <input type="hidden" name="admin_delete_password" value="">
+                                                <x-ui.button size="icon" variant="eliminate" type="submit"
                                                     className="bg-error-500 text-white hover:bg-error-600 ring-0 rounded-full"
                                                     style="border-radius: 100%; background-color: #EF4444; color: #FFFFFF;"
-                                                    aria-label="Eliminar"
-                                                    x-on:click="$dispatch('open-sale-delete-modal', {
-                                                        action: '{{ route('sales.destroy', array_merge([$sale], $viewId ? ['view_id' => $viewId] : [])) }}',
-                                                        message: @js($deleteMessage)
-                                                    })">
+                                                    aria-label="Eliminar">
                                                     <i class="ri-delete-bin-line"></i>
                                                 </x-ui.button>
                                                 <span
                                                     class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50"
                                                     style="transition-delay: 0.5s;">Eliminar</span>
-                                            </div>
+                                            </form>
                                         @endif
                                     </div>
                                 </td>
@@ -683,52 +678,6 @@
                 </div>
             </div>
         </x-common.component-card>
-    </div>
-
-    <div x-show="deleteSaleOpen" x-cloak class="fixed inset-0 z-[130] items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm"
-        :class="{ 'flex': deleteSaleOpen }">
-        <div @click.outside="closeDeleteSaleModal()"
-            class="w-full max-w-md rounded-2xl bg-white shadow-2xl dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
-            <div class="px-6 pt-6 text-center">
-                <div class="mx-auto flex h-20 w-20 items-center justify-center rounded-full border-4 border-amber-300/80 text-amber-400">
-                    <i class="ri-error-warning-line text-5xl leading-none"></i>
-                </div>
-                <h3 class="mt-5 text-3xl font-extrabold text-gray-700 dark:text-gray-100">Eliminar venta?</h3>
-                <p class="mt-4 text-base text-gray-600 dark:text-gray-300" x-text="deleteSaleMessage"></p>
-            </div>
-
-            <form method="POST" x-bind:action="deleteSaleAction"
-                x-on:submit="if (window.showLoadingModal) window.showLoadingModal()"
-                class="px-6 pb-6 pt-5 space-y-4">
-                @csrf
-                @method('DELETE')
-                @if ($viewId)
-                    <input type="hidden" name="view_id" value="{{ $viewId }}">
-                @endif
-                <div>
-                    <label for="delete-sale-password" class="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-gray-200">
-                        Clave de eliminación
-                    </label>
-                    <input id="delete-sale-password" type="password" name="admin_delete_password" x-model="deleteSalePassword"
-                        placeholder="Ingresa la clave del administrador" required
-                        class="h-11 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 focus:border-[#FF4622] focus:outline-none focus:ring-3 focus:ring-[#FF4622]/10 dark:border-gray-600 dark:bg-gray-800 dark:text-white">
-                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                        Si la clave es incorrecta, la venta no se eliminará.
-                    </p>
-                </div>
-
-                <div class="flex justify-center gap-3 pt-2">
-                    <button type="button" @click="closeDeleteSaleModal()"
-                        class="min-w-[90px] rounded-lg bg-gray-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-600">
-                        Cancelar
-                    </button>
-                    <button type="submit"
-                        class="min-w-[90px] rounded-lg bg-red-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-600">
-                        Si, eliminar
-                    </button>
-                </div>
-            </form>
-        </div>
     </div>
 
     <div x-data="{ open: false, saleId: null, personId: '', documentTypeId: '{{ $firstConvertibleDocumentTypeId }}' }"
