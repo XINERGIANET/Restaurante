@@ -1,7 +1,24 @@
 @extends('layouts.app')
 
 @section('content')
-    <div>
+    <div x-data="{
+        deleteSaleOpen: false,
+        deleteSaleAction: '',
+        deleteSaleMessage: '',
+        deleteSalePassword: '',
+        deleteSaleViewId: '{{ $viewId }}',
+        openDeleteSaleModal(detail) {
+            this.deleteSaleAction = detail.action || '';
+            this.deleteSaleMessage = detail.message || 'Esta accion no se puede deshacer.';
+            this.deleteSalePassword = '';
+            this.deleteSaleOpen = true;
+        },
+        closeDeleteSaleModal() {
+            this.deleteSaleOpen = false;
+            this.deleteSalePassword = '';
+        }
+    }"
+    x-on:open-sale-delete-modal.window="openDeleteSaleModal($event.detail)">
         @php
             use Illuminate\Support\Facades\Route;
 
@@ -556,33 +573,21 @@
                                                     }
                                                 }
                                             @endphp
-                                            <form method="POST"
-                                                action="{{ route('sales.destroy', array_merge([$sale], $viewId ? ['view_id' => $viewId] : [])) }}"
-                                                class="relative group js-sale-delete-password" data-swal-title="Eliminar venta?"
-                                                data-swal-text="{{ $deleteMessage }}"
-                                                data-swal-confirm="Si, eliminar" data-swal-cancel="Cancelar"
-                                                data-swal-confirm-color="#ef4444" data-swal-cancel-color="#6b7280"
-                                                data-swal-input="password"
-                                                data-swal-input-name="admin_delete_password"
-                                                data-swal-input-label="Clave de administrador"
-                                                data-swal-input-placeholder="Ingresa la clave para eliminar la venta"
-                                                data-swal-input-error="Debes ingresar la clave de administrador.">
-                                                @csrf
-                                                @method('DELETE')
-                                                @if ($viewId)
-                                                    <input type="hidden" name="view_id" value="{{ $viewId }}">
-                                                @endif
-                                                <input type="hidden" name="admin_delete_password" value="">
-                                                <x-ui.button size="icon" variant="eliminate" type="submit"
+                                            <div class="relative group">
+                                                <x-ui.button size="icon" variant="eliminate" type="button"
                                                     className="bg-error-500 text-white hover:bg-error-600 ring-0 rounded-full"
                                                     style="border-radius: 100%; background-color: #EF4444; color: #FFFFFF;"
-                                                    aria-label="Eliminar">
+                                                    aria-label="Eliminar"
+                                                    x-on:click="$dispatch('open-sale-delete-modal', {
+                                                        action: '{{ route('sales.destroy', array_merge([$sale], $viewId ? ['view_id' => $viewId] : [])) }}',
+                                                        message: @js($deleteMessage)
+                                                    })">
                                                     <i class="ri-delete-bin-line"></i>
                                                 </x-ui.button>
                                                 <span
                                                     class="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 z-50"
                                                     style="transition-delay: 0.5s;">Eliminar</span>
-                                            </form>
+                                            </div>
                                         @endif
                                     </div>
                                 </td>
@@ -678,6 +683,52 @@
                 </div>
             </div>
         </x-common.component-card>
+    </div>
+
+    <div x-show="deleteSaleOpen" x-cloak class="fixed inset-0 z-[130] items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm"
+        :class="{ 'flex': deleteSaleOpen }">
+        <div @click.outside="closeDeleteSaleModal()"
+            class="w-full max-w-md rounded-2xl bg-white shadow-2xl dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+            <div class="px-6 pt-6 text-center">
+                <div class="mx-auto flex h-20 w-20 items-center justify-center rounded-full border-4 border-amber-300/80 text-amber-400">
+                    <i class="ri-error-warning-line text-5xl leading-none"></i>
+                </div>
+                <h3 class="mt-5 text-3xl font-extrabold text-gray-700 dark:text-gray-100">Eliminar venta?</h3>
+                <p class="mt-4 text-base text-gray-600 dark:text-gray-300" x-text="deleteSaleMessage"></p>
+            </div>
+
+            <form method="POST" x-bind:action="deleteSaleAction"
+                x-on:submit="if (window.showLoadingModal) window.showLoadingModal()"
+                class="px-6 pb-6 pt-5 space-y-4">
+                @csrf
+                @method('DELETE')
+                @if ($viewId)
+                    <input type="hidden" name="view_id" value="{{ $viewId }}">
+                @endif
+                <div>
+                    <label for="delete-sale-password" class="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-gray-200">
+                        Clave de eliminación
+                    </label>
+                    <input id="delete-sale-password" type="password" name="admin_delete_password" x-model="deleteSalePassword"
+                        placeholder="Ingresa la clave del administrador" required
+                        class="h-11 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 focus:border-[#FF4622] focus:outline-none focus:ring-3 focus:ring-[#FF4622]/10 dark:border-gray-600 dark:bg-gray-800 dark:text-white">
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        Si la clave es incorrecta, la venta no se eliminará.
+                    </p>
+                </div>
+
+                <div class="flex justify-center gap-3 pt-2">
+                    <button type="button" @click="closeDeleteSaleModal()"
+                        class="min-w-[90px] rounded-lg bg-gray-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-600">
+                        Cancelar
+                    </button>
+                    <button type="submit"
+                        class="min-w-[90px] rounded-lg bg-red-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-600">
+                        Si, eliminar
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <div x-data="{ open: false, saleId: null, personId: '', documentTypeId: '{{ $firstConvertibleDocumentTypeId }}' }"
@@ -1183,97 +1234,6 @@
             document.addEventListener('DOMContentLoaded', setupSalesConvertQuickClientForm);
             document.addEventListener('turbo:load', setupSalesConvertQuickClientForm);
 
-            (function() {
-                if (window.__salesDeletePasswordHandlerBound) return;
-                window.__salesDeletePasswordHandlerBound = true;
-
-                const bindSaleDeletePasswordForms = () => {
-                    document.querySelectorAll('.js-sale-delete-password').forEach((form) => {
-                        if (form.dataset.saleDeletePasswordBound === 'true') return;
-                        form.dataset.saleDeletePasswordBound = 'true';
-
-                        form.addEventListener('submit', async (event) => {
-                            event.preventDefault();
-                            event.stopImmediatePropagation();
-
-                            if (!window.Swal) {
-                                form.submit();
-                                return;
-                            }
-
-                            const title = form.dataset.swalTitle || 'Eliminar venta?';
-                            const text = form.dataset.swalText || 'Esta accion no se puede deshacer.';
-                            const icon = form.dataset.swalIcon || 'warning';
-                            const confirmText = form.dataset.swalConfirm || 'Si, eliminar';
-                            const cancelText = form.dataset.swalCancel || 'Cancelar';
-                            const confirmColor = form.dataset.swalConfirmColor || '#ef4444';
-                            const cancelColor = form.dataset.swalCancelColor || '#6b7280';
-                            const inputName = form.dataset.swalInputName || 'admin_delete_password';
-                            const inputLabel = form.dataset.swalInputLabel || 'Clave de administrador';
-                            const inputPlaceholder = form.dataset.swalInputPlaceholder || 'Ingresa la clave';
-                            const inputError = form.dataset.swalInputError || 'Debes ingresar la clave de administrador.';
-                            const isDark = document.documentElement.classList.contains('dark');
-
-                            const result = await Swal.fire({
-                                title,
-                                text,
-                                icon,
-                                input: 'password',
-                                inputLabel,
-                                inputPlaceholder,
-                                inputAttributes: {
-                                    autocapitalize: 'off',
-                                    autocorrect: 'off',
-                                    autocomplete: 'new-password',
-                                },
-                                showCancelButton: true,
-                                confirmButtonText: confirmText,
-                                cancelButtonText: cancelText,
-                                confirmButtonColor: confirmColor,
-                                cancelButtonColor: cancelColor,
-                                reverseButtons: true,
-                                allowOutsideClick: false,
-                                background: isDark ? '#111827' : '#ffffff',
-                                color: isDark ? '#e5e7eb' : '#111827',
-                                customClass: {
-                                    backdrop: 'swal-backdrop-blur',
-                                },
-                                preConfirm: (value) => {
-                                    if (!String(value ?? '').trim()) {
-                                        Swal.showValidationMessage(inputError);
-                                        return false;
-                                    }
-
-                                    return value;
-                                },
-                                didOpen: (popup) => {
-                                    popup.classList.toggle('swal-dark', isDark);
-                                },
-                            });
-
-                            if (!result.isConfirmed) {
-                                return;
-                            }
-
-                            const hiddenInput = form.querySelector(`input[name="${inputName}"]`);
-                            if (hiddenInput) {
-                                hiddenInput.value = String(result.value ?? '');
-                            }
-
-                            if (window.showLoadingModal) {
-                                window.showLoadingModal();
-                            }
-
-                            form.submit();
-                        }, true);
-                    });
-                };
-
-                bindSaleDeletePasswordForms();
-                document.addEventListener('DOMContentLoaded', bindSaleDeletePasswordForms);
-                document.addEventListener('turbo:load', bindSaleDeletePasswordForms);
-                document.addEventListener('turbo:render', bindSaleDeletePasswordForms);
-            })();
         </script>
     @endpush
 @endsection
