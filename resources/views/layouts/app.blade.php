@@ -377,6 +377,9 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
                 const inputLabel = form.dataset.swalInputLabel || '';
                 const inputPlaceholder = form.dataset.swalInputPlaceholder || '';
                 const inputError = form.dataset.swalInputError || 'Este campo es obligatorio.';
+                const twoStepPassword = form.dataset.swalTwoStepPassword === 'true';
+                const secondTitle = form.dataset.swalSecondTitle || 'Ingresar clave';
+                const secondText = form.dataset.swalSecondText || '';
 
                 const isDark = document.documentElement.classList.contains('dark');
                 Swal.fire({
@@ -388,10 +391,10 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
                     cancelButtonText: cancelText,
                     confirmButtonColor: confirmColor,
                     cancelButtonColor: cancelColor,
-                    input: inputType,
-                    inputLabel,
-                    inputPlaceholder,
-                    inputAttributes: inputType === 'password' ? {
+                    input: twoStepPassword ? null : inputType,
+                    inputLabel: twoStepPassword ? '' : inputLabel,
+                    inputPlaceholder: twoStepPassword ? '' : inputPlaceholder,
+                    inputAttributes: !twoStepPassword && inputType === 'password' ? {
                         autocapitalize: 'off',
                         autocorrect: 'off',
                         autocomplete: 'new-password',
@@ -404,7 +407,7 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
                         backdrop: 'swal-backdrop-blur',
                     },
                     preConfirm: (value) => {
-                        if (inputType && !String(value ?? '').trim()) {
+                        if (!twoStepPassword && inputType && !String(value ?? '').trim()) {
                             Swal.showValidationMessage(inputError);
                             return false;
                         }
@@ -414,12 +417,59 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
                     didOpen: (popup) => {
                         popup.classList.toggle('swal-dark', isDark);
                     },
-                }).then((result) => {
+                }).then(async (result) => {
                     if (result.isConfirmed) {
+                        let finalInputValue = result.value ?? '';
+
+                        if (twoStepPassword && inputType) {
+                            const passwordResult = await Swal.fire({
+                                title: secondTitle,
+                                text: secondText,
+                                icon: 'warning',
+                                input: inputType,
+                                inputLabel,
+                                inputPlaceholder,
+                                inputAttributes: inputType === 'password' ? {
+                                    autocapitalize: 'off',
+                                    autocorrect: 'off',
+                                    autocomplete: 'new-password',
+                                } : {},
+                                showCancelButton: true,
+                                confirmButtonText: confirmText,
+                                cancelButtonText: cancelText,
+                                confirmButtonColor: confirmColor,
+                                cancelButtonColor: cancelColor,
+                                reverseButtons: true,
+                                allowOutsideClick: false,
+                                background: isDark ? '#111827' : '#ffffff',
+                                color: isDark ? '#e5e7eb' : '#111827',
+                                customClass: {
+                                    backdrop: 'swal-backdrop-blur',
+                                },
+                                preConfirm: (value) => {
+                                    if (!String(value ?? '').trim()) {
+                                        Swal.showValidationMessage(inputError);
+                                        return false;
+                                    }
+
+                                    return value;
+                                },
+                                didOpen: (popup) => {
+                                    popup.classList.toggle('swal-dark', isDark);
+                                },
+                            });
+
+                            if (!passwordResult.isConfirmed) {
+                                return;
+                            }
+
+                            finalInputValue = passwordResult.value ?? '';
+                        }
+
                         if (inputType && inputName) {
                             const hiddenInput = form.querySelector(`input[name="${inputName}"]`);
                             if (hiddenInput) {
-                                hiddenInput.value = String(result.value ?? '');
+                                hiddenInput.value = String(finalInputValue ?? '');
                             }
                         }
                         if (window.showLoadingModal) {
