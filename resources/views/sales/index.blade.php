@@ -562,9 +562,12 @@
                                                 data-swal-text="{{ $deleteMessage }}"
                                                 data-swal-confirm="Si, eliminar" data-swal-cancel="Cancelar"
                                                 data-swal-confirm-color="#ef4444" data-swal-cancel-color="#6b7280"
+                                                data-swal-two-step-password="true"
                                                 data-swal-input="password"
                                                 data-swal-input-name="admin_delete_password"
                                                 data-swal-input-label="Clave de administrador"
+                                                data-swal-second-title="Ingresar clave"
+                                                data-swal-second-text="Escribe la clave de administrador para confirmar la eliminación."
                                                 data-swal-input-placeholder="Ingresa la clave para eliminar la venta"
                                                 data-swal-input-error="Debes ingresar la clave de administrador.">
                                                 @csrf

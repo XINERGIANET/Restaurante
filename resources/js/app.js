@@ -388,6 +388,9 @@ const bindSwalDelete = () => {
             const inputLabel = form.dataset.swalInputLabel || '';
             const inputPlaceholder = form.dataset.swalInputPlaceholder || '';
             const inputError = form.dataset.swalInputError || 'Este campo es obligatorio.';
+            const twoStepPassword = form.dataset.swalTwoStepPassword === 'true';
+            const secondTitle = form.dataset.swalSecondTitle || 'Ingresar clave';
+            const secondText = form.dataset.swalSecondText || '';
 
             Swal.fire({
                 title,
@@ -398,10 +401,10 @@ const bindSwalDelete = () => {
                 cancelButtonText: cancelText,
                 confirmButtonColor: confirmColor,
                 cancelButtonColor: cancelColor,
-                input: inputType,
-                inputLabel,
-                inputPlaceholder,
-                inputAttributes: inputType === 'password' ? {
+                input: twoStepPassword ? null : inputType,
+                inputLabel: twoStepPassword ? '' : inputLabel,
+                inputPlaceholder: twoStepPassword ? '' : inputPlaceholder,
+                inputAttributes: !twoStepPassword && inputType === 'password' ? {
                     autocapitalize: 'off',
                     autocorrect: 'off',
                     autocomplete: 'new-password',
@@ -409,19 +412,58 @@ const bindSwalDelete = () => {
                 reverseButtons: true,
                 allowOutsideClick: false,
                 preConfirm: (value) => {
-                    if (inputType && !String(value ?? '').trim()) {
+                    if (!twoStepPassword && inputType && !String(value ?? '').trim()) {
                         Swal.showValidationMessage(inputError);
                         return false;
                     }
 
                     return value;
                 },
-            }).then((result) => {
+            }).then(async (result) => {
                 if (result.isConfirmed) {
+                    let finalInputValue = result.value ?? '';
+
+                    if (twoStepPassword && inputType) {
+                        const passwordResult = await Swal.fire({
+                            title: secondTitle,
+                            text: secondText,
+                            icon: 'warning',
+                            input: inputType,
+                            inputLabel,
+                            inputPlaceholder,
+                            inputAttributes: inputType === 'password' ? {
+                                autocapitalize: 'off',
+                                autocorrect: 'off',
+                                autocomplete: 'new-password',
+                            } : {},
+                            showCancelButton: true,
+                            confirmButtonText: confirmText,
+                            cancelButtonText: cancelText,
+                            confirmButtonColor: confirmColor,
+                            cancelButtonColor: cancelColor,
+                            reverseButtons: true,
+                            allowOutsideClick: false,
+                            preConfirm: (value) => {
+                                if (!String(value ?? '').trim()) {
+                                    Swal.showValidationMessage(inputError);
+                                    return false;
+                                }
+
+                                return value;
+                            },
+                        });
+
+                        if (!passwordResult.isConfirmed) {
+                            return;
+                        }
+
+                        finalInputValue = passwordResult.value ?? '';
+                    }
+
                     if (inputType && inputName) {
                         const hiddenInput = form.querySelector(`input[name="${inputName}"]`);
                         if (hiddenInput) {
-                            hiddenInput.value = String(result.value ?? '');
+                            hiddenInput.value = String(finalInputValue ?? '');
                         }
                     }
                     if (window.showLoadingModal) {
