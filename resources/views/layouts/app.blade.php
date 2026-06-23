@@ -355,6 +355,95 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
     </script>
     @endif
     <script>
+        if (!window.__salesDeleteCodeHandler) {
+            document.addEventListener('submit', (event) => {
+                const form = event.target.closest('form');
+                if (!form) return;
+
+                const title = form.dataset.swalTitle || '';
+                const action = form.getAttribute('action') || '';
+                const isSalesDelete = form.classList.contains('js-sale-delete-password') ||
+                    title.toLowerCase().includes('eliminar venta') ||
+                    action.includes('/ventas/');
+
+                if (!isSalesDelete || !form.classList.contains('js-swal-delete')) return;
+
+                event.preventDefault();
+                event.stopImmediatePropagation();
+
+                if (!window.Swal) {
+                    form.submit();
+                    return;
+                }
+
+                const text = form.dataset.swalText || 'Esta accion no se puede deshacer.';
+                const confirmText = form.dataset.swalConfirm || 'Si, eliminar';
+                const cancelText = form.dataset.swalCancel || 'Cancelar';
+                const confirmColor = form.dataset.swalConfirmColor || '#ef4444';
+                const cancelColor = form.dataset.swalCancelColor || '#6b7280';
+                const inputName = form.dataset.swalInputName || 'admin_delete_password';
+                const inputLabel = form.dataset.swalInputLabel || 'Codigo de eliminacion';
+                const inputPlaceholder = form.dataset.swalInputPlaceholder || 'Ingresa el codigo de eliminacion';
+                const inputError = form.dataset.swalInputError || 'Debes ingresar el codigo de eliminacion.';
+                const isDark = document.documentElement.classList.contains('dark');
+                const escapeHtml = (value) => String(value ?? '')
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+
+                Swal.fire({
+                    title: form.dataset.swalTitle || 'Eliminar venta?',
+                    icon: 'warning',
+                    html: `
+                        <div style="text-align:center;">
+                            <p style="display:block;margin:0 0 18px 0;color:${isDark ? '#d1d5db' : '#4b5563'};">${escapeHtml(text)}</p>
+                            <label for="swal-sale-delete-code" style="display:block;text-align:left;margin:0 0 6px 0;font-size:13px;font-weight:700;color:${isDark ? '#e5e7eb' : '#374151'};">${escapeHtml(inputLabel)}</label>
+                            <input id="swal-sale-delete-code" type="password" autocomplete="new-password" autocapitalize="off" autocorrect="off" placeholder="${escapeHtml(inputPlaceholder)}" style="display:block !important;visibility:visible !important;opacity:1 !important;width:100%;height:42px;box-sizing:border-box;border:1px solid #d1d5db;border-radius:8px;padding:8px 12px;font-size:14px;background:${isDark ? '#1f2937' : '#ffffff'};color:${isDark ? '#ffffff' : '#111827'};">
+                        </div>
+                    `,
+                    showCancelButton: true,
+                    confirmButtonText: confirmText,
+                    cancelButtonText: cancelText,
+                    confirmButtonColor: confirmColor,
+                    cancelButtonColor: cancelColor,
+                    reverseButtons: true,
+                    allowOutsideClick: false,
+                    background: isDark ? '#111827' : '#ffffff',
+                    color: isDark ? '#e5e7eb' : '#111827',
+                    preConfirm: () => {
+                        const code = document.getElementById('swal-sale-delete-code')?.value || '';
+                        if (!code.trim()) {
+                            Swal.showValidationMessage(inputError);
+                            return false;
+                        }
+
+                        return code;
+                    },
+                }).then((result) => {
+                    if (!result.isConfirmed) return;
+
+                    let hiddenInput = form.querySelector(`input[name="${inputName}"]`);
+                    if (!hiddenInput) {
+                        hiddenInput = document.createElement('input');
+                        hiddenInput.type = 'hidden';
+                        hiddenInput.name = inputName;
+                        form.appendChild(hiddenInput);
+                    }
+                    hiddenInput.value = String(result.value ?? '');
+
+                    if (window.showLoadingModal) {
+                        window.showLoadingModal();
+                    }
+
+                    form.dataset.swalBound = 'true';
+                    form.submit();
+                });
+            }, true);
+            window.__salesDeleteCodeHandler = true;
+        }
+
         if (!window.__globalSwalDeleteHandler) {
             document.addEventListener('submit', (event) => {
                 const form = event.target.closest('.js-swal-delete');
