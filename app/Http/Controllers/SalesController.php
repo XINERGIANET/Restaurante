@@ -1517,7 +1517,7 @@ class SalesController extends Controller
         if ($providedPassword === '' || ! hash_equals((string) $configuredPassword, $providedPassword)) {
             return redirect()
                 ->route('sales.index', request()->filled('view_id') ? ['view_id' => request()->input('view_id')] : [])
-                ->with('error', 'La clave de administrador es incorrecta. No se eliminó la venta.');
+                ->with('error', 'Clave incorrecta, contacta al administrador.');
         }
 
         DB::transaction(function () use ($sale) {

@@ -558,16 +558,13 @@
                                             @endphp
                                             <form method="POST"
                                                 action="{{ route('sales.destroy', array_merge([$sale], $viewId ? ['view_id' => $viewId] : [])) }}"
-                                                class="relative group js-swal-delete" data-swal-title="Eliminar venta?"
+                                                class="relative group js-sale-delete-password" data-swal-title="Eliminar venta?"
                                                 data-swal-text="{{ $deleteMessage }}"
                                                 data-swal-confirm="Si, eliminar" data-swal-cancel="Cancelar"
                                                 data-swal-confirm-color="#ef4444" data-swal-cancel-color="#6b7280"
-                                                data-swal-two-step-password="true"
                                                 data-swal-input="password"
                                                 data-swal-input-name="admin_delete_password"
                                                 data-swal-input-label="Clave de administrador"
-                                                data-swal-second-title="Ingresar clave"
-                                                data-swal-second-text="Escribe la clave de administrador para confirmar la eliminación."
                                                 data-swal-input-placeholder="Ingresa la clave para eliminar la venta"
                                                 data-swal-input-error="Debes ingresar la clave de administrador.">
                                                 @csrf
@@ -1185,6 +1182,98 @@
             setupSalesConvertQuickClientForm();
             document.addEventListener('DOMContentLoaded', setupSalesConvertQuickClientForm);
             document.addEventListener('turbo:load', setupSalesConvertQuickClientForm);
+
+            (function() {
+                if (window.__salesDeletePasswordHandlerBound) return;
+                window.__salesDeletePasswordHandlerBound = true;
+
+                const bindSaleDeletePasswordForms = () => {
+                    document.querySelectorAll('.js-sale-delete-password').forEach((form) => {
+                        if (form.dataset.saleDeletePasswordBound === 'true') return;
+                        form.dataset.saleDeletePasswordBound = 'true';
+
+                        form.addEventListener('submit', async (event) => {
+                            event.preventDefault();
+                            event.stopImmediatePropagation();
+
+                            if (!window.Swal) {
+                                form.submit();
+                                return;
+                            }
+
+                            const title = form.dataset.swalTitle || 'Eliminar venta?';
+                            const text = form.dataset.swalText || 'Esta accion no se puede deshacer.';
+                            const icon = form.dataset.swalIcon || 'warning';
+                            const confirmText = form.dataset.swalConfirm || 'Si, eliminar';
+                            const cancelText = form.dataset.swalCancel || 'Cancelar';
+                            const confirmColor = form.dataset.swalConfirmColor || '#ef4444';
+                            const cancelColor = form.dataset.swalCancelColor || '#6b7280';
+                            const inputName = form.dataset.swalInputName || 'admin_delete_password';
+                            const inputLabel = form.dataset.swalInputLabel || 'Clave de administrador';
+                            const inputPlaceholder = form.dataset.swalInputPlaceholder || 'Ingresa la clave';
+                            const inputError = form.dataset.swalInputError || 'Debes ingresar la clave de administrador.';
+                            const isDark = document.documentElement.classList.contains('dark');
+
+                            const result = await Swal.fire({
+                                title,
+                                text,
+                                icon,
+                                input: 'password',
+                                inputLabel,
+                                inputPlaceholder,
+                                inputAttributes: {
+                                    autocapitalize: 'off',
+                                    autocorrect: 'off',
+                                    autocomplete: 'new-password',
+                                },
+                                showCancelButton: true,
+                                confirmButtonText: confirmText,
+                                cancelButtonText: cancelText,
+                                confirmButtonColor: confirmColor,
+                                cancelButtonColor: cancelColor,
+                                reverseButtons: true,
+                                allowOutsideClick: false,
+                                background: isDark ? '#111827' : '#ffffff',
+                                color: isDark ? '#e5e7eb' : '#111827',
+                                customClass: {
+                                    backdrop: 'swal-backdrop-blur',
+                                },
+                                preConfirm: (value) => {
+                                    if (!String(value ?? '').trim()) {
+                                        Swal.showValidationMessage(inputError);
+                                        return false;
+                                    }
+
+                                    return value;
+                                },
+                                didOpen: (popup) => {
+                                    popup.classList.toggle('swal-dark', isDark);
+                                },
+                            });
+
+                            if (!result.isConfirmed) {
+                                return;
+                            }
+
+                            const hiddenInput = form.querySelector(`input[name="${inputName}"]`);
+                            if (hiddenInput) {
+                                hiddenInput.value = String(result.value ?? '');
+                            }
+
+                            if (window.showLoadingModal) {
+                                window.showLoadingModal();
+                            }
+
+                            form.submit();
+                        }, true);
+                    });
+                };
+
+                bindSaleDeletePasswordForms();
+                document.addEventListener('DOMContentLoaded', bindSaleDeletePasswordForms);
+                document.addEventListener('turbo:load', bindSaleDeletePasswordForms);
+                document.addEventListener('turbo:render', bindSaleDeletePasswordForms);
+            })();
         </script>
     @endpush
 @endsection
