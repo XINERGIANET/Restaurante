@@ -141,6 +141,12 @@ Route::middleware('auth')->group(function () {
     Route::post('/admin/ventas/{sale}/convertir-electronico', [SalesController::class, 'convertTicketToElectronic'])->name('sales.convert.electronic');
     Route::post('/admin/ventas/ticket-termica', [SalesController::class, 'printTicketThermalNetwork'])
         ->name('sales.print.ticket.thermal');
+    Route::get('/admin/ventas/impresiones-termicas/pendientes', [SalesController::class, 'pendingThermalPrintJobs'])
+        ->name('sales.print.ticket.thermal.pending');
+    Route::post('/admin/ventas/impresiones-termicas/confirmar', [SalesController::class, 'confirmThermalPrintJob'])
+        ->name('sales.print.ticket.thermal.confirm');
+    Route::post('/admin/ventas/impresiones-termicas/fallar', [SalesController::class, 'failThermalPrintJob'])
+        ->name('sales.print.ticket.thermal.fail');
 
     // POS: vista de cobro (antes era modal)
     Route::get('/ventas/cobrar', [SalesController::class, 'charge'])
