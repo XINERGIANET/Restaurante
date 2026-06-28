@@ -3487,9 +3487,9 @@
                             el.innerHTML =
                                 `
                                                                                                                                                                                                     <div class="rounded-2xl overflow-hidden p-4 sm:p-5 bg-white dark:bg-slate-800/60 border-2 border-[#FF4622]/20 dark:border-[#FF4622]/40 hover:border-[#FF4622] dark:hover:border-[#FF4622] transition-all duration-200 hover:-translate-y-0.5 flex flex-col items-center text-center h-full w-full">
-                                        <div class="hidden sm:flex w-20 h-20 rounded-full bg-[#FF4622] items-center justify-center shrink-0 overflow-hidden mb-3">
+                                        <div class="${hasImg ? 'flex' : 'hidden sm:flex'} w-20 h-20 rounded-full bg-[#FF4622] items-center justify-center shrink-0 overflow-hidden mb-3">
                                             ${hasImg
-                                    ? `<img src="${imageUrl}" alt="${productName}" class="w-full h-full object-contain rounded-full object-cover object-center" loading="lazy" onerror="this.parentElement.innerHTML='<i class=\\'ri-restaurant-2-line text-2xl sm:text-3xl text-white\\'></i>'">`
+                                    ? `<img src="${imageUrl}" alt="${productName}" class="w-full h-full rounded-full object-cover object-center" loading="lazy" onerror="this.parentElement.innerHTML='<i class=\\'ri-restaurant-2-line text-2xl sm:text-3xl text-white\\'></i>'">`
                                     : `<i class="ri-restaurant-2-line text-2xl sm:text-3xl text-white"></i>`
                                 }
                                         </div>
