@@ -147,6 +147,8 @@ Route::middleware('auth')->group(function () {
         ->name('sales.print.ticket.thermal.confirm');
     Route::post('/admin/ventas/impresiones-termicas/fallar', [SalesController::class, 'failThermalPrintJob'])
         ->name('sales.print.ticket.thermal.fail');
+    Route::post('/admin/ventas/impresiones-termicas/descartar', [SalesController::class, 'dismissThermalPrintJob'])
+        ->name('sales.print.ticket.thermal.dismiss');
 
     // POS: vista de cobro (antes era modal)
     Route::get('/ventas/cobrar', [SalesController::class, 'charge'])

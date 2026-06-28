@@ -2051,6 +2051,13 @@ class SalesController extends Controller
             return response()->json(['success' => true, 'message' => 'El comprobante ya estaba marcado como impreso.']);
         }
 
+        if ($job->status !== 'pending') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Este pendiente ya fue descartado y no puede marcarse como impreso.',
+            ], 409);
+        }
+
         if (! empty($validated['printer_name'])) {
             $job->printer_name = trim((string) $validated['printer_name']);
         }
@@ -2106,11 +2113,53 @@ class SalesController extends Controller
             );
         }
 
-        if ($job->status !== 'printed') {
+        if ($job->status === 'pending') {
             $this->markThermalPrintJobFailed($job, trim((string) ($validated['message'] ?? 'No se pudo confirmar la impresion.')));
         }
 
         return response()->json(['success' => true, 'print_job_id' => $job->id]);
+    }
+
+    public function dismissThermalPrintJob(Request $request)
+    {
+        if (! Schema::hasTable('thermal_print_jobs')) {
+            return response()->json(['success' => false, 'message' => 'La tabla de pendientes de impresion aun no esta migrada.'], 503);
+        }
+
+        $validated = $request->validate([
+            'print_job_id' => ['required', 'integer', 'exists:thermal_print_jobs,id'],
+        ]);
+
+        $branchId = (int) session('branch_id');
+        $job = ThermalPrintJob::query()
+            ->where('id', (int) $validated['print_job_id'])
+            ->where('branch_id', $branchId)
+            ->first();
+
+        if (! $job) {
+            return response()->json(['success' => false, 'message' => 'Pendiente de impresion no encontrado.'], 404);
+        }
+
+        $dismissed = ThermalPrintJob::query()
+            ->whereKey($job->id)
+            ->where('branch_id', $branchId)
+            ->where('status', 'pending')
+            ->update([
+                'status' => 'dismissed',
+                'last_error' => null,
+                'updated_at' => now(),
+            ]);
+
+        if (! $dismissed) {
+            return response()->json([
+                'success' => false,
+                'message' => $job->fresh()?->status === 'printed'
+                    ? 'Este comprobante ya fue impreso y no puede eliminarse.'
+                    : 'Este pendiente ya fue eliminado.',
+            ], 409);
+        }
+
+        return response()->json(['success' => true, 'message' => 'El ticket pendiente fue eliminado.']);
     }
 
     private function touchThermalPrintJobAttempt(
@@ -2189,6 +2238,9 @@ class SalesController extends Controller
             'printer_name' => $job->printer_name,
             'attempts' => (int) $job->attempts,
             'last_error' => $job->last_error,
+            'pending_seconds' => $job->created_at
+                ? max(0, (int) $job->created_at->diffInSeconds(now()))
+                : 0,
             'created_at' => optional($job->created_at)->format('d/m/Y H:i'),
             'last_attempt_at' => optional($job->last_attempt_at)->format('d/m/Y H:i'),
         ];

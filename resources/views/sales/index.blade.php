@@ -313,6 +313,9 @@
                                 $jobDocName = $jobMovement?->documentType?->name ?? 'Ticket';
                                 $jobSeries = $jobMovement?->salesMovement?->series ?? '';
                                 $jobNumber = trim(strtoupper(substr($jobDocName, 0, 1)) . $jobSeries . '-' . ($jobMovement?->number ?? ''), '-');
+                                $jobPendingSeconds = $job->created_at
+                                    ? max(0, (int) $job->created_at->diffInSeconds(now()))
+                                    : 0;
                             @endphp
                             <div class="thermal-pending-item flex flex-col gap-3 rounded-lg border border-amber-200 bg-white p-3 text-sm shadow-sm dark:border-amber-800 dark:bg-gray-900 sm:flex-row sm:items-center sm:justify-between"
                                 data-print-job-id="{{ $job->id }}" data-movement-id="{{ $job->movement_id }}">
@@ -324,6 +327,11 @@
                                     <p class="text-xs text-gray-600 dark:text-gray-300">
                                         {{ $jobMovement?->person_name ?? 'Publico General' }} · S/
                                         {{ number_format((float) ($jobMovement?->salesMovement?->total ?? 0), 2) }}
+                                    </p>
+                                    <p class="mt-1 flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-300">
+                                        <i class="ri-time-line"></i>
+                                        Sin imprimir:
+                                        <span data-pending-duration data-pending-seconds="{{ $jobPendingSeconds }}"></span>
                                     </p>
                                     @if ($job->last_error)
                                         <p class="mt-1 text-xs text-amber-700 dark:text-amber-300">{{ $job->last_error }}</p>
@@ -340,6 +348,11 @@
                                         class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
                                         data-open-ticket-pdf="{{ $job->movement_id }}" title="Abrir PDF">
                                         <i class="ri-file-pdf-2-line"></i>
+                                    </button>
+                                    <button type="button"
+                                        class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-red-200 bg-white text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-900 dark:bg-gray-800 dark:text-red-400 dark:hover:bg-red-950/30"
+                                        data-dismiss-thermal-job="{{ $job->id }}" title="Eliminar pendiente" aria-label="Eliminar ticket pendiente">
+                                        <i class="ri-delete-bin-line"></i>
                                     </button>
                                 </div>
                             </div>
@@ -874,6 +887,7 @@
                 const salesThermalPrintPendingUrl = @json(route('sales.print.ticket.thermal.pending'));
                 const salesThermalPrintConfirmUrl = @json(route('sales.print.ticket.thermal.confirm'));
                 const salesThermalPrintFailUrl = @json(route('sales.print.ticket.thermal.fail'));
+                const salesThermalPrintDismissUrl = @json(route('sales.print.ticket.thermal.dismiss'));
                 const salesTicketPrintBaseUrl = @json(route('admin.sales.print.ticket', ['sale' => '__SALE__']));
                 const salesIndexViewId = @json($viewId ?? '');
 
@@ -1021,6 +1035,10 @@
                                         <span class="ml-2 text-xs font-medium text-gray-500">Intentos: ${parseInt(job.attempts || 0, 10)}</span>
                                     </p>
                                     <p class="text-xs text-gray-600 dark:text-gray-300">${escapeHtml(job.customer || 'Publico General')} · S/ ${total}</p>
+                                    <p class="mt-1 flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-300">
+                                        <i class="ri-time-line"></i>
+                                        Sin imprimir: <span data-pending-duration data-pending-seconds="${Math.max(0, parseInt(job.pending_seconds || 0, 10))}"></span>
+                                    </p>
                                     ${error}
                                 </div>
                                 <div class="flex shrink-0 items-center gap-2">
@@ -1032,16 +1050,54 @@
                                         data-open-ticket-pdf="${job.movement_id}" title="Abrir PDF">
                                         <i class="ri-file-pdf-2-line"></i>
                                     </button>
+                                    <button type="button" class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-red-200 bg-white text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-900 dark:bg-gray-800 dark:text-red-400 dark:hover:bg-red-950/30"
+                                        data-dismiss-thermal-job="${job.id}" title="Eliminar pendiente" aria-label="Eliminar ticket pendiente">
+                                        <i class="ri-delete-bin-line"></i>
+                                    </button>
                                 </div>
                             </div>
                         `;
                     }).join('');
+                    updatePendingDurations();
                 }
 
                 function escapeHtml(value) {
                     const div = document.createElement('div');
                     div.textContent = value == null ? '' : String(value);
                     return div.innerHTML;
+                }
+
+                function formatPendingDuration(totalSeconds) {
+                    const seconds = Math.max(0, Number(totalSeconds) || 0);
+                    if (seconds < 60) return 'menos de 1 min';
+
+                    const totalMinutes = Math.floor(seconds / 60);
+                    if (totalMinutes < 60) return `${totalMinutes} min`;
+
+                    const totalHours = Math.floor(totalMinutes / 60);
+                    const minutes = totalMinutes % 60;
+                    if (totalHours < 24) {
+                        return minutes > 0 ? `${totalHours} h ${minutes} min` : `${totalHours} h`;
+                    }
+
+                    const days = Math.floor(totalHours / 24);
+                    const hours = totalHours % 24;
+                    const dayLabel = days === 1 ? 'día' : 'días';
+                    return hours > 0 ? `${days} ${dayLabel} ${hours} h` : `${days} ${dayLabel}`;
+                }
+
+                function updatePendingDurations() {
+                    const now = Date.now();
+                    document.querySelectorAll('[data-pending-duration]').forEach((element) => {
+                        const baseSeconds = Math.max(0, parseInt(element.dataset.pendingSeconds || '0', 10));
+                        let observedAt = parseInt(element.dataset.pendingObservedAt || '0', 10);
+                        if (!observedAt) {
+                            observedAt = now;
+                            element.dataset.pendingObservedAt = String(observedAt);
+                        }
+                        const elapsedSeconds = Math.max(0, Math.floor((now - observedAt) / 1000));
+                        element.textContent = formatPendingDuration(baseSeconds + elapsedSeconds);
+                    });
                 }
 
                 async function refreshThermalPendingJobs() {
@@ -1056,6 +1112,59 @@
                         }
                     } catch (e) {
                         console.warn('No se pudo refrescar pendientes de impresion:', e);
+                    }
+                }
+
+                async function dismissThermalPrintJob(button, printJobId) {
+                    if (!printJobId) return;
+
+                    let confirmed = false;
+                    if (window.Swal) {
+                        const result = await Swal.fire({
+                            icon: 'warning',
+                            title: 'Eliminar ticket pendiente',
+                            text: 'El ticket dejará de aparecer en esta lista. La venta no será eliminada.',
+                            showCancelButton: true,
+                            confirmButtonText: 'Sí, eliminar',
+                            cancelButtonText: 'Cancelar',
+                            confirmButtonColor: '#dc2626',
+                            reverseButtons: true,
+                        });
+                        confirmed = result.isConfirmed;
+                    } else {
+                        confirmed = window.confirm('¿Eliminar este ticket de la lista de pendientes? La venta no será eliminada.');
+                    }
+
+                    if (!confirmed) return;
+
+                    button.disabled = true;
+                    const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                    try {
+                        const response = await fetch(salesThermalPrintDismissUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrf,
+                                Accept: 'application/json',
+                            },
+                            credentials: 'same-origin',
+                            body: JSON.stringify({ print_job_id: printJobId }),
+                        });
+                        const data = response.headers.get('content-type')?.includes('application/json')
+                            ? await response.json()
+                            : null;
+
+                        if (!response.ok || !data?.success) {
+                            throw new Error(data?.message || 'No se pudo eliminar el ticket pendiente.');
+                        }
+
+                        button.closest('.thermal-pending-item')?.remove();
+                        thermalPrintToast('Pendiente eliminado', data.message, 'success');
+                        await refreshThermalPendingJobs();
+                    } catch (error) {
+                        button.disabled = false;
+                        thermalPrintToast('No se pudo eliminar', error?.message || 'Intenta nuevamente.', 'error');
+                        await refreshThermalPendingJobs();
                     }
                 }
 
@@ -1199,6 +1308,14 @@
                 window.printThermalSaleReceipt = printThermalSaleReceipt;
 
                 document.addEventListener('click', function (e) {
+                    const dismissBtn = e.target.closest('[data-dismiss-thermal-job]');
+                    if (dismissBtn) {
+                        e.preventDefault();
+                        const jobId = parseInt(dismissBtn.getAttribute('data-dismiss-thermal-job'), 10);
+                        dismissThermalPrintJob(dismissBtn, jobId);
+                        return;
+                    }
+
                     const retryBtn = e.target.closest('[data-thermal-retry-job]');
                     if (retryBtn) {
                         e.preventDefault();
@@ -1235,6 +1352,8 @@
                     refreshThermalPendingJobs();
                 });
 
+                updatePendingDurations();
+                setInterval(updatePendingDurations, 60000);
                 setInterval(refreshThermalPendingJobs, 30000);
 
                 function runThermalReprintFromQuery() {
