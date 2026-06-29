@@ -65,17 +65,25 @@ class PrintBridgeQueue
         return 'print_br:' . $branchId . ':' . md5($norm);
     }
 
-    public function push(int $branchId, string $printerName, string $escposRaw): void
+    public function push(int $branchId, string $printerName, string $escposRaw, array $metadata = []): void
     {
         $k = $this->key($branchId, $printerName);
         $lock = Cache::lock('lock:' . $k, 5);
-        $lock->block(4, function () use ($k, $escposRaw, $branchId, $printerName) {
+        $lock->block(4, function () use ($k, $escposRaw, $branchId, $printerName, $metadata) {
             $list = Cache::get($k, []);
-            $list[] = [
+            $thermalJobId = (int) ($metadata['thermal_print_job_id'] ?? 0);
+            if ($thermalJobId > 0) {
+                foreach ($list as $queuedJob) {
+                    if ((int) ($queuedJob['thermal_print_job_id'] ?? 0) === $thermalJobId) {
+                        return;
+                    }
+                }
+            }
+            $list[] = array_merge($metadata, [
                 'id' => (string) Str::uuid(),
                 'b64' => base64_encode($escposRaw),
                 'at' => time(),
-            ];
+            ]);
             $max = (int) config('print_bridge.max_queue_length', 200);
             if (count($list) > $max) {
                 $list = array_slice($list, -$max);
@@ -124,26 +132,31 @@ class PrintBridgeQueue
         });
     }
 
-    public function ack(int $branchId, string $printerName, string $jobId): bool
+    public function ack(int $branchId, string $printerName, string $jobId): ?array
     {
         $k = $this->key($branchId, $printerName);
 
         return Cache::lock('lock:' . $k, 5)->block(3, function () use ($k, $jobId) {
             $list = Cache::get($k, []);
             if (empty($list) || ! is_array($list)) {
-                return false;
+                return null;
             }
-            $originalCount = count($list);
-            $list = array_values(array_filter($list, function ($job) use ($jobId) {
-                return ! (is_array($job) && isset($job['id']) && (string) $job['id'] === $jobId);
+            $removedJob = null;
+            $list = array_values(array_filter($list, function ($job) use ($jobId, &$removedJob) {
+                $matches = is_array($job) && isset($job['id']) && (string) $job['id'] === $jobId;
+                if ($matches) {
+                    $removedJob = $job;
+                }
+
+                return ! $matches;
             }));
-            if (count($list) === $originalCount) {
-                return false;
+            if (! $removedJob) {
+                return null;
             }
             $ttl = (int) config('print_bridge.cache_ttl_seconds', 600);
             Cache::put($k, $list, $ttl);
 
-            return true;
+            return $removedJob;
         });
     }
 }

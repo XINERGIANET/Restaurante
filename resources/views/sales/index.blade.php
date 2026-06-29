@@ -292,10 +292,10 @@
                                 </span>
                                 <div>
                                     <h3 class="text-sm font-bold text-amber-900 dark:text-amber-100">
-                                        Tickets pendientes de impresión
+                                        Impresiones pendientes
                                     </h3>
                                     <p class="text-xs text-amber-800/80 dark:text-amber-200/80">
-                                        El sistema guardó comprobantes que no fueron confirmados por la ticketera.
+                                        Comprobantes y comandas que no fueron confirmados por su ticketera.
                                     </p>
                                 </div>
                             </div>
@@ -310,24 +310,40 @@
                         @foreach (($pendingThermalPrintJobs ?? collect()) as $job)
                             @php
                                 $jobMovement = $job->movement;
+                                $jobIsKitchen = $job->source === 'kitchen_order';
                                 $jobDocName = $jobMovement?->documentType?->name ?? 'Ticket';
                                 $jobSeries = $jobMovement?->salesMovement?->series ?? '';
                                 $jobNumber = trim(strtoupper(substr($jobDocName, 0, 1)) . $jobSeries . '-' . ($jobMovement?->number ?? ''), '-');
                                 $jobPendingSeconds = $job->created_at
                                     ? max(0, (int) $job->created_at->diffInSeconds(now()))
                                     : 0;
+                                if ($jobIsKitchen) {
+                                    $jobNumber = 'COMANDA #' . ($jobMovement?->number ?? $job->movement_id);
+                                }
                             @endphp
                             <div class="thermal-pending-item flex flex-col gap-3 rounded-lg border border-amber-200 bg-white p-3 text-sm shadow-sm dark:border-amber-800 dark:bg-gray-900 sm:flex-row sm:items-center sm:justify-between"
                                 data-print-job-id="{{ $job->id }}" data-movement-id="{{ $job->movement_id }}">
                                 <div class="min-w-0">
                                     <p class="font-semibold text-gray-900 dark:text-white">
                                         {{ $jobNumber !== '' ? $jobNumber : 'Venta #' . $job->movement_id }}
+                                        @if ($jobIsKitchen)
+                                            <span class="ml-2 rounded bg-orange-100 px-1.5 py-0.5 text-[10px] font-bold text-orange-700">COCINA</span>
+                                        @endif
                                         <span class="ml-2 text-xs font-medium text-gray-500">Intentos: {{ (int) $job->attempts }}</span>
                                     </p>
-                                    <p class="text-xs text-gray-600 dark:text-gray-300">
-                                        {{ $jobMovement?->person_name ?? 'Publico General' }} · S/
-                                        {{ number_format((float) ($jobMovement?->salesMovement?->total ?? 0), 2) }}
-                                    </p>
+                                    @if ($jobIsKitchen)
+                                        <p class="text-xs font-medium text-gray-700 dark:text-gray-200">
+                                            Ticketera: {{ $job->printer_name ?: 'Sin asignar' }}
+                                        </p>
+                                        @if ($job->content_summary)
+                                            <p class="mt-0.5 text-xs text-gray-600 dark:text-gray-300">{{ $job->content_summary }}</p>
+                                        @endif
+                                    @else
+                                        <p class="text-xs text-gray-600 dark:text-gray-300">
+                                            {{ $jobMovement?->person_name ?? 'Publico General' }} · S/
+                                            {{ number_format((float) ($jobMovement?->salesMovement?->total ?? 0), 2) }}
+                                        </p>
+                                    @endif
                                     <p class="mt-1 flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-300">
                                         <i class="ri-time-line"></i>
                                         Sin imprimir:
@@ -340,15 +356,18 @@
                                 <div class="flex shrink-0 items-center gap-2">
                                     <button type="button"
                                         class="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-teal-600 px-3 text-xs font-semibold text-white shadow-sm transition hover:bg-teal-700"
-                                        data-thermal-retry-job="{{ $job->id }}" data-movement-id="{{ $job->movement_id }}">
+                                        @if ($jobIsKitchen) data-kitchen-retry-job="{{ $job->id }}" @else data-thermal-retry-job="{{ $job->id }}" @endif
+                                        data-movement-id="{{ $job->movement_id }}">
                                         <i class="ri-printer-line"></i>
                                         Imprimir
                                     </button>
-                                    <button type="button"
-                                        class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
-                                        data-open-ticket-pdf="{{ $job->movement_id }}" title="Abrir PDF">
-                                        <i class="ri-file-pdf-2-line"></i>
-                                    </button>
+                                    @unless ($jobIsKitchen)
+                                        <button type="button"
+                                            class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
+                                            data-open-ticket-pdf="{{ $job->movement_id }}" title="Abrir PDF">
+                                            <i class="ri-file-pdf-2-line"></i>
+                                        </button>
+                                    @endunless
                                     <button type="button"
                                         class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-red-200 bg-white text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-900 dark:bg-gray-800 dark:text-red-400 dark:hover:bg-red-950/30"
                                         data-dismiss-thermal-job="{{ $job->id }}" title="Eliminar pendiente" aria-label="Eliminar ticket pendiente">
@@ -888,6 +907,7 @@
                 const salesThermalPrintConfirmUrl = @json(route('sales.print.ticket.thermal.confirm'));
                 const salesThermalPrintFailUrl = @json(route('sales.print.ticket.thermal.fail'));
                 const salesThermalPrintDismissUrl = @json(route('sales.print.ticket.thermal.dismiss'));
+                const kitchenThermalPrintUrl = @json(route('orders.print.kitchen.thermal'));
                 const salesTicketPrintBaseUrl = @json(route('admin.sales.print.ticket', ['sale' => '__SALE__']));
                 const salesIndexViewId = @json($viewId ?? '');
 
@@ -1024,17 +1044,30 @@
                     }
                     panel.classList.remove('hidden');
                     list.innerHTML = jobs.map((job) => {
+                        const isKitchen = job.job_type === 'kitchen_order';
                         const total = Number(job.total || 0).toFixed(2);
                         const error = job.last_error ? `<p class="mt-1 text-xs text-amber-700 dark:text-amber-300">${escapeHtml(String(job.last_error))}</p>` : '';
+                        const typeBadge = isKitchen ? '<span class="ml-2 rounded bg-orange-100 px-1.5 py-0.5 text-[10px] font-bold text-orange-700">COCINA</span>' : '';
+                        const detail = isKitchen
+                            ? `<p class="text-xs font-medium text-gray-700 dark:text-gray-200">Ticketera: ${escapeHtml(job.printer_name || 'Sin asignar')}</p>
+                               ${job.content_summary ? `<p class="mt-0.5 text-xs text-gray-600 dark:text-gray-300">${escapeHtml(job.content_summary)}</p>` : ''}`
+                            : `<p class="text-xs text-gray-600 dark:text-gray-300">${escapeHtml(job.customer || 'Publico General')} · S/ ${total}</p>`;
+                        const retryAttribute = isKitchen ? 'data-kitchen-retry-job' : 'data-thermal-retry-job';
+                        const pdfButton = isKitchen ? '' : `
+                            <button type="button" class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
+                                data-open-ticket-pdf="${job.movement_id}" title="Abrir PDF">
+                                <i class="ri-file-pdf-2-line"></i>
+                            </button>`;
                         return `
                             <div class="thermal-pending-item flex flex-col gap-3 rounded-lg border border-amber-200 bg-white p-3 text-sm shadow-sm dark:border-amber-800 dark:bg-gray-900 sm:flex-row sm:items-center sm:justify-between"
                                 data-print-job-id="${job.id}" data-movement-id="${job.movement_id}">
                                 <div class="min-w-0">
                                     <p class="font-semibold text-gray-900 dark:text-white">
                                         ${escapeHtml(job.display_number || ('Venta #' + job.movement_id))}
+                                        ${typeBadge}
                                         <span class="ml-2 text-xs font-medium text-gray-500">Intentos: ${parseInt(job.attempts || 0, 10)}</span>
                                     </p>
-                                    <p class="text-xs text-gray-600 dark:text-gray-300">${escapeHtml(job.customer || 'Publico General')} · S/ ${total}</p>
+                                    ${detail}
                                     <p class="mt-1 flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-300">
                                         <i class="ri-time-line"></i>
                                         Sin imprimir: <span data-pending-duration data-pending-seconds="${Math.max(0, parseInt(job.pending_seconds || 0, 10))}"></span>
@@ -1043,13 +1076,10 @@
                                 </div>
                                 <div class="flex shrink-0 items-center gap-2">
                                     <button type="button" class="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-teal-600 px-3 text-xs font-semibold text-white shadow-sm transition hover:bg-teal-700"
-                                        data-thermal-retry-job="${job.id}" data-movement-id="${job.movement_id}">
+                                        ${retryAttribute}="${job.id}" data-movement-id="${job.movement_id}">
                                         <i class="ri-printer-line"></i> Imprimir
                                     </button>
-                                    <button type="button" class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
-                                        data-open-ticket-pdf="${job.movement_id}" title="Abrir PDF">
-                                        <i class="ri-file-pdf-2-line"></i>
-                                    </button>
+                                    ${pdfButton}
                                     <button type="button" class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-red-200 bg-white text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-900 dark:bg-gray-800 dark:text-red-400 dark:hover:bg-red-950/30"
                                         data-dismiss-thermal-job="${job.id}" title="Eliminar pendiente" aria-label="Eliminar ticket pendiente">
                                         <i class="ri-delete-bin-line"></i>
@@ -1164,6 +1194,44 @@
                     } catch (error) {
                         button.disabled = false;
                         thermalPrintToast('No se pudo eliminar', error?.message || 'Intenta nuevamente.', 'error');
+                        await refreshThermalPendingJobs();
+                    }
+                }
+
+                async function retryKitchenPrintJob(button, printJobId, movementId) {
+                    if (!printJobId || !movementId) return;
+                    button.disabled = true;
+                    const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                    try {
+                        const response = await fetch(kitchenThermalPrintUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrf,
+                                Accept: 'application/json',
+                            },
+                            credentials: 'same-origin',
+                            body: JSON.stringify({
+                                print_job_id: printJobId,
+                                movement_id: movementId,
+                                retry_attempt: true,
+                            }),
+                        });
+                        const data = response.headers.get('content-type')?.includes('application/json')
+                            ? await response.json()
+                            : null;
+                        if (!response.ok || !data?.success) {
+                            throw new Error(data?.message || 'No se pudo reimprimir la comanda.');
+                        }
+                        thermalPrintToast(
+                            data.print_bridge ? 'Comanda en cola' : 'Comanda impresa',
+                            data.message || 'La comanda fue enviada a su ticketera.',
+                            'success'
+                        );
+                    } catch (error) {
+                        thermalPrintToast('No se pudo imprimir', error?.message || 'Intenta nuevamente.', 'error');
+                    } finally {
+                        button.disabled = false;
                         await refreshThermalPendingJobs();
                     }
                 }
@@ -1313,6 +1381,15 @@
                         e.preventDefault();
                         const jobId = parseInt(dismissBtn.getAttribute('data-dismiss-thermal-job'), 10);
                         dismissThermalPrintJob(dismissBtn, jobId);
+                        return;
+                    }
+
+                    const kitchenRetryBtn = e.target.closest('[data-kitchen-retry-job]');
+                    if (kitchenRetryBtn) {
+                        e.preventDefault();
+                        const jobId = parseInt(kitchenRetryBtn.getAttribute('data-kitchen-retry-job'), 10);
+                        const movementId = parseInt(kitchenRetryBtn.getAttribute('data-movement-id'), 10);
+                        retryKitchenPrintJob(kitchenRetryBtn, jobId, movementId);
                         return;
                     }
 

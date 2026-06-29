@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ThermalPrintJob;
 use App\Services\PrintBridgeQueue;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -71,7 +72,22 @@ class PrintBridgeController extends Controller
             return response()->json(['success' => false, 'message' => 'job_id inválido'], 422);
         }
 
-        $queue->ack($branchId, $name, $jobId);
+        $job = $queue->ack($branchId, $name, $jobId);
+        $thermalPrintJobId = (int) ($job['thermal_print_job_id'] ?? 0);
+        if ($thermalPrintJobId > 0) {
+            ThermalPrintJob::query()
+                ->whereKey($thermalPrintJobId)
+                ->where('branch_id', $branchId)
+                ->where('source', 'kitchen_order')
+                ->where('status', 'pending')
+                ->update([
+                    'status' => 'printed',
+                    'printed_at' => now(),
+                    'printed_by' => $request->user()?->id,
+                    'last_error' => null,
+                    'updated_at' => now(),
+                ]);
+        }
         // Idempotente: devolver éxito incluso si el trabajo ya no existe.
         // El objetivo se logró: el trabajo no está en la cola.
 

@@ -35,6 +35,7 @@ use App\Models\SalesMovement;
 use App\Models\SalesMovementDetail;
 use App\Models\Shift;
 use App\Models\Table;
+use App\Models\ThermalPrintJob;
 use App\Models\Unit;
 use App\Models\User;
 use App\Services\AccountReceivablePayableService;
@@ -50,6 +51,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 class OrderController extends Controller
 {
@@ -2548,6 +2551,48 @@ class OrderController extends Controller
         }
     }
 
+    public function prepareKitchenPrintJob(Request $request)
+    {
+        if (! Schema::hasTable('thermal_print_jobs') || ! Schema::hasColumn('thermal_print_jobs', 'ticket_text')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Falta ejecutar la migracion de impresiones de comandas.',
+            ], 503);
+        }
+
+        $validated = $request->validate([
+            'movement_id' => ['required', 'integer', 'exists:movements,id'],
+            'ticket_text' => ['required', 'string'],
+            'content_summary' => ['nullable', 'string', 'max:2000'],
+            'printer_name' => ['required', 'string', 'max:120'],
+        ]);
+
+        $branchId = (int) session('branch_id');
+        $movement = Movement::query()
+            ->whereKey((int) $validated['movement_id'])
+            ->where('branch_id', $branchId)
+            ->whereHas('orderMovement')
+            ->first();
+
+        if (! $movement) {
+            return response()->json(['success' => false, 'message' => 'Pedido no encontrado en esta sucursal.'], 404);
+        }
+
+        $job = $this->touchKitchenPrintJob(
+            $movement,
+            trim((string) $validated['printer_name']),
+            (string) $validated['ticket_text'],
+            trim((string) ($validated['content_summary'] ?? '')),
+            $request
+        );
+
+        return response()->json([
+            'success' => true,
+            'print_job_id' => $job->id,
+            'movement_id' => $job->movement_id,
+        ]);
+    }
+
     public function printKitchenTicketThermal(Request $request)
     {
         if (! config('local_network.thermal_print_enabled', true)) {
@@ -2562,8 +2607,12 @@ class OrderController extends Controller
         }
 
         $validated = $request->validate([
-            'ticket_text' => ['required', 'string'],
+            'ticket_text' => ['nullable', 'string'],
             'printer_name' => ['nullable', 'string', 'max:255'],
+            'movement_id' => ['nullable', 'integer', 'exists:movements,id'],
+            'print_job_id' => ['nullable', 'integer', 'exists:thermal_print_jobs,id'],
+            'content_summary' => ['nullable', 'string', 'max:2000'],
+            'retry_attempt' => ['nullable', 'boolean'],
         ]);
 
         $branchId = (int) session('branch_id');
@@ -2574,6 +2623,52 @@ class OrderController extends Controller
             ], 422);
         }
 
+        $printJob = null;
+        if (! empty($validated['print_job_id']) && Schema::hasColumn('thermal_print_jobs', 'ticket_text')) {
+            $printJob = ThermalPrintJob::query()
+                ->whereKey((int) $validated['print_job_id'])
+                ->where('branch_id', $branchId)
+                ->where('source', 'kitchen_order')
+                ->first();
+
+            if (! $printJob) {
+                return response()->json(['success' => false, 'message' => 'Comanda pendiente no encontrada.'], 404);
+            }
+            if ($printJob->status !== 'pending') {
+                return response()->json(['success' => false, 'message' => 'Esta comanda ya fue impresa o descartada.'], 409);
+            }
+            if (! empty($validated['retry_attempt'])) {
+                $printJob->forceFill([
+                    'attempts' => (int) $printJob->attempts + 1,
+                    'last_attempt_at' => now(),
+                    'last_error' => null,
+                ])->save();
+            }
+        }
+
+        $ticketText = (string) ($printJob?->ticket_text ?? $validated['ticket_text'] ?? '');
+        if (trim($ticketText) === '') {
+            return response()->json(['success' => false, 'message' => 'La comanda no tiene contenido para imprimir.'], 422);
+        }
+
+        if (! $printJob && ! empty($validated['movement_id']) && Schema::hasColumn('thermal_print_jobs', 'ticket_text')) {
+            $movement = Movement::query()
+                ->whereKey((int) $validated['movement_id'])
+                ->where('branch_id', $branchId)
+                ->whereHas('orderMovement')
+                ->first();
+            if (! $movement) {
+                return response()->json(['success' => false, 'message' => 'Pedido no encontrado en esta sucursal.'], 404);
+            }
+            $printJob = $this->touchKitchenPrintJob(
+                $movement,
+                trim((string) ($validated['printer_name'] ?? '')),
+                $ticketText,
+                trim((string) ($validated['content_summary'] ?? '')),
+                $request
+            );
+        }
+
         $printerBaseQuery = PrinterBranch::query()
             ->where('branch_id', $branchId)
             ->where('status', 'E');
@@ -2582,24 +2677,34 @@ class OrderController extends Controller
         $isLocalhost = in_array($host, ['localhost', '127.0.0.1', '::1']);
         $defaultPrinterName = $isLocalhost ? 'barra' : 'barra2';
 
-        $requestedName = trim((string) ($validated['printer_name'] ?? '')) ?: $defaultPrinterName;
+        $requestedName = trim((string) ($printJob?->printer_name ?? $validated['printer_name'] ?? '')) ?: $defaultPrinterName;
         $printer = $this->findPrinterBranchForBarTicket($printerBaseQuery, $requestedName, $defaultPrinterName);
         if (! $printer) {
+            if ($printJob) {
+                $this->markKitchenPrintJobFailed($printJob, 'No hay una ticketera configurada para esta comanda.');
+            }
             return response()->json([
                 'success' => false,
                 'message' => 'No hay una ticketera de barra configurada para la comanda.',
             ], 422);
         }
 
-        $payload = $this->buildKitchenEscPosPayload((string) $validated['ticket_text']);
-        if ($this->shouldSkipDuplicateKitchenThermal($branchId, (string) $printer->name, $payload, 'comanda')) {
+        if ($printJob) {
+            $printJob->forceFill([
+                'printer_branch_id' => $printer->id,
+                'printer_name' => $printer->name,
+            ])->save();
+        }
+
+        $payload = $this->buildKitchenEscPosPayload($ticketText);
+        if (! $printJob && $this->shouldSkipDuplicateKitchenThermal($branchId, (string) $printer->name, $payload, 'comanda')) {
             return response()->json([
                 'success' => true,
                 'message' => 'Comanda duplicada detectada: se omitió la reimpresión.',
                 'duplicate_skipped' => true,
             ]);
         }
-        $bridgeResponse = $this->maybeQueuePrintBridge($printer, $branchId, $payload, 'comanda');
+        $bridgeResponse = $this->maybeQueuePrintBridge($printer, $branchId, $payload, 'comanda', $printJob?->id);
         if ($bridgeResponse) {
             return $bridgeResponse;
         }
@@ -2616,6 +2721,9 @@ class OrderController extends Controller
                 );
             } else {
                 if (! config('local_network.thermal_windows_local_enabled', true)) {
+                    if ($printJob) {
+                        $this->markKitchenPrintJobFailed($printJob, 'La impresión USB local está deshabilitada.');
+                    }
                     return response()->json([
                         'success' => false,
                         'message' => 'La ticketera no tiene IP y la impresión USB local está deshabilitada.',
@@ -2626,6 +2734,9 @@ class OrderController extends Controller
             }
         } catch (\Throwable $e) {
             Log::warning('Impresión comanda térmica: ' . $e->getMessage());
+            if ($printJob) {
+                $this->markKitchenPrintJobFailed($printJob, (string) $e->getMessage());
+            }
 
             return response()->json([
                 'success' => false,
@@ -2633,9 +2744,14 @@ class OrderController extends Controller
             ], 500);
         }
 
+        if ($printJob) {
+            $this->markKitchenPrintJobPrinted($printJob, $request);
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Comanda enviada a "' . ($printer->name ?? 'Ticketera') . '"',
+            'print_job_id' => $printJob?->id,
         ]);
     }
 
@@ -2910,13 +3026,89 @@ class OrderController extends Controller
     /**
      * Comanda / precuenta hacia BARRA2 (USB en otra PC): cola en caché; la PC con QZ activa el puente (worker o escucha global).
      */
-    private function maybeQueuePrintBridge(PrinterBranch $printer, int $branchId, string $escposPayload, string $kind = 'comanda'): ?\Illuminate\Http\JsonResponse
+    private function touchKitchenPrintJob(
+        Movement $movement,
+        string $printerName,
+        string $ticketText,
+        string $contentSummary,
+        Request $request
+    ): ThermalPrintJob {
+        $payloadHash = hash('sha256', $ticketText);
+        $job = ThermalPrintJob::query()
+            ->where('branch_id', (int) $movement->branch_id)
+            ->where('movement_id', (int) $movement->id)
+            ->where('source', 'kitchen_order')
+            ->where('status', 'pending')
+            ->where('payload_hash', $payloadHash)
+            ->whereRaw('LOWER(TRIM(printer_name)) = ?', [mb_strtolower(trim($printerName))])
+            ->latest('id')
+            ->first();
+
+        $data = [
+            'branch_id' => (int) $movement->branch_id,
+            'movement_id' => (int) $movement->id,
+            'printer_name' => trim($printerName) ?: null,
+            'status' => 'pending',
+            'source' => 'kitchen_order',
+            'ticket_text' => $ticketText,
+            'content_summary' => Str::limit($contentSummary, 2000, ''),
+            'payload_hash' => $payloadHash,
+            'attempts' => (int) ($job?->attempts ?? 0) + 1,
+            'last_error' => null,
+            'last_attempt_at' => now(),
+            'requested_by' => $job?->requested_by ?: $request->user()?->id,
+        ];
+
+        if ($job) {
+            $job->fill($data)->save();
+
+            return $job->refresh();
+        }
+
+        return ThermalPrintJob::create($data);
+    }
+
+    private function markKitchenPrintJobPrinted(ThermalPrintJob $job, Request $request): void
+    {
+        ThermalPrintJob::query()
+            ->whereKey($job->id)
+            ->where('status', 'pending')
+            ->update([
+                'status' => 'printed',
+                'printed_at' => now(),
+                'printed_by' => $request->user()?->id,
+                'last_error' => null,
+                'updated_at' => now(),
+            ]);
+    }
+
+    private function markKitchenPrintJobFailed(ThermalPrintJob $job, string $message): void
+    {
+        ThermalPrintJob::query()
+            ->whereKey($job->id)
+            ->where('status', 'pending')
+            ->update([
+                'last_error' => Str::limit(trim($message) ?: 'No se pudo imprimir la comanda.', 2000, ''),
+                'last_attempt_at' => now(),
+                'updated_at' => now(),
+            ]);
+    }
+
+    private function maybeQueuePrintBridge(
+        PrinterBranch $printer,
+        int $branchId,
+        string $escposPayload,
+        string $kind = 'comanda',
+        ?int $thermalPrintJobId = null
+    ): ?\Illuminate\Http\JsonResponse
     {
         $queue = app(PrintBridgeQueue::class);
         if (! $queue->shouldQueueToStation($printer)) {
             return null;
         }
-        $queue->push($branchId, (string) $printer->name, $escposPayload);
+        $queue->push($branchId, (string) $printer->name, $escposPayload, [
+            'thermal_print_job_id' => $thermalPrintJobId,
+        ]);
         if ($kind === 'precuenta') {
             $msg = 'Precuenta en cola para la estación (QZ en la PC con BARRA2). En esa PC, inicie sesión y active el puente (página /print-bridge/worker o “escuchar en todas las pantallas”).';
 
@@ -2931,6 +3123,7 @@ class OrderController extends Controller
             'success' => true,
             'message' => 'Comanda en cola para la estación (QZ en la PC con BARRA2). En esa PC, misma sucursal en sesión y puente activo (/print-bridge/worker o escuchar en todas las pantallas).',
             'print_bridge' => true,
+            'print_job_id' => $thermalPrintJobId,
         ]);
     }
 

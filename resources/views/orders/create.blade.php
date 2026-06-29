@@ -303,6 +303,20 @@
                             <div id="products-grid"
                                 class="px-2 sm:px-4 md:px-5 p-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2 sm:gap-4 content-start pb-6">
                             </div>
+                            <div id="product-image-viewer"
+                                class="hidden fixed inset-0 z-[200] items-center justify-center bg-black/90 p-4 sm:p-8"
+                                role="dialog" aria-modal="true" aria-labelledby="product-image-viewer-title">
+                                <button type="button" id="product-image-viewer-close"
+                                    class="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-full bg-white text-gray-900 shadow-lg transition hover:bg-gray-100"
+                                    title="Cerrar imagen" aria-label="Cerrar imagen ampliada">
+                                    <i class="ri-close-line text-2xl"></i>
+                                </button>
+                                <div class="flex max-h-full max-w-5xl flex-col items-center gap-3" data-product-image-viewer-content>
+                                    <img id="product-image-viewer-img" src="" alt=""
+                                        class="max-h-[78vh] max-w-full object-contain shadow-2xl">
+                                    <p id="product-image-viewer-title" class="max-w-full text-center text-base font-semibold text-white sm:text-lg"></p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -984,6 +998,7 @@
                     const salesThermalPrintFailUrl = @json(route('sales.print.ticket.thermal.fail'));
                     const salesTicketPrintBaseUrl = @json(route('admin.sales.print.ticket', ['sale' => '__SALE__']));
                     const kitchenThermalPrintUrl = @json(route('orders.print.kitchen.thermal'));
+                    const kitchenThermalPrepareUrl = @json(route('orders.print.kitchen.prepare'));
                     const orderPreAccountPrintUrl = @json(route('orders.print.preaccount.thermal'));
                     const orderPreAccountPdfLinkUrl = @json(route('orders.print.preaccount.pdf.link'));
                     const salesDraftUrl = @json(route('sales.draft'));
@@ -1460,6 +1475,41 @@
                         return imagePath;
                     }
                     window.getImageUrl = getImageUrl;
+
+                    function openProductImageViewer(imageUrl, productName) {
+                        const viewer = document.getElementById('product-image-viewer');
+                        const image = document.getElementById('product-image-viewer-img');
+                        const title = document.getElementById('product-image-viewer-title');
+                        if (!viewer || !image || !imageUrl) return;
+                        image.src = imageUrl;
+                        image.alt = productName || 'Foto del producto';
+                        if (title) title.textContent = productName || '';
+                        viewer.classList.remove('hidden');
+                        viewer.classList.add('flex');
+                        document.body.style.overflow = 'hidden';
+                        document.getElementById('product-image-viewer-close')?.focus();
+                    }
+
+                    function closeProductImageViewer() {
+                        const viewer = document.getElementById('product-image-viewer');
+                        const image = document.getElementById('product-image-viewer-img');
+                        if (!viewer) return;
+                        viewer.classList.add('hidden');
+                        viewer.classList.remove('flex');
+                        if (image) image.src = '';
+                        document.body.style.overflow = '';
+                    }
+
+                    document.getElementById('product-image-viewer-close')?.addEventListener('click', closeProductImageViewer);
+                    document.getElementById('product-image-viewer')?.addEventListener('click', function(event) {
+                        if (!event.target.closest('[data-product-image-viewer-content]')) closeProductImageViewer();
+                    });
+                    document.addEventListener('keydown', function(event) {
+                        const viewer = document.getElementById('product-image-viewer');
+                        if (event.key === 'Escape' && viewer && !viewer.classList.contains('hidden')) {
+                            closeProductImageViewer();
+                        }
+                    });
 
                     // Datos de productos, categorías y productBranches desde el servidor.
                     const serverProductBranches = @json($productBranches ?? []);
@@ -2832,7 +2882,40 @@
                             return false;
                         }
 
-                        async function sendKitchenTicketToServer(printerName, ticketText) {
+                        async function prepareKitchenPrintJob(printerName, ticketText, contentSummary) {
+                            const movementId = parseInt(table?.movement_id ?? 0, 10) || 0;
+                            if (!movementId) {
+                                throw new Error('No se encontro el pedido para registrar la comanda.');
+                            }
+                            const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                            const response = await fetch(kitchenThermalPrepareUrl, {
+                                method: 'POST',
+                                cache: 'no-store',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': csrf,
+                                    Accept: 'application/json',
+                                    'X-Requested-With': 'XMLHttpRequest',
+                                },
+                                credentials: 'same-origin',
+                                body: JSON.stringify({
+                                    movement_id: movementId,
+                                    printer_name: printerName,
+                                    ticket_text: ticketText,
+                                    content_summary: contentSummary,
+                                }),
+                            });
+                            const data = response.headers.get('content-type')?.includes('application/json')
+                                ? await response.json()
+                                : null;
+                            if (!response.ok || !data?.success || !data?.print_job_id) {
+                                throw new Error(data?.message || 'No se pudo registrar la comanda pendiente.');
+                            }
+
+                            return parseInt(data.print_job_id, 10);
+                        }
+
+                        async function sendKitchenTicketToServer(printerName, ticketText, printJobId, contentSummary) {
                             const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
                                 '';
                             const tr = await fetch(kitchenThermalPrintUrl, {
@@ -2848,6 +2931,9 @@
                                 body: JSON.stringify({
                                     printer_name: printerName || null,
                                     ticket_text: ticketText,
+                                    movement_id: parseInt(table?.movement_id ?? 0, 10) || null,
+                                    print_job_id: printJobId || null,
+                                    content_summary: contentSummary || null,
                                 }),
                             });
                             const td = tr.headers.get('content-type')?.includes('application/json') ? await tr.json() :
@@ -3012,13 +3098,24 @@
                                 console.warn('Comanda duplicada evitada en ' + pname);
                                 continue;
                             }
+                            const contentSummary = [
+                                ...lines.map((item) => `x${item.qty ?? 1} ${String(item.name || 'Producto').trim()}`),
+                                ...canceledItems.map((item) => `ANULADO x${item.qty ?? 1} ${String(item.name || 'Producto').trim()}`),
+                            ].join(' · ');
+                            let printJobId = null;
                             try {
+                                printJobId = await prepareKitchenPrintJob(pname, data, contentSummary);
                                 if (kitchenComandaPrinterUsesServerThermal(pname)) {
-                                    await sendKitchenTicketToServer(pname, data);
+                                    await sendKitchenTicketToServer(pname, data, printJobId, contentSummary);
                                 } else if (canUseQz) {
                                     try {
                                         await qzApi.printers.find(pname);
                                         await printTicketWithQz(qzApi, pname, data);
+                                        await confirmThermalPrintJob(
+                                            printJobId,
+                                            parseInt(table?.movement_id ?? 0, 10),
+                                            pname
+                                        );
                                     } catch (notFoundErr) {
                                         const msg = 'QZ no encontró la impresora "' + pname +
                                             '". Se intentará impresión por servidor.';
@@ -3026,14 +3123,22 @@
                                         if (typeof showNotification === 'function') {
                                             showNotification('Impresión', msg, 'warning');
                                         }
-                                        await sendKitchenTicketToServer(pname, data);
+                                        await sendKitchenTicketToServer(pname, data, printJobId, contentSummary);
                                     }
                                 } else {
-                                    await sendKitchenTicketToServer(pname, data);
+                                    await sendKitchenTicketToServer(pname, data, printJobId, contentSummary);
                                 }
                             } catch (e) {
                                 console.error('Impresi?n comanda: error al imprimir en ' + pname, e);
                                 printedDirectly = false;
+                                if (printJobId) {
+                                    await reportThermalPrintFailure(
+                                        parseInt(table?.movement_id ?? 0, 10),
+                                        printJobId,
+                                        e?.message || 'No se pudo imprimir la comanda.',
+                                        pname
+                                    );
+                                }
                                 if (typeof showNotification === 'function') {
                                     showNotification('Comanda', 'No se pudo imprimir en "' + pname + '". ' + (e?.message ||
                                         ''), 'error');
@@ -3466,8 +3571,18 @@
 
                             // Prevenir múltiples clics rápidos
                             let isAdding = false;
+                            let longPressTimer = null;
+                            let longPressStartX = 0;
+                            let longPressStartY = 0;
+                            let suppressNextClick = false;
                             el.onclick = function(e) {
                                 e.preventDefault();
+
+                                if (suppressNextClick) {
+                                    suppressNextClick = false;
+                                    return;
+                                }
+                                if (isAdding) return;
 
                                 isAdding = true;
                                 addToCart(prod, productBranch);
@@ -3483,6 +3598,40 @@
                             const priceFormatted = 'S/ ' + parseFloat(productBranch.price).toFixed(2);
                             const hasImg = prod.img && String(prod.img).trim() !== '';
                             const stockInfo = buildProductStockLabel(prod, productBranch);
+
+                            if (hasImg) {
+                                const cancelLongPress = function() {
+                                    if (!longPressTimer) return;
+                                    clearTimeout(longPressTimer);
+                                    longPressTimer = null;
+                                };
+                                el.addEventListener('pointerdown', function(event) {
+                                    if (event.pointerType === 'mouse' && event.button !== 0) return;
+                                    longPressStartX = event.clientX;
+                                    longPressStartY = event.clientY;
+                                    cancelLongPress();
+                                    longPressTimer = setTimeout(function() {
+                                        longPressTimer = null;
+                                        suppressNextClick = true;
+                                        setTimeout(() => {
+                                            suppressNextClick = false;
+                                        }, 900);
+                                        if (navigator.vibrate) navigator.vibrate(35);
+                                        openProductImageViewer(imageUrl, prod.name || 'Producto');
+                                    }, 550);
+                                });
+                                el.addEventListener('pointermove', function(event) {
+                                    if (Math.abs(event.clientX - longPressStartX) > 10 || Math.abs(event.clientY - longPressStartY) > 10) {
+                                        cancelLongPress();
+                                    }
+                                });
+                                el.addEventListener('pointerup', cancelLongPress);
+                                el.addEventListener('pointercancel', cancelLongPress);
+                                el.addEventListener('pointerleave', cancelLongPress);
+                                el.addEventListener('contextmenu', function(event) {
+                                    event.preventDefault();
+                                });
+                            }
 
                             el.innerHTML =
                                 `
@@ -4922,7 +5071,7 @@
                                     if (!kitchenPrintedOk && hasKitchenOutput && typeof showNotification ===
                                         'function') {
                                         showNotification('Pedido guardado',
-                                            'El pedido se guardó, pero la comanda salió por PDF de respaldo.',
+                                            'El pedido se guardó, pero una o más comandas quedaron pendientes de impresión.',
                                             'warning');
                                     }
                                     sessionStorage.setItem('flash_success_message', data.message);

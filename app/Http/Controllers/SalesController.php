@@ -266,7 +266,7 @@ class SalesController extends Controller
         $thermalPrintJobsReady = Schema::hasTable('thermal_print_jobs');
         $pendingThermalPrintJobs = $branchId && $thermalPrintJobsReady
             ? ThermalPrintJob::query()
-                ->with(['movement.documentType', 'movement.salesMovement'])
+                ->with(['movement.documentType', 'movement.salesMovement', 'movement.orderMovement'])
                 ->where('branch_id', $branchId)
                 ->where('status', 'pending')
                 ->latest('id')
@@ -2008,7 +2008,7 @@ class SalesController extends Controller
         }
 
         $jobs = ThermalPrintJob::query()
-            ->with(['movement.documentType', 'movement.salesMovement'])
+            ->with(['movement.documentType', 'movement.salesMovement', 'movement.orderMovement'])
             ->where('branch_id', $branchId)
             ->where('status', 'pending')
             ->latest('id')
@@ -2175,6 +2175,7 @@ class SalesController extends Controller
                 ->where('branch_id', (int) $movement->branch_id)
                 ->where('movement_id', (int) $movement->id)
                 ->where('status', 'pending')
+                ->where('source', '!=', 'kitchen_order')
                 ->latest('id')
                 ->first();
         }
@@ -2223,19 +2224,27 @@ class SalesController extends Controller
     private function thermalPrintJobPayload(ThermalPrintJob $job): array
     {
         $movement = $job->movement;
+        $isKitchen = $job->source === 'kitchen_order';
         $documentName = $movement?->documentType?->name ?? 'Ticket';
         $series = $movement?->salesMovement?->series ?? '';
         $number = $movement?->number ?? '';
         $displayNumber = trim(strtoupper(substr($documentName, 0, 1)).$series.'-'.$number, '-');
 
+        if ($isKitchen) {
+            $displayNumber = 'COMANDA '.($number !== '' ? '#'.$number : '#'.$job->movement_id);
+            $documentName = 'Comanda';
+        }
+
         return [
             'id' => $job->id,
             'movement_id' => $job->movement_id,
+            'job_type' => $isKitchen ? 'kitchen_order' : 'sale_receipt',
             'display_number' => $displayNumber !== '' ? $displayNumber : ('Venta #'.$job->movement_id),
             'document_type' => $documentName,
             'customer' => $movement?->person_name ?? 'Publico General',
             'total' => (float) ($movement?->salesMovement?->total ?? 0),
             'printer_name' => $job->printer_name,
+            'content_summary' => $isKitchen ? $job->content_summary : null,
             'attempts' => (int) $job->attempts,
             'last_error' => $job->last_error,
             'pending_seconds' => $job->created_at
