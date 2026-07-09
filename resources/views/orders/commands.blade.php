@@ -16,7 +16,7 @@
             $hasError = trim((string) ($job->last_error ?? '')) !== '';
 
             if ($status === 'printed') {
-                return ['Impreso', 'bg-emerald-50 text-emerald-700 ring-emerald-200'];
+                return ['Impreso', 'bg-orange-50 text-orange-700 ring-orange-200'];
             }
             if ($status === 'printing') {
                 return ['Procesando', 'bg-blue-50 text-blue-700 ring-blue-200'];
@@ -56,7 +56,7 @@
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
             <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-sm dark:border-gray-800 dark:bg-white/[0.03]">
                 <div class="flex items-center gap-4">
-                    <span class="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
+                    <span class="flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-50 text-orange-600">
                         <i class="ri-checkbox-circle-line text-2xl"></i>
                     </span>
                     <div>
@@ -138,7 +138,7 @@
                     <input type="date" name="date_to" value="{{ $dateTo }}" class="h-11 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-2 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90">
                 </div>
                 <div class="flex gap-2 lg:col-span-2">
-                    <button type="submit" class="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-[#0F4A33] px-4 text-sm font-medium text-white transition hover:bg-[#0B3A28]">
+                    <button type="submit" class="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-[#C43B25] px-4 text-sm font-medium text-white transition hover:bg-[#A83220]">
                         <i class="ri-search-line"></i>
                         Buscar
                     </button>
@@ -151,7 +151,7 @@
             <div class="mt-6 overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800">
                 <div class="overflow-x-auto">
                     <table class="min-w-full text-sm">
-                        <thead class="bg-[#0F4A33] text-white">
+                        <thead class="bg-[#FF4622] text-white">
                             <tr>
                                 <th class="px-5 py-4 text-left font-semibold">Fecha</th>
                                 <th class="px-5 py-4 text-left font-semibold">Impresora</th>
@@ -212,7 +212,7 @@
                                             </button>
                                             <button
                                                 type="button"
-                                                class="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-[#0F4A33] px-3 text-xs font-semibold text-white transition hover:bg-[#0B3A28]"
+                                                class="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-[#C43B25] px-3 text-xs font-semibold text-white transition hover:bg-[#A83220]"
                                                 title="Reimprimir"
                                                 data-reprint-command
                                                 data-job-id="{{ $useExistingJob ? $job->id : '' }}"
