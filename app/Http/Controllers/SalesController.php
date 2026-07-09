@@ -137,6 +137,20 @@ class SalesController extends Controller
                 ->get();
         }
 
+        if (! $request->has('cash_shift_relation_id') && $branchId && $effectiveCashRegisterId) {
+            $lastShift = CashShiftRelation::query()
+                ->where('branch_id', $branchId)
+                ->whereHas('cashMovementStart', function ($q) use ($effectiveCashRegisterId) {
+                    $q->where('cash_register_id', $effectiveCashRegisterId);
+                })
+                ->latest('id')
+                ->first();
+
+            if ($lastShift) {
+                $cashShiftRelationId = (string) $lastShift->id;
+            }
+        }
+
         $query = Movement::query()
             ->select('movements.*')
             ->join('sales_movements', 'sales_movements.movement_id', '=', 'movements.id')
