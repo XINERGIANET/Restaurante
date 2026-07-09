@@ -268,7 +268,7 @@ class SalesController extends Controller
             ? ThermalPrintJob::query()
                 ->with(['movement.documentType', 'movement.salesMovement', 'movement.orderMovement'])
                 ->where('branch_id', $branchId)
-                ->where('status', 'pending')
+                ->whereIn('status', ['pending', 'printing'])
                 ->latest('id')
                 ->limit(15)
                 ->get()
@@ -2010,7 +2010,7 @@ class SalesController extends Controller
         $jobs = ThermalPrintJob::query()
             ->with(['movement.documentType', 'movement.salesMovement', 'movement.orderMovement'])
             ->where('branch_id', $branchId)
-            ->where('status', 'pending')
+            ->whereIn('status', ['pending', 'printing'])
             ->latest('id')
             ->limit(25)
             ->get()
@@ -2051,7 +2051,7 @@ class SalesController extends Controller
             return response()->json(['success' => true, 'message' => 'El comprobante ya estaba marcado como impreso.']);
         }
 
-        if ($job->status !== 'pending') {
+        if (! in_array($job->status, ['pending', 'printing'], true)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Este pendiente ya fue descartado y no puede marcarse como impreso.',
@@ -2143,7 +2143,7 @@ class SalesController extends Controller
         $dismissed = ThermalPrintJob::query()
             ->whereKey($job->id)
             ->where('branch_id', $branchId)
-            ->where('status', 'pending')
+            ->whereIn('status', ['pending', 'printing'])
             ->update([
                 'status' => 'dismissed',
                 'last_error' => null,

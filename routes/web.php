@@ -222,6 +222,8 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/Pedidos/reporte', [OrderController::class, 'list'])
         ->name('orders.list');
+    Route::get('/Pedidos/comandas', [OrderController::class, 'commands'])
+        ->name('orders.commands.index');
     Route::get('/Pedidos/cobrar', [OrderController::class, 'charge'])
         ->name('orders.charge');
     Route::get('/Pedidos/reporte/pdf', [OrderController::class, 'pdfReport'])

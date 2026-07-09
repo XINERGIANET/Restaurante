@@ -41,6 +41,7 @@ class MenuOptionSeeder extends Seeder
             'Pedidos' => [
                 ['name' => 'Registro de areas',    'action' => 'areas.index',          'icon' => 'mdi-food'],
                 ['name' => 'Areas de pedido',    'action' => 'areas.tables.index',          'icon' => 'mdi-food'],
+                ['name' => 'Comandas',    'action' => 'orders.commands.index',          'icon' => 'ri-file-list-3-line'],
             ],
             'Ventas' => [
                 ['name' => 'POS',                'action' => '/admin/ventas/pos',               'icon' => 'mdi-cash-register'],

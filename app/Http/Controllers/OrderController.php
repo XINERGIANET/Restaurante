@@ -581,6 +581,90 @@ class OrderController extends Controller
         ]);
     }
 
+    public function commands(Request $request)
+    {
+        if (! Schema::hasTable('thermal_print_jobs')) {
+            return view('orders.commands', [
+                'jobs' => collect(),
+                'stats' => [
+                    'printed' => 0,
+                    'pending' => 0,
+                    'printing' => 0,
+                    'error' => 0,
+                ],
+                'printerSearch' => trim((string) $request->input('printer', '')),
+                'statusFilter' => trim((string) $request->input('status', '')),
+                'dateFrom' => $request->input('date_from'),
+                'dateTo' => $request->input('date_to'),
+                'perPage' => 20,
+                'schemaReady' => false,
+            ]);
+        }
+
+        $branchId = (int) session('branch_id');
+        $printerSearch = trim((string) $request->input('printer', ''));
+        $statusFilter = trim((string) $request->input('status', ''));
+        $dateFrom = $request->input('date_from');
+        $dateTo = $request->input('date_to');
+        $perPage = (int) $request->input('per_page', 20);
+        if (! in_array($perPage, [10, 20, 50, 100], true)) {
+            $perPage = 20;
+        }
+
+        $baseQuery = ThermalPrintJob::query()
+            ->with(['movement.orderMovement.table', 'requestedBy.person', 'printedBy.person'])
+            ->where('source', 'kitchen_order')
+            ->when($branchId > 0, fn ($query) => $query->where('branch_id', $branchId))
+            ->when($branchId <= 0, fn ($query) => $query->whereRaw('1 = 0'));
+
+        $filteredQuery = (clone $baseQuery)
+            ->when($printerSearch !== '', function ($query) use ($printerSearch) {
+                InsensitiveSearch::whereInsensitiveLikePattern($query, 'printer_name', '%' . $printerSearch . '%');
+            })
+            ->when($dateFrom, fn ($query) => $query->whereDate('created_at', '>=', $dateFrom))
+            ->when($dateTo, fn ($query) => $query->whereDate('created_at', '<=', $dateTo))
+            ->when($statusFilter !== '', function ($query) use ($statusFilter) {
+                match ($statusFilter) {
+                    'printed' => $query->where('status', 'printed'),
+                    'pending' => $query->where('status', 'pending')->whereNull('last_error'),
+                    'printing' => $query->where('status', 'printing'),
+                    'error' => $query->where('status', 'pending')->whereNotNull('last_error'),
+                    'dismissed' => $query->where('status', 'dismissed'),
+                    default => null,
+                };
+            });
+
+        $statsBase = (clone $baseQuery)
+            ->when($printerSearch !== '', function ($query) use ($printerSearch) {
+                InsensitiveSearch::whereInsensitiveLikePattern($query, 'printer_name', '%' . $printerSearch . '%');
+            })
+            ->when($dateFrom, fn ($query) => $query->whereDate('created_at', '>=', $dateFrom))
+            ->when($dateTo, fn ($query) => $query->whereDate('created_at', '<=', $dateTo));
+
+        $stats = [
+            'printed' => (clone $statsBase)->where('status', 'printed')->count(),
+            'pending' => (clone $statsBase)->where('status', 'pending')->whereNull('last_error')->count(),
+            'printing' => (clone $statsBase)->where('status', 'printing')->count(),
+            'error' => (clone $statsBase)->where('status', 'pending')->whereNotNull('last_error')->count(),
+        ];
+
+        $jobs = $filteredQuery
+            ->orderByDesc('id')
+            ->paginate($perPage)
+            ->withQueryString();
+
+        return view('orders.commands', [
+            'jobs' => $jobs,
+            'stats' => $stats,
+            'printerSearch' => $printerSearch,
+            'statusFilter' => $statusFilter,
+            'dateFrom' => $dateFrom,
+            'dateTo' => $dateTo,
+            'perPage' => $perPage,
+            'schemaReady' => true,
+        ]);
+    }
+
     public function index(Request $request)
     {
         $branchId = session('branch_id');
@@ -2634,10 +2718,13 @@ class OrderController extends Controller
             if (! $printJob) {
                 return response()->json(['success' => false, 'message' => 'Comanda pendiente no encontrada.'], 404);
             }
-            if ($printJob->status !== 'pending') {
+            if ($printJob->status === 'printed') {
                 return response()->json(['success' => false, 'message' => 'Esta comanda ya fue impresa o descartada.'], 409);
             }
-            if (! empty($validated['retry_attempt'])) {
+            if (! in_array($printJob->status, ['pending', 'printing'], true)) {
+                return response()->json(['success' => false, 'message' => 'Esta comanda ya fue descartada.'], 409);
+            }
+            if (! empty($validated['retry_attempt']) && $printJob->status === 'pending') {
                 $printJob->forceFill([
                     'attempts' => (int) $printJob->attempts + 1,
                     'last_attempt_at' => now(),
@@ -2704,6 +2791,15 @@ class OrderController extends Controller
                 'duplicate_skipped' => true,
             ]);
         }
+        if ($printJob && $printJob->status === 'printing' && app(PrintBridgeQueue::class)->shouldQueueToStation($printer)) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Comanda tomada por el puente de impresiÃ³n. Se confirmarÃ¡ al terminar.',
+                'print_bridge' => true,
+                'print_job_id' => $printJob->id,
+            ]);
+        }
+
         $bridgeResponse = $this->maybeQueuePrintBridge($printer, $branchId, $payload, 'comanda', $printJob?->id);
         if ($bridgeResponse) {
             return $bridgeResponse;
@@ -3038,7 +3134,7 @@ class OrderController extends Controller
             ->where('branch_id', (int) $movement->branch_id)
             ->where('movement_id', (int) $movement->id)
             ->where('source', 'kitchen_order')
-            ->where('status', 'pending')
+            ->whereIn('status', ['pending', 'printing'])
             ->where('payload_hash', $payloadHash)
             ->whereRaw('LOWER(TRIM(printer_name)) = ?', [mb_strtolower(trim($printerName))])
             ->latest('id')
@@ -3072,7 +3168,7 @@ class OrderController extends Controller
     {
         ThermalPrintJob::query()
             ->whereKey($job->id)
-            ->where('status', 'pending')
+            ->whereIn('status', ['pending', 'printing'])
             ->update([
                 'status' => 'printed',
                 'printed_at' => now(),
@@ -3086,8 +3182,9 @@ class OrderController extends Controller
     {
         ThermalPrintJob::query()
             ->whereKey($job->id)
-            ->where('status', 'pending')
+            ->whereIn('status', ['pending', 'printing'])
             ->update([
+                'status' => 'pending',
                 'last_error' => Str::limit(trim($message) ?: 'No se pudo imprimir la comanda.', 2000, ''),
                 'last_attempt_at' => now(),
                 'updated_at' => now(),
@@ -3105,6 +3202,18 @@ class OrderController extends Controller
         $queue = app(PrintBridgeQueue::class);
         if (! $queue->shouldQueueToStation($printer)) {
             return null;
+        }
+        if (
+            $thermalPrintJobId
+            && Schema::hasTable('thermal_print_jobs')
+            && Schema::hasColumn('thermal_print_jobs', 'ticket_text')
+        ) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Comanda en cola persistente para la estaciÃ³n (QZ en la PC con ' . $printer->name . ').',
+                'print_bridge' => true,
+                'print_job_id' => $thermalPrintJobId,
+            ]);
         }
         $queue->push($branchId, (string) $printer->name, $escposPayload, [
             'thermal_print_job_id' => $thermalPrintJobId,

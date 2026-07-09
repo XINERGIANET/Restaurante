@@ -9,6 +9,8 @@ return [
 
     'cache_ttl_seconds' => 600,
 
+    'lease_seconds' => (int) env('PRINT_BRIDGE_LEASE_SECONDS', 45),
+
     'max_queue_length' => 200,
 
 ];
