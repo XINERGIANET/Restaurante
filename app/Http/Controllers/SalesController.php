@@ -137,20 +137,6 @@ class SalesController extends Controller
                 ->get();
         }
 
-        // Por defecto: filtrar por el turno actual (o último) de la caja seleccionada/en sesión
-        if (($cashShiftRelationId === null || $cashShiftRelationId === '') && $branchId && $effectiveCashRegisterId) {
-            $lastShift = CashShiftRelation::query()
-                ->where('branch_id', $branchId)
-                ->whereHas('cashMovementStart', function ($q) use ($effectiveCashRegisterId) {
-                    $q->where('cash_register_id', $effectiveCashRegisterId);
-                })
-                ->latest('id')
-                ->first();
-            if ($lastShift) {
-                $cashShiftRelationId = (string) $lastShift->id;
-            }
-        }
-
         $query = Movement::query()
             ->select('movements.*')
             ->join('sales_movements', 'sales_movements.movement_id', '=', 'movements.id')
