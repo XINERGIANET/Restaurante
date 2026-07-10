@@ -14,7 +14,7 @@ class DashboardController extends Controller
     public function index(Request $request)
     {
         if (current_user_is_mozo()) {
-            return redirect()->route('orders.index');
+            return $this->waiterDashboard($request);
         }
 
         $startDate = $request->input('start_date') ? \Carbon\Carbon::parse($request->input('start_date'))->startOfDay() : now()->startOfDay();
@@ -367,6 +367,64 @@ class DashboardController extends Controller
         ];
 
         return view('pages.dashboard.ecommerce', compact('dashboardData'));
+    }
+
+    private function waiterDashboard(Request $request)
+    {
+        $startDate = $request->input('start_date') ? Carbon::parse($request->input('start_date'))->startOfDay() : now()->startOfDay();
+        $endDate = $request->input('end_date') ? Carbon::parse($request->input('end_date'))->endOfDay() : now()->endOfDay();
+
+        $user = $request->user();
+        $branchId = session('branch_id');
+
+        $orders = \App\Models\OrderMovement::query()
+            ->with([
+                'table.area',
+                'area',
+                'movement',
+                'details' => function ($query) {
+                    $query
+                        ->where(function ($q) {
+                            $q->whereNull('status')->orWhere('status', '!=', 'C');
+                        })
+                        ->with(['product', 'unit'])
+                        ->orderBy('created_at')
+                        ->orderBy('id');
+                },
+            ])
+            ->whereHas('movement', function ($query) use ($user, $startDate, $endDate) {
+                $query
+                    ->where('responsible_id', $user?->id)
+                    ->whereBetween('moved_at', [$startDate, $endDate]);
+            })
+            ->when($branchId, fn($query) => $query->where('branch_id', $branchId))
+            ->orderByDesc('updated_at')
+            ->get();
+
+        $totalItems = $orders->sum(function ($order) {
+            return $order->details->sum(fn($detail) => (float) ($detail->quantity ?? 0));
+        });
+
+        $finishedOrders = $orders->filter(fn($order) => in_array($order->status, ['FINALIZADO', 'F'], true))->count();
+        $pendingOrders = $orders->filter(fn($order) => in_array($order->status, ['PENDIENTE', 'P'], true))->count();
+
+        $dashboardData = [
+            'orders' => $orders,
+            'startDate' => $startDate->format('Y-m-d'),
+            'endDate' => $endDate->format('Y-m-d'),
+            'waiterName' => $user?->person
+                ? trim(($user->person->first_name ?? '') . ' ' . ($user->person->last_name ?? ''))
+                : ($user?->name ?? 'Mozo'),
+            'summary' => [
+                'tables' => $orders->pluck('table_id')->filter()->unique()->count(),
+                'orders' => $orders->count(),
+                'items' => $totalItems,
+                'finished' => $finishedOrders,
+                'pending' => $pendingOrders,
+            ],
+        ];
+
+        return view('pages.dashboard.waiter', compact('dashboardData'));
     }
 
     public function productsSoldPdf(Request $request)
