@@ -391,6 +391,9 @@
                             <th class="px-5 py-3 text-left sm:px-6">
                                 <p class="font-semibold text-white text-theme-xs uppercase">Comprobante</p>
                             </th>
+                            <th class="px-5 py-3 text-left sm:px-6">
+                                <p class="font-semibold text-white text-theme-xs uppercase">Fecha</p>
+                            </th>
                             <th class= "px-5 py-3 text-left sm:px-6">
                                 <p class="font-semibold text-white text-theme-xs uppercase">Subtotal</p>
                             </th>
@@ -440,6 +443,17 @@
                                             {{ $sale->documentType?->name ?? '-' }}
                                         </p>
                                     </div>
+                                </td>
+                                <td class="px-5 py-4 sm:px-6">
+                                    @php
+                                        $saleDate = $sale->moved_at ?? $sale->created_at;
+                                    @endphp
+                                    <p class="text-gray-800 text-theme-sm dark:text-white/90">
+                                        {{ $saleDate ? \Carbon\Carbon::parse($saleDate)->format('Y-m-d') : '-' }}
+                                    </p>
+                                    <p class="text-[11px] font-medium text-gray-500 dark:text-gray-400">
+                                        {{ $saleDate ? \Carbon\Carbon::parse($saleDate)->format('h:i:s A') : '-' }}
+                                    </p>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
                                     <p class="text-gray-800 text-theme-sm dark:text-white/90">S/
