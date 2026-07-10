@@ -144,7 +144,6 @@
                                         @foreach($order->details as $detail)
                                             @php
                                                 $productName = $detail->description ?: ($detail->product?->description ?? 'Producto');
-                                                $unitName = $detail->unit?->name ?? $detail->unit?->abbreviation ?? '';
                                                 $complements = collect($detail->complements ?? [])->map(function ($item) {
                                                     if (is_array($item)) {
                                                         return $item['description'] ?? $item['name'] ?? null;
@@ -160,7 +159,7 @@
                                                     @endif
                                                 </td>
                                                 <td class="px-4 py-3 align-top font-semibold text-gray-800 dark:text-gray-200">
-                                                    {{ $formatQty($detail->quantity) }} {{ $unitName }}
+                                                    {{ $formatQty($detail->quantity) }}
                                                 </td>
                                                 <td class="px-4 py-3 align-top text-gray-600 dark:text-gray-300">
                                                     {{ $detail->comment ?: '-' }}
