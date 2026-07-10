@@ -13,6 +13,10 @@ class DashboardController extends Controller
 {
     public function index(Request $request)
     {
+        if (current_user_is_mozo()) {
+            return redirect()->route('orders.index');
+        }
+
         $startDate = $request->input('start_date') ? \Carbon\Carbon::parse($request->input('start_date'))->startOfDay() : now()->startOfDay();
         $endDate = $request->input('end_date') ? \Carbon\Carbon::parse($request->input('end_date'))->endOfDay() : now()->endOfDay();
 
