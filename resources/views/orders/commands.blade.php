@@ -156,6 +156,7 @@
                                 <th class="px-5 py-4 text-left font-semibold">Fecha</th>
                                 <th class="px-5 py-4 text-left font-semibold">Impresora</th>
                                 <th class="px-5 py-4 text-left font-semibold">Pedido</th>
+                                <th class="px-5 py-4 text-left font-semibold">Área</th>
                                 <th class="px-5 py-4 text-left font-semibold">Estado</th>
                                 <th class="px-5 py-4 text-center font-semibold">Intentos</th>
                                 <th class="px-5 py-4 text-left font-semibold">Error</th>
@@ -168,6 +169,7 @@
                                     [$statusLabel, $statusClass] = $statusMeta($job);
                                     $order = $job->movement?->orderMovement;
                                     $tableName = $order?->table?->name;
+                                    $areaName = $order?->table?->area?->name;
                                     $ticketText = (string) ($job->ticket_text ?? '');
                                     $contentSummary = (string) ($job->content_summary ?? '');
                                     $useExistingJob = in_array((string) $job->status, ['pending', 'printing'], true);
@@ -187,6 +189,9 @@
                                         @if ($contentSummary !== '')
                                             <div class="mt-1 max-w-xs truncate text-xs text-gray-500">{{ $contentSummary }}</div>
                                         @endif
+                                    </td>
+                                    <td class="px-5 py-4 text-gray-700 dark:text-gray-200">
+                                        <div>{{ $areaName ?: '-' }}</div>
                                     </td>
                                     <td class="px-5 py-4">
                                         <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 {{ $statusClass }}">
@@ -229,7 +234,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="7" class="px-5 py-16 text-center text-gray-500">
+                                    <td colspan="8" class="px-5 py-16 text-center text-gray-500">
                                         <i class="ri-file-list-3-line mb-3 block text-4xl text-gray-300"></i>
                                         No hay comandas para los filtros seleccionados.
                                     </td>

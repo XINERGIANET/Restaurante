@@ -674,7 +674,7 @@ class OrderController extends Controller
         }
 
         $baseQuery = ThermalPrintJob::query()
-            ->with(['movement.orderMovement.table', 'requestedBy.person', 'printedBy.person'])
+            ->with(['movement.orderMovement.table.area', 'requestedBy.person', 'printedBy.person'])
             ->where('source', 'kitchen_order')
             ->when($branchId > 0, fn ($query) => $query->where('branch_id', $branchId))
             ->when($branchId <= 0, fn ($query) => $query->whereRaw('1 = 0'));
@@ -2687,6 +2687,14 @@ class OrderController extends Controller
                 $newCommittedQtyByProduct
             );
 
+            $kitchenPrintJobsCreated = $this->persistKitchenPrintJobsForOrder(
+                $orderMovement,
+                $movement,
+                $items,
+                $cancellations,
+                $request
+            );
+
             app(KardexSyncService::class)->syncMovement($movement);
 
             DB::commit();
@@ -2699,6 +2707,7 @@ class OrderController extends Controller
                     'order_movement_id' => $orderMovement->id,
                     'client_person_id' => $clientPerson?->id,
                     'client_name' => $clientName,
+                    'kitchen_print_jobs_created' => $kitchenPrintJobsCreated,
                 ]);
             }
         } catch (\Throwable $e) {
@@ -2759,6 +2768,419 @@ class OrderController extends Controller
             'print_job_id' => $job->id,
             'movement_id' => $job->movement_id,
         ]);
+    }
+
+    private function persistKitchenPrintJobsForOrder(
+        OrderMovement $orderMovement,
+        Movement $movement,
+        array $items,
+        array $cancellations,
+        Request $request
+    ): int {
+        $deltaItems = $this->extractKitchenDeltaItemsFromRequest($items);
+        $cancellationItems = $this->extractKitchenCancellationItemsFromRequest($cancellations);
+
+        if (empty($deltaItems) && empty($cancellationItems)) {
+            return 0;
+        }
+
+        if (! Schema::hasTable('thermal_print_jobs') || ! Schema::hasColumn('thermal_print_jobs', 'ticket_text')) {
+            throw new \RuntimeException('No se puede guardar el pedido porque no está lista la tabla de comandas térmicas.');
+        }
+
+        $orderMovement->loadMissing([
+            'movement',
+            'table.area.printers',
+            'area.printers',
+        ]);
+
+        $area = $orderMovement->table?->area ?: $orderMovement->area;
+        $areaAllowedPrinterNames = collect($area?->printers ?? [])
+            ->map(fn ($printer) => trim((string) ($printer->name ?? '')))
+            ->filter()
+            ->values()
+            ->all();
+
+        $productIds = collect(array_merge($deltaItems, $cancellationItems))
+            ->map(fn ($item) => (int) ($item['product_id'] ?? 0))
+            ->filter(fn ($productId) => $productId > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        $productBranches = ProductBranch::query()
+            ->with(['printers' => function ($query) use ($movement) {
+                $query
+                    ->where('branch_id', (int) $movement->branch_id)
+                    ->where('status', 'E');
+            }])
+            ->where('branch_id', (int) $movement->branch_id)
+            ->whereIn('product_id', $productIds)
+            ->get()
+            ->keyBy('product_id');
+
+        $printerMeta = [];
+        foreach ($productBranches as $productBranch) {
+            foreach ($productBranch->printers as $printer) {
+                $name = trim((string) ($printer->name ?? ''));
+                if ($name === '') {
+                    continue;
+                }
+                $printerMeta[mb_strtolower($name)] = $printer;
+            }
+        }
+
+        $byPrinter = [];
+        foreach ($deltaItems as $item) {
+            $printerNames = $this->resolveKitchenPrinterNamesForProduct(
+                (int) ($item['product_id'] ?? 0),
+                (string) ($item['name'] ?? 'Producto'),
+                $productBranches,
+                $areaAllowedPrinterNames
+            );
+
+            foreach ($printerNames as $printerName) {
+                $byPrinter[$printerName] ??= [];
+                $byPrinter[$printerName][] = $item;
+            }
+        }
+
+        $canceledByPrinter = [];
+        foreach ($cancellationItems as $item) {
+            $printerNames = $this->resolveKitchenPrinterNamesForProduct(
+                (int) ($item['product_id'] ?? 0),
+                (string) ($item['name'] ?? 'Producto'),
+                $productBranches,
+                $areaAllowedPrinterNames
+            );
+
+            foreach ($printerNames as $printerName) {
+                $canceledByPrinter[$printerName] ??= [];
+                $canceledByPrinter[$printerName][] = $item;
+            }
+        }
+
+        $printerNames = collect(array_merge(array_keys($byPrinter), array_keys($canceledByPrinter)))
+            ->map(fn ($name) => trim((string) $name))
+            ->filter()
+            ->unique(fn ($name) => mb_strtolower($name))
+            ->values()
+            ->all();
+
+        if (empty($printerNames)) {
+            throw new \RuntimeException('No se pudo generar ninguna comanda para el pedido. Verifique ticketeras de productos y área.');
+        }
+
+        $jobsCreated = 0;
+        foreach ($printerNames as $printerName) {
+            $printer = $printerMeta[mb_strtolower($printerName)] ?? null;
+            $paperWidth = $this->resolveKitchenPrinterPaperWidth($printer);
+            $lines = $byPrinter[$printerName] ?? [];
+            $canceledLines = $canceledByPrinter[$printerName] ?? [];
+
+            if (empty($lines) && empty($canceledLines)) {
+                continue;
+            }
+
+            $ticketText = $this->buildKitchenTicketTextForJob(
+                $orderMovement,
+                $movement,
+                $printerName,
+                $lines,
+                $canceledLines,
+                $paperWidth
+            );
+
+            $contentSummary = collect($lines)
+                ->map(fn ($line) => 'x' . $this->formatKitchenQty((float) ($line['qty'] ?? 0)) . ' ' . trim((string) ($line['name'] ?? 'Producto')))
+                ->merge(
+                    collect($canceledLines)->map(fn ($line) => 'ANULADO x' . $this->formatKitchenQty((float) ($line['qty'] ?? 0)) . ' ' . trim((string) ($line['name'] ?? 'Producto')))
+                )
+                ->implode(' · ');
+
+            $this->touchKitchenPrintJob(
+                $movement,
+                $printerName,
+                $ticketText,
+                $contentSummary,
+                $request
+            );
+
+            $jobsCreated++;
+        }
+
+        return $jobsCreated;
+    }
+
+    private function extractKitchenDeltaItemsFromRequest(array $items): array
+    {
+        $fallbackCommandTime = now()->format('H:i');
+
+        return collect($items)
+            ->map(function ($item) use ($fallbackCommandTime) {
+                $productId = (int) ($item['product_id'] ?? $item['pId'] ?? 0);
+                $qty = max(0, (float) ($item['quantity'] ?? $item['qty'] ?? 0));
+                if ($qty > 0 && $productId <= 0) {
+                    throw new \RuntimeException('Hay una línea del pedido sin producto válido para generar comanda.');
+                }
+                $savedQty = max(0, (float) ($item['savedQty'] ?? 0));
+                $deltaQty = max(0, round($qty - $savedQty, 6));
+                if ($productId <= 0 || $deltaQty <= 0) {
+                    return null;
+                }
+
+                $courtesyQty = max(0, (float) ($item['courtesyQty'] ?? $item['courtesy_quantity'] ?? 0));
+                $savedCourtesyQty = max(0, (float) ($item['savedCourtesyQty'] ?? 0));
+                $takeawayQty = max(0, (float) ($item['takeawayQty'] ?? $item['takeaway_quantity'] ?? 0));
+                $savedTakeawayQty = max(0, (float) ($item['savedTakeawayQty'] ?? 0));
+
+                return [
+                    'product_id' => $productId,
+                    'name' => trim((string) ($item['name'] ?? $item['description'] ?? 'Producto')),
+                    'qty' => $deltaQty,
+                    'courtesyQty' => max(0, min($deltaQty, round($courtesyQty - $savedCourtesyQty, 6))),
+                    'takeawayQty' => max(0, min($deltaQty, round($takeawayQty - $savedTakeawayQty, 6))),
+                    'commandTime' => trim((string) ($item['commandTime'] ?? '')) ?: $fallbackCommandTime,
+                    'note' => trim((string) ($item['note'] ?? '')),
+                    'complements' => collect($item['complements'] ?? [])->map(fn ($value) => trim((string) $value))->filter()->values()->all(),
+                    'price' => (float) ($item['price'] ?? 0),
+                    'delivered' => ! empty($item['delivered']),
+                    'status' => strtoupper(trim((string) ($item['status'] ?? ''))),
+                ];
+            })
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    private function extractKitchenCancellationItemsFromRequest(array $cancellations): array
+    {
+        return collect($cancellations)
+            ->map(function ($item) {
+                $productId = (int) ($item['product_id'] ?? $item['pId'] ?? 0);
+                $qty = max(0, (float) ($item['qtyCanceled'] ?? $item['quantity'] ?? 0));
+                if ($qty > 0 && $productId <= 0) {
+                    throw new \RuntimeException('Hay una anulación sin producto válido para generar comanda.');
+                }
+                if ($productId <= 0 || $qty <= 0) {
+                    return null;
+                }
+
+                return [
+                    'product_id' => $productId,
+                    'name' => trim((string) ($item['name'] ?? $item['description'] ?? 'Producto')),
+                    'qty' => $qty,
+                    'complements' => collect($item['complements'] ?? [])->map(fn ($value) => trim((string) $value))->filter()->values()->all(),
+                    'reason' => trim((string) ($item['cancel_reason'] ?? $item['comment'] ?? '')),
+                ];
+            })
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    private function resolveKitchenPrinterNamesForProduct(
+        int $productId,
+        string $productName,
+        $productBranches,
+        array $areaAllowedPrinterNames
+    ): array {
+        if ($productId <= 0) {
+            throw new \RuntimeException('No se pudo generar comanda para una línea sin producto válido.');
+        }
+
+        /** @var ProductBranch|null $productBranch */
+        $productBranch = $productBranches->get($productId);
+        if (! $productBranch) {
+            throw new \RuntimeException('El producto "' . $productName . '" no tiene configuración de sucursal para generar comanda.');
+        }
+
+        $printerNames = collect($productBranch->printers ?? [])
+            ->map(fn ($printer) => trim((string) ($printer->name ?? '')))
+            ->filter()
+            ->unique(fn ($name) => mb_strtolower($name))
+            ->values()
+            ->all();
+
+        if (! empty($areaAllowedPrinterNames)) {
+            $allowed = collect($areaAllowedPrinterNames)
+                ->map(fn ($name) => mb_strtolower(trim((string) $name)))
+                ->filter()
+                ->values()
+                ->all();
+
+            $printerNames = array_values(array_filter($printerNames, function ($name) use ($allowed) {
+                return in_array(mb_strtolower(trim((string) $name)), $allowed, true);
+            }));
+        }
+
+        if (empty($printerNames)) {
+            throw new \RuntimeException('El producto "' . $productName . '" no tiene una ticketera activa compatible con el área de la mesa.');
+        }
+
+        return $printerNames;
+    }
+
+    private function resolveKitchenPrinterPaperWidth(?PrinterBranch $printer): int
+    {
+        $rawWidth = preg_replace('/[^\d]/', '', (string) ($printer?->width ?? ''));
+        $width = (int) ($rawWidth ?: 58);
+
+        return $width === 80 ? 80 : 58;
+    }
+
+    private function buildKitchenTicketTextForJob(
+        OrderMovement $orderMovement,
+        Movement $movement,
+        string $printerName,
+        array $lines,
+        array $canceledLines,
+        int $paperWidth = 58
+    ): string {
+        $lineWidth = $paperWidth === 80 ? 48 : 24;
+        $colQty = 4;
+        $colTime = 6;
+        $colName = max(10, $lineWidth - $colTime - $colQty);
+        $separator = str_repeat('=', $lineWidth);
+        $tableLabel = $orderMovement->table?->name ? 'Mesa ' . $orderMovement->table->name : 'Mostrador';
+        $areaLabel = trim((string) ($orderMovement->table?->area?->name ?? $orderMovement->area?->name ?? ''));
+        $waiterLabel = trim((string) ($movement->responsible_name ?? $movement->user_name ?? '-'));
+        $clientLabel = trim((string) ($movement->person_name ?? ''));
+        $headerLines = [
+            $this->padKitchenCenter('COMANDA: ' . $orderMovement->id . (filled((string) $movement->number) ? ': ' . $movement->number : ''), $lineWidth),
+            $this->padKitchenCenter(trim($printerName) !== '' ? $printerName : 'COCINA', $lineWidth),
+        ];
+
+        if ($areaLabel !== '') {
+            $headerLines[] = $areaLabel;
+        }
+
+        $headerLines[] = $tableLabel;
+        $headerLines[] = 'Mozo: ' . ($waiterLabel !== '' ? $waiterLabel : '-');
+        if ($clientLabel !== '') {
+            $headerLines[] = 'Cliente: ' . $clientLabel;
+        }
+        $headerLines[] = 'Fecha: ' . now()->format('d/m/Y H:i');
+        $headerLines[] = $separator;
+        $headerLines[] = $this->padKitchenEnd('Producto', $colName) . $this->padKitchenCenter('Hora', $colTime) . $this->padKitchenStart('Cant', $colQty);
+        $headerLines[] = $separator;
+
+        $bodyLines = [];
+        foreach ($lines as $line) {
+            $name = trim((string) ($line['name'] ?? 'Producto'));
+            $qty = 'x' . $this->formatKitchenQty((float) ($line['qty'] ?? 0));
+            $commandTime = trim((string) ($line['commandTime'] ?? ''));
+            $bodyLines[] = $this->padKitchenEnd($name, $colName) . $this->padKitchenCenter($commandTime, $colTime) . $this->padKitchenStart($qty, $colQty);
+
+            $complementsLabel = $this->formatKitchenComplementsLabel($line['complements'] ?? []);
+            if ($complementsLabel !== '') {
+                $bodyLines[] = 'Detalle: ' . $complementsLabel;
+            }
+
+            $price = (float) ($line['price'] ?? 0);
+            if ($price > 0) {
+                $bodyLines[] = 'P.unit: S/ ' . number_format($price, 2, '.', '');
+            }
+
+            $tags = [];
+            $courtesyQty = max(0, (float) ($line['courtesyQty'] ?? 0));
+            $takeawayQty = max(0, (float) ($line['takeawayQty'] ?? 0));
+            if ($courtesyQty > 0) {
+                $tags[] = 'Cortesia: ' . $this->formatKitchenQty($courtesyQty);
+            }
+            if ($takeawayQty > 0) {
+                $tags[] = 'Llevar: ' . $this->formatKitchenQty($takeawayQty);
+            }
+            if (! empty($tags)) {
+                $bodyLines[] = '  * ' . implode(' | ', $tags);
+            }
+
+            $note = trim((string) ($line['note'] ?? ''));
+            if ($note !== '') {
+                $bodyLines[] = 'Nota: ' . $note;
+            }
+
+            $status = strtoupper(trim((string) ($line['status'] ?? '')));
+            $isDelivered = ! empty($line['delivered']) || in_array($status, ['ENTREGADO', 'E'], true);
+            $bodyLines[] = 'Estado: ' . ($isDelivered ? 'ENTREGADO' : 'PENDIENTE');
+            $bodyLines[] = '';
+        }
+
+        if (! empty($canceledLines)) {
+            $bodyLines[] = $separator;
+            $bodyLines[] = $this->padKitchenCenter('ANULADO', $lineWidth);
+            $bodyLines[] = $separator;
+
+            foreach ($canceledLines as $line) {
+                $name = trim((string) ($line['name'] ?? 'Producto'));
+                $qty = 'x' . $this->formatKitchenQty((float) ($line['qty'] ?? 0));
+                $bodyLines[] = $this->padKitchenEnd('ANULADO ' . $name, $colName) . $this->padKitchenCenter('', $colTime) . $this->padKitchenStart($qty, $colQty);
+
+                $complementsLabel = $this->formatKitchenComplementsLabel($line['complements'] ?? []);
+                if ($complementsLabel !== '') {
+                    $bodyLines[] = 'Detalle: ' . $complementsLabel;
+                }
+
+                $reason = trim((string) ($line['reason'] ?? ''));
+                if ($reason !== '') {
+                    $bodyLines[] = 'Motivo: ' . $reason;
+                }
+
+                $bodyLines[] = '';
+            }
+        }
+
+        return implode("\n", array_merge($headerLines, $bodyLines)) . "\n\n";
+    }
+
+    private function formatKitchenComplementsLabel(array $complements): string
+    {
+        return collect($complements)
+            ->map(fn ($value) => trim((string) $value))
+            ->filter()
+            ->implode(', ');
+    }
+
+    private function formatKitchenQty(float $qty): string
+    {
+        if (abs($qty - round($qty)) < 0.000001) {
+            return (string) (int) round($qty);
+        }
+
+        return rtrim(rtrim(number_format($qty, 2, '.', ''), '0'), '.');
+    }
+
+    private function padKitchenEnd(string $value, int $length): string
+    {
+        $text = trim($value);
+        if (mb_strlen($text) >= $length) {
+            return mb_substr($text, 0, $length);
+        }
+
+        return $text . str_repeat(' ', $length - mb_strlen($text));
+    }
+
+    private function padKitchenCenter(string $value, int $length): string
+    {
+        $text = trim($value);
+        if (mb_strlen($text) >= $length) {
+            return mb_substr($text, 0, $length);
+        }
+
+        $left = (int) floor(($length - mb_strlen($text)) / 2);
+        $right = $length - mb_strlen($text) - $left;
+
+        return str_repeat(' ', $left) . $text . str_repeat(' ', $right);
+    }
+
+    private function padKitchenStart(string $value, int $length): string
+    {
+        $text = trim($value);
+        if (mb_strlen($text) >= $length) {
+            return mb_substr($text, -$length);
+        }
+
+        return str_repeat(' ', $length - mb_strlen($text)) . $text;
     }
 
     public function printKitchenTicketThermal(Request $request)
