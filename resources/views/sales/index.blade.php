@@ -281,7 +281,7 @@
                 </form>
             </div>
 
-            @if (!empty($thermalPrintEnabled))
+            @if (false && !empty($thermalPrintEnabled))
                 <div id="thermal-pending-panel"
                     class="{{ ($pendingThermalPrintJobs ?? collect())->isEmpty() ? 'hidden' : '' }} mt-4 rounded-xl border border-amber-200 bg-amber-50/90 p-4 shadow-sm dark:border-amber-800/70 dark:bg-amber-900/20">
                     <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
