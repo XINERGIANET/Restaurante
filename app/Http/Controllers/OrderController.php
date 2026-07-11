@@ -2687,13 +2687,14 @@ class OrderController extends Controller
                 $newCommittedQtyByProduct
             );
 
-            $kitchenPrintJobsCreated = $this->persistKitchenPrintJobsForOrder(
+            $kitchenPrintJobs = $this->persistKitchenPrintJobsForOrder(
                 $orderMovement,
                 $movement,
                 $items,
                 $cancellations,
                 $request
             );
+            $kitchenPrintJobsCreated = count($kitchenPrintJobs);
 
             app(KardexSyncService::class)->syncMovement($movement);
 
@@ -2708,6 +2709,14 @@ class OrderController extends Controller
                     'client_person_id' => $clientPerson?->id,
                     'client_name' => $clientName,
                     'kitchen_print_jobs_created' => $kitchenPrintJobsCreated,
+                    'kitchen_print_jobs' => collect($kitchenPrintJobs)
+                        ->map(fn (ThermalPrintJob $job) => [
+                            'id' => (int) $job->id,
+                            'printer_name' => (string) ($job->printer_name ?? ''),
+                            'ticket_text' => (string) ($job->ticket_text ?? ''),
+                        ])
+                        ->values()
+                        ->all(),
                 ]);
             }
         } catch (\Throwable $e) {
@@ -2776,12 +2785,12 @@ class OrderController extends Controller
         array $items,
         array $cancellations,
         Request $request
-    ): int {
+    ): array {
         $deltaItems = $this->extractKitchenDeltaItemsFromRequest($items);
         $cancellationItems = $this->extractKitchenCancellationItemsFromRequest($cancellations);
 
         if (empty($deltaItems) && empty($cancellationItems)) {
-            return 0;
+            return [];
         }
 
         if (! Schema::hasTable('thermal_print_jobs') || ! Schema::hasColumn('thermal_print_jobs', 'ticket_text')) {
@@ -2871,7 +2880,7 @@ class OrderController extends Controller
             throw new \RuntimeException('No se pudo guardar el pedido porque no se genero ninguna comanda. Revise las ticketeras de los productos y del area.');
         }
 
-        $jobsCreated = 0;
+        $jobs = [];
         foreach ($printerNames as $printerName) {
             $printer = $printerMeta[mb_strtolower($printerName)] ?? null;
             $paperWidth = $this->resolveKitchenPrinterPaperWidth($printer);
@@ -2898,18 +2907,16 @@ class OrderController extends Controller
                 )
                 ->implode(' · ');
 
-            $this->touchKitchenPrintJob(
+            $jobs[] = $this->touchKitchenPrintJob(
                 $movement,
                 $printerName,
                 $ticketText,
                 $contentSummary,
                 $request
             );
-
-            $jobsCreated++;
         }
 
-        return $jobsCreated;
+        return $jobs;
     }
 
     private function extractKitchenDeltaItemsFromRequest(array $items): array

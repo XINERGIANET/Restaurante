@@ -2650,6 +2650,154 @@
                         return t === 'barra2' || t.startsWith('barra2');
                     }
 
+                    async function sendKitchenTicketJobToServer(table, printerName, ticketText, printJobId,
+                        contentSummary) {
+                        const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                        const tr = await fetch(kitchenThermalPrintUrl, {
+                            method: 'POST',
+                            cache: 'no-store',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrf,
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                            },
+                            credentials: 'same-origin',
+                            body: JSON.stringify({
+                                printer_name: printerName || null,
+                                ticket_text: ticketText,
+                                movement_id: parseInt(table?.movement_id ?? 0, 10) || null,
+                                print_job_id: printJobId || null,
+                                content_summary: contentSummary || null,
+                            }),
+                        });
+                        const td = tr.headers.get('content-type')?.includes('application/json') ? await tr.json() :
+                            null;
+                        if (tr.ok && td?.success) {
+                            return td;
+                        }
+                        throw new Error(td?.message || ('No se pudo imprimir comanda en "' + (printerName ||
+                            'Ticketera') + '".'));
+                    }
+
+                    async function printPersistedKitchenTicketJobs(printJobs, table) {
+                        const jobs = Array.isArray(printJobs) ? printJobs.filter((job) => {
+                            return job && parseInt(job.id, 10) > 0 && String(job.printer_name || '').trim() &&
+                                String(job.ticket_text || '').trim();
+                        }) : [];
+                        if (!jobs.length) {
+                            return true;
+                        }
+
+                        let printedDirectly = true;
+                        const kitchenRecentPrints = (window.__kitchenRecentPrints = window.__kitchenRecentPrints ||
+                            new Map());
+
+                        function shouldSkipDuplicateKitchenTicket(printerName, ticketText) {
+                            const pn = String(printerName || '').trim().toLowerCase();
+                            const tt = String(ticketText || '');
+                            if (!pn || !tt) return false;
+                            const key = pn + '::' + tt;
+                            const now = Date.now();
+                            const prev = kitchenRecentPrints.get(key) || 0;
+                            if (now - prev < 5000) {
+                                return true;
+                            }
+                            kitchenRecentPrints.set(key, now);
+                            if (kitchenRecentPrints.size > 200) {
+                                for (const [k, ts] of kitchenRecentPrints.entries()) {
+                                    if (now - ts > 60000) kitchenRecentPrints.delete(k);
+                                }
+                            }
+                            return false;
+                        }
+
+                        const names = jobs.map((job) => String(job.printer_name || '').trim()).filter(Boolean);
+                        const namesNeedingClientQz = names.filter((n) => !kitchenComandaPrinterUsesServerThermal(n));
+                        const needsClientQz = namesNeedingClientQz.length > 0;
+                        const QZ_MULTI_KITCHEN_HINT = '__MULTI_KITCHEN_SECONDARY_FIRST__';
+                        const kitchenCertPrinterHint = namesNeedingClientQz.find((n) => {
+                            if (typeof window.__qzPrinterRequiresSecondaryCertFirst === 'function') {
+                                return window.__qzPrinterRequiresSecondaryCertFirst(n);
+                            }
+                            const t = String(n || '').trim().toLowerCase().replace(/\s+/g, '');
+                            return t === 'barra2' || t.startsWith('barra2');
+                        }) || null;
+                        const multiTicketeraComanda = namesNeedingClientQz.length >= 2;
+                        const defPn = String(window.__qzConfig?.defaultPrinterName || window.__qzConfig?.printerName || '')
+                            .trim();
+                        let qzKitchenCertHint = kitchenCertPrinterHint || (multiTicketeraComanda ? QZ_MULTI_KITCHEN_HINT :
+                            undefined);
+                        if (!qzKitchenCertHint && needsClientQz && defPn && typeof window
+                            .__qzPrinterRequiresSecondaryCertFirst === 'function' && window
+                            .__qzPrinterRequiresSecondaryCertFirst(defPn)) {
+                            qzKitchenCertHint = defPn;
+                        }
+                        const allowKitchenClientQz = kitchenComandaAllowClientQz();
+                        const qzApi = window.qz;
+                        const qzAvailable = allowKitchenClientQz && needsClientQz && qzApi && await ensureQzTrayConnected(
+                            qzApi, qzKitchenCertHint);
+                        let canUseQz = !!qzAvailable;
+                        if (!canUseQz && needsClientQz && allowKitchenClientQz && qzApi) {
+                            if (typeof showNotification === 'function') {
+                                showNotification('Impresión',
+                                    'QZ Tray no disponible para comanda; se intentará impresión por servidor.',
+                                    'warning');
+                            }
+                        }
+
+                        for (const job of jobs) {
+                            const pname = String(job.printer_name || '').trim();
+                            const data = String(job.ticket_text || '');
+                            const printJobId = parseInt(job.id, 10) || null;
+                            if (!pname || !data || !printJobId) continue;
+                            if (shouldSkipDuplicateKitchenTicket(pname, data)) {
+                                console.warn('Comanda duplicada evitada en ' + pname);
+                                continue;
+                            }
+                            try {
+                                if (kitchenComandaPrinterUsesServerThermal(pname)) {
+                                    await sendKitchenTicketJobToServer(table, pname, data, printJobId, null);
+                                } else if (canUseQz) {
+                                    try {
+                                        await qzApi.printers.find(pname);
+                                        await printTicketWithQz(qzApi, pname, data);
+                                        await confirmThermalPrintJob(
+                                            printJobId,
+                                            parseInt(table?.movement_id ?? 0, 10),
+                                            pname
+                                        );
+                                    } catch (notFoundErr) {
+                                        const msg = 'QZ no encontró la impresora "' + pname +
+                                            '". Se intentará impresión por servidor.';
+                                        console.warn(msg, notFoundErr);
+                                        if (typeof showNotification === 'function') {
+                                            showNotification('Impresión', msg, 'warning');
+                                        }
+                                        await sendKitchenTicketJobToServer(table, pname, data, printJobId, null);
+                                    }
+                                } else {
+                                    await sendKitchenTicketJobToServer(table, pname, data, printJobId, null);
+                                }
+                            } catch (e) {
+                                console.error('Impresión comanda: error al imprimir en ' + pname, e);
+                                printedDirectly = false;
+                                await reportThermalPrintFailure(
+                                    parseInt(table?.movement_id ?? 0, 10),
+                                    printJobId,
+                                    e?.message || 'No se pudo imprimir la comanda.',
+                                    pname
+                                );
+                                if (typeof showNotification === 'function') {
+                                    showNotification('Comanda', 'No se pudo imprimir en "' + pname + '". ' + (e?.message ||
+                                        ''), 'error');
+                                }
+                            }
+                        }
+
+                        return printedDirectly;
+                    }
+
                     async function printKitchenTickets(items, table) {
                         const activeItems = Array.isArray(items) ? items : [];
                         const clientCancelled = Array.isArray(table?.cancellations) ? table.cancellations : [];
@@ -2915,36 +3063,6 @@
                             return parseInt(data.print_job_id, 10);
                         }
 
-                        async function sendKitchenTicketToServer(printerName, ticketText, printJobId, contentSummary) {
-                            const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
-                                '';
-                            const tr = await fetch(kitchenThermalPrintUrl, {
-                                method: 'POST',
-                                cache: 'no-store',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'X-CSRF-TOKEN': csrf,
-                                    'Accept': 'application/json',
-                                    'X-Requested-With': 'XMLHttpRequest',
-                                },
-                                credentials: 'same-origin',
-                                body: JSON.stringify({
-                                    printer_name: printerName || null,
-                                    ticket_text: ticketText,
-                                    movement_id: parseInt(table?.movement_id ?? 0, 10) || null,
-                                    print_job_id: printJobId || null,
-                                    content_summary: contentSummary || null,
-                                }),
-                            });
-                            const td = tr.headers.get('content-type')?.includes('application/json') ? await tr.json() :
-                                null;
-                            if (tr.ok && td?.success) {
-                                return td;
-                            }
-                            throw new Error(td?.message || ('No se pudo imprimir comanda en "' + (printerName ||
-                                'Ticketera') + '".'));
-                        }
-
                         const namesNeedingClientQz = names.filter((n) => !kitchenComandaPrinterUsesServerThermal(n));
                         const needsClientQz = namesNeedingClientQz.length > 0;
                         const QZ_MULTI_KITCHEN_HINT = '__MULTI_KITCHEN_SECONDARY_FIRST__';
@@ -3106,7 +3224,7 @@
                             try {
                                 printJobId = await prepareKitchenPrintJob(pname, data, contentSummary);
                                 if (kitchenComandaPrinterUsesServerThermal(pname)) {
-                                    await sendKitchenTicketToServer(pname, data, printJobId, contentSummary);
+                                    await sendKitchenTicketJobToServer(table, pname, data, printJobId, contentSummary);
                                 } else if (canUseQz) {
                                     try {
                                         await qzApi.printers.find(pname);
@@ -3123,10 +3241,10 @@
                                         if (typeof showNotification === 'function') {
                                             showNotification('Impresión', msg, 'warning');
                                         }
-                                        await sendKitchenTicketToServer(pname, data, printJobId, contentSummary);
+                                        await sendKitchenTicketJobToServer(table, pname, data, printJobId, contentSummary);
                                     }
                                 } else {
-                                    await sendKitchenTicketToServer(pname, data, printJobId, contentSummary);
+                                    await sendKitchenTicketJobToServer(table, pname, data, printJobId, contentSummary);
                                 }
                             } catch (e) {
                                 console.error('Impresi?n comanda: error al imprimir en ' + pname, e);
@@ -5051,11 +5169,20 @@
                                     currentTable.clientName = data.client_name ?? currentTable.clientName ?? '';
                                     const hasKitchenOutput = kitchenDeltaItems.length > 0 || (currentTable
                                         .cancellations || []).length > 0;
+                                    const persistedKitchenJobs = Array.isArray(data.kitchen_print_jobs) ? data
+                                        .kitchen_print_jobs : [];
                                     let kitchenPrintedOk = true;
                                     try {
                                         if (hasKitchenOutput) {
-                                            kitchenPrintedOk = await printKitchenTickets(kitchenDeltaItems,
-                                                currentTable);
+                                            if (persistedKitchenJobs.length > 0) {
+                                                kitchenPrintedOk = await printPersistedKitchenTicketJobs(
+                                                    persistedKitchenJobs,
+                                                    currentTable
+                                                );
+                                            } else {
+                                                kitchenPrintedOk = await printKitchenTickets(kitchenDeltaItems,
+                                                    currentTable);
+                                            }
                                         }
                                     } catch (pzErr) {
                                         console.error('QZ Tray:', pzErr);

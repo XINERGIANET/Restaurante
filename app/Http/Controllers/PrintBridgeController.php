@@ -44,7 +44,10 @@ class PrintBridgeController extends Controller
         if (! $branchId) {
             return response()->json(['job' => null, 'message' => 'sin sucursal en sesión'], 200);
         }
-        $job = $this->nextLegacyQueuedJob($queue, $branchId, $name);
+        $job = $this->claimPendingThermalPrintJob($branchId, $name);
+            if (! $job) {
+                $job = $this->nextLegacyQueuedJob($queue, $branchId, $name);
+            }
         if ($job) {
             $job['printer_name'] = $name;
         }
