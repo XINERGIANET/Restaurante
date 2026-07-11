@@ -25,12 +25,12 @@
         };
     @endphp
 
-    <div class="px-4 py-6 md:px-6 2xl:px-10">
-        <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <div class="px-2 py-4 sm:px-3 md:px-6 md:py-6 2xl:px-10">
+        <div class="mb-4 flex flex-col gap-3 lg:mb-6 lg:flex-row lg:items-end lg:justify-between lg:gap-4">
             <div>
                 <p class="text-xs font-semibold uppercase tracking-widest text-[#C43B25]">Resumen de mozos</p>
                 <h2 class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">Mesas atendidas</h2>
-                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400 sm:text-sm">
                     {{ $dashboardData['waiterName'] ?: 'Todos los mozos' }} -
                     @if($dashboardData['startDate'] === $dashboardData['endDate'])
                         {{ \Carbon\Carbon::parse($dashboardData['startDate'])->format('d/m/Y') }}
@@ -41,7 +41,7 @@
                 </p>
             </div>
 
-            <form method="GET" action="{{ route('dashboard') }}" class="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,160px)_minmax(0,160px)_auto] sm:items-end">
+            <form method="GET" action="{{ route('dashboard') }}" class="grid grid-cols-1 gap-2.5 sm:grid-cols-[minmax(0,160px)_minmax(0,160px)_auto] sm:items-end sm:gap-3">
                 <div class="flex flex-col gap-1">
                     <label class="text-xs font-medium text-gray-600 dark:text-gray-400">Desde</label>
                     <x-form.date-picker name="start_date" :defaultDate="$dashboardData['startDate']" dateFormat="Y-m-d" :altInput="true" altFormat="d/m/Y" />
@@ -50,49 +50,49 @@
                     <label class="text-xs font-medium text-gray-600 dark:text-gray-400">Hasta</label>
                     <x-form.date-picker name="end_date" :defaultDate="$dashboardData['endDate']" dateFormat="Y-m-d" :altInput="true" altFormat="d/m/Y" />
                 </div>
-                <button type="submit" class="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-[#C43B25] px-5 text-sm font-semibold text-white transition hover:bg-[#A83220]">
+                <button type="submit" class="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[#C43B25] px-4 text-sm font-semibold text-white transition hover:bg-[#A83220] sm:h-11 sm:px-5">
                     <i class="ri-search-line"></i>
                     Buscar
                 </button>
             </form>
         </div>
 
-        <div class="grid grid-cols-2 gap-3 md:grid-cols-5">
-            <div class="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+        <div class="grid grid-cols-2 gap-2.5 md:grid-cols-5 md:gap-3">
+            <div class="rounded-lg border border-gray-200 bg-white p-3 sm:p-4 dark:border-gray-800 dark:bg-gray-900">
                 <p class="text-xs text-gray-500">Mesas</p>
                 <p class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{{ $summary['tables'] }}</p>
             </div>
-            <div class="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+            <div class="rounded-lg border border-gray-200 bg-white p-3 sm:p-4 dark:border-gray-800 dark:bg-gray-900">
                 <p class="text-xs text-gray-500">Pedidos</p>
                 <p class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{{ $summary['orders'] }}</p>
             </div>
-            <div class="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+            <div class="rounded-lg border border-gray-200 bg-white p-3 sm:p-4 dark:border-gray-800 dark:bg-gray-900">
                 <p class="text-xs text-gray-500">Productos</p>
                 <p class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{{ $formatQty($summary['items']) }}</p>
             </div>
-            <div class="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+            <div class="rounded-lg border border-gray-200 bg-white p-3 sm:p-4 dark:border-gray-800 dark:bg-gray-900">
                 <p class="text-xs text-gray-500">Finalizados</p>
                 <p class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{{ $summary['finished'] }}</p>
             </div>
-            <div class="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+            <div class="rounded-lg border border-gray-200 bg-white p-3 sm:p-4 dark:border-gray-800 dark:bg-gray-900">
                 <p class="text-xs text-gray-500">Pendientes</p>
                 <p class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{{ $summary['pending'] }}</p>
             </div>
-            <div class="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+            <div class="rounded-lg border border-gray-200 bg-white p-3 sm:p-4 dark:border-gray-800 dark:bg-gray-900">
                 <p class="text-xs text-gray-500">Mozos</p>
                 <p class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{{ $summary['waiters'] }}</p>
             </div>
         </div>
 
-        <div class="mt-6 overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
-            <div class="border-b border-gray-100 px-4 py-3 dark:border-gray-800">
+        <div class="mt-4 overflow-hidden rounded-lg border border-gray-200 bg-white md:mt-6 dark:border-gray-800 dark:bg-gray-900">
+            <div class="border-b border-gray-100 px-3 py-3 sm:px-4 dark:border-gray-800">
                 <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Listado del periodo</h3>
             </div>
 
             @if($waiterNames->isNotEmpty())
-                <div class="flex flex-wrap gap-2 border-b border-gray-100 px-4 py-3 dark:border-gray-800">
+                <div class="flex flex-wrap gap-1.5 border-b border-gray-100 px-3 py-3 sm:gap-2 sm:px-4 dark:border-gray-800">
                     @foreach($waiterNames as $waiterName)
-                        <span class="inline-flex rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700 dark:bg-gray-800 dark:text-gray-200">
+                        <span class="inline-flex rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-semibold text-gray-700 sm:px-3 sm:text-xs dark:bg-gray-800 dark:text-gray-200">
                             {{ $waiterName }}
                         </span>
                     @endforeach
@@ -110,7 +110,7 @@
                 @endphp
 
                 <div x-data="{ open: false }" class="border-b border-gray-100 last:border-b-0 dark:border-gray-800">
-                    <div class="grid gap-3 px-4 py-4 md:grid-cols-[1.2fr_1fr_auto] md:items-center">
+                    <div class="grid gap-3 px-3 py-4 sm:px-4 md:grid-cols-[1.2fr_1fr_auto] md:items-center">
                         <div class="min-w-0">
                             <div class="flex flex-wrap items-center gap-2">
                                 <p class="text-base font-semibold text-gray-900 dark:text-white">{{ $tableName }}</p>
@@ -142,13 +142,13 @@
                             </div>
                         </div>
 
-                        <button type="button" x-on:click="open = !open" class="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800">
+                        <button type="button" x-on:click="open = !open" class="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 md:w-auto dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800">
                             <i class="ri-list-check-2"></i>
                             <span x-text="open ? 'Ocultar' : 'Ver pedido'">Ver pedido</span>
                         </button>
                     </div>
 
-                    <div x-show="open" x-cloak class="bg-gray-50 px-4 pb-4 pt-1 dark:bg-gray-950/40">
+                    <div x-show="open" x-cloak class="bg-gray-50 px-3 pb-4 pt-1 sm:px-4 dark:bg-gray-950/40">
                         @if($order->details->isEmpty())
                             <p class="rounded-lg border border-dashed border-gray-300 bg-white p-4 text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-900">
                                 Este pedido no tiene productos activos.
@@ -279,7 +279,7 @@
                     </div>
                 </div>
             @empty
-                <div class="px-4 py-12 text-center">
+                <div class="px-3 py-12 text-center sm:px-4">
                     <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-gray-100 text-gray-500 dark:bg-gray-800">
                         <i class="ri-restaurant-2-line text-2xl"></i>
                     </div>
