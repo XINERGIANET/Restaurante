@@ -2785,7 +2785,7 @@ class OrderController extends Controller
         }
 
         if (! Schema::hasTable('thermal_print_jobs') || ! Schema::hasColumn('thermal_print_jobs', 'ticket_text')) {
-            throw new \RuntimeException('No se puede guardar el pedido porque no está lista la tabla de comandas térmicas.');
+            throw new \RuntimeException('No se pudo guardar el pedido porque el modulo de comandas no esta listo. Avise al administrador.');
         }
 
         $orderMovement->loadMissing([
@@ -2868,7 +2868,7 @@ class OrderController extends Controller
             ->all();
 
         if (empty($printerNames)) {
-            throw new \RuntimeException('No se pudo generar ninguna comanda para el pedido. Verifique ticketeras de productos y área.');
+            throw new \RuntimeException('No se pudo guardar el pedido porque no se genero ninguna comanda. Revise las ticketeras de los productos y del area.');
         }
 
         $jobsCreated = 0;
@@ -2921,7 +2921,7 @@ class OrderController extends Controller
                 $productId = (int) ($item['product_id'] ?? $item['pId'] ?? 0);
                 $qty = max(0, (float) ($item['quantity'] ?? $item['qty'] ?? 0));
                 if ($qty > 0 && $productId <= 0) {
-                    throw new \RuntimeException('Hay una línea del pedido sin producto válido para generar comanda.');
+                    throw new \RuntimeException('Hay una linea del pedido sin producto valido para generar comanda. Revise el producto e intente de nuevo.');
                 }
                 $savedQty = max(0, (float) ($item['savedQty'] ?? 0));
                 $deltaQty = max(0, round($qty - $savedQty, 6));
@@ -2960,7 +2960,7 @@ class OrderController extends Controller
                 $productId = (int) ($item['product_id'] ?? $item['pId'] ?? 0);
                 $qty = max(0, (float) ($item['qtyCanceled'] ?? $item['quantity'] ?? 0));
                 if ($qty > 0 && $productId <= 0) {
-                    throw new \RuntimeException('Hay una anulación sin producto válido para generar comanda.');
+                    throw new \RuntimeException('Hay una anulacion sin producto valido para generar comanda. Revise el producto e intente de nuevo.');
                 }
                 if ($productId <= 0 || $qty <= 0) {
                     return null;
@@ -2986,13 +2986,13 @@ class OrderController extends Controller
         array $areaAllowedPrinterNames
     ): array {
         if ($productId <= 0) {
-            throw new \RuntimeException('No se pudo generar comanda para una línea sin producto válido.');
+            throw new \RuntimeException('No se pudo generar la comanda porque una linea no tiene un producto valido.');
         }
 
         /** @var ProductBranch|null $productBranch */
         $productBranch = $productBranches->get($productId);
         if (! $productBranch) {
-            throw new \RuntimeException('El producto "' . $productName . '" no tiene configuración de sucursal para generar comanda.');
+            throw new \RuntimeException('No se pudo guardar el pedido. El producto "' . $productName . '" no tiene configuracion de sucursal para comanda.');
         }
 
         $printerNames = collect($productBranch->printers ?? [])
@@ -3015,7 +3015,7 @@ class OrderController extends Controller
         }
 
         if (empty($printerNames)) {
-            throw new \RuntimeException('El producto "' . $productName . '" no tiene una ticketera activa compatible con el área de la mesa.');
+            throw new \RuntimeException('No se pudo guardar el pedido. El producto "' . $productName . '" no tiene una ticketera activa para esta area. Revise la impresora asignada al producto o al area de la mesa.');
         }
 
         return $printerNames;
