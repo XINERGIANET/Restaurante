@@ -4,6 +4,7 @@
     @php
         $orders = $dashboardData['orders'];
         $summary = $dashboardData['summary'];
+        $waiterNames = $dashboardData['waiterNames'] ?? collect();
         $formatQty = function ($value) {
             $number = (float) $value;
             return rtrim(rtrim(number_format($number, 2, '.', ''), '0'), '.');
@@ -27,10 +28,10 @@
     <div class="px-4 py-6 md:px-6 2xl:px-10">
         <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
-                <p class="text-xs font-semibold uppercase tracking-widest text-[#C43B25]">Resumen de mozo</p>
+                <p class="text-xs font-semibold uppercase tracking-widest text-[#C43B25]">Resumen de mozos</p>
                 <h2 class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">Mesas atendidas</h2>
                 <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                    {{ $dashboardData['waiterName'] ?: 'Mozo' }} -
+                    {{ $dashboardData['waiterName'] ?: 'Todos los mozos' }} -
                     @if($dashboardData['startDate'] === $dashboardData['endDate'])
                         {{ \Carbon\Carbon::parse($dashboardData['startDate'])->format('d/m/Y') }}
                     @else
@@ -77,6 +78,10 @@
                 <p class="text-xs text-gray-500">Pendientes</p>
                 <p class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{{ $summary['pending'] }}</p>
             </div>
+            <div class="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+                <p class="text-xs text-gray-500">Mozos</p>
+                <p class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{{ $summary['waiters'] }}</p>
+            </div>
         </div>
 
         <div class="mt-6 overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
@@ -84,10 +89,21 @@
                 <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Listado del periodo</h3>
             </div>
 
+            @if($waiterNames->isNotEmpty())
+                <div class="flex flex-wrap gap-2 border-b border-gray-100 px-4 py-3 dark:border-gray-800">
+                    @foreach($waiterNames as $waiterName)
+                        <span class="inline-flex rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700 dark:bg-gray-800 dark:text-gray-200">
+                            {{ $waiterName }}
+                        </span>
+                    @endforeach
+                </div>
+            @endif
+
             @forelse($orders as $order)
                 @php
                     $tableName = $order->table?->name ? 'Mesa ' . $order->table->name : 'Mostrador';
                     $areaName = $order->table?->area?->name ?? $order->area?->name;
+                    $responsibleName = trim((string) ($order->movement?->responsible_name ?? '')) ?: 'Sin mozo';
                     $detailCount = $order->details->count();
                     $itemQty = $order->details->sum(fn($detail) => (float) ($detail->quantity ?? 0));
                 @endphp
@@ -103,6 +119,9 @@
                             </div>
                             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
                                 {{ $areaName ?: 'Sin salon' }} - Pedido {{ $order->movement?->number ?? ('#' . $order->id) }}
+                            </p>
+                            <p class="mt-1 text-xs font-medium text-gray-500 dark:text-gray-400">
+                                Mozo: {{ $responsibleName }}
                             </p>
                         </div>
 

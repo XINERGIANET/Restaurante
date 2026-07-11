@@ -374,7 +374,6 @@ class DashboardController extends Controller
         $startDate = $request->input('start_date') ? Carbon::parse($request->input('start_date'))->startOfDay() : now()->startOfDay();
         $endDate = $request->input('end_date') ? Carbon::parse($request->input('end_date'))->endOfDay() : now()->endOfDay();
 
-        $user = $request->user();
         $branchId = session('branch_id');
 
         $orders = \App\Models\OrderMovement::query()
@@ -392,10 +391,8 @@ class DashboardController extends Controller
                         ->orderBy('id');
                 },
             ])
-            ->whereHas('movement', function ($query) use ($user, $startDate, $endDate) {
-                $query
-                    ->where('responsible_id', $user?->id)
-                    ->whereBetween('moved_at', [$startDate, $endDate]);
+            ->whereHas('movement', function ($query) use ($startDate, $endDate) {
+                $query->whereBetween('moved_at', [$startDate, $endDate]);
             })
             ->when($branchId, fn($query) => $query->where('branch_id', $branchId))
             ->orderByDesc('updated_at')
@@ -407,21 +404,25 @@ class DashboardController extends Controller
 
         $finishedOrders = $orders->filter(fn($order) => in_array($order->status, ['FINALIZADO', 'F'], true))->count();
         $pendingOrders = $orders->filter(fn($order) => in_array($order->status, ['PENDIENTE', 'P'], true))->count();
+        $waiterNames = $orders->map(function ($order) {
+            $name = trim((string) ($order->movement?->responsible_name ?? ''));
+            return $name !== '' ? $name : 'Sin mozo';
+        })->unique()->values();
 
         $dashboardData = [
             'orders' => $orders,
             'startDate' => $startDate->format('Y-m-d'),
             'endDate' => $endDate->format('Y-m-d'),
-            'waiterName' => $user?->person
-                ? trim(($user->person->first_name ?? '') . ' ' . ($user->person->last_name ?? ''))
-                : ($user?->name ?? 'Mozo'),
+            'waiterName' => 'Todos los mozos',
             'summary' => [
                 'tables' => $orders->pluck('table_id')->filter()->unique()->count(),
                 'orders' => $orders->count(),
                 'items' => $totalItems,
                 'finished' => $finishedOrders,
                 'pending' => $pendingOrders,
+                'waiters' => $waiterNames->count(),
             ],
+            'waiterNames' => $waiterNames,
         ];
 
         return view('pages.dashboard.waiter', compact('dashboardData'));
