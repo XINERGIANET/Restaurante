@@ -215,6 +215,15 @@
                     <th class="w-24 px-2 py-2 text-left font-bold uppercase tracking-wider">
                         Persona
                     </th>
+                    <th class="w-20 px-2 py-2 text-center font-bold uppercase tracking-wider">
+                        Mesa
+                    </th>
+                    <th class="w-20 px-2 py-2 text-center font-bold uppercase tracking-wider">
+                        Area
+                    </th>
+                    <th class="w-24 px-2 py-2 text-left font-bold uppercase tracking-wider">
+                        Mozo
+                    </th>
                     <th class="w-24 px-2 py-2 text-center font-bold uppercase tracking-wider">
                         Tipo de servicio
                     </th>
@@ -280,6 +289,18 @@
                             <span class="text-gray-600 dark:text-gray-400 truncate block max-w-full"
                                 title="{{ $order->movement?->person_name ?? '-' }}">{{ $order->movement?->person_name ?? '-' }}</span>
                         </td>
+                        <td class="px-2 py-2 text-center overflow-hidden">
+                            <span class="text-gray-600 dark:text-gray-400 truncate block max-w-full"
+                                title="{{ $order->table?->name ?? '-' }}">{{ $order->table?->name ?? '-' }}</span>
+                        </td>
+                        <td class="px-2 py-2 text-center overflow-hidden">
+                            <span class="text-gray-600 dark:text-gray-400 truncate block max-w-full"
+                                title="{{ $order->area?->name ?? '-' }}">{{ $order->area?->name ?? '-' }}</span>
+                        </td>
+                        <td class="px-2 py-2 overflow-hidden">
+                            <span class="text-gray-600 dark:text-gray-400 truncate block max-w-full"
+                                title="{{ $order->movement?->responsible_name ?? '-' }}">{{ $order->movement?->responsible_name ?? '-' }}</span>
+                        </td>
                         <td class="px-2 py-2 text-center justify-center items-center overflow-hidden">
                             @php
                                 $serviceType = strtoupper(trim((string) ($order->service_type ?? '')));
@@ -335,7 +356,7 @@
                     {{-- Acordeón: Detalle del pedido --}}
                     <tr x-show="openRow === {{ $order->id }}" x-cloak x-transition
                         class="bg-slate-50 dark:bg-slate-800/40 border-b border-gray-200 dark:border-gray-800">
-                        <td colspan="8" class="px-6 py-5">
+                        <td colspan="11" class="px-6 py-5">
                             <div
                                 class="rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900 overflow-hidden shadow-sm">
                                 <div
@@ -354,6 +375,7 @@
                                                 <th class="px-4 py-3 font-semibold text-right">Hora comanda</th>
                                                 <th class="px-4 py-3 font-semibold">Estado</th>
                                                 <th class="px-4 py-3 font-semibold">Mesa</th>
+                                                <th class="px-4 py-3 font-semibold">Area</th>
                                                 <th class="px-4 py-3 font-semibold">Mozo</th>
                                             </tr>
                                             
@@ -404,12 +426,17 @@
                                                 <td class="px-4 py-3 text-gray-600 dark:text-gray-400">
                                                     <span
                                                         class="text-gray-600 dark:text-gray-400 truncate block max-w-full"
+                                                        title="{{ $order->area?->name ?? '-' }}">{{ $order->area?->name ?? '-' }}</span>
+                                                </td>
+                                                <td class="px-4 py-3 text-gray-600 dark:text-gray-400">
+                                                    <span
+                                                        class="text-gray-600 dark:text-gray-400 truncate block max-w-full"
                                                         title="{{ $order->movement?->responsible_name ?? '-' }}">{{ $order->movement?->responsible_name ?? '-' }}</span>
                                                 </td>
                                             </tr>
                                             @if ($order->status == 'CANCELADO')
                                             <tr>
-                                                <td colspan="5" class="px-4 py-3 text-gray-600 dark:text-gray-400">
+                                                <td colspan="7" class="px-4 py-3 text-gray-600 dark:text-gray-400">
                                                     <span class="text-gray-600 dark:text-gray-400 truncate block max-w-full"
                                                         title="{{ $order->movement?->comment ?? '-' }}"> <strong>Motivo de cancelación:</strong> {{ $order->movement?->comment ?? '-' }}</span>
                                                 </td>
@@ -423,7 +450,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="8" class="px-6 py-12">
+                        <td colspan="11" class="px-6 py-12">
                             <div class="flex flex-col items-center gap-3 text-center text-xs text-gray-500">
                                 <div
                                     class="rounded-full bg-gray-100 p-3 text-gray-400 dark:bg-gray-800 dark:text-gray-300">
