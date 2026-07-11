@@ -103,6 +103,7 @@
                 @php
                     $tableName = $order->table?->name ? 'Mesa ' . $order->table->name : 'Mostrador';
                     $areaName = $order->table?->area?->name ?? $order->area?->name;
+                    $clientName = trim((string) ($order->movement?->person_name ?? '')) ?: 'Público general';
                     $responsibleName = trim((string) ($order->movement?->responsible_name ?? '')) ?: 'Sin mozo';
                     $detailCount = $order->details->count();
                     $itemQty = $order->details->sum(fn($detail) => (float) ($detail->quantity ?? 0));
@@ -119,6 +120,9 @@
                             </div>
                             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
                                 {{ $areaName ?: 'Sin salon' }} - Pedido {{ $order->movement?->number ?? ('#' . $order->id) }}
+                            </p>
+                            <p class="mt-1 text-xs font-medium text-gray-500 dark:text-gray-400">
+                                Cliente: {{ $clientName }}
                             </p>
                             <p class="mt-1 text-xs font-medium text-gray-500 dark:text-gray-400">
                                 Mozo: {{ $responsibleName }}
