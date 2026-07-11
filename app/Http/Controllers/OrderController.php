@@ -509,28 +509,50 @@ class OrderController extends Controller
                 });
             })
             ->when($cashRegisterId, function ($query) use ($cashRegisterId) {
-                $query->whereExists(function ($sub) use ($cashRegisterId) {
-                    $sub->select(DB::raw(1))
-                        ->from('movements as m')
-                        ->join('cash_movements as cm', 'cm.movement_id', '=', 'm.id')
-                        ->whereColumn('m.parent_movement_id', 'order_movements.movement_id')
-                        ->where('cm.cash_register_id', $cashRegisterId)
-                        ->whereNull('cm.deleted_at');
+                $query->where(function ($cashQuery) use ($cashRegisterId) {
+                    $cashQuery->whereExists(function ($sub) use ($cashRegisterId) {
+                        $sub->select(DB::raw(1))
+                            ->from('movements as m')
+                            ->join('cash_movements as cm', 'cm.movement_id', '=', 'm.id')
+                            ->whereColumn('m.parent_movement_id', 'order_movements.movement_id')
+                            ->where('cm.cash_register_id', $cashRegisterId)
+                            ->whereNull('cm.deleted_at');
+                    })->orWhereExists(function ($sub) use ($cashRegisterId) {
+                        $sub->select(DB::raw(1))
+                            ->from('movements as sale')
+                            ->join('movements as cash', 'cash.parent_movement_id', '=', 'sale.id')
+                            ->join('cash_movements as cm', 'cm.movement_id', '=', 'cash.id')
+                            ->whereColumn('sale.parent_movement_id', 'order_movements.movement_id')
+                            ->where('cm.cash_register_id', $cashRegisterId)
+                            ->whereNull('cm.deleted_at');
+                    });
                 });
             })
             ->when($status, function ($query) use ($status) {
                 $query->where('status', $status);
             })
             ->when($paymentMethodId, function ($query) use ($paymentMethodId) {
-                $query->whereExists(function ($sub) use ($paymentMethodId) {
-                    $sub->select(DB::raw(1))
-                        ->from('movements as m')
-                        ->join('cash_movements as cm', 'cm.movement_id', '=', 'm.id')
-                        ->join('cash_movement_details as cmd', 'cmd.cash_movement_id', '=', 'cm.id')
-                        ->whereColumn('m.parent_movement_id', 'order_movements.movement_id')
-                        ->where('cmd.payment_method_id', $paymentMethodId)
-                        ->whereNull('cm.deleted_at')
-                        ->whereNull('cmd.deleted_at');
+                $query->where(function ($paymentQuery) use ($paymentMethodId) {
+                    $paymentQuery->whereExists(function ($sub) use ($paymentMethodId) {
+                        $sub->select(DB::raw(1))
+                            ->from('movements as m')
+                            ->join('cash_movements as cm', 'cm.movement_id', '=', 'm.id')
+                            ->join('cash_movement_details as cmd', 'cmd.cash_movement_id', '=', 'cm.id')
+                            ->whereColumn('m.parent_movement_id', 'order_movements.movement_id')
+                            ->where('cmd.payment_method_id', $paymentMethodId)
+                            ->whereNull('cm.deleted_at')
+                            ->whereNull('cmd.deleted_at');
+                    })->orWhereExists(function ($sub) use ($paymentMethodId) {
+                        $sub->select(DB::raw(1))
+                            ->from('movements as sale')
+                            ->join('movements as cash', 'cash.parent_movement_id', '=', 'sale.id')
+                            ->join('cash_movements as cm', 'cm.movement_id', '=', 'cash.id')
+                            ->join('cash_movement_details as cmd', 'cmd.cash_movement_id', '=', 'cm.id')
+                            ->whereColumn('sale.parent_movement_id', 'order_movements.movement_id')
+                            ->where('cmd.payment_method_id', $paymentMethodId)
+                            ->whereNull('cm.deleted_at')
+                            ->whereNull('cmd.deleted_at');
+                    });
                 });
             });
 
@@ -871,25 +893,47 @@ class OrderController extends Controller
                 $query->whereHas('movement', fn($m) => $m->where('document_type_id', $documentTypeId));
             })
             ->when($cashRegisterId, function ($query) use ($cashRegisterId) {
-                $query->whereExists(function ($sub) use ($cashRegisterId) {
-                    $sub->select(DB::raw(1))
-                        ->from('movements as m')
-                        ->join('cash_movements as cm', 'cm.movement_id', '=', 'm.id')
-                        ->whereColumn('m.parent_movement_id', 'order_movements.movement_id')
-                        ->where('cm.cash_register_id', $cashRegisterId)
-                        ->whereNull('cm.deleted_at');
+                $query->where(function ($cashQuery) use ($cashRegisterId) {
+                    $cashQuery->whereExists(function ($sub) use ($cashRegisterId) {
+                        $sub->select(DB::raw(1))
+                            ->from('movements as m')
+                            ->join('cash_movements as cm', 'cm.movement_id', '=', 'm.id')
+                            ->whereColumn('m.parent_movement_id', 'order_movements.movement_id')
+                            ->where('cm.cash_register_id', $cashRegisterId)
+                            ->whereNull('cm.deleted_at');
+                    })->orWhereExists(function ($sub) use ($cashRegisterId) {
+                        $sub->select(DB::raw(1))
+                            ->from('movements as sale')
+                            ->join('movements as cash', 'cash.parent_movement_id', '=', 'sale.id')
+                            ->join('cash_movements as cm', 'cm.movement_id', '=', 'cash.id')
+                            ->whereColumn('sale.parent_movement_id', 'order_movements.movement_id')
+                            ->where('cm.cash_register_id', $cashRegisterId)
+                            ->whereNull('cm.deleted_at');
+                    });
                 });
             })
             ->when($paymentMethodId, function ($query) use ($paymentMethodId) {
-                $query->whereExists(function ($sub) use ($paymentMethodId) {
-                    $sub->select(DB::raw(1))
-                        ->from('movements as m')
-                        ->join('cash_movements as cm', 'cm.movement_id', '=', 'm.id')
-                        ->join('cash_movement_details as cmd', 'cmd.cash_movement_id', '=', 'cm.id')
-                        ->whereColumn('m.parent_movement_id', 'order_movements.movement_id')
-                        ->where('cmd.payment_method_id', $paymentMethodId)
-                        ->whereNull('cm.deleted_at')
-                        ->whereNull('cmd.deleted_at');
+                $query->where(function ($paymentQuery) use ($paymentMethodId) {
+                    $paymentQuery->whereExists(function ($sub) use ($paymentMethodId) {
+                        $sub->select(DB::raw(1))
+                            ->from('movements as m')
+                            ->join('cash_movements as cm', 'cm.movement_id', '=', 'm.id')
+                            ->join('cash_movement_details as cmd', 'cmd.cash_movement_id', '=', 'cm.id')
+                            ->whereColumn('m.parent_movement_id', 'order_movements.movement_id')
+                            ->where('cmd.payment_method_id', $paymentMethodId)
+                            ->whereNull('cm.deleted_at')
+                            ->whereNull('cmd.deleted_at');
+                    })->orWhereExists(function ($sub) use ($paymentMethodId) {
+                        $sub->select(DB::raw(1))
+                            ->from('movements as sale')
+                            ->join('movements as cash', 'cash.parent_movement_id', '=', 'sale.id')
+                            ->join('cash_movements as cm', 'cm.movement_id', '=', 'cash.id')
+                            ->join('cash_movement_details as cmd', 'cmd.cash_movement_id', '=', 'cm.id')
+                            ->whereColumn('sale.parent_movement_id', 'order_movements.movement_id')
+                            ->where('cmd.payment_method_id', $paymentMethodId)
+                            ->whereNull('cm.deleted_at')
+                            ->whereNull('cmd.deleted_at');
+                    });
                 });
             })
             ->when($status, function ($query) use ($status) {
@@ -3443,6 +3487,8 @@ class OrderController extends Controller
         }
 
         $cashEntryMovement = null;
+        $saleBaseMovement = null;
+        $salesMovement = null;
         DB::beginTransaction();
         try {
             /** @var OrderPaymentSplitService $splitService */
@@ -3473,7 +3519,204 @@ class OrderController extends Controller
             $orderMovement->save();
 
             $orderBaseMovement = Movement::find($orderMovement->movement_id);
-            if ($orderBaseMovement) {
+            if (! $orderBaseMovement) {
+                throw new \InvalidArgumentException('No se encontró el movimiento base del pedido.');
+            }
+
+            $requestDocumentTypeId = $request->input('document_type_id');
+            $defaultDocumentTypeId = effective_default_sale_document_type_id($branchId, [2]);
+            $resolvedDocumentTypeId = ($requestDocumentTypeId && DocumentType::where('id', $requestDocumentTypeId)->exists())
+                ? (int) $requestDocumentTypeId
+                : $defaultDocumentTypeId;
+            $resolvedDocumentType = $resolvedDocumentTypeId
+                ? DocumentType::find((int) $resolvedDocumentTypeId)
+                : null;
+            if ($resolvedDocumentType) {
+                $validationMessage = $this->validateCustomerForDocumentType(
+                    $resolvedDocumentType,
+                    $clientPerson,
+                    $saleTotal
+                );
+                if ($validationMessage) {
+                    throw new \InvalidArgumentException($validationMessage);
+                }
+            }
+            if ($detailMode === 'GLOSA' && $detailGlosa === '') {
+                throw new \InvalidArgumentException('Debes ingresar la glosa que saldra en el comprobante.');
+            }
+            if (! $clientPerson && $clientNameFromRequest) {
+                $clientPerson = $this->resolveOrCreateClientPerson(
+                    $branchId ?: null,
+                    $branch,
+                    $clientPersonId ? (int) $clientPersonId : null,
+                    $clientNameFromRequest
+                );
+                if ($clientPerson) {
+                    $clientName = trim(($clientPerson->first_name ?? '') . ' ' . ($clientPerson->last_name ?? ''));
+                }
+            }
+
+            $branch = $branch ?: Branch::find($branchId);
+            if (! $branch) {
+                throw new \Exception('Sucursal no encontrada.');
+            }
+
+            $salesMovementType = MovementType::where('description', 'like', '%venta%')
+                ->orWhere('description', 'like', '%sale%')
+                ->orWhere('description', 'like', '%Venta%')
+                ->first();
+            if (! $salesMovementType) {
+                $salesMovementType = MovementType::query()->orderBy('id')->first();
+            }
+            if (! $salesMovementType) {
+                throw new \Exception('No se encontró tipo de movimiento de venta.');
+            }
+
+            $saleNumber = $this->generateSaleNumberForSplit((int) $resolvedDocumentTypeId, $cashRegisterId);
+            $cashRegister = $cashRegisterId ? CashRegister::find($cashRegisterId) : null;
+            $activeSeries = $cashRegister?->series ?? '001';
+
+            $saleBaseMovement = Movement::create([
+                'number' => $saleNumber,
+                'moved_at' => now(),
+                'user_id' => $user?->id,
+                'user_name' => $user?->name ?? 'Sistema',
+                'person_id' => $clientPerson?->id,
+                'person_name' => $clientName ?: 'Publico General',
+                'responsible_id' => $user?->id,
+                'responsible_name' => $user?->person ? trim(($user->person->first_name ?? '') . ' ' . ($user->person->last_name ?? '')) : ($user?->name ?? 'Sistema'),
+                'comment' => 'Venta de pedido ' . ($orderBaseMovement->number ?? ''),
+                'status' => 'A',
+                'movement_type_id' => $salesMovementType->id,
+                'document_type_id' => (int) $resolvedDocumentTypeId,
+                'branch_id' => $branchId,
+                'parent_movement_id' => $orderBaseMovement->id,
+            ]);
+
+            $salesMovement = SalesMovement::create([
+                'branch_snapshot' => [
+                    'id' => $branch->id,
+                    'legal_name' => $branch->legal_name,
+                ],
+                'series' => $activeSeries,
+                'year' => now()->year,
+                'detail_type' => $detailMode === 'DETALLADO' ? 'DETALLADO' : 'GLOSA',
+                'consumption' => $detailMode === 'CONSUMO' ? 'Y' : 'N',
+                'payment_type' => $saleType === 'CREDITO' ? 'CREDIT' : 'CONTADO',
+                'status' => 'N',
+                'sale_type' => 'MINORISTA',
+                'currency' => 'PEN',
+                'exchange_rate' => 1.0,
+                'subtotal' => $saleSubtotal,
+                'tax' => $saleTax,
+                'total' => $saleTotal,
+                'movement_id' => $saleBaseMovement->id,
+                'branch_id' => $branchId,
+            ]);
+
+            $activeOrderDetails = $orderMovement->details
+                ->filter(fn($orderDetail) => ($orderDetail->status ?? 'A') !== 'C')
+                ->values();
+
+            if ($detailMode === 'DETALLADO') {
+                if ($remainingSaleDraft) {
+                    foreach ($remainingSaleDraft['lines'] as $line) {
+                        /** @var OrderMovementDetail $orderDetail */
+                        $orderDetail = $line['detail'];
+
+                        SalesMovementDetail::create([
+                            'detail_type' => 'DETAILED',
+                            'sales_movement_id' => $salesMovement->id,
+                            'code' => $orderDetail->code,
+                            'description' => $orderDetail->description,
+                            'product_id' => $orderDetail->product_id,
+                            'product_snapshot' => $orderDetail->product_snapshot,
+                            'unit_id' => $orderDetail->unit_id,
+                            'tax_rate_id' => $orderDetail->tax_rate_id,
+                            'tax_rate_snapshot' => $orderDetail->tax_rate_snapshot,
+                            'quantity' => $line['quantity'],
+                            'courtesy_quantity' => 0,
+                            'amount' => $line['amount'],
+                            'discount_percentage' => 0,
+                            'original_amount' => $line['line_subtotal'],
+                            'comment' => $orderDetail->comment,
+                            'complements' => $orderDetail->complements ?? [],
+                            'status' => 'A',
+                            'branch_id' => $branchId,
+                        ]);
+                    }
+                } else {
+                    foreach ($activeOrderDetails as $orderDetail) {
+                        if (($orderDetail->status ?? 'A') === 'C') {
+                            continue;
+                        }
+
+                        $totalDetail = (float) $orderDetail->amount;
+                        $taxRateVal = 0;
+                        if ($orderDetail->tax_rate_snapshot && isset($orderDetail->tax_rate_snapshot['tax_rate'])) {
+                            $taxRateVal = (float) $orderDetail->tax_rate_snapshot['tax_rate'] / 100;
+                        } else {
+                            $taxRateVal = 0.10;
+                        }
+
+                        $subtotalDetail = $taxRateVal > 0 ? ($totalDetail / (1 + $taxRateVal)) : $totalDetail;
+
+                        SalesMovementDetail::create([
+                            'detail_type' => 'DETAILED',
+                            'sales_movement_id' => $salesMovement->id,
+                            'code' => $orderDetail->code,
+                            'description' => $orderDetail->description,
+                            'product_id' => $orderDetail->product_id,
+                            'product_snapshot' => $orderDetail->product_snapshot,
+                            'unit_id' => $orderDetail->unit_id,
+                            'tax_rate_id' => $orderDetail->tax_rate_id,
+                            'tax_rate_snapshot' => $orderDetail->tax_rate_snapshot,
+                            'quantity' => $orderDetail->quantity,
+                            'courtesy_quantity' => (int) $orderDetail->courtesy_quantity,
+                            'amount' => $orderDetail->amount,
+                            'discount_percentage' => 0,
+                            'original_amount' => $subtotalDetail,
+                            'comment' => $orderDetail->comment,
+                            'complements' => $orderDetail->complements ?? [],
+                            'status' => 'A',
+                            'branch_id' => $branchId,
+                        ]);
+                    }
+                }
+            } else {
+                $referenceDetail = $remainingSaleDraft
+                    ? ($remainingSaleDraft['lines'][0]['detail'] ?? null)
+                    : $activeOrderDetails->first();
+                if (! $referenceDetail) {
+                    throw new \InvalidArgumentException('No hay detalles validos para generar la venta.');
+                }
+
+                SalesMovementDetail::create([
+                    'detail_type' => 'GLOSA',
+                    'sales_movement_id' => $salesMovement->id,
+                    'code' => 'GLOSA',
+                    'description' => $detailMode === 'CONSUMO' ? 'POR CONSUMO' : $detailGlosa,
+                    'product_id' => null,
+                    'product_snapshot' => [
+                        'type' => $detailMode,
+                        'source' => 'order_payment',
+                    ],
+                    'unit_id' => $referenceDetail->unit_id,
+                    'tax_rate_id' => $referenceDetail->tax_rate_id,
+                    'tax_rate_snapshot' => $referenceDetail->tax_rate_snapshot,
+                    'quantity' => 1,
+                    'courtesy_quantity' => 0,
+                    'amount' => $saleTotal,
+                    'discount_percentage' => 0,
+                    'original_amount' => $saleSubtotal,
+                    'comment' => null,
+                    'complements' => [],
+                    'status' => 'A',
+                    'branch_id' => $branchId,
+                ]);
+            }
+
+            if (false && $orderBaseMovement) {
                 $updateData = [
                     'status' => 'A',
                     'moved_at' => now(),
@@ -3681,16 +3924,16 @@ class OrderController extends Controller
                 throw new \Exception('No hay turno disponible para registrar el cobro.');
             }
 
-            // Movimiento de caja hijo del movimiento de pedido
-            $cashEntryMovement = $this->resolveCashEntryMovementByParentMovement((int) $orderMovement->movement_id);
+            // Movimiento de caja hijo del movimiento de venta
+            $cashEntryMovement = $this->resolveCashEntryMovementByParentMovement((int) $saleBaseMovement->id);
             if (! $cashEntryMovement) {
                 $cashEntryMovement = Movement::create([
                     'number' => $this->generateCashMovementNumber($branchId, (int) $cashRegisterId, (int) $paymentConcept->id),
                     'moved_at' => now(),
                     'user_id' => $user?->id,
                     'user_name' => $user?->name ?? 'Sistema',
-                    'person_id' => $orderBaseMovement?->person_id,
-                    'person_name' => $orderBaseMovement?->person_name ?? 'Publico General',
+                    'person_id' => $saleBaseMovement->person_id,
+                    'person_name' => $saleBaseMovement->person_name ?? 'Publico General',
                     'responsible_id' => $user?->id,
                     'responsible_name' => $user?->person ? trim(($user->person->first_name ?? '') . ' ' . ($user->person->last_name ?? '')) : ($user?->name ?? 'Sistema'),
                     'comment' => 'Cobro de pedido ' . ($orderBaseMovement?->number ?? ''),
@@ -3698,7 +3941,7 @@ class OrderController extends Controller
                     'movement_type_id' => $cashMovementTypeId,
                     'document_type_id' => $cashDocumentTypeId,
                     'branch_id' => $branchId,
-                    'parent_movement_id' => $orderMovement->movement_id,
+                    'parent_movement_id' => $saleBaseMovement->id,
                 ]);
             } else {
                 $cashEntryMovement->update([
@@ -3803,7 +4046,7 @@ class OrderController extends Controller
                 if (! $orderBaseMovement) {
                     throw new \InvalidArgumentException('No se encontró el movimiento del pedido para registrar el crédito.');
                 }
-                $personIdForDebt = (int) ($orderBaseMovement->person_id ?? 0);
+                $personIdForDebt = (int) ($saleBaseMovement->person_id ?? 0);
                 if ($personIdForDebt <= 0) {
                     throw new \InvalidArgumentException('Para venta a crédito debe asignar un cliente al pedido (persona identificada).');
                 }
@@ -3811,16 +4054,16 @@ class OrderController extends Controller
                 $totalPaid = $creditIgnoresCashLines ? 0.0 : $paymentMethodsSum;
                 $dueAt = $dueDate ? \Carbon\Carbon::parse($dueDate) : now()->addDays(max(0, $creditDays));
 
-                $accountReceivablePayableService->syncDebtAccount(
+                $accountReceivablePayableService->syncDebtAccountForDirectSale(
                     $branchId,
                     $personIdForDebt,
-                    (int) $orderBaseMovement->id,
+                    (int) $saleBaseMovement->id,
                     $orderTotalForCash,
                     $totalPaid,
                     $dueAt,
                     (int) $cashMovement->id,
                     $cashEntryMovement,
-                    $orderMovement->fresh(),
+                    $salesMovement,
                     $creditDays,
                     $request->input('notes') ? (string) $request->input('notes') : null
                 );
@@ -3836,9 +4079,9 @@ class OrderController extends Controller
             }
 
             DB::commit();
-            $orderBaseMovement?->refresh();
-            $electronicInvoice = $orderBaseMovement
-                ? $this->syncElectronicInvoiceForSale($orderBaseMovement, app(ApisunatService::class))
+            $saleBaseMovement->refresh();
+            $electronicInvoice = $saleBaseMovement
+                ? $this->syncElectronicInvoiceForSale($saleBaseMovement, app(ApisunatService::class))
                 : ['status' => 'SKIPPED', 'message' => 'No se encontró movimiento base para emitir.'];
 
             $thermalPrinterAvailable = PrinterBranch::query()
@@ -3851,7 +4094,7 @@ class OrderController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Cobro de pedido procesado correctamente',
-                'movement_id' => $orderMovement?->movement_id,
+                'movement_id' => $saleBaseMovement?->id,
                 'order_movement_id' => $orderMovement?->id,
                 'cash_movement_id' => $cashEntryMovement?->id,
                 'electronic_invoice' => $electronicInvoice,
