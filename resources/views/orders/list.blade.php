@@ -207,15 +207,6 @@
                         Número
                     </th>
                     <th class="w-20 px-2 py-2 text-center font-bold uppercase tracking-wider">
-                        Total
-                    </th>
-                    <th class="w-24 px-2 py-2 text-center font-bold uppercase tracking-wider">
-                        Fecha
-                    </th>
-                    <th class="w-24 px-2 py-2 text-left font-bold uppercase tracking-wider">
-                        Persona
-                    </th>
-                    <th class="w-20 px-2 py-2 text-center font-bold uppercase tracking-wider">
                         Mesa
                     </th>
                     <th class="w-20 px-2 py-2 text-center font-bold uppercase tracking-wider">
@@ -223,6 +214,15 @@
                     </th>
                     <th class="w-24 px-2 py-2 text-left font-bold uppercase tracking-wider">
                         Mozo
+                    </th>
+                    <th class="w-20 px-2 py-2 text-center font-bold uppercase tracking-wider">
+                        Total
+                    </th>
+                    <th class="w-24 px-2 py-2 text-center font-bold uppercase tracking-wider">
+                        Fecha
+                    </th>
+                    <th class="w-24 px-2 py-2 text-left font-bold uppercase tracking-wider">
+                        Persona
                     </th>
                     <th class="w-24 px-2 py-2 text-center font-bold uppercase tracking-wider">
                         Tipo de servicio
@@ -277,18 +277,6 @@
                             <span class="text-gray-700 badge badge-sm badge-primary dark:text-gray-300 truncate block max-w-full"
                                 title="{{ $numDisplay }}">{{ $numDisplay }}</span>
                         </td>
-                        <td class="px-2 py-2 text-center">
-                            <span
-                                class="text-gray-700 font-medium dark:text-gray-300 tabular-nums">{{ number_format((float) ($order->total ?? 0), 2) }}</span>
-                        </td>
-                        <td class="px-2 py-2 text-center">
-                            <span
-                                class="text-gray-600 dark:text-gray-400 tabular-nums">{{ $orderListAt?->format('d/m/Y H:i') ?? '-' }}</span>
-                        </td>
-                        <td class="px-2 py-2 overflow-hidden">
-                            <span class="text-gray-600 dark:text-gray-400 truncate block max-w-full"
-                                title="{{ $order->movement?->person_name ?? '-' }}">{{ $order->movement?->person_name ?? '-' }}</span>
-                        </td>
                         <td class="px-2 py-2 text-center overflow-hidden">
                             <span class="text-gray-600 dark:text-gray-400 truncate block max-w-full"
                                 title="{{ $order->table?->name ?? '-' }}">{{ $order->table?->name ?? '-' }}</span>
@@ -300,6 +288,18 @@
                         <td class="px-2 py-2 overflow-hidden">
                             <span class="text-gray-600 dark:text-gray-400 truncate block max-w-full"
                                 title="{{ $order->movement?->responsible_name ?? '-' }}">{{ $order->movement?->responsible_name ?? '-' }}</span>
+                        </td>
+                        <td class="px-2 py-2 text-center">
+                            <span
+                                class="text-gray-700 font-medium dark:text-gray-300 tabular-nums">{{ number_format((float) ($order->total ?? 0), 2) }}</span>
+                        </td>
+                        <td class="px-2 py-2 text-center">
+                            <span
+                                class="text-gray-600 dark:text-gray-400 tabular-nums">{{ $orderListAt?->format('d/m/Y H:i') ?? '-' }}</span>
+                        </td>
+                        <td class="px-2 py-2 overflow-hidden">
+                            <span class="text-gray-600 dark:text-gray-400 truncate block max-w-full"
+                                title="{{ $order->movement?->person_name ?? '-' }}">{{ $order->movement?->person_name ?? '-' }}</span>
                         </td>
                         <td class="px-2 py-2 text-center justify-center items-center overflow-hidden">
                             @php
@@ -374,9 +374,6 @@
                                                 <th class="px-4 py-3 font-semibold">Cantidad</th>
                                                 <th class="px-4 py-3 font-semibold text-right">Hora comanda</th>
                                                 <th class="px-4 py-3 font-semibold">Estado</th>
-                                                <th class="px-4 py-3 font-semibold">Mesa</th>
-                                                <th class="px-4 py-3 font-semibold">Area</th>
-                                                <th class="px-4 py-3 font-semibold">Mozo</th>
                                             </tr>
                                             
                                         </thead>
@@ -418,25 +415,10 @@
                                                         {{ $rowStatusText }}
                                                     </x-ui.badge>
                                                 </td>
-                                                <td class="px-4 py-3 text-gray-600 dark:text-gray-400">
-                                                    <span
-                                                        class="text-gray-600 dark:text-gray-400 truncate block max-w-full"
-                                                        title="{{ $order->table?->name ?? '-' }}">{{ $order->table?->name ?? '-' }}</span>
-                                                </td>
-                                                <td class="px-4 py-3 text-gray-600 dark:text-gray-400">
-                                                    <span
-                                                        class="text-gray-600 dark:text-gray-400 truncate block max-w-full"
-                                                        title="{{ $order->area?->name ?? '-' }}">{{ $order->area?->name ?? '-' }}</span>
-                                                </td>
-                                                <td class="px-4 py-3 text-gray-600 dark:text-gray-400">
-                                                    <span
-                                                        class="text-gray-600 dark:text-gray-400 truncate block max-w-full"
-                                                        title="{{ $order->movement?->responsible_name ?? '-' }}">{{ $order->movement?->responsible_name ?? '-' }}</span>
-                                                </td>
                                             </tr>
                                             @if ($order->status == 'CANCELADO')
                                             <tr>
-                                                <td colspan="7" class="px-4 py-3 text-gray-600 dark:text-gray-400">
+                                                <td colspan="4" class="px-4 py-3 text-gray-600 dark:text-gray-400">
                                                     <span class="text-gray-600 dark:text-gray-400 truncate block max-w-full"
                                                         title="{{ $order->movement?->comment ?? '-' }}"> <strong>Motivo de cancelación:</strong> {{ $order->movement?->comment ?? '-' }}</span>
                                                 </td>
