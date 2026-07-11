@@ -158,10 +158,10 @@
                                 <table class="min-w-full divide-y divide-gray-100 text-sm dark:divide-gray-800">
                                     <thead class="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:bg-gray-900">
                                         <tr>
+                                            <th class="w-16 px-3 py-3 text-right">Acción</th>
                                             <th class="px-4 py-3">Producto</th>
                                             <th class="w-28 px-4 py-3">Cantidad</th>
                                             <th class="px-4 py-3">Nota</th>
-                                            <th class="w-40 px-4 py-3 text-right">Acción</th>
                                         </tr>
                                     </thead>
                                     <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
@@ -231,6 +231,30 @@
                                                 x-bind:class="delivered ? 'bg-emerald-50/90 ring-1 ring-inset ring-emerald-200' : 'bg-white'"
                                                 class="transition-all duration-200"
                                             >
+                                                <td class="px-3 py-3 align-top">
+                                                    <div class="flex justify-end">
+                                                        <button
+                                                            type="button"
+                                                            x-show="!delivered"
+                                                            x-on:click="markDelivered"
+                                                            x-bind:disabled="saving"
+                                                            class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[#C43B25] text-sm font-semibold text-white shadow-sm transition hover:bg-[#A83220] disabled:cursor-not-allowed disabled:opacity-60"
+                                                            title="Marcar como entregado"
+                                                            aria-label="Marcar como entregado"
+                                                        >
+                                                            <i class="ri-check-double-line"></i>
+                                                        </button>
+                                                        <span
+                                                            x-show="delivered"
+                                                            x-cloak
+                                                            class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-emerald-100 text-sm font-semibold text-emerald-700"
+                                                            title="Entregado"
+                                                            aria-label="Entregado"
+                                                        >
+                                                            <i class="ri-check-line"></i>
+                                                        </span>
+                                                    </div>
+                                                </td>
                                                 <td class="px-4 py-3 align-top">
                                                     <div class="flex flex-wrap items-center gap-2">
                                                         <p x-bind:class="delivered ? 'text-emerald-900' : 'text-gray-900'" class="font-medium dark:text-white">{{ $productName }}</p>
@@ -248,27 +272,6 @@
                                                 </td>
                                                 <td x-bind:class="delivered ? 'text-emerald-700' : 'text-gray-600'" class="px-4 py-3 align-top dark:text-gray-300">
                                                     {{ $detail->comment ?: '-' }}
-                                                </td>
-                                                <td class="px-4 py-3 align-top">
-                                                    <div class="flex justify-end">
-                                                        <button
-                                                            type="button"
-                                                            x-show="!delivered"
-                                                            x-on:click="markDelivered"
-                                                            x-bind:disabled="saving"
-                                                            class="inline-flex h-9 items-center justify-center gap-2 rounded-full bg-[#C43B25] px-3.5 text-xs font-semibold text-white shadow-sm transition hover:bg-[#A83220] disabled:cursor-not-allowed disabled:opacity-60"
-                                                        >
-                                                            <i class="ri-check-double-line"></i>
-                                                            <span x-text="saving ? 'Marcando...' : 'Entregado'">Entregado</span>
-                                                        </button>
-                                                        <span
-                                                            x-show="delivered"
-                                                            x-cloak
-                                                            class="inline-flex h-9 items-center justify-center rounded-full bg-emerald-100 px-3 text-xs font-semibold text-emerald-700"
-                                                        >
-                                                            Listo
-                                                        </span>
-                                                    </div>
                                                 </td>
                                             </tr>
                                         @endforeach
