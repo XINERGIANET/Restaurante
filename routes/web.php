@@ -228,6 +228,8 @@ Route::middleware('auth')->group(function () {
         ->name('orders.charge');
     Route::get('/Pedidos/reporte/pdf', [OrderController::class, 'pdfReport'])
         ->name('orders.pdf');
+    Route::patch('/Pedidos/detalles/{detail}/entregar', [OrderController::class, 'markDetailDelivered'])
+        ->name('orders.details.deliver');
     Route::post('/Pedidos/procesar', [OrderController::class, 'processOrder'])
         ->name('orders.process')
         ->middleware('active.shift');

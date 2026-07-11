@@ -161,12 +161,14 @@
                                             <th class="px-4 py-3">Producto</th>
                                             <th class="w-28 px-4 py-3">Cantidad</th>
                                             <th class="px-4 py-3">Nota</th>
+                                            <th class="w-40 px-4 py-3 text-right">Acción</th>
                                         </tr>
                                     </thead>
                                     <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
                                         @foreach($order->details as $detail)
                                             @php
                                                 $productName = $detail->description ?: ($detail->product?->description ?? 'Producto');
+                                                $isDelivered = ($detail->status ?? 'A') === 'E';
                                                 $complements = collect($detail->complements ?? [])->map(function ($item) {
                                                     if (is_array($item)) {
                                                         return $item['description'] ?? $item['name'] ?? null;
@@ -174,18 +176,99 @@
                                                     return is_string($item) ? $item : null;
                                                 })->filter()->values();
                                             @endphp
-                                            <tr>
+                                            <tr
+                                                x-data="{
+                                                    delivered: @js($isDelivered),
+                                                    saving: false,
+                                                    async markDelivered() {
+                                                        if (this.delivered || this.saving) return;
+                                                        this.saving = true;
+                                                        try {
+                                                            const response = await fetch(@js(route('orders.details.deliver', $detail)), {
+                                                                method: 'PATCH',
+                                                                headers: {
+                                                                    'Content-Type': 'application/json',
+                                                                    'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '',
+                                                                    'Accept': 'application/json',
+                                                                },
+                                                                body: JSON.stringify({}),
+                                                            });
+                                                            const data = await response.json();
+                                                            if (!response.ok || !data?.success) {
+                                                                throw new Error(data?.message || 'No se pudo marcar como entregado.');
+                                                            }
+                                                            this.delivered = true;
+                                                            if (window.Swal) {
+                                                                window.Swal.fire({
+                                                                    toast: true,
+                                                                    position: 'bottom-start',
+                                                                    icon: 'success',
+                                                                    title: data.message || 'Producto entregado',
+                                                                    showConfirmButton: false,
+                                                                    timer: 1800,
+                                                                    timerProgressBar: true,
+                                                                });
+                                                            }
+                                                        } catch (error) {
+                                                            if (window.Swal) {
+                                                                window.Swal.fire({
+                                                                    toast: true,
+                                                                    position: 'bottom-start',
+                                                                    icon: 'error',
+                                                                    title: error?.message || 'No se pudo actualizar la línea.',
+                                                                    showConfirmButton: false,
+                                                                    timer: 2400,
+                                                                    timerProgressBar: true,
+                                                                });
+                                                            } else {
+                                                                alert(error?.message || 'No se pudo actualizar la línea.');
+                                                            }
+                                                        } finally {
+                                                            this.saving = false;
+                                                        }
+                                                    }
+                                                }"
+                                                x-bind:class="delivered ? 'bg-emerald-50/90 ring-1 ring-inset ring-emerald-200' : 'bg-white'"
+                                                class="transition-all duration-200"
+                                            >
                                                 <td class="px-4 py-3 align-top">
-                                                    <p class="font-medium text-gray-900 dark:text-white">{{ $productName }}</p>
+                                                    <div class="flex flex-wrap items-center gap-2">
+                                                        <p x-bind:class="delivered ? 'text-emerald-900' : 'text-gray-900'" class="font-medium dark:text-white">{{ $productName }}</p>
+                                                        <span x-show="delivered" x-cloak class="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 ring-1 ring-emerald-200">
+                                                            <i class="ri-check-line"></i>
+                                                            Entregado
+                                                        </span>
+                                                    </div>
                                                     @if($complements->isNotEmpty())
                                                         <p class="mt-1 text-xs text-gray-500">Complementos: {{ $complements->implode(', ') }}</p>
                                                     @endif
                                                 </td>
-                                                <td class="px-4 py-3 align-top font-semibold text-gray-800 dark:text-gray-200">
+                                                <td x-bind:class="delivered ? 'text-emerald-800' : 'text-gray-800'" class="px-4 py-3 align-top font-semibold dark:text-gray-200">
                                                     {{ $formatQty($detail->quantity) }}
                                                 </td>
-                                                <td class="px-4 py-3 align-top text-gray-600 dark:text-gray-300">
+                                                <td x-bind:class="delivered ? 'text-emerald-700' : 'text-gray-600'" class="px-4 py-3 align-top dark:text-gray-300">
                                                     {{ $detail->comment ?: '-' }}
+                                                </td>
+                                                <td class="px-4 py-3 align-top">
+                                                    <div class="flex justify-end">
+                                                        <button
+                                                            type="button"
+                                                            x-show="!delivered"
+                                                            x-on:click="markDelivered"
+                                                            x-bind:disabled="saving"
+                                                            class="inline-flex h-9 items-center justify-center gap-2 rounded-full bg-[#C43B25] px-3.5 text-xs font-semibold text-white shadow-sm transition hover:bg-[#A83220] disabled:cursor-not-allowed disabled:opacity-60"
+                                                        >
+                                                            <i class="ri-check-double-line"></i>
+                                                            <span x-text="saving ? 'Marcando...' : 'Entregado'">Entregado</span>
+                                                        </button>
+                                                        <span
+                                                            x-show="delivered"
+                                                            x-cloak
+                                                            class="inline-flex h-9 items-center justify-center rounded-full bg-emerald-100 px-3 text-xs font-semibold text-emerald-700"
+                                                        >
+                                                            Listo
+                                                        </span>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         @endforeach

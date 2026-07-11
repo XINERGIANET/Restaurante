@@ -603,6 +603,46 @@ class OrderController extends Controller
         ]);
     }
 
+    public function markDetailDelivered(Request $request, OrderMovementDetail $detail)
+    {
+        $branchId = (int) session('branch_id');
+
+        $detail->loadMissing('orderMovement.movement');
+
+        if (! $detail->orderMovement) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No se encontró el pedido de la línea seleccionada.',
+            ], 404);
+        }
+
+        if ($branchId > 0 && (int) $detail->orderMovement->branch_id !== $branchId) {
+            abort(403);
+        }
+
+        if (($detail->status ?? 'A') === 'C') {
+            return response()->json([
+                'success' => false,
+                'message' => 'La línea está cancelada y no puede marcarse como entregada.',
+            ], 422);
+        }
+
+        if (($detail->status ?? 'A') !== 'E') {
+            $detail->status = 'E';
+            $detail->save();
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Producto marcado como entregado.',
+            'detail' => [
+                'id' => $detail->id,
+                'status' => $detail->status,
+                'delivered' => $detail->status === 'E',
+            ],
+        ]);
+    }
+
     public function commands(Request $request)
     {
         if (! Schema::hasTable('thermal_print_jobs')) {
