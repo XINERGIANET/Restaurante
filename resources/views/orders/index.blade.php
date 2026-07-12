@@ -466,6 +466,7 @@
                     tablesDataUrl: @json(route('orders.tablesData')),
                     cancelOrderUrl: cancelOrderUrl,
                     cancelOrderToken: @json(csrf_token()),
+                    closeTablePasswordRequired: @json((bool) ($closeTablePasswordRequired ?? false)),
                     canCharge: @json($canCharge ?? true),
                     isMozo: @json($isMozo ?? false),
                     waiterPinEnabled: @json($waiterPinEnabled ?? false),
@@ -888,11 +889,7 @@
                                 return;
                             }
                             const reason = (result.value || '').trim();
-                            const formData = new FormData();
-                            formData.append('table_id', table.id);
-                            formData.append('_token', this.cancelOrderToken);
-
-                            fetch(this.cancelOrderUrl, {
+                            const requestClose = (closePassword = '') => fetch(this.cancelOrderUrl, {
                                     method: 'POST',
                                     headers: {
                                         'Content-Type': 'application/json',
@@ -903,6 +900,7 @@
                                     body: JSON.stringify({
                                         table_id: table.id,
                                         cancel_reason: reason,
+                                        close_password: closePassword,
                                     }),
                                 })
                                 .then(res => res.json())
@@ -956,6 +954,31 @@
                                         timerProgressBar: true
                                     });
                                 });
+                            if (!this.closeTablePasswordRequired) {
+                                requestClose('');
+                                return;
+                            }
+                            Swal.fire({
+                                title: 'Clave requerida',
+                                input: 'password',
+                                inputLabel: 'Clave para cerrar mesa',
+                                inputPlaceholder: 'Ingresa la clave',
+                                inputValidator: (value) => {
+                                    if (!value) {
+                                        return 'Debe ingresar la clave para cerrar la mesa.';
+                                    }
+                                    return null;
+                                },
+                                showCancelButton: true,
+                                confirmButtonText: 'Confirmar',
+                                cancelButtonText: 'Cancelar',
+                                reverseButtons: true,
+                            }).then((passwordResult) => {
+                                if (!passwordResult.isConfirmed) {
+                                    return;
+                                }
+                                requestClose((passwordResult.value || '').trim());
+                            });
                         });
                     },
                 };

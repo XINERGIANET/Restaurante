@@ -91,6 +91,38 @@ class OrderController extends Controller
             Schema::hasTable('thermal_print_jobs') && Schema::hasColumn('thermal_print_jobs', 'ticket_text');
     }
 
+    private function branchParameterValueByDescription(?int $branchId, string $description): ?string
+    {
+        if (! $branchId || trim($description) === '') {
+            return null;
+        }
+
+        $value = DB::table('branch_parameters as bp')
+            ->join('parameters as p', 'p.id', '=', 'bp.parameter_id')
+            ->whereNull('bp.deleted_at')
+            ->whereNull('p.deleted_at')
+            ->where('bp.branch_id', $branchId)
+            ->whereRaw('LOWER(TRIM(p.description)) = ?', [mb_strtolower(trim($description))])
+            ->value('bp.value');
+
+        if ($value === null) {
+            return null;
+        }
+
+        return trim((string) $value);
+    }
+
+    private function closeTablePasswordForBranch(?int $branchId): ?string
+    {
+        $value = $this->branchParameterValueByDescription($branchId, 'Clave para cerrar mesa en pedidos');
+
+        if ($value === null || $value === '' || mb_strtolower($value) === 'no') {
+            return null;
+        }
+
+        return $value;
+    }
+
     /** Solo pedir PIN cuando la sucursal lo tiene activo Y el usuario tiene perfil Mozo. */
     private function shouldRequireWaiterPin(?int $branchId, $profileId): bool
     {
@@ -892,6 +924,7 @@ class OrderController extends Controller
             'tables' => $tablesPayload,
             'user' => $request->user(),
             'waiterPinEnabled' => $waiterPinEnabled,
+            'closeTablePasswordRequired' => $this->closeTablePasswordForBranch($branchId ? (int) $branchId : null) !== null,
             'canCharge' => $this->canCharge($profileId),
             'isMozo' => Profile::userHasMozoProfile(
                 $profileId !== null && $profileId !== '' ? (int) $profileId : null
@@ -5571,10 +5604,27 @@ class OrderController extends Controller
             ], 404);
         }
 
+        $branchId = (int) ($orderMovement->branch_id ?: $table->branch_id ?: session('branch_id'));
+        $configuredClosePassword = $this->closeTablePasswordForBranch($branchId);
+        if ($configuredClosePassword !== null) {
+            $providedPassword = trim((string) $request->input('close_password'));
+            if ($providedPassword === '') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Debe ingresar la clave para cerrar la mesa.',
+                ], 422);
+            }
+            if (! hash_equals($configuredClosePassword, $providedPassword)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'La clave para cerrar la mesa es incorrecta.',
+                ], 422);
+            }
+        }
+
         try {
             DB::beginTransaction();
 
-            $branchId = (int) ($orderMovement->branch_id ?: $table->branch_id ?: session('branch_id'));
             $branch = Branch::find($branchId);
             if (! $branch) {
                 throw new \Exception('No se encontró la sucursal del pedido para revertir stock.');
