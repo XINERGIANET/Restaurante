@@ -56,6 +56,8 @@ use Illuminate\Support\Str;
 
 class OrderController extends Controller
 {
+    private ?bool $thermalPrintJobsSchemaReady = null;
+
     private function waiterPinEnabled(?int $branchId): bool
     {
         if (! $branchId) {
@@ -77,6 +79,16 @@ class OrderController extends Controller
     private function mozoProfileId(): ?int
     {
         return Profile::mozoProfileId();
+    }
+
+    private function thermalPrintJobsSchemaReady(): bool
+    {
+        if ($this->thermalPrintJobsSchemaReady !== null) {
+            return $this->thermalPrintJobsSchemaReady;
+        }
+
+        return $this->thermalPrintJobsSchemaReady =
+            Schema::hasTable('thermal_print_jobs') && Schema::hasColumn('thermal_print_jobs', 'ticket_text');
     }
 
     /** Solo pedir PIN cuando la sucursal lo tiene activo Y el usuario tiene perfil Mozo. */
@@ -2508,9 +2520,52 @@ class OrderController extends Controller
                 }
             }
 
+            $allProductIds = collect(array_merge($items, $cancellations))
+                ->map(fn ($raw) => (int) ($raw['product_id'] ?? $raw['pId'] ?? 0))
+                ->filter(fn ($productId) => $productId > 0)
+                ->unique()
+                ->values();
+
+            $productsById = Product::query()
+                ->whereIn('id', $allProductIds)
+                ->get()
+                ->keyBy('id');
+
+            $defaultUnitId = Unit::query()->value('id');
+
+            $productBranchesByProductId = ProductBranch::query()
+                ->where('branch_id', $branchId)
+                ->whereIn('product_id', $allProductIds)
+                ->get()
+                ->keyBy('product_id');
+
+            $recipesByProductId = Recipe::query()
+                ->where('branch_id', $branchId)
+                ->whereIn('product_id', $allProductIds)
+                ->where('status', 'A')
+                ->with(['ingredients'])
+                ->get()
+                ->keyBy('product_id');
+
+            $ingredientProductIds = $recipesByProductId
+                ->flatMap(fn ($recipe) => collect($recipe->ingredients)->pluck('product_id'))
+                ->filter(fn ($productId) => (int) $productId > 0)
+                ->unique()
+                ->values();
+
+            $ingredientBranchesByProductId = ProductBranch::query()
+                ->where('branch_id', $branchId)
+                ->whereIn('product_id', $ingredientProductIds)
+                ->get()
+                ->keyBy('product_id');
+
+            $ingredientNamesById = Product::query()
+                ->whereIn('id', $ingredientProductIds)
+                ->pluck('description', 'id');
+
             foreach ($items as $rawItem) {
                 $productId = $rawItem['product_id'] ?? $rawItem['pId'] ?? null;
-                $product = $productId ? Product::find($productId) : null;
+                $product = $productId ? $productsById->get((int) $productId) : null;
 
                 $qty = (float) ($rawItem['quantity'] ?? $rawItem['qty'] ?? 1);
                 $price = (float) ($rawItem['price'] ?? 0);
@@ -2524,16 +2579,14 @@ class OrderController extends Controller
 
                 $unitId = $rawItem['unit_id'] ?? ($product?->unit_id ?? null);
                 if (! $unitId) {
-                    $unitId = Unit::query()->value('id'); // unidad por defecto
+                    $unitId = $defaultUnitId; // unidad por defecto
                 }
 
                 $code = $rawItem['code'] ?? ($product?->code ?? (string) $productId);
                 $description = $rawItem['description'] ?? ($product?->description ?? ($rawItem['name'] ?? 'Producto'));
 
                 // Validar stock disponible si no se permite vender sin stock
-                $productBranch = ProductBranch::where('product_id', $productId)
-                    ->where('branch_id', $branchId)
-                    ->first();
+                $productBranch = $productBranchesByProductId->get((int) $productId);
                 $currentStock = (float) ($productBranch->stock ?? 0);
                 $previousCommittedQty = (float) ($previousCommittedQtyByProduct->get((int) $productId, 0));
                 $newCommittedQty = (float) ($newCommittedQtyByProduct->get((int) $productId, 0));
@@ -2546,12 +2599,7 @@ class OrderController extends Controller
                 };
 
                 if ($deltaQty > 0) {
-                    $recipe = Recipe::query()
-                        ->where('branch_id', $branchId)
-                        ->where('product_id', (int) ($productId ?? 0))
-                        ->where('status', 'A')
-                        ->with(['ingredients'])
-                        ->first();
+                    $recipe = $recipesByProductId->get((int) ($productId ?? 0));
 
                     // Si tiene receta, validar por ingredientes; si no, validar por producto final.
                     if ($recipe && (float) ($recipe->yield_quantity ?? 0) > 0) {
@@ -2569,13 +2617,10 @@ class OrderController extends Controller
                                 continue;
                             }
 
-                            $ingredientBranch = ProductBranch::query()
-                                ->where('product_id', $ingredientProductId)
-                                ->where('branch_id', $branchId)
-                                ->first();
+                            $ingredientBranch = $ingredientBranchesByProductId->get($ingredientProductId);
                             $ingredientStock = (float) ($ingredientBranch?->stock ?? 0);
                             if ($ingredientStock < $needed) {
-                                $ingredientName = Product::query()->where('id', $ingredientProductId)->value('description') ?? ('Ingrediente #' . $ingredientProductId);
+                                $ingredientName = $ingredientNamesById->get($ingredientProductId) ?? ('Ingrediente #' . $ingredientProductId);
                                 throw new \Exception(
                                     "Stock insuficiente para el ingrediente \"{$ingredientName}\". " .
                                         "Stock disponible: {$ingredientStock}, Requerido: {$needed}"
@@ -2633,7 +2678,7 @@ class OrderController extends Controller
             // Registrar cancelaciones por plato como detalles con estado 'C'
             foreach ($cancellations as $rawCancel) {
                 $productId = $rawCancel['product_id'] ?? $rawCancel['pId'] ?? null;
-                $product = $productId ? Product::find($productId) : null;
+                $product = $productId ? $productsById->get((int) $productId) : null;
 
                 $qty = (float) ($rawCancel['qtyCanceled'] ?? $rawCancel['quantity'] ?? 0);
                 if ($qty <= 0) {
@@ -2645,7 +2690,7 @@ class OrderController extends Controller
 
                 $unitId = $rawCancel['unit_id'] ?? ($product?->unit_id ?? null);
                 if (! $unitId) {
-                    $unitId = Unit::query()->value('id'); // unidad por defecto
+                    $unitId = $defaultUnitId; // unidad por defecto
                 }
 
                 $code = $rawCancel['code'] ?? ($product?->code ?? (string) $productId);
@@ -2696,9 +2741,16 @@ class OrderController extends Controller
             );
             $kitchenPrintJobsCreated = count($kitchenPrintJobs);
 
-            app(KardexSyncService::class)->syncMovement($movement);
-
             DB::commit();
+
+            try {
+                app(KardexSyncService::class)->syncMovement($movement);
+            } catch (\Throwable $syncError) {
+                Log::warning('Kardex sync diferido: processOrder', [
+                    'movement_id' => $movement->id,
+                    'error' => $syncError->getMessage(),
+                ]);
+            }
 
             if ($request->expectsJson()) {
                 return response()->json([
@@ -2739,7 +2791,7 @@ class OrderController extends Controller
 
     public function prepareKitchenPrintJob(Request $request)
     {
-        if (! Schema::hasTable('thermal_print_jobs') || ! Schema::hasColumn('thermal_print_jobs', 'ticket_text')) {
+        if (! $this->thermalPrintJobsSchemaReady()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Falta ejecutar la migracion de impresiones de comandas.',
@@ -2793,7 +2845,7 @@ class OrderController extends Controller
             return [];
         }
 
-        if (! Schema::hasTable('thermal_print_jobs') || ! Schema::hasColumn('thermal_print_jobs', 'ticket_text')) {
+        if (! $this->thermalPrintJobsSchemaReady()) {
             throw new \RuntimeException('No se pudo guardar el pedido porque el modulo de comandas no esta listo. Avise al administrador.');
         }
 
@@ -4471,19 +4523,54 @@ class OrderController extends Controller
             $paymentMethodsForCashDetails = $creditIgnoresCashLines ? collect() : $paymentMethods;
 
             if ($paymentMethodsForCashDetails->isNotEmpty()) {
+                $paymentMethodIds = $paymentMethodsForCashDetails->pluck('payment_method_id')
+                    ->filter()
+                    ->map(fn ($id) => (int) $id)
+                    ->unique()
+                    ->values();
+                $paymentGatewayIds = $paymentMethodsForCashDetails->pluck('payment_gateway_id')
+                    ->filter()
+                    ->map(fn ($id) => (int) $id)
+                    ->unique()
+                    ->values();
+                $cardIds = $paymentMethodsForCashDetails->pluck('card_id')
+                    ->filter()
+                    ->map(fn ($id) => (int) $id)
+                    ->unique()
+                    ->values();
+                $digitalWalletIds = $paymentMethodsForCashDetails->pluck('digital_wallet_id')
+                    ->filter()
+                    ->map(fn ($id) => (int) $id)
+                    ->unique()
+                    ->values();
+                $bankIds = $paymentMethodsForCashDetails->pluck('bank_id')
+                    ->filter()
+                    ->map(fn ($id) => (int) $id)
+                    ->unique()
+                    ->values();
+
+                $paymentMethodsById = PaymentMethod::query()->whereIn('id', $paymentMethodIds)->get()->keyBy('id');
+                $paymentGatewaysById = PaymentGateways::query()->whereIn('id', $paymentGatewayIds)->get()->keyBy('id');
+                $cardsById = Card::query()->whereIn('id', $cardIds)->get()->keyBy('id');
+                $digitalWalletsById = DigitalWallet::query()->whereIn('id', $digitalWalletIds)->get()->keyBy('id');
+                $banksById = Bank::query()->whereIn('id', $bankIds)->get()->keyBy('id');
+
                 foreach ($paymentMethodsForCashDetails as $paymentMethodData) {
-                    $paymentMethod = PaymentMethod::findOrFail((int) ($paymentMethodData['payment_method_id'] ?? 0));
+                    $paymentMethod = $paymentMethodsById->get((int) ($paymentMethodData['payment_method_id'] ?? 0));
+                    if (! $paymentMethod) {
+                        throw new \InvalidArgumentException('Metodo de pago no valido para registrar el cobro.');
+                    }
                     $paymentGateway = ! empty($paymentMethodData['payment_gateway_id'])
-                        ? PaymentGateways::find((int) $paymentMethodData['payment_gateway_id'])
+                        ? $paymentGatewaysById->get((int) $paymentMethodData['payment_gateway_id'])
                         : null;
                     $card = ! empty($paymentMethodData['card_id'])
-                        ? Card::find((int) $paymentMethodData['card_id'])
+                        ? $cardsById->get((int) $paymentMethodData['card_id'])
                         : null;
                     $digitalWallet = ! empty($paymentMethodData['digital_wallet_id'])
-                        ? DigitalWallet::find((int) $paymentMethodData['digital_wallet_id'])
+                        ? $digitalWalletsById->get((int) $paymentMethodData['digital_wallet_id'])
                         : null;
                     $bank = ! empty($paymentMethodData['bank_id'])
-                        ? Bank::find((int) $paymentMethodData['bank_id'])
+                        ? $banksById->get((int) $paymentMethodData['bank_id'])
                         : null;
 
                     DB::table('cash_movement_details')->insert([
@@ -5527,11 +5614,17 @@ class OrderController extends Controller
                 'opened_at' => null,
             ]);
 
-            if ($orderMovement->movement) {
-                app(KardexSyncService::class)->syncMovement($orderMovement->movement);
-            }
-
             DB::commit();
+            if ($orderMovement->movement) {
+                try {
+                    app(KardexSyncService::class)->syncMovement($orderMovement->movement);
+                } catch (\Throwable $syncError) {
+                    Log::warning('Kardex sync diferido: closeTable', [
+                        'movement_id' => $orderMovement->movement->id,
+                        'error' => $syncError->getMessage(),
+                    ]);
+                }
+            }
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Error al cerrar mesa y revertir stock', [
