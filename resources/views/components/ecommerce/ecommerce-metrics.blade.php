@@ -2,26 +2,10 @@
     use Illuminate\Support\Str;
 
     $accountBreakdowns = $accountBreakdowns ?? [];
+    $metricsComponentId = 'dashboard-metrics-'.uniqid();
 @endphp
 
-<div
-    x-data="{
-        open: false,
-        selectedKey: null,
-        selectedAccount: null,
-        openAccount(account) {
-            this.selectedAccount = account || null;
-            this.open = !!this.selectedAccount;
-        },
-        closeAccount() {
-            this.open = false;
-        },
-        money(value) {
-            const num = Number(value || 0);
-            return 'S/' + num.toFixed(2);
-        }
-    }"
->
+<div id="{{ $metricsComponentId }}" data-dashboard-metrics-root>
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 md:gap-6">
         @foreach ($accounts as $key => $account)
             @php
@@ -40,9 +24,11 @@
             @endphp
             <button
                 type="button"
-                class="group w-full rounded-2xl p-5 md:p-6 shadow-lg hover:shadow-xl transition-all duration-300 relative overflow-hidden text-left focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black/20"
+                class="dashboard-metric-card group w-full rounded-2xl p-5 md:p-6 shadow-lg hover:shadow-xl transition-all duration-300 relative overflow-hidden text-left focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black/20"
                 style="background-color: {{ $theme['color'] }}"
-                @click="openAccount({{ \Illuminate\Support\Js::from($breakdown) }})"
+                data-account-key="{{ $accountKey }}"
+                data-account-title="{{ $key }}"
+                data-account='@json($breakdown)'
             >
                 <div class="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full blur-2xl group-hover:bg-white/20 transition-all"></div>
 
@@ -92,148 +78,282 @@
         @endforeach
     </div>
 
-    <div
-        x-cloak
-        x-show="open"
-        class="fixed inset-0 z-99999 flex items-center justify-center overflow-y-auto p-4 sm:p-6"
-        x-transition:enter="transition ease-out duration-300"
-        x-transition:enter-start="opacity-0"
-        x-transition:enter-end="opacity-100"
-        x-transition:leave="transition ease-in duration-200"
-        x-transition:leave-start="opacity-100"
-        x-transition:leave-end="opacity-0"
-        @keydown.escape.window="closeAccount()"
-    >
-        <div @click="closeAccount()" class="fixed inset-0 h-full w-full bg-gray-400/30 backdrop-blur-[32px]"></div>
-
-        <div
-            @click.stop
-            class="relative flex w-full max-w-6xl flex-col rounded-3xl bg-[#F4F6FA] dark:bg-gray-900 max-h-[90vh] overflow-hidden"
-            x-transition:enter="transition ease-out duration-300"
-            x-transition:enter-start="opacity-0 transform scale-95"
-            x-transition:enter-end="opacity-100 transform scale-100"
-            x-transition:leave="transition ease-in duration-200"
-            x-transition:leave-start="opacity-100 transform scale-100"
-            x-transition:leave-end="opacity-0 transform scale-95"
-        >
+    <div id="{{ $metricsComponentId }}-modal" class="fixed inset-0 z-[99999] hidden items-center justify-center overflow-y-auto p-4 sm:p-6">
+        <div data-dashboard-modal-backdrop class="fixed inset-0 h-full w-full bg-gray-400/30 backdrop-blur-[32px]"></div>
+        <div class="relative flex w-full max-w-6xl flex-col rounded-3xl bg-[#F4F6FA] dark:bg-gray-900 max-h-[90vh] overflow-hidden">
             <div class="min-h-0 flex-1 overflow-y-auto p-5 sm:p-6 lg:p-8">
-            <div class="flex items-start justify-between gap-4 border-b border-gray-200 pb-4 dark:border-gray-700">
-                <div>
-                    <p class="text-[11px] font-bold uppercase tracking-[0.25em] text-gray-400">
-                        Desglose detallado
-                    </p>
-                    <h3 class="mt-2 text-2xl font-black text-gray-900 dark:text-white" x-text="selectedAccount?.title || 'Detalle de tarjeta'"></h3>
-                    <p class="mt-2 text-sm text-gray-500 dark:text-gray-400" x-text="selectedAccount?.subtitle || ''"></p>
+                <div class="flex items-start justify-between gap-4 border-b border-gray-200 pb-4 dark:border-gray-700">
+                    <div>
+                        <p class="text-[11px] font-bold uppercase tracking-[0.25em] text-gray-400">Desglose detallado</p>
+                        <h3 id="{{ $metricsComponentId }}-title" class="mt-2 text-2xl font-black text-gray-900 dark:text-white">Detalle de tarjeta</h3>
+                        <p id="{{ $metricsComponentId }}-subtitle" class="mt-2 text-sm text-gray-500 dark:text-gray-400"></p>
+                    </div>
+                    <button type="button" data-dashboard-modal-close class="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-500 transition hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white" aria-label="Cerrar detalle">
+                        <i class="ri-close-line text-xl"></i>
+                    </button>
                 </div>
 
-                <button type="button"
-                    class="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-500 transition hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
-                    @click="closeAccount()"
-                    aria-label="Cerrar detalle"
-                >
-                    <i class="ri-close-line text-xl"></i>
-                </button>
-            </div>
-
-            <div class="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
-                <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900/70">
-                    <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-gray-400">Total</p>
-                    <p class="mt-2 text-2xl font-black text-gray-900 dark:text-white" x-text="money(selectedAccount?.total)"></p>
+                <div class="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+                    <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900/70">
+                        <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-gray-400">Total</p>
+                        <p id="{{ $metricsComponentId }}-total" class="mt-2 text-2xl font-black text-gray-900 dark:text-white">S/0.00</p>
+                    </div>
+                    <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900/70">
+                        <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-gray-400">Transacciones</p>
+                        <p id="{{ $metricsComponentId }}-transactions" class="mt-2 text-2xl font-black text-gray-900 dark:text-white">0</p>
+                    </div>
+                    <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900/70">
+                        <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-gray-400">Formula</p>
+                        <p id="{{ $metricsComponentId }}-formula" class="mt-2 text-sm font-medium text-gray-700 dark:text-gray-300">Suma de registros</p>
+                    </div>
                 </div>
-                <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900/70">
-                    <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-gray-400">Transacciones</p>
-                    <p class="mt-2 text-2xl font-black text-gray-900 dark:text-white" x-text="Number(selectedAccount?.transactions || 0).toLocaleString('es-PE')"></p>
+
+                <div class="mt-6 rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-4 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-300">
+                    Este detalle muestra cada movimiento que alimenta la tarjeta y sus lineas internas para corroborar el monto.
                 </div>
-                <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900/70">
-                    <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-gray-400">Formula</p>
-                    <p class="mt-2 text-sm font-medium text-gray-700 dark:text-gray-300" x-text="selectedAccount?.formula || 'Suma de registros'"></p>
+
+                <div id="{{ $metricsComponentId }}-content" class="mt-6 space-y-4"></div>
+                <div id="{{ $metricsComponentId }}-empty" class="mt-6 rounded-2xl border border-gray-200 bg-white p-6 text-sm text-gray-500 shadow-sm dark:border-gray-700 dark:bg-gray-900/70 dark:text-gray-300 hidden">
+                    No hay movimientos para mostrar en este rango.
                 </div>
             </div>
-
-            <div class="mt-6 rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-4 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-300">
-                Este detalle muestra cada movimiento que alimenta la tarjeta y sus lineas internas para corroborar el monto.
-            </div>
-
-            <div class="mt-6 space-y-4" x-show="selectedAccount && selectedAccount.items && selectedAccount.items.length > 0">
-                <template x-for="movement in (selectedAccount ? selectedAccount.items : [])" :key="movement.id">
-                    <details class="group rounded-3xl border border-gray-200 bg-white shadow-sm open:shadow-md dark:border-gray-700 dark:bg-gray-900">
-                        <summary class="cursor-pointer list-none px-5 py-4 sm:px-6">
-                            <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                                <div class="min-w-0">
-                                    <div class="flex flex-wrap items-center gap-2">
-                                        <h4 class="text-base font-extrabold text-gray-900 dark:text-white" x-text="movement.label"></h4>
-                                        <span class="rounded-full bg-gray-100 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-[0.2em] text-gray-500 dark:bg-gray-800 dark:text-gray-300" x-text="movement.date"></span>
-                                    </div>
-                                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400" x-text="movement.customer || movement.supplier || movement.concept || 'Sin referencia'"></p>
-                                    <p class="mt-1 text-xs font-medium text-gray-400 dark:text-gray-500" x-text="movement.seller ? ('Usuario: ' + movement.seller) : ''"></p>
-                                </div>
-
-                                <div class="text-right">
-                                    <p class="text-2xl font-black text-gray-900 dark:text-white" x-text="money(movement.total)"></p>
-                                    <p class="mt-1 text-xs font-semibold uppercase tracking-[0.2em] text-gray-400" x-text="movement.detail_count + ' lineas'"></p>
-                                </div>
-                            </div>
-                        </summary>
-
-                        <div class="border-t border-gray-200 px-5 py-5 sm:px-6 dark:border-gray-700">
-                            <div class="grid grid-cols-1 gap-3 md:grid-cols-4">
-                                <div class="rounded-2xl bg-gray-50 p-4 dark:bg-gray-800/70">
-                                    <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-gray-400">Registro</p>
-                                    <p class="mt-1 text-sm font-semibold text-gray-800 dark:text-gray-200" x-text="movement.number || movement.label"></p>
-                                </div>
-                                <div class="rounded-2xl bg-gray-50 p-4 dark:bg-gray-800/70">
-                                    <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-gray-400">Total registrado</p>
-                                    <p class="mt-1 text-sm font-semibold text-gray-800 dark:text-gray-200" x-text="money(movement.total)"></p>
-                                </div>
-                                <div class="rounded-2xl bg-gray-50 p-4 dark:bg-gray-800/70">
-                                    <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-gray-400">Suma de lineas</p>
-                                    <p class="mt-1 text-sm font-semibold text-gray-800 dark:text-gray-200" x-text="money(movement.lines_total)"></p>
-                                </div>
-                                <div class="rounded-2xl bg-gray-50 p-4 dark:bg-gray-800/70">
-                                    <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-gray-400">Diferencia</p>
-                                    <p class="mt-1 text-sm font-semibold" :class="Math.abs(Number(movement.difference || 0)) > 0.01 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'" x-text="money(movement.difference)"></p>
-                                </div>
-                            </div>
-
-                            <div class="mt-5 overflow-x-auto">
-                                <table class="min-w-full text-left text-sm">
-                                    <thead class="text-[11px] uppercase tracking-[0.2em] text-gray-400">
-                                        <tr>
-                                            <th class="py-3 pr-4 font-bold">Item</th>
-                                            <th class="py-3 px-4 font-bold text-right">Cantidad</th>
-                                            <th class="py-3 px-4 font-bold text-right">Unitario</th>
-                                            <th class="py-3 px-4 font-bold text-right">Total</th>
-                                            <th class="py-3 pl-4 font-bold">Comentario</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
-                                        <template x-for="line in movement.lines" :key="line.name + '-' + line.line_total">
-                                            <tr class="align-top">
-                                                <td class="py-3 pr-4">
-                                                    <div class="font-semibold text-gray-800 dark:text-gray-200" x-text="line.name"></div>
-                                                    <div class="mt-1 text-xs text-gray-500 dark:text-gray-400" x-show="line.complements && line.complements.length > 0" x-text="'Complementos: ' + line.complements.join(', ')"></div>
-                                                    <div class="mt-1 text-xs text-amber-600 dark:text-amber-400" x-show="Number(line.courtesy_qty || 0) > 0" x-text="'Cortesia: ' + Number(line.courtesy_qty || 0).toFixed(2)"></div>
-                                                </td>
-                                                <td class="py-3 px-4 text-right tabular-nums text-gray-600 dark:text-gray-300" x-text="Number(line.qty || 0).toFixed(2)"></td>
-                                                <td class="py-3 px-4 text-right tabular-nums text-gray-600 dark:text-gray-300" x-text="money(line.unit_amount)"></td>
-                                                <td class="py-3 px-4 text-right tabular-nums font-bold text-gray-900 dark:text-white" x-text="money(line.line_total)"></td>
-                                                <td class="py-3 pl-4">
-                                                    <span class="text-gray-600 dark:text-gray-400" x-text="line.comment || '—'"></span>
-                                                </td>
-                                            </tr>
-                                        </template>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </details>
-                </template>
-            </div>
-
-            <div class="mt-6 rounded-2xl border border-gray-200 bg-white p-6 text-sm text-gray-500 shadow-sm dark:border-gray-700 dark:bg-gray-900/70 dark:text-gray-300" x-show="!selectedAccount || !selectedAccount.items || selectedAccount.items.length === 0">
-                No hay movimientos para mostrar en este rango.
-            </div>
-        </div>
         </div>
     </div>
 </div>
+
+<script>
+    (function () {
+        const rootId = @json($metricsComponentId);
+        const logPrefix = '[dashboard-metrics]';
+
+        function fmtMoney(value) {
+            const num = Number(value || 0);
+            return 'S/' + num.toFixed(2);
+        }
+
+        function renderMovement(movement) {
+            const lines = Array.isArray(movement.lines) ? movement.lines : [];
+            const rows = lines.map((line) => {
+                const complements = Array.isArray(line.complements) && line.complements.length > 0
+                    ? `<div class="mt-1 text-xs text-gray-500 dark:text-gray-400">Complementos: ${line.complements.join(', ')}</div>`
+                    : '';
+                const courtesy = Number(line.courtesy_qty || 0) > 0
+                    ? `<div class="mt-1 text-xs text-amber-600 dark:text-amber-400">Cortesia: ${Number(line.courtesy_qty || 0).toFixed(2)}</div>`
+                    : '';
+                const amount = line.line_total ?? line.amount ?? 0;
+                const unitAmount = line.unit_amount ?? line.amount ?? 0;
+                return `
+                    <tr class="align-top">
+                        <td class="py-3 pr-4">
+                            <div class="font-semibold text-gray-800 dark:text-gray-200">${line.name || 'Item'}</div>
+                            ${complements}
+                            ${courtesy}
+                        </td>
+                        <td class="py-3 px-4 text-right tabular-nums text-gray-600 dark:text-gray-300">${Number(line.qty || 0).toFixed(2)}</td>
+                        <td class="py-3 px-4 text-right tabular-nums text-gray-600 dark:text-gray-300">${fmtMoney(unitAmount)}</td>
+                        <td class="py-3 px-4 text-right tabular-nums font-bold text-gray-900 dark:text-white">${fmtMoney(amount)}</td>
+                        <td class="py-3 pl-4"><span class="text-gray-600 dark:text-gray-400">${line.comment || '—'}</span></td>
+                    </tr>
+                `;
+            }).join('');
+
+            return `
+                <details class="group rounded-3xl border border-gray-200 bg-white shadow-sm open:shadow-md dark:border-gray-700 dark:bg-gray-900">
+                    <summary class="cursor-pointer list-none px-5 py-4 sm:px-6">
+                        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div class="min-w-0">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <h4 class="text-base font-extrabold text-gray-900 dark:text-white">${movement.label || 'Movimiento'}</h4>
+                                    <span class="rounded-full bg-gray-100 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-[0.2em] text-gray-500 dark:bg-gray-800 dark:text-gray-300">${movement.date || '-'}</span>
+                                </div>
+                                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">${movement.customer || movement.supplier || movement.concept || 'Sin referencia'}</p>
+                                <p class="mt-1 text-xs font-medium text-gray-400 dark:text-gray-500">${movement.seller ? 'Usuario: ' + movement.seller : ''}</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-2xl font-black text-gray-900 dark:text-white">${fmtMoney(movement.total)}</p>
+                                <p class="mt-1 text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">${Number(movement.detail_count || 0)} lineas</p>
+                            </div>
+                        </div>
+                    </summary>
+                    <div class="border-t border-gray-200 px-5 py-5 sm:px-6 dark:border-gray-700">
+                        <div class="grid grid-cols-1 gap-3 md:grid-cols-4">
+                            <div class="rounded-2xl bg-gray-50 p-4 dark:bg-gray-800/70">
+                                <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-gray-400">Registro</p>
+                                <p class="mt-1 text-sm font-semibold text-gray-800 dark:text-gray-200">${movement.number || movement.label || 'Movimiento'}</p>
+                            </div>
+                            <div class="rounded-2xl bg-gray-50 p-4 dark:bg-gray-800/70">
+                                <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-gray-400">Total registrado</p>
+                                <p class="mt-1 text-sm font-semibold text-gray-800 dark:text-gray-200">${fmtMoney(movement.total)}</p>
+                            </div>
+                            <div class="rounded-2xl bg-gray-50 p-4 dark:bg-gray-800/70">
+                                <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-gray-400">Suma de lineas</p>
+                                <p class="mt-1 text-sm font-semibold text-gray-800 dark:text-gray-200">${fmtMoney(movement.lines_total)}</p>
+                            </div>
+                            <div class="rounded-2xl bg-gray-50 p-4 dark:bg-gray-800/70">
+                                <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-gray-400">Diferencia</p>
+                                <p class="mt-1 text-sm font-semibold ${Math.abs(Number(movement.difference || 0)) > 0.01 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}">${fmtMoney(movement.difference)}</p>
+                            </div>
+                        </div>
+                        <div class="mt-5 overflow-x-auto">
+                            <table class="min-w-full text-left text-sm">
+                                <thead class="text-[11px] uppercase tracking-[0.2em] text-gray-400">
+                                    <tr>
+                                        <th class="py-3 pr-4 font-bold">Item</th>
+                                        <th class="py-3 px-4 font-bold text-right">Cantidad</th>
+                                        <th class="py-3 px-4 font-bold text-right">Unitario</th>
+                                        <th class="py-3 px-4 font-bold text-right">Total</th>
+                                        <th class="py-3 pl-4 font-bold">Comentario</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100 dark:divide-gray-800">${rows}</tbody>
+                            </table>
+                        </div>
+                    </div>
+                </details>
+            `;
+        }
+
+        function initDashboardMetrics() {
+            const root = document.getElementById(rootId);
+            if (!root) {
+                console.warn(logPrefix, 'root not found', rootId);
+                return;
+            }
+
+            if (root.dataset.metricsBound === '1') {
+                console.info(logPrefix, 'already initialized', rootId);
+                return;
+            }
+            root.dataset.metricsBound = '1';
+
+            const modal = document.getElementById(rootId + '-modal');
+            const title = document.getElementById(rootId + '-title');
+            const subtitle = document.getElementById(rootId + '-subtitle');
+            const total = document.getElementById(rootId + '-total');
+            const transactions = document.getElementById(rootId + '-transactions');
+            const formula = document.getElementById(rootId + '-formula');
+            const content = document.getElementById(rootId + '-content');
+            const empty = document.getElementById(rootId + '-empty');
+            const closeButtons = root.querySelectorAll('[data-dashboard-modal-close], [data-dashboard-modal-backdrop]');
+            const cards = root.querySelectorAll('.dashboard-metric-card');
+
+            console.info(logPrefix, 'init', {
+                rootId,
+                cards: cards.length,
+                modalFound: !!modal,
+            });
+
+            function closeModal(reason) {
+                console.info(logPrefix, 'closeModal', { reason });
+                if (!modal) {
+                    console.error(logPrefix, 'modal not found on close');
+                    return;
+                }
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                document.body.style.removeProperty('overflow');
+                document.documentElement.style.removeProperty('overflow');
+            }
+
+            function openModal(account, meta) {
+                console.info(logPrefix, 'openModal called', {
+                    meta,
+                    hasAccount: !!account,
+                    account,
+                });
+
+                if (!modal) {
+                    console.error(logPrefix, 'modal not found');
+                    return;
+                }
+
+                if (!account || typeof account !== 'object') {
+                    console.error(logPrefix, 'invalid account payload', { account, meta });
+                    empty.classList.remove('hidden');
+                    content.innerHTML = '';
+                    title.textContent = 'Detalle no disponible';
+                    subtitle.textContent = 'No llego payload para esta tarjeta.';
+                    total.textContent = fmtMoney(0);
+                    transactions.textContent = '0';
+                    formula.textContent = 'Sin datos';
+                } else {
+                    title.textContent = account.title || meta.title || 'Detalle de tarjeta';
+                    subtitle.textContent = account.subtitle || '';
+                    total.textContent = fmtMoney(account.total || 0);
+                    transactions.textContent = Number(account.transactions || 0).toLocaleString('es-PE');
+                    formula.textContent = account.formula || 'Suma de registros';
+
+                    const items = Array.isArray(account.items) ? account.items : [];
+                    console.info(logPrefix, 'render items', {
+                        count: items.length,
+                        firstItem: items[0] || null,
+                    });
+
+                    if (items.length === 0) {
+                        empty.classList.remove('hidden');
+                        content.innerHTML = '';
+                    } else {
+                        empty.classList.add('hidden');
+                        content.innerHTML = items.map(renderMovement).join('');
+                    }
+                }
+
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                document.body.style.setProperty('overflow', 'hidden');
+                document.documentElement.style.setProperty('overflow', 'hidden');
+                console.info(logPrefix, 'modal open state applied', {
+                    hiddenClass: modal.classList.contains('hidden'),
+                    flexClass: modal.classList.contains('flex'),
+                });
+            }
+
+            cards.forEach((card, index) => {
+                card.addEventListener('click', function () {
+                    const raw = card.getAttribute('data-account');
+                    const meta = {
+                        index,
+                        key: card.getAttribute('data-account-key'),
+                        title: card.getAttribute('data-account-title'),
+                        raw,
+                    };
+
+                    console.info(logPrefix, 'card click', meta);
+
+                    let parsed = null;
+                    try {
+                        parsed = raw ? JSON.parse(raw) : null;
+                        console.info(logPrefix, 'payload parsed', parsed);
+                    } catch (error) {
+                        console.error(logPrefix, 'JSON parse failed', {
+                            meta,
+                            error: error?.message || error,
+                        });
+                    }
+
+                    openModal(parsed, meta);
+                });
+            });
+
+            closeButtons.forEach((button) => {
+                button.addEventListener('click', function () {
+                    closeModal('button');
+                });
+            });
+
+            document.addEventListener('keydown', function (event) {
+                if (event.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
+                    closeModal('escape');
+                }
+            });
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initDashboardMetrics, { once: true });
+        } else {
+            initDashboardMetrics();
+        }
+        document.addEventListener('turbo:load', initDashboardMetrics);
+        document.addEventListener('turbo:render', initDashboardMetrics);
+    })();
+</script>
