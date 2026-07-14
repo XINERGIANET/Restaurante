@@ -65,6 +65,8 @@ class BranchParameterController extends Controller
 
     public function index(Request $request)
     {
+        ensure_branch_parameter_exists('Clave para cerrar mesa en pedidos', '');
+
         $viewId = $request->input('view_id');
         $branchId = $request->session()->get('branch_id');
         $profileId = $request->session()->get('profile_id') ?? $request->user()?->profile_id;
