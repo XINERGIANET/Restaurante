@@ -236,6 +236,9 @@
             const empty = document.getElementById(rootId + '-empty');
             const closeButtons = root.querySelectorAll('[data-dashboard-modal-close], [data-dashboard-modal-backdrop]');
             const cards = root.querySelectorAll('.dashboard-metric-card');
+            const globalBreakdowns = window.dashboardData && window.dashboardData.accountBreakdowns
+                ? window.dashboardData.accountBreakdowns
+                : {};
 
             console.info(logPrefix, 'init', {
                 rootId,
@@ -311,11 +314,16 @@
             cards.forEach((card, index) => {
                 card.addEventListener('click', function () {
                     const raw = card.getAttribute('data-account');
+                    const accountKey = card.getAttribute('data-account-key') || '';
+                    const fallbackPayload = globalBreakdowns[accountKey]
+                        || globalBreakdowns[String(accountKey).toLowerCase()]
+                        || null;
                     const meta = {
                         index,
-                        key: card.getAttribute('data-account-key'),
+                        key: accountKey,
                         title: card.getAttribute('data-account-title'),
                         raw,
+                        fallbackPayload,
                     };
 
                     console.info(logPrefix, 'card click', meta);
@@ -328,6 +336,14 @@
                         console.error(logPrefix, 'JSON parse failed', {
                             meta,
                             error: error?.message || error,
+                        });
+                    }
+
+                    if (!parsed && fallbackPayload) {
+                        parsed = fallbackPayload;
+                        console.info(logPrefix, 'using fallback payload from window.dashboardData.accountBreakdowns', {
+                            key: accountKey,
+                            parsed,
                         });
                     }
 
