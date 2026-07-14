@@ -1041,11 +1041,6 @@
                                 return false;
                             });
 
-                        const passwordBlock = this.closeTablePasswordRequired ? `
-                            <label for="swal-close-table-code" style="display:block;text-align:left;margin:16px 0 6px 0;font-size:13px;font-weight:700;color:${isDark ? '#e5e7eb' : '#374151'};">Codigo de eliminacion</label>
-                            <input id="swal-close-table-code" type="password" autocomplete="new-password" autocapitalize="off" autocorrect="off" placeholder="Ingresa el codigo de eliminacion" style="display:block !important;visibility:visible !important;opacity:1 !important;width:100%;height:42px;box-sizing:border-box;border:1px solid #d1d5db;border-radius:8px;padding:8px 12px;font-size:14px;background:${isDark ? '#1f2937' : '#ffffff'};color:${isDark ? '#ffffff' : '#111827'};">
-                        ` : '';
-
                         return Swal.fire({
                             title: 'Eliminar mesa ocupada?',
                             icon: 'warning',
@@ -1054,7 +1049,8 @@
                                     <p style="display:block;margin:0 0 18px 0;color:${isDark ? '#d1d5db' : '#4b5563'};">Se eliminara el pedido de la mesa ${escapeHtml(table?.name || '')}. Esta accion no se puede deshacer.</p>
                                     <label for="swal-close-table-reason" style="display:block;text-align:left;margin:0 0 6px 0;font-size:13px;font-weight:700;color:${isDark ? '#e5e7eb' : '#374151'};">Razon de anulacion</label>
                                     <input id="swal-close-table-reason" type="text" autocomplete="off" placeholder="Ej: Cliente se retiro sin consumir" style="display:block !important;visibility:visible !important;opacity:1 !important;width:100%;height:42px;box-sizing:border-box;border:1px solid #d1d5db;border-radius:8px;padding:8px 12px;font-size:14px;background:${isDark ? '#1f2937' : '#ffffff'};color:${isDark ? '#ffffff' : '#111827'};">
-                                    ${passwordBlock}
+                                    <label for="swal-close-table-code" style="display:block;text-align:left;margin:16px 0 6px 0;font-size:13px;font-weight:700;color:${isDark ? '#e5e7eb' : '#374151'};">Codigo de eliminacion</label>
+                                    <input id="swal-close-table-code" type="password" autocomplete="new-password" autocapitalize="off" autocorrect="off" placeholder="Ingresa el codigo de eliminacion" style="display:block !important;visibility:visible !important;opacity:1 !important;width:100%;height:42px;box-sizing:border-box;border:1px solid #d1d5db;border-radius:8px;padding:8px 12px;font-size:14px;background:${isDark ? '#1f2937' : '#ffffff'};color:${isDark ? '#ffffff' : '#111827'};">
                                 </div>
                             `,
                             showCancelButton: true,
