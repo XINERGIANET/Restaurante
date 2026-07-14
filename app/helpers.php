@@ -201,3 +201,19 @@ if (!function_exists('effective_sale_delete_admin_password')) {
         ], $branchId);
     }
 }
+
+if (!function_exists('effective_close_table_admin_password')) {
+    /**
+     * Clave de administrador para cerrar/anular mesas ocupadas.
+     */
+    function effective_close_table_admin_password(?int $branchId = null): ?string
+    {
+        return effective_parameter_value_by_descriptions([
+            'Clave para cerrar mesa en pedidos',
+            'Clave administrador cerrar mesa',
+            'Clave de administrador para cerrar mesa',
+            'Contrasena administrador cerrar mesa',
+            'Password administrador cerrar mesa',
+        ], $branchId);
+    }
+}

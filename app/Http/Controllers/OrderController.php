@@ -114,7 +114,7 @@ class OrderController extends Controller
 
     private function closeTablePasswordForBranch(?int $branchId): ?string
     {
-        $value = $this->branchParameterValueByDescription($branchId, 'Clave para cerrar mesa en pedidos');
+        $value = effective_close_table_admin_password($branchId);
 
         if ($value === null || $value === '' || mb_strtolower($value) === 'no') {
             return null;

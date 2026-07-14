@@ -866,6 +866,7 @@
                         if (!window.Swal) {
                             return;
                         }
+                        return this.closeTableWithCode(table);
                         Swal.fire({
                             title: '¿Estás seguro de querer cerrar la mesa?',
                             text: 'Esta acción no se puede deshacer.',
@@ -979,6 +980,108 @@
                                 }
                                 requestClose((passwordResult.value || '').trim());
                             });
+                        });
+                    },
+                    closeTableWithCode(table) {
+                        const isDark = document.documentElement.classList.contains('dark');
+                        const escapeHtml = (value) => String(value ?? '')
+                            .replace(/&/g, '&amp;')
+                            .replace(/</g, '&lt;')
+                            .replace(/>/g, '&gt;')
+                            .replace(/"/g, '&quot;')
+                            .replace(/'/g, '&#039;');
+
+                        const requestClose = (reason, closePassword = '') => fetch(this.cancelOrderUrl, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': this.cancelOrderToken,
+                                    'Accept': 'application/json',
+                                    'X-Requested-With': 'XMLHttpRequest',
+                                },
+                                body: JSON.stringify({
+                                    table_id: table.id,
+                                    cancel_reason: reason,
+                                    close_password: closePassword,
+                                }),
+                            })
+                            .then(res => res.json())
+                            .then(data => {
+                                if (data.success) {
+                                    const idx = this.tables.findIndex(t => t.id == table.id);
+                                    if (idx !== -1) {
+                                        this.tables[idx] = {
+                                            ...this.tables[idx],
+                                            situation: 'libre',
+                                            total: 0,
+                                            elapsed: null,
+                                            waiter: null,
+                                            client: null,
+                                            diners: 0
+                                        };
+                                        this.updateFilteredTables();
+                                    }
+                                    Swal.fire({
+                                        toast: true,
+                                        position: 'bottom-end',
+                                        icon: 'success',
+                                        title: data.message || 'Mesa cerrada correctamente',
+                                        showConfirmButton: false,
+                                        timer: 3500,
+                                        timerProgressBar: true
+                                    });
+                                    return true;
+                                }
+
+                                Swal.showValidationMessage((data && data.message) ? data.message : 'No se pudo cerrar la mesa.');
+                                return false;
+                            })
+                            .catch(() => {
+                                Swal.showValidationMessage('Error al cerrar la mesa.');
+                                return false;
+                            });
+
+                        const passwordBlock = this.closeTablePasswordRequired ? `
+                            <label for="swal-close-table-code" style="display:block;text-align:left;margin:16px 0 6px 0;font-size:13px;font-weight:700;color:${isDark ? '#e5e7eb' : '#374151'};">Codigo de eliminacion</label>
+                            <input id="swal-close-table-code" type="password" autocomplete="new-password" autocapitalize="off" autocorrect="off" placeholder="Ingresa el codigo de eliminacion" style="display:block !important;visibility:visible !important;opacity:1 !important;width:100%;height:42px;box-sizing:border-box;border:1px solid #d1d5db;border-radius:8px;padding:8px 12px;font-size:14px;background:${isDark ? '#1f2937' : '#ffffff'};color:${isDark ? '#ffffff' : '#111827'};">
+                        ` : '';
+
+                        return Swal.fire({
+                            title: 'Eliminar mesa ocupada?',
+                            icon: 'warning',
+                            html: `
+                                <div style="text-align:center;">
+                                    <p style="display:block;margin:0 0 18px 0;color:${isDark ? '#d1d5db' : '#4b5563'};">Se eliminara el pedido de la mesa ${escapeHtml(table?.name || '')}. Esta accion no se puede deshacer.</p>
+                                    <label for="swal-close-table-reason" style="display:block;text-align:left;margin:0 0 6px 0;font-size:13px;font-weight:700;color:${isDark ? '#e5e7eb' : '#374151'};">Razon de anulacion</label>
+                                    <input id="swal-close-table-reason" type="text" autocomplete="off" placeholder="Ej: Cliente se retiro sin consumir" style="display:block !important;visibility:visible !important;opacity:1 !important;width:100%;height:42px;box-sizing:border-box;border:1px solid #d1d5db;border-radius:8px;padding:8px 12px;font-size:14px;background:${isDark ? '#1f2937' : '#ffffff'};color:${isDark ? '#ffffff' : '#111827'};">
+                                    ${passwordBlock}
+                                </div>
+                            `,
+                            showCancelButton: true,
+                            confirmButtonText: 'Si, eliminar',
+                            cancelButtonText: 'Cancelar',
+                            confirmButtonColor: '#ef4444',
+                            cancelButtonColor: '#6b7280',
+                            reverseButtons: true,
+                            allowOutsideClick: false,
+                            showLoaderOnConfirm: true,
+                            background: isDark ? '#111827' : '#ffffff',
+                            color: isDark ? '#e5e7eb' : '#111827',
+                            preConfirm: async () => {
+                                const reason = (document.getElementById('swal-close-table-reason')?.value || '').trim();
+                                const code = (document.getElementById('swal-close-table-code')?.value || '').trim();
+
+                                if (!reason) {
+                                    Swal.showValidationMessage('Por favor, ingrese una razon de anulacion.');
+                                    return false;
+                                }
+                                if (this.closeTablePasswordRequired && !code) {
+                                    Swal.showValidationMessage('Debes ingresar el codigo de eliminacion.');
+                                    return false;
+                                }
+
+                                return requestClose(reason, code);
+                            }
                         });
                     },
                 };
