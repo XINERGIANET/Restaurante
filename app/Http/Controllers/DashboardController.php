@@ -11,6 +11,169 @@ use Illuminate\Support\Facades\Log;
 
 class DashboardController extends Controller
 {
+    private function dashboardMovementNumber(?\App\Models\Movement $movement, string $fallbackPrefix = 'Movimiento'): string
+    {
+        $number = trim((string) ($movement?->number ?? ''));
+        if ($number === '') {
+            return $fallbackPrefix;
+        }
+
+        return $fallbackPrefix.' #'.$number;
+    }
+
+    private function mapDashboardSalesItems(\App\Models\SalesMovement $salesMovement): array
+    {
+        $movement = $salesMovement->movement;
+        $documentNumber = trim((string) ($movement?->number ?? ''));
+        $series = trim((string) ($salesMovement->series ?? ''));
+        $label = trim(($series !== '' ? $series.'-' : '').($documentNumber !== '' ? $documentNumber : (string) $salesMovement->id), '-');
+        $customer = trim((string) ($movement?->person_name ?? '')) ?: 'Público General';
+        $seller = trim((string) ($movement?->responsible_name ?? $movement?->user_name ?? '')) ?: 'Sistema';
+        $movedAt = $movement?->moved_at ?? $salesMovement->created_at;
+
+        $lines = ($salesMovement->details ?? collect())
+            ->filter(fn($detail) => ($detail->status ?? 'A') !== 'C')
+            ->map(function (\App\Models\SalesMovementDetail $detail) {
+                $qty = (float) ($detail->quantity ?? 0);
+                $courtesyQty = max(0, (float) ($detail->courtesy_quantity ?? 0));
+                $lineTotal = round((float) ($detail->amount ?? 0), 2);
+                $billableQty = max(0, $qty - $courtesyQty);
+                $unitAmount = $billableQty > 0
+                    ? round($lineTotal / $billableQty, 2)
+                    : ($qty > 0 ? round($lineTotal / $qty, 2) : 0.0);
+
+                return [
+                    'name' => trim((string) ($detail->description ?? 'Producto')) ?: 'Producto',
+                    'qty' => round($qty, 6),
+                    'courtesy_qty' => round($courtesyQty, 6),
+                    'unit_amount' => $unitAmount,
+                    'line_total' => $lineTotal,
+                    'comment' => trim((string) ($detail->comment ?? '')),
+                    'complements' => collect($detail->complements ?? [])
+                        ->map(fn($value) => trim((string) $value))
+                        ->filter()
+                        ->values()
+                        ->all(),
+                ];
+            })
+            ->values()
+            ->all();
+
+        $linesTotal = round(array_sum(array_map(fn($line) => (float) ($line['line_total'] ?? 0), $lines)), 2);
+
+        return [
+            'id' => 'sales-'.$salesMovement->id,
+            'label' => $label !== '' ? $label : 'Venta',
+            'number' => $this->dashboardMovementNumber($movement, 'Venta'),
+            'date' => $movedAt ? $movedAt->format('d/m/Y H:i') : '-',
+            'customer' => $customer,
+            'seller' => $seller,
+            'detail_count' => count($lines),
+            'subtotal' => round((float) ($salesMovement->subtotal ?? 0), 2),
+            'tax' => round((float) ($salesMovement->tax ?? 0), 2),
+            'total' => round((float) ($salesMovement->total ?? 0), 2),
+            'lines_total' => $linesTotal,
+            'difference' => round((float) ($salesMovement->total ?? 0) - $linesTotal, 2),
+            'lines' => $lines,
+        ];
+    }
+
+    private function mapDashboardPurchaseItems(\App\Models\PurchaseMovement $purchaseMovement): array
+    {
+        $movement = $purchaseMovement->movement;
+        $documentNumber = trim((string) ($movement?->number ?? ''));
+        $series = trim((string) ($purchaseMovement->serie ?? ''));
+        $label = trim(($series !== '' ? $series.'-' : '').($documentNumber !== '' ? $documentNumber : (string) $purchaseMovement->id), '-');
+        $supplier = trim((string) ($movement?->person_name ?? '')) ?: 'Proveedor';
+        $seller = trim((string) ($movement?->responsible_name ?? $movement?->user_name ?? '')) ?: 'Sistema';
+        $movedAt = $movement?->moved_at ?? $purchaseMovement->created_at;
+
+        $lines = ($purchaseMovement->details ?? collect())
+            ->filter(fn($detail) => ($detail->situacion ?? 'A') !== 'C')
+            ->map(function (\App\Models\PurchaseMovementDetail $detail) {
+                $qty = (float) ($detail->cantidad ?? 0);
+                $lineTotal = round((float) ($detail->monto ?? 0), 2);
+                $unitAmount = $qty > 0 ? round($lineTotal / $qty, 2) : 0.0;
+
+                return [
+                    'name' => trim((string) ($detail->descripcion ?? 'Producto')) ?: 'Producto',
+                    'qty' => round($qty, 6),
+                    'unit_amount' => $unitAmount,
+                    'line_total' => $lineTotal,
+                    'comment' => trim((string) ($detail->comentario ?? '')),
+                ];
+            })
+            ->values()
+            ->all();
+
+        $linesTotal = round(array_sum(array_map(fn($line) => (float) ($line['line_total'] ?? 0), $lines)), 2);
+
+        return [
+            'id' => 'purchases-'.$purchaseMovement->id,
+            'label' => $label !== '' ? $label : 'Compra',
+            'number' => $this->dashboardMovementNumber($movement, 'Compra'),
+            'date' => $movedAt ? $movedAt->format('d/m/Y H:i') : '-',
+            'supplier' => $supplier,
+            'seller' => $seller,
+            'detail_count' => count($lines),
+            'subtotal' => round((float) ($purchaseMovement->subtotal ?? 0), 2),
+            'tax' => round((float) ($purchaseMovement->igv ?? 0), 2),
+            'total' => round((float) ($purchaseMovement->total ?? 0), 2),
+            'lines_total' => $linesTotal,
+            'difference' => round((float) ($purchaseMovement->total ?? 0) - $linesTotal, 2),
+            'lines' => $lines,
+        ];
+    }
+
+    private function mapDashboardCashItems(\App\Models\CashMovements $cashMovement): array
+    {
+        $movement = $cashMovement->movement;
+        $concept = trim((string) ($cashMovement->paymentConcept?->description ?? '')) ?: 'Movimiento de caja';
+        $movementType = strtoupper(trim((string) ($cashMovement->paymentConcept?->type ?? '')));
+        $kind = $movementType === 'I' ? 'Ingreso' : ($movementType === 'E' ? 'Salida' : 'Movimiento');
+        $movedAt = $movement?->moved_at ?? $cashMovement->created_at;
+
+        $lines = ($cashMovement->details ?? collect())
+            ->filter(fn($detail) => ($detail->status ?? 'A') !== 'C')
+            ->map(function (\App\Models\CashMovementDetail $detail) {
+                $parts = array_filter([
+                    trim((string) ($detail->payment_method ?? '')),
+                    trim((string) ($detail->card ?? '')),
+                    trim((string) ($detail->bank ?? '')),
+                    trim((string) ($detail->digital_wallet ?? '')),
+                    trim((string) ($detail->payment_gateway ?? '')),
+                    trim((string) ($detail->number ?? '')),
+                ], fn($value) => $value !== '');
+
+                return [
+                    'name' => ! empty($parts) ? implode(' · ', $parts) : 'Detalle',
+                    'amount' => round((float) ($detail->amount ?? 0), 2),
+                    'comment' => trim((string) ($detail->comment ?? '')),
+                    'method' => trim((string) ($detail->payment_method ?? '')) ?: 'Otro',
+                ];
+            })
+            ->values()
+            ->all();
+
+        $linesTotal = round(array_sum(array_map(fn($line) => (float) ($line['amount'] ?? 0), $lines)), 2);
+
+        return [
+            'id' => 'cash-'.$cashMovement->id,
+            'label' => $this->dashboardMovementNumber($movement, $kind),
+            'number' => $this->dashboardMovementNumber($movement, $kind),
+            'kind' => $kind,
+            'concept' => $concept,
+            'date' => $movedAt ? $movedAt->format('d/m/Y H:i') : '-',
+            'cash_register' => trim((string) ($cashMovement->cash_register ?? $cashMovement->cashRegister?->number ?? '')) ?: '-',
+            'shift' => trim((string) ($cashMovement->shift?->name ?? '')) ?: '-',
+            'detail_count' => count($lines),
+            'total' => round((float) ($cashMovement->total ?? 0), 2),
+            'lines_total' => $linesTotal,
+            'difference' => round((float) ($cashMovement->total ?? 0) - $linesTotal, 2),
+            'lines' => $lines,
+        ];
+    }
+
     public function index(Request $request)
     {
         if (current_user_is_mozo()) {
@@ -73,6 +236,69 @@ class DashboardController extends Controller
             ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
             ->when($cashRegisterId, fn($q) => $q->where('cash_register_id', $cashRegisterId))
             ->sum('total');
+
+        $salesBreakdown = \App\Models\SalesMovement::query()
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+            ->when($cashRegisterId, fn($q) => $q->whereExists(function ($sub) use ($cashRegisterId) {
+                $sub->selectRaw('1')
+                    ->from('movements as m')
+                    ->join('cash_movements as cm', 'cm.movement_id', '=', 'm.id')
+                    ->whereColumn('m.parent_movement_id', 'sales_movements.movement_id')
+                    ->where('cm.cash_register_id', $cashRegisterId)
+                    ->whereNull('cm.deleted_at');
+            }))
+            ->with([
+                'movement',
+                'details' => function ($query) {
+                    $query->where(function ($q) {
+                        $q->whereNull('status')->orWhere('status', '!=', 'C');
+                    })->orderBy('id');
+                },
+            ])
+            ->orderByDesc('created_at')
+            ->get();
+
+        $purchaseBreakdown = \App\Models\PurchaseMovement::query()
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+            ->when($cashRegisterId, fn($q) => $q->whereExists(function ($sub) use ($cashRegisterId) {
+                $sub->selectRaw('1')
+                    ->from('movements as m')
+                    ->join('cash_movements as cm', 'cm.movement_id', '=', 'm.id')
+                    ->whereColumn('m.parent_movement_id', 'purchase_movements.movement_id')
+                    ->where('cm.cash_register_id', $cashRegisterId)
+                    ->whereNull('cm.deleted_at');
+            }))
+            ->with([
+                'movement',
+                'details' => function ($query) {
+                    $query->where(function ($q) {
+                        $q->whereNull('situacion')->orWhere('situacion', '!=', 'C');
+                    })->orderBy('id');
+                },
+            ])
+            ->orderByDesc('created_at')
+            ->get();
+
+        $cashBreakdown = \App\Models\CashMovements::query()
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->whereHas('paymentConcept', fn($q) => $q->whereIn('type', ['I', 'E'])->where('restricted', false))
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+            ->when($cashRegisterId, fn($q) => $q->where('cash_register_id', $cashRegisterId))
+            ->with([
+                'movement',
+                'paymentConcept',
+                'cashRegister',
+                'shift',
+                'details' => function ($query) {
+                    $query->where(function ($q) {
+                        $q->whereNull('status')->orWhere('status', '!=', 'C');
+                    })->orderBy('id');
+                },
+            ])
+            ->orderByDesc('created_at')
+            ->get();
 
         // 2. Monthly Sales & Purchases (Current Year or Selected Range)
         $salesByMonth = \App\Models\SalesMovement::selectRaw('EXTRACT(MONTH FROM created_at) as month, SUM(total) as total')
@@ -328,10 +554,64 @@ class DashboardController extends Controller
 
         $dashboardData = [
             'accounts' => [
-                'Ventas' => ['total' => $totalVentas, 'diff' => 0, 'transactions' => 0],
-                'Compras' => ['total' => $totalCompras, 'diff' => 0, 'transactions' => 0],
-                'Entradas' => ['total' => $totalEntradas, 'diff' => 0, 'transactions' => 0],
-                'Salidas' => ['total' => $totalSalidas, 'diff' => 0, 'transactions' => 0],
+                'Ventas' => ['total' => $totalVentas, 'diff' => 0, 'transactions' => $salesBreakdown->count()],
+                'Compras' => ['total' => $totalCompras, 'diff' => 0, 'transactions' => $purchaseBreakdown->count()],
+                'Entradas' => [
+                    'total' => $totalEntradas,
+                    'diff' => 0,
+                    'transactions' => $cashBreakdown->filter(fn($item) => strtoupper((string) ($item->paymentConcept?->type ?? '')) === 'I')->count(),
+                ],
+                'Salidas' => [
+                    'total' => $totalSalidas,
+                    'diff' => 0,
+                    'transactions' => $cashBreakdown->filter(fn($item) => strtoupper((string) ($item->paymentConcept?->type ?? '')) === 'E')->count(),
+                ],
+            ],
+            'accountBreakdowns' => [
+                'sales' => [
+                    'title' => 'Ventas',
+                    'subtitle' => 'Cada venta y sus líneas de producto que alimentan la tarjeta.',
+                    'formula' => 'Total de ventas = suma de cada comprobante y sus líneas facturadas.',
+                    'color' => '#2979ff',
+                    'total' => round($totalVentas, 2),
+                    'transactions' => $salesBreakdown->count(),
+                    'items' => $salesBreakdown->map(fn(SalesMovement $sale) => $this->mapDashboardSalesItems($sale))->values()->all(),
+                ],
+                'purchases' => [
+                    'title' => 'Compras',
+                    'subtitle' => 'Cada compra y el detalle de productos que compone el monto.',
+                    'formula' => 'Total de compras = suma de cada documento de compra.',
+                    'color' => '#FE0000',
+                    'total' => round($totalCompras, 2),
+                    'transactions' => $purchaseBreakdown->count(),
+                    'items' => $purchaseBreakdown->map(fn(PurchaseMovement $purchase) => $this->mapDashboardPurchaseItems($purchase))->values()->all(),
+                ],
+                'entries' => [
+                    'title' => 'Entradas',
+                    'subtitle' => 'Ingresos manuales registrados en caja y su desglose por método.',
+                    'formula' => 'Total de entradas = suma de ingresos de caja.',
+                    'color' => '#03B430',
+                    'total' => round($totalEntradas, 2),
+                    'transactions' => $cashBreakdown->filter(fn($movement) => strtoupper((string) ($movement->paymentConcept?->type ?? '')) === 'I')->count(),
+                    'items' => $cashBreakdown
+                        ->filter(fn($movement) => strtoupper((string) ($movement->paymentConcept?->type ?? '')) === 'I')
+                        ->map(fn(CashMovements $movement) => $this->mapDashboardCashItems($movement))
+                        ->values()
+                        ->all(),
+                ],
+                'expenses' => [
+                    'title' => 'Salidas',
+                    'subtitle' => 'Egresos manuales registrados en caja y su desglose por método.',
+                    'formula' => 'Total de salidas = suma de egresos de caja.',
+                    'color' => '#FFA500',
+                    'total' => round($totalSalidas, 2),
+                    'transactions' => $cashBreakdown->filter(fn($movement) => strtoupper((string) ($movement->paymentConcept?->type ?? '')) === 'E')->count(),
+                    'items' => $cashBreakdown
+                        ->filter(fn($movement) => strtoupper((string) ($movement->paymentConcept?->type ?? '')) === 'E')
+                        ->map(fn(CashMovements $movement) => $this->mapDashboardCashItems($movement))
+                        ->values()
+                        ->all(),
+                ],
             ],
             'monthlySales' => $monthlySalesData,
             'monthlyPurchases' => $monthlyPurchasesData,
