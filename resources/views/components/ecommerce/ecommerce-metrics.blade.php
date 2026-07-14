@@ -6,24 +6,15 @@
 
 <div
     x-data="{
+        open: false,
         selectedKey: null,
         selectedAccount: null,
         openAccount(account) {
             this.selectedAccount = account || null;
-            window.requestAnimationFrame(() => {
-                const modal = document.querySelector('.modal');
-                const modalData = modal && modal.__x ? modal.__x.$data : null;
-                if (modalData && this.selectedAccount) {
-                    modalData.open = true;
-                }
-            });
+            this.open = !!this.selectedAccount;
         },
         closeAccount() {
-            const modal = document.querySelector('.modal');
-            const modalData = modal && modal.__x ? modal.__x.$data : null;
-            if (modalData) {
-                modalData.open = false;
-            }
+            this.open = false;
         },
         money(value) {
             const num = Number(value || 0);
@@ -101,12 +92,31 @@
         @endforeach
     </div>
 
-    <x-ui.modal
-        x-data="{ open: false }"
-        :isOpen="false"
-        class="max-w-6xl"
+    <div
+        x-cloak
+        x-show="open"
+        class="fixed inset-0 z-99999 flex items-center justify-center overflow-y-auto p-4 sm:p-6"
+        x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-200"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        @keydown.escape.window="closeAccount()"
     >
-        <div class="p-5 sm:p-6 lg:p-8">
+        <div @click="closeAccount()" class="fixed inset-0 h-full w-full bg-gray-400/30 backdrop-blur-[32px]"></div>
+
+        <div
+            @click.stop
+            class="relative flex w-full max-w-6xl flex-col rounded-3xl bg-[#F4F6FA] dark:bg-gray-900 max-h-[90vh] overflow-hidden"
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0 transform scale-95"
+            x-transition:enter-end="opacity-100 transform scale-100"
+            x-transition:leave="transition ease-in duration-200"
+            x-transition:leave-start="opacity-100 transform scale-100"
+            x-transition:leave-end="opacity-0 transform scale-95"
+        >
+            <div class="min-h-0 flex-1 overflow-y-auto p-5 sm:p-6 lg:p-8">
             <div class="flex items-start justify-between gap-4 border-b border-gray-200 pb-4 dark:border-gray-700">
                 <div>
                     <p class="text-[11px] font-bold uppercase tracking-[0.25em] text-gray-400">
@@ -224,5 +234,6 @@
                 No hay movimientos para mostrar en este rango.
             </div>
         </div>
-    </x-ui.modal>
+        </div>
+    </div>
 </div>
