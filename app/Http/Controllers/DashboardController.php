@@ -575,7 +575,7 @@ class DashboardController extends Controller
                     'color' => '#2979ff',
                     'total' => round($totalVentas, 2),
                     'transactions' => $salesBreakdown->count(),
-                    'items' => $salesBreakdown->map(fn(SalesMovement $sale) => $this->mapDashboardSalesItems($sale))->values()->all(),
+                    'items' => $salesBreakdown->map(fn(\App\Models\SalesMovement $sale) => $this->mapDashboardSalesItems($sale))->values()->all(),
                 ],
                 'purchases' => [
                     'title' => 'Compras',
@@ -584,7 +584,7 @@ class DashboardController extends Controller
                     'color' => '#FE0000',
                     'total' => round($totalCompras, 2),
                     'transactions' => $purchaseBreakdown->count(),
-                    'items' => $purchaseBreakdown->map(fn(PurchaseMovement $purchase) => $this->mapDashboardPurchaseItems($purchase))->values()->all(),
+                    'items' => $purchaseBreakdown->map(fn(\App\Models\PurchaseMovement $purchase) => $this->mapDashboardPurchaseItems($purchase))->values()->all(),
                 ],
                 'entries' => [
                     'title' => 'Entradas',
@@ -595,7 +595,7 @@ class DashboardController extends Controller
                     'transactions' => $cashBreakdown->filter(fn($movement) => strtoupper((string) ($movement->paymentConcept?->type ?? '')) === 'I')->count(),
                     'items' => $cashBreakdown
                         ->filter(fn($movement) => strtoupper((string) ($movement->paymentConcept?->type ?? '')) === 'I')
-                        ->map(fn(CashMovements $movement) => $this->mapDashboardCashItems($movement))
+                        ->map(fn(\App\Models\CashMovements $movement) => $this->mapDashboardCashItems($movement))
                         ->values()
                         ->all(),
                 ],
@@ -608,7 +608,7 @@ class DashboardController extends Controller
                     'transactions' => $cashBreakdown->filter(fn($movement) => strtoupper((string) ($movement->paymentConcept?->type ?? '')) === 'E')->count(),
                     'items' => $cashBreakdown
                         ->filter(fn($movement) => strtoupper((string) ($movement->paymentConcept?->type ?? '')) === 'E')
-                        ->map(fn(CashMovements $movement) => $this->mapDashboardCashItems($movement))
+                        ->map(fn(\App\Models\CashMovements $movement) => $this->mapDashboardCashItems($movement))
                         ->values()
                         ->all(),
                 ],
