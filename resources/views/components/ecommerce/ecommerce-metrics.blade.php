@@ -4,7 +4,33 @@
     $accountBreakdowns = $accountBreakdowns ?? [];
 @endphp
 
-<div>
+<div
+    x-data="{
+        selectedKey: null,
+        selectedAccount: null,
+        openAccount(account) {
+            this.selectedAccount = account || null;
+            window.requestAnimationFrame(() => {
+                const modal = document.querySelector('.modal');
+                const modalData = modal && modal.__x ? modal.__x.$data : null;
+                if (modalData && this.selectedAccount) {
+                    modalData.open = true;
+                }
+            });
+        },
+        closeAccount() {
+            const modal = document.querySelector('.modal');
+            const modalData = modal && modal.__x ? modal.__x.$data : null;
+            if (modalData) {
+                modalData.open = false;
+            }
+        },
+        money(value) {
+            const num = Number(value || 0);
+            return 'S/' + num.toFixed(2);
+        }
+    }"
+>
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 md:gap-6">
         @foreach ($accounts as $key => $account)
             @php
@@ -16,12 +42,16 @@
                     default => ['color' => '#4b5563', 'icon' => Str::slug($key)],
                 };
                 $accountKey = $theme['icon'];
+                $breakdown = $accountBreakdowns[$accountKey]
+                    ?? $accountBreakdowns[$key]
+                    ?? $accountBreakdowns[Str::slug($key)]
+                    ?? null;
             @endphp
             <button
                 type="button"
                 class="group w-full rounded-2xl p-5 md:p-6 shadow-lg hover:shadow-xl transition-all duration-300 relative overflow-hidden text-left focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black/20"
                 style="background-color: {{ $theme['color'] }}"
-                @click="$dispatch('open-dashboard-account-modal', { key: '{{ $accountKey }}' })"
+                @click="openAccount({{ \Illuminate\Support\Js::from($breakdown) }})"
             >
                 <div class="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full blur-2xl group-hover:bg-white/20 transition-all"></div>
 
@@ -72,25 +102,7 @@
     </div>
 
     <x-ui.modal
-        x-data="{
-            open: false,
-            selectedKey: null,
-            selectedAccount: null,
-            accountDetails: {{ \Illuminate\Support\Js::from($accountBreakdowns) }},
-            openAccount(key) {
-                this.selectedKey = key;
-                this.selectedAccount = this.accountDetails[key] || null;
-                this.open = !!this.selectedAccount;
-            },
-            closeAccount() {
-                this.open = false;
-            },
-            money(value) {
-                const num = Number(value || 0);
-                return 'S/' + num.toFixed(2);
-            }
-        }"
-        @open-dashboard-account-modal.window="openAccount($event.detail.key)"
+        x-data="{ open: false }"
         :isOpen="false"
         class="max-w-6xl"
     >
