@@ -1252,6 +1252,10 @@
                                 }).catch(() => {});
                             };
                             window.addEventListener('pagehide', releaseTemporaryTableLock, { once: true });
+                            // Turbo no siempre dispara pagehide ni guarda esta página en caché;
+                            // liberar antes de la visita evita que el heartbeat quede vivo al salir.
+                            document.addEventListener('turbo:before-visit', releaseTemporaryTableLock, { once: true });
+                            document.addEventListener('turbo:before-render', releaseTemporaryTableLock, { once: true });
                             document.addEventListener('turbo:before-cache', releaseTemporaryTableLock, { once: true });
                         }
 
