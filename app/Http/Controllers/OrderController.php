@@ -1244,7 +1244,9 @@ class OrderController extends Controller
                         ]);
                         $lockedTable->refresh();
                     } else {
-                        return $lockedTable->attending_waiter_name ?: 'otro mozo';
+                        return $lockedTable->attending_waiter_name
+                            ?: User::find($lockedTable->attending_user_id)?->name
+                            ?: 'otro mozo';
                     }
                 }
 
