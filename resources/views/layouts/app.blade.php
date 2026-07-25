@@ -328,12 +328,12 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
     @if (!empty($errorMessage))
     <script>
     (function() {
-        const showErrorToast = () => {
-            const message = @json($errorMessage);
-            const key = 'toast:error';
-            if (window.sessionStorage && sessionStorage.getItem(key) === message) {
-                return;
-            }
+            const showErrorToast = () => {
+                const message = @json($errorMessage);
+            // Evita el doble evento DOMContentLoaded/turbo:load solo en esta vista.
+            // No usar sessionStorage: impediría mostrar el mismo aviso al siguiente intento.
+            if (window.__lastErrorToast === message) return;
+            window.__lastErrorToast = message;
             if (window.Swal) {
                 Swal.fire({
                     toast: true,
@@ -345,9 +345,9 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
                     timerProgressBar: true
                 });
             }
-            if (window.sessionStorage) {
-                sessionStorage.setItem(key, message);
-            }
+            window.setTimeout(() => {
+                if (window.__lastErrorToast === message) window.__lastErrorToast = null;
+            }, 1000);
         };
         document.addEventListener('DOMContentLoaded', showErrorToast, { once: true });
         document.addEventListener('turbo:load', showErrorToast);
