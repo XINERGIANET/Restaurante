@@ -787,7 +787,7 @@ class OrderController extends Controller
             ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
             ->when(! $branchId, fn($q) => $q->whereRaw('1 = 0'))
             ->orderBy('name')
-            ->get(['id', 'name', 'area_id', 'capacity', 'situation', 'opened_at']);
+            ->get(['id', 'name', 'area_id', 'capacity', 'situation', 'opened_at', 'attending_user_id', 'attending_waiter_name']);
 
         // Área seleccionada explícitamente (por query)
         if ($request->has('area_id')) {
@@ -849,7 +849,7 @@ class OrderController extends Controller
             $totalWithTax = $this->orderMovementDisplayTotal($orderMovement);
 
             // Si no hay pedido pendiente o el total es 0, la mesa debe considerarse libre
-            if (! $orderMovement || $totalWithTax <= 0) {
+            if ((! $orderMovement || $totalWithTax <= 0) && ! $table->attending_user_id) {
                 $situation = 'libre';
                 $totalWithTax = 0;
                 $elapsed = '--:--';
@@ -900,7 +900,7 @@ class OrderController extends Controller
                 'situation' => $situation,
                 'diners' => (int) ($table->capacity ?? 0),
                 'people_count' => (int) ($orderMovement?->people_count ?? 0),
-                'waiter' => $orderMovement?->movement?->responsible_name ?? $orderMovement?->movement?->user_name ?? '-',
+                'waiter' => $orderMovement?->movement?->responsible_name ?? $orderMovement?->movement?->user_name ?? $table->attending_waiter_name ?? '-',
                 'client' => $orderMovement?->movement?->person_name ?? '-',
                 'total' => $totalWithTax,
                 'order_movement_id' => $orderMovement?->id ?? null,
@@ -1101,7 +1101,7 @@ class OrderController extends Controller
             ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
             ->when(! $branchId, fn($q) => $q->whereRaw('1 = 0'))
             ->orderBy('name')
-            ->get(['id', 'name', 'area_id', 'capacity', 'situation', 'opened_at']);
+            ->get(['id', 'name', 'area_id', 'capacity', 'situation', 'opened_at', 'attending_user_id', 'attending_waiter_name']);
         $tablesPayload = $tables->map(function (Table $table) use ($branchId) {
             $elapsed = '--:--';
             if (! empty($table->opened_at)) {
@@ -1137,7 +1137,7 @@ class OrderController extends Controller
             $totalWithTax = $this->orderMovementDisplayTotal($orderMovement);
 
             // Si no hay pedido pendiente o el total es 0, la mesa debe considerarse libre
-            if (! $orderMovement || $totalWithTax <= 0) {
+            if ((! $orderMovement || $totalWithTax <= 0) && ! $table->attending_user_id) {
                 $situation = 'libre';
                 $totalWithTax = 0;
                 $elapsed = '--:--';
@@ -1177,7 +1177,7 @@ class OrderController extends Controller
                 'situation' => $situation,
                 'diners' => (int) ($table->capacity ?? 0),
                 'people_count' => (int) ($orderMovement?->people_count ?? 0),
-                'waiter' => $orderMovement?->movement?->responsible_name ?? $orderMovement?->movement?->user_name ?? '-',
+                'waiter' => $orderMovement?->movement?->responsible_name ?? $orderMovement?->movement?->user_name ?? $table->attending_waiter_name ?? '-',
                 'client' => $orderMovement?->movement?->person_name ?? '-',
                 'total' => $totalWithTax,
                 'order_movement_id' => $orderMovement?->id ?? null,
@@ -1210,6 +1210,40 @@ class OrderController extends Controller
 
         if (! $table) {
             abort(404, 'Mesa no encontrada');
+        }
+
+        // El bloqueo debe ocurrir en el servidor, antes de mostrar el POS. Así dos
+        // mozos que pulsan una mesa a la vez no pueden atenderla simultáneamente.
+        $isMozo = Profile::userHasMozoProfile(
+            $profileId !== null && $profileId !== '' ? (int) $profileId : null
+        );
+        if ($isMozo) {
+            $currentUserId = (int) ($request->user()?->id ?? $userId);
+            $waiterName = trim(($person?->first_name ?? '') . ' ' . ($person?->last_name ?? '')) ?: ($user?->name ?? 'Otro mozo');
+
+            $lockedByAnother = DB::transaction(function () use ($table, $currentUserId, $waiterName) {
+                $lockedTable = Table::whereKey($table->id)->lockForUpdate()->firstOrFail();
+                if ($lockedTable->attending_user_id && (int) $lockedTable->attending_user_id !== $currentUserId) {
+                    return $lockedTable->attending_waiter_name ?: 'otro mozo';
+                }
+
+                $lockedTable->update([
+                    'attending_user_id' => $currentUserId,
+                    'attending_waiter_name' => $waiterName,
+                    'situation' => 'ocupada',
+                    'opened_at' => $lockedTable->opened_at ?? now(),
+                ]);
+
+                return null;
+            });
+
+            if ($lockedByAnother !== null) {
+                $areaName = $table->area?->name ?? 'este salón';
+                return redirect()->route('orders.index', ['area_id' => $table->area_id])
+                    ->with('error', "La mesa {$table->name} del salón {$areaName} ya está siendo atendida por {$lockedByAnother}.");
+            }
+
+            $table->refresh();
         }
 
         $area = $table->area;
@@ -2161,6 +2195,8 @@ class OrderController extends Controller
             Table::where('id', $sourceTableId)->update([
                 'situation' => 'libre',
                 'opened_at' => null,
+                'attending_user_id' => null,
+                'attending_waiter_name' => null,
             ]);
 
             // Ocupar mesa destino (conservar opened_at si ya tenía)
@@ -2168,6 +2204,8 @@ class OrderController extends Controller
             Table::where('id', $destTableId)->update([
                 'situation' => 'ocupada',
                 'opened_at' => $destOpenedAt,
+                'attending_user_id' => $sourceTable->attending_user_id,
+                'attending_waiter_name' => $sourceTable->attending_waiter_name,
             ]);
 
             DB::commit();
@@ -2277,6 +2315,16 @@ class OrderController extends Controller
 
         $tableId = $request->filled('table_id') ? $request->table_id : null;
         $areaId = $request->filled('area_id') ? $request->area_id : null;
+        if ($isMozoProfile && $tableId) {
+            $tableLock = Table::find($tableId);
+            $currentUserId = (int) ($user?->id ?? session('user_id'));
+            if ($tableLock?->attending_user_id && (int) $tableLock->attending_user_id !== $currentUserId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Esta mesa ya está siendo atendida por ' . ($tableLock->attending_waiter_name ?: 'otro mozo') . '.',
+                ], 409);
+            }
+        }
         $peopleCount = max(0, (int) $request->input('people_count', 0));
         $deliveryAmount = round((float) ($request->input('delivery_amount', 0) ?: 0), 6);
         $serviceType = strtoupper((string) $request->input('service_type', 'IN_SITU'));
@@ -2543,6 +2591,8 @@ class OrderController extends Controller
                     Table::where('id', $tableId)->update([
                         'situation' => 'libre',
                         'opened_at' => null,
+                        'attending_user_id' => null,
+                        'attending_waiter_name' => null,
                     ]);
                 } else {
                     $existingOpenedAt = Table::where('id', $tableId)->value('opened_at');
@@ -4664,6 +4714,8 @@ class OrderController extends Controller
                 Table::where('id', $tableIdToFree)->update([
                     'situation' => 'libre',
                     'opened_at' => null,
+                    'attending_user_id' => null,
+                    'attending_waiter_name' => null,
                 ]);
             }
 
@@ -5021,6 +5073,8 @@ class OrderController extends Controller
                 Table::where('id', $tableIdToFree)->update([
                     'situation' => 'libre',
                     'opened_at' => null,
+                    'attending_user_id' => null,
+                    'attending_waiter_name' => null,
                 ]);
             }
             $orderClosed = true;
@@ -5662,6 +5716,8 @@ class OrderController extends Controller
             Table::where('id', $table->id)->update([
                 'situation' => 'libre',
                 'opened_at' => null,
+                'attending_user_id' => null,
+                'attending_waiter_name' => null,
             ]);
 
             DB::commit();
@@ -5710,6 +5766,17 @@ class OrderController extends Controller
                 'success' => false,
                 'message' => 'Mesa no encontrada',
             ], 404);
+        }
+
+        $profileId = session('profile_id') ?? $request->user()?->profile_id;
+        if (Profile::userHasMozoProfile($profileId !== null && $profileId !== '' ? (int) $profileId : null)) {
+            $currentUserId = (int) ($request->user()?->id ?? session('user_id'));
+            if ($table->attending_user_id && (int) $table->attending_user_id !== $currentUserId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Esta mesa ya está siendo atendida por ' . ($table->attending_waiter_name ?: 'otro mozo') . '.',
+                ], 409);
+            }
         }
 
         if ($table->situation !== 'ocupada') {

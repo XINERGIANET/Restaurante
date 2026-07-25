@@ -15,6 +15,8 @@ class Table extends Model
         'status',
         'situation',
         'opened_at',
+        'attending_user_id',
+        'attending_waiter_name',
         'area_id',
         'branch_id',
         ];
