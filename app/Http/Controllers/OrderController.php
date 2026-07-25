@@ -1223,27 +1223,41 @@ class OrderController extends Controller
 
             $lockedByAnother = DB::transaction(function () use ($table, $currentUserId, $waiterName) {
                 $lockedTable = Table::whereKey($table->id)->lockForUpdate()->firstOrFail();
-                if ($lockedTable->attending_user_id && (int) $lockedTable->attending_user_id !== $currentUserId) {
-                    return $lockedTable->attending_waiter_name ?: 'otro mozo';
-                }
-
                 // Compatibilidad con pedidos que ya estaban abiertos antes de
                 // incorporar el bloqueo de mesa: respetar su mozo responsable.
-                $pendingOrder = OrderMovement::with('movement')
+                $pendingOrder = OrderMovement::with(['movement', 'details'])
                     ->where('table_id', $lockedTable->id)
                     ->whereIn('status', ['PENDIENTE', 'P'])
                     ->orderByDesc('id')
                     ->first();
+                $hasComanda = $pendingOrder?->details->contains(function ($detail) {
+                    return (float) $detail->quantity > 0 && ($detail->status === null || $detail->status !== 'C');
+                }) ?? false;
+
+                if ($lockedTable->attending_user_id && (int) $lockedTable->attending_user_id !== $currentUserId) {
+                    // Sin comanda, el bloqueo es temporal. Si el navegador se cerró
+                    // sin poder avisar, vence solo después de tres minutos.
+                    if (! $hasComanda && $lockedTable->updated_at?->lt(now()->subMinutes(3))) {
+                        $lockedTable->update([
+                            'attending_user_id' => null,
+                            'attending_waiter_name' => null,
+                        ]);
+                        $lockedTable->refresh();
+                    } else {
+                        return $lockedTable->attending_waiter_name ?: 'otro mozo';
+                    }
+                }
+
                 $orderWaiterId = (int) ($pendingOrder?->movement?->responsible_id ?? $pendingOrder?->movement?->user_id ?? 0);
                 $orderWaiterName = $pendingOrder?->movement?->responsible_name
                     ?: $pendingOrder?->movement?->user_name;
-                if ($orderWaiterId && $orderWaiterId !== $currentUserId) {
+                if ($hasComanda && $orderWaiterId && $orderWaiterId !== $currentUserId) {
                     return $orderWaiterName ?: 'otro mozo';
                 }
 
                 $lockedTable->update([
-                    'attending_user_id' => $orderWaiterId ?: $currentUserId,
-                    'attending_waiter_name' => $orderWaiterName ?: $waiterName,
+                    'attending_user_id' => $hasComanda && $orderWaiterId ? $orderWaiterId : $currentUserId,
+                    'attending_waiter_name' => $hasComanda && $orderWaiterName ? $orderWaiterName : $waiterName,
                 ]);
 
                 return null;
@@ -5788,6 +5802,9 @@ class OrderController extends Controller
                     'success' => false,
                     'message' => 'Esta mesa ya está siendo atendida por ' . ($table->attending_waiter_name ?: 'otro mozo') . '.',
                 ], 409);
+            }
+            if ($table->attending_user_id && (int) $table->attending_user_id === $currentUserId) {
+                $table->touch();
             }
         }
 
