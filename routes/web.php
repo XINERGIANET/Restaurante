@@ -267,6 +267,8 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/Pedidos/abrir-mesa', [OrderController::class, 'openTable'])
         ->name('orders.openTable');
+    Route::post('/Pedidos/liberar-bloqueo-mesa', [OrderController::class, 'releaseTableLock'])
+        ->name('orders.releaseTableLock');
 
     Route::post('/Pedidos/mover-mesa', [OrderController::class, 'moveTable'])
         ->name('orders.moveTable');

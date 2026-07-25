@@ -848,8 +848,8 @@ class OrderController extends Controller
 
             $totalWithTax = $this->orderMovementDisplayTotal($orderMovement);
 
-            // Si no hay pedido pendiente o el total es 0, la mesa debe considerarse libre
-            if ((! $orderMovement || $totalWithTax <= 0) && ! $table->attending_user_id) {
+            // Una mesa solo se considera ocupada cuando tiene una comanda con importe.
+            if (! $orderMovement || $totalWithTax <= 0) {
                 $situation = 'libre';
                 $totalWithTax = 0;
                 $elapsed = '--:--';
@@ -1136,8 +1136,8 @@ class OrderController extends Controller
                 ->first();
             $totalWithTax = $this->orderMovementDisplayTotal($orderMovement);
 
-            // Si no hay pedido pendiente o el total es 0, la mesa debe considerarse libre
-            if ((! $orderMovement || $totalWithTax <= 0) && ! $table->attending_user_id) {
+            // Una mesa solo se considera ocupada cuando tiene una comanda con importe.
+            if (! $orderMovement || $totalWithTax <= 0) {
                 $situation = 'libre';
                 $totalWithTax = 0;
                 $elapsed = '--:--';
@@ -1227,11 +1227,23 @@ class OrderController extends Controller
                     return $lockedTable->attending_waiter_name ?: 'otro mozo';
                 }
 
+                // Compatibilidad con pedidos que ya estaban abiertos antes de
+                // incorporar el bloqueo de mesa: respetar su mozo responsable.
+                $pendingOrder = OrderMovement::with('movement')
+                    ->where('table_id', $lockedTable->id)
+                    ->whereIn('status', ['PENDIENTE', 'P'])
+                    ->orderByDesc('id')
+                    ->first();
+                $orderWaiterId = (int) ($pendingOrder?->movement?->responsible_id ?? $pendingOrder?->movement?->user_id ?? 0);
+                $orderWaiterName = $pendingOrder?->movement?->responsible_name
+                    ?: $pendingOrder?->movement?->user_name;
+                if ($orderWaiterId && $orderWaiterId !== $currentUserId) {
+                    return $orderWaiterName ?: 'otro mozo';
+                }
+
                 $lockedTable->update([
-                    'attending_user_id' => $currentUserId,
-                    'attending_waiter_name' => $waiterName,
-                    'situation' => 'ocupada',
-                    'opened_at' => $lockedTable->opened_at ?? now(),
+                    'attending_user_id' => $orderWaiterId ?: $currentUserId,
+                    'attending_waiter_name' => $orderWaiterName ?: $waiterName,
                 ]);
 
                 return null;
@@ -5779,16 +5791,42 @@ class OrderController extends Controller
             }
         }
 
-        if ($table->situation !== 'ocupada') {
-            Table::where('id', $table->id)->update([
-                'situation' => 'ocupada',
+        return response()->json([
+            'success' => true,
+            'message' => 'Bloqueo de mesa validado',
+        ]);
+    }
+
+    /** Libera el bloqueo temporal de una mesa cuando el mozo sale sin comandar. */
+    public function releaseTableLock(Request $request)
+    {
+        $tableId = (int) $request->input('table_id');
+        $currentUserId = (int) ($request->user()?->id ?? session('user_id'));
+        $table = Table::find($tableId);
+
+        if (! $table || ! $currentUserId || (int) $table->attending_user_id !== $currentUserId) {
+            return response()->json(['success' => true]);
+        }
+
+        // Si ya se comandó algo, la mesa continúa ocupada y asignada a su mozo.
+        $hasPendingOrder = OrderMovement::where('table_id', $table->id)
+            ->whereIn('status', ['PENDIENTE', 'P'])
+            ->whereHas('details', function ($query) {
+                $query->where('quantity', '>', 0)
+                    ->where(function ($statusQuery) {
+                        $statusQuery->whereNull('status')->orWhere('status', '!=', 'C');
+                    });
+            })
+            ->exists();
+
+        if (! $hasPendingOrder) {
+            $table->update([
+                'attending_user_id' => null,
+                'attending_waiter_name' => null,
             ]);
         }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Mesa abierta',
-        ]);
+        return response()->json(['success' => true]);
     }
 
     /**

@@ -1220,6 +1220,26 @@
                                     table_id: tableId
                                 })
                             }).catch(() => {});
+
+                            // Si el mozo sale sin guardar productos, otro mozo puede tomar la mesa.
+                            // keepalive permite enviar la liberación aun mientras la página se está cerrando.
+                            let tableLockReleased = false;
+                            const releaseTemporaryTableLock = () => {
+                                if (tableLockReleased) return;
+                                tableLockReleased = true;
+                                fetch('{{ route('orders.releaseTableLock') }}', {
+                                    method: 'POST',
+                                    keepalive: true,
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                                        'Accept': 'application/json'
+                                    },
+                                    body: JSON.stringify({ table_id: tableId })
+                                }).catch(() => {});
+                            };
+                            window.addEventListener('pagehide', releaseTemporaryTableLock, { once: true });
+                            document.addEventListener('turbo:before-cache', releaseTemporaryTableLock, { once: true });
                         }
 
                         // Inicializar datos de la mesa
