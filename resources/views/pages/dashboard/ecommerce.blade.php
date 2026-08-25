@@ -49,7 +49,10 @@
         </div>
 
         <!-- Summary Metrics -->
-        <x-ecommerce.ecommerce-metrics :accounts="$dashboardData['accounts']" />
+        <x-ecommerce.ecommerce-metrics
+            :accounts="$dashboardData['accounts']"
+            :accountBreakdowns="$dashboardData['accountBreakdowns']"
+        />
 
         <div class="mt-6">
             <x-ecommerce.products-sold-period

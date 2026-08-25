@@ -13,6 +13,7 @@ export function startPrintBridgeStationPoll() {
         return;
     }
     window.__xinergiaPrintBridgePollStarted = true;
+    let busy = false;
 
     const getPrinter = () => {
         try {
@@ -23,6 +24,10 @@ export function startPrintBridgeStationPoll() {
     };
 
     const tick = async () => {
+        if (busy) {
+            return;
+        }
+        busy = true;
         try {
             const u = new URL(pullBase, window.location.origin);
             u.searchParams.set('printer_name', getPrinter());
@@ -85,6 +90,8 @@ export function startPrintBridgeStationPoll() {
             }
         } catch (e) {
             console.warn('[print-bridge-station]', e);
+        } finally {
+            busy = false;
         }
     };
 

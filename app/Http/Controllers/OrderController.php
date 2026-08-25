@@ -35,6 +35,7 @@ use App\Models\SalesMovement;
 use App\Models\SalesMovementDetail;
 use App\Models\Shift;
 use App\Models\Table;
+use App\Models\ThermalPrintJob;
 use App\Models\Unit;
 use App\Models\User;
 use App\Services\AccountReceivablePayableService;
@@ -50,9 +51,13 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 class OrderController extends Controller
 {
+    private ?bool $thermalPrintJobsSchemaReady = null;
+
     private function waiterPinEnabled(?int $branchId): bool
     {
         if (! $branchId) {
@@ -74,6 +79,48 @@ class OrderController extends Controller
     private function mozoProfileId(): ?int
     {
         return Profile::mozoProfileId();
+    }
+
+    private function thermalPrintJobsSchemaReady(): bool
+    {
+        if ($this->thermalPrintJobsSchemaReady !== null) {
+            return $this->thermalPrintJobsSchemaReady;
+        }
+
+        return $this->thermalPrintJobsSchemaReady =
+            Schema::hasTable('thermal_print_jobs') && Schema::hasColumn('thermal_print_jobs', 'ticket_text');
+    }
+
+    private function branchParameterValueByDescription(?int $branchId, string $description): ?string
+    {
+        if (! $branchId || trim($description) === '') {
+            return null;
+        }
+
+        $value = DB::table('branch_parameters as bp')
+            ->join('parameters as p', 'p.id', '=', 'bp.parameter_id')
+            ->whereNull('bp.deleted_at')
+            ->whereNull('p.deleted_at')
+            ->where('bp.branch_id', $branchId)
+            ->whereRaw('LOWER(TRIM(p.description)) = ?', [mb_strtolower(trim($description))])
+            ->value('bp.value');
+
+        if ($value === null) {
+            return null;
+        }
+
+        return trim((string) $value);
+    }
+
+    private function closeTablePasswordForBranch(?int $branchId): ?string
+    {
+        $value = effective_close_table_admin_password($branchId);
+
+        if ($value === null || $value === '' || mb_strtolower($value) === 'no') {
+            return null;
+        }
+
+        return $value;
     }
 
     /** Solo pedir PIN cuando la sucursal lo tiene activo Y el usuario tiene perfil Mozo. */
@@ -506,28 +553,50 @@ class OrderController extends Controller
                 });
             })
             ->when($cashRegisterId, function ($query) use ($cashRegisterId) {
-                $query->whereExists(function ($sub) use ($cashRegisterId) {
-                    $sub->select(DB::raw(1))
-                        ->from('movements as m')
-                        ->join('cash_movements as cm', 'cm.movement_id', '=', 'm.id')
-                        ->whereColumn('m.parent_movement_id', 'order_movements.movement_id')
-                        ->where('cm.cash_register_id', $cashRegisterId)
-                        ->whereNull('cm.deleted_at');
+                $query->where(function ($cashQuery) use ($cashRegisterId) {
+                    $cashQuery->whereExists(function ($sub) use ($cashRegisterId) {
+                        $sub->select(DB::raw(1))
+                            ->from('movements as m')
+                            ->join('cash_movements as cm', 'cm.movement_id', '=', 'm.id')
+                            ->whereColumn('m.parent_movement_id', 'order_movements.movement_id')
+                            ->where('cm.cash_register_id', $cashRegisterId)
+                            ->whereNull('cm.deleted_at');
+                    })->orWhereExists(function ($sub) use ($cashRegisterId) {
+                        $sub->select(DB::raw(1))
+                            ->from('movements as sale')
+                            ->join('movements as cash', 'cash.parent_movement_id', '=', 'sale.id')
+                            ->join('cash_movements as cm', 'cm.movement_id', '=', 'cash.id')
+                            ->whereColumn('sale.parent_movement_id', 'order_movements.movement_id')
+                            ->where('cm.cash_register_id', $cashRegisterId)
+                            ->whereNull('cm.deleted_at');
+                    });
                 });
             })
             ->when($status, function ($query) use ($status) {
                 $query->where('status', $status);
             })
             ->when($paymentMethodId, function ($query) use ($paymentMethodId) {
-                $query->whereExists(function ($sub) use ($paymentMethodId) {
-                    $sub->select(DB::raw(1))
-                        ->from('movements as m')
-                        ->join('cash_movements as cm', 'cm.movement_id', '=', 'm.id')
-                        ->join('cash_movement_details as cmd', 'cmd.cash_movement_id', '=', 'cm.id')
-                        ->whereColumn('m.parent_movement_id', 'order_movements.movement_id')
-                        ->where('cmd.payment_method_id', $paymentMethodId)
-                        ->whereNull('cm.deleted_at')
-                        ->whereNull('cmd.deleted_at');
+                $query->where(function ($paymentQuery) use ($paymentMethodId) {
+                    $paymentQuery->whereExists(function ($sub) use ($paymentMethodId) {
+                        $sub->select(DB::raw(1))
+                            ->from('movements as m')
+                            ->join('cash_movements as cm', 'cm.movement_id', '=', 'm.id')
+                            ->join('cash_movement_details as cmd', 'cmd.cash_movement_id', '=', 'cm.id')
+                            ->whereColumn('m.parent_movement_id', 'order_movements.movement_id')
+                            ->where('cmd.payment_method_id', $paymentMethodId)
+                            ->whereNull('cm.deleted_at')
+                            ->whereNull('cmd.deleted_at');
+                    })->orWhereExists(function ($sub) use ($paymentMethodId) {
+                        $sub->select(DB::raw(1))
+                            ->from('movements as sale')
+                            ->join('movements as cash', 'cash.parent_movement_id', '=', 'sale.id')
+                            ->join('cash_movements as cm', 'cm.movement_id', '=', 'cash.id')
+                            ->join('cash_movement_details as cmd', 'cmd.cash_movement_id', '=', 'cm.id')
+                            ->whereColumn('sale.parent_movement_id', 'order_movements.movement_id')
+                            ->where('cmd.payment_method_id', $paymentMethodId)
+                            ->whereNull('cm.deleted_at')
+                            ->whereNull('cmd.deleted_at');
+                    });
                 });
             });
 
@@ -578,6 +647,130 @@ class OrderController extends Controller
         ]);
     }
 
+    public function markDetailDelivered(Request $request, OrderMovementDetail $detail)
+    {
+        $branchId = (int) session('branch_id');
+
+        $detail->loadMissing('orderMovement.movement');
+
+        if (! $detail->orderMovement) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No se encontró el pedido de la línea seleccionada.',
+            ], 404);
+        }
+
+        if ($branchId > 0 && (int) $detail->orderMovement->branch_id !== $branchId) {
+            abort(403);
+        }
+
+        if (($detail->status ?? 'A') === 'C') {
+            return response()->json([
+                'success' => false,
+                'message' => 'La línea está cancelada y no puede marcarse como entregada.',
+            ], 422);
+        }
+
+        if (($detail->status ?? 'A') !== 'E') {
+            $detail->status = 'E';
+            $detail->save();
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Producto marcado como entregado.',
+            'detail' => [
+                'id' => $detail->id,
+                'status' => $detail->status,
+                'delivered' => $detail->status === 'E',
+            ],
+        ]);
+    }
+
+    public function commands(Request $request)
+    {
+        if (! Schema::hasTable('thermal_print_jobs')) {
+            return view('orders.commands', [
+                'jobs' => collect(),
+                'stats' => [
+                    'printed' => 0,
+                    'pending' => 0,
+                    'printing' => 0,
+                    'error' => 0,
+                ],
+                'printerSearch' => trim((string) $request->input('printer', '')),
+                'statusFilter' => trim((string) $request->input('status', '')),
+                'dateFrom' => $request->input('date_from'),
+                'dateTo' => $request->input('date_to'),
+                'perPage' => 20,
+                'schemaReady' => false,
+            ]);
+        }
+
+        $branchId = (int) session('branch_id');
+        $printerSearch = trim((string) $request->input('printer', ''));
+        $statusFilter = trim((string) $request->input('status', ''));
+        $dateFrom = $request->input('date_from');
+        $dateTo = $request->input('date_to');
+        $perPage = (int) $request->input('per_page', 20);
+        if (! in_array($perPage, [10, 20, 50, 100], true)) {
+            $perPage = 20;
+        }
+
+        $baseQuery = ThermalPrintJob::query()
+            ->with(['movement.orderMovement.table.area', 'requestedBy.person', 'printedBy.person'])
+            ->where('source', 'kitchen_order')
+            ->when($branchId > 0, fn ($query) => $query->where('branch_id', $branchId))
+            ->when($branchId <= 0, fn ($query) => $query->whereRaw('1 = 0'));
+
+        $filteredQuery = (clone $baseQuery)
+            ->when($printerSearch !== '', function ($query) use ($printerSearch) {
+                InsensitiveSearch::whereInsensitiveLikePattern($query, 'printer_name', '%' . $printerSearch . '%');
+            })
+            ->when($dateFrom, fn ($query) => $query->whereDate('created_at', '>=', $dateFrom))
+            ->when($dateTo, fn ($query) => $query->whereDate('created_at', '<=', $dateTo))
+            ->when($statusFilter !== '', function ($query) use ($statusFilter) {
+                match ($statusFilter) {
+                    'printed' => $query->where('status', 'printed'),
+                    'pending' => $query->where('status', 'pending')->whereNull('last_error'),
+                    'printing' => $query->where('status', 'printing'),
+                    'error' => $query->where('status', 'pending')->whereNotNull('last_error'),
+                    'dismissed' => $query->where('status', 'dismissed'),
+                    default => null,
+                };
+            });
+
+        $statsBase = (clone $baseQuery)
+            ->when($printerSearch !== '', function ($query) use ($printerSearch) {
+                InsensitiveSearch::whereInsensitiveLikePattern($query, 'printer_name', '%' . $printerSearch . '%');
+            })
+            ->when($dateFrom, fn ($query) => $query->whereDate('created_at', '>=', $dateFrom))
+            ->when($dateTo, fn ($query) => $query->whereDate('created_at', '<=', $dateTo));
+
+        $stats = [
+            'printed' => (clone $statsBase)->where('status', 'printed')->count(),
+            'pending' => (clone $statsBase)->where('status', 'pending')->whereNull('last_error')->count(),
+            'printing' => (clone $statsBase)->where('status', 'printing')->count(),
+            'error' => (clone $statsBase)->where('status', 'pending')->whereNotNull('last_error')->count(),
+        ];
+
+        $jobs = $filteredQuery
+            ->orderByDesc('id')
+            ->paginate($perPage)
+            ->withQueryString();
+
+        return view('orders.commands', [
+            'jobs' => $jobs,
+            'stats' => $stats,
+            'printerSearch' => $printerSearch,
+            'statusFilter' => $statusFilter,
+            'dateFrom' => $dateFrom,
+            'dateTo' => $dateTo,
+            'perPage' => $perPage,
+            'schemaReady' => true,
+        ]);
+    }
+
     public function index(Request $request)
     {
         $branchId = session('branch_id');
@@ -594,7 +787,7 @@ class OrderController extends Controller
             ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
             ->when(! $branchId, fn($q) => $q->whereRaw('1 = 0'))
             ->orderBy('name')
-            ->get(['id', 'name', 'area_id', 'capacity', 'situation', 'opened_at']);
+            ->get(['id', 'name', 'area_id', 'capacity', 'situation', 'opened_at', 'attending_user_id', 'attending_waiter_name']);
 
         // Área seleccionada explícitamente (por query)
         if ($request->has('area_id')) {
@@ -655,7 +848,7 @@ class OrderController extends Controller
 
             $totalWithTax = $this->orderMovementDisplayTotal($orderMovement);
 
-            // Si no hay pedido pendiente o el total es 0, la mesa debe considerarse libre
+            // Una mesa solo se considera ocupada cuando tiene una comanda con importe.
             if (! $orderMovement || $totalWithTax <= 0) {
                 $situation = 'libre';
                 $totalWithTax = 0;
@@ -707,7 +900,7 @@ class OrderController extends Controller
                 'situation' => $situation,
                 'diners' => (int) ($table->capacity ?? 0),
                 'people_count' => (int) ($orderMovement?->people_count ?? 0),
-                'waiter' => $orderMovement?->movement?->responsible_name ?? $orderMovement?->movement?->user_name ?? '-',
+                'waiter' => $orderMovement?->movement?->responsible_name ?? $orderMovement?->movement?->user_name ?? $table->attending_waiter_name ?? '-',
                 'client' => $orderMovement?->movement?->person_name ?? '-',
                 'total' => $totalWithTax,
                 'order_movement_id' => $orderMovement?->id ?? null,
@@ -731,6 +924,7 @@ class OrderController extends Controller
             'tables' => $tablesPayload,
             'user' => $request->user(),
             'waiterPinEnabled' => $waiterPinEnabled,
+            'closeTablePasswordRequired' => $this->closeTablePasswordForBranch($branchId ? (int) $branchId : null) !== null,
             'canCharge' => $this->canCharge($profileId),
             'isMozo' => Profile::userHasMozoProfile(
                 $profileId !== null && $profileId !== '' ? (int) $profileId : null
@@ -784,25 +978,47 @@ class OrderController extends Controller
                 $query->whereHas('movement', fn($m) => $m->where('document_type_id', $documentTypeId));
             })
             ->when($cashRegisterId, function ($query) use ($cashRegisterId) {
-                $query->whereExists(function ($sub) use ($cashRegisterId) {
-                    $sub->select(DB::raw(1))
-                        ->from('movements as m')
-                        ->join('cash_movements as cm', 'cm.movement_id', '=', 'm.id')
-                        ->whereColumn('m.parent_movement_id', 'order_movements.movement_id')
-                        ->where('cm.cash_register_id', $cashRegisterId)
-                        ->whereNull('cm.deleted_at');
+                $query->where(function ($cashQuery) use ($cashRegisterId) {
+                    $cashQuery->whereExists(function ($sub) use ($cashRegisterId) {
+                        $sub->select(DB::raw(1))
+                            ->from('movements as m')
+                            ->join('cash_movements as cm', 'cm.movement_id', '=', 'm.id')
+                            ->whereColumn('m.parent_movement_id', 'order_movements.movement_id')
+                            ->where('cm.cash_register_id', $cashRegisterId)
+                            ->whereNull('cm.deleted_at');
+                    })->orWhereExists(function ($sub) use ($cashRegisterId) {
+                        $sub->select(DB::raw(1))
+                            ->from('movements as sale')
+                            ->join('movements as cash', 'cash.parent_movement_id', '=', 'sale.id')
+                            ->join('cash_movements as cm', 'cm.movement_id', '=', 'cash.id')
+                            ->whereColumn('sale.parent_movement_id', 'order_movements.movement_id')
+                            ->where('cm.cash_register_id', $cashRegisterId)
+                            ->whereNull('cm.deleted_at');
+                    });
                 });
             })
             ->when($paymentMethodId, function ($query) use ($paymentMethodId) {
-                $query->whereExists(function ($sub) use ($paymentMethodId) {
-                    $sub->select(DB::raw(1))
-                        ->from('movements as m')
-                        ->join('cash_movements as cm', 'cm.movement_id', '=', 'm.id')
-                        ->join('cash_movement_details as cmd', 'cmd.cash_movement_id', '=', 'cm.id')
-                        ->whereColumn('m.parent_movement_id', 'order_movements.movement_id')
-                        ->where('cmd.payment_method_id', $paymentMethodId)
-                        ->whereNull('cm.deleted_at')
-                        ->whereNull('cmd.deleted_at');
+                $query->where(function ($paymentQuery) use ($paymentMethodId) {
+                    $paymentQuery->whereExists(function ($sub) use ($paymentMethodId) {
+                        $sub->select(DB::raw(1))
+                            ->from('movements as m')
+                            ->join('cash_movements as cm', 'cm.movement_id', '=', 'm.id')
+                            ->join('cash_movement_details as cmd', 'cmd.cash_movement_id', '=', 'cm.id')
+                            ->whereColumn('m.parent_movement_id', 'order_movements.movement_id')
+                            ->where('cmd.payment_method_id', $paymentMethodId)
+                            ->whereNull('cm.deleted_at')
+                            ->whereNull('cmd.deleted_at');
+                    })->orWhereExists(function ($sub) use ($paymentMethodId) {
+                        $sub->select(DB::raw(1))
+                            ->from('movements as sale')
+                            ->join('movements as cash', 'cash.parent_movement_id', '=', 'sale.id')
+                            ->join('cash_movements as cm', 'cm.movement_id', '=', 'cash.id')
+                            ->join('cash_movement_details as cmd', 'cmd.cash_movement_id', '=', 'cm.id')
+                            ->whereColumn('sale.parent_movement_id', 'order_movements.movement_id')
+                            ->where('cmd.payment_method_id', $paymentMethodId)
+                            ->whereNull('cm.deleted_at')
+                            ->whereNull('cmd.deleted_at');
+                    });
                 });
             })
             ->when($status, function ($query) use ($status) {
@@ -885,7 +1101,7 @@ class OrderController extends Controller
             ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
             ->when(! $branchId, fn($q) => $q->whereRaw('1 = 0'))
             ->orderBy('name')
-            ->get(['id', 'name', 'area_id', 'capacity', 'situation', 'opened_at']);
+            ->get(['id', 'name', 'area_id', 'capacity', 'situation', 'opened_at', 'attending_user_id', 'attending_waiter_name']);
         $tablesPayload = $tables->map(function (Table $table) use ($branchId) {
             $elapsed = '--:--';
             if (! empty($table->opened_at)) {
@@ -920,7 +1136,7 @@ class OrderController extends Controller
                 ->first();
             $totalWithTax = $this->orderMovementDisplayTotal($orderMovement);
 
-            // Si no hay pedido pendiente o el total es 0, la mesa debe considerarse libre
+            // Una mesa solo se considera ocupada cuando tiene una comanda con importe.
             if (! $orderMovement || $totalWithTax <= 0) {
                 $situation = 'libre';
                 $totalWithTax = 0;
@@ -961,7 +1177,7 @@ class OrderController extends Controller
                 'situation' => $situation,
                 'diners' => (int) ($table->capacity ?? 0),
                 'people_count' => (int) ($orderMovement?->people_count ?? 0),
-                'waiter' => $orderMovement?->movement?->responsible_name ?? $orderMovement?->movement?->user_name ?? '-',
+                'waiter' => $orderMovement?->movement?->responsible_name ?? $orderMovement?->movement?->user_name ?? $table->attending_waiter_name ?? '-',
                 'client' => $orderMovement?->movement?->person_name ?? '-',
                 'total' => $totalWithTax,
                 'order_movement_id' => $orderMovement?->id ?? null,
@@ -994,6 +1210,68 @@ class OrderController extends Controller
 
         if (! $table) {
             abort(404, 'Mesa no encontrada');
+        }
+
+        // El bloqueo debe ocurrir en el servidor, antes de mostrar el POS. Así dos
+        // mozos que pulsan una mesa a la vez no pueden atenderla simultáneamente.
+        $isMozo = Profile::userHasMozoProfile(
+            $profileId !== null && $profileId !== '' ? (int) $profileId : null
+        );
+        if ($isMozo) {
+            $currentUserId = (int) ($request->user()?->id ?? $userId);
+            $waiterName = trim(($person?->first_name ?? '') . ' ' . ($person?->last_name ?? '')) ?: ($user?->name ?? 'Otro mozo');
+
+            $lockedByAnother = DB::transaction(function () use ($table, $currentUserId, $waiterName) {
+                $lockedTable = Table::whereKey($table->id)->lockForUpdate()->firstOrFail();
+                // Compatibilidad con pedidos que ya estaban abiertos antes de
+                // incorporar el bloqueo de mesa: respetar su mozo responsable.
+                $pendingOrder = OrderMovement::with(['movement', 'details'])
+                    ->where('table_id', $lockedTable->id)
+                    ->whereIn('status', ['PENDIENTE', 'P'])
+                    ->orderByDesc('id')
+                    ->first();
+                $hasComanda = $pendingOrder?->details->contains(function ($detail) {
+                    return (float) $detail->quantity > 0 && ($detail->status === null || $detail->status !== 'C');
+                }) ?? false;
+
+                if ($lockedTable->attending_user_id && (int) $lockedTable->attending_user_id !== $currentUserId) {
+                    // Sin comanda, el bloqueo es temporal. Si el navegador se cerró
+                    // sin poder avisar, vence solo después de tres minutos.
+                    if (! $hasComanda && $lockedTable->updated_at?->lt(now()->subMinutes(3))) {
+                        $lockedTable->update([
+                            'attending_user_id' => null,
+                            'attending_waiter_name' => null,
+                        ]);
+                        $lockedTable->refresh();
+                    } else {
+                        return $lockedTable->attending_waiter_name
+                            ?: User::find($lockedTable->attending_user_id)?->name
+                            ?: 'otro mozo';
+                    }
+                }
+
+                $orderWaiterId = (int) ($pendingOrder?->movement?->responsible_id ?? $pendingOrder?->movement?->user_id ?? 0);
+                $orderWaiterName = $pendingOrder?->movement?->responsible_name
+                    ?: $pendingOrder?->movement?->user_name;
+                if ($hasComanda && $orderWaiterId && $orderWaiterId !== $currentUserId) {
+                    return $orderWaiterName ?: 'otro mozo';
+                }
+
+                $lockedTable->update([
+                    'attending_user_id' => $hasComanda && $orderWaiterId ? $orderWaiterId : $currentUserId,
+                    'attending_waiter_name' => $hasComanda && $orderWaiterName ? $orderWaiterName : $waiterName,
+                ]);
+
+                return null;
+            });
+
+            if ($lockedByAnother !== null) {
+                $areaName = $table->area?->name ?? 'este salón';
+                return redirect()->route('orders.index', ['area_id' => $table->area_id])
+                    ->with('error', "La mesa {$table->name} del salón {$areaName} ya está siendo atendida por {$lockedByAnother}.");
+            }
+
+            $table->refresh();
         }
 
         $area = $table->area;
@@ -1945,6 +2223,8 @@ class OrderController extends Controller
             Table::where('id', $sourceTableId)->update([
                 'situation' => 'libre',
                 'opened_at' => null,
+                'attending_user_id' => null,
+                'attending_waiter_name' => null,
             ]);
 
             // Ocupar mesa destino (conservar opened_at si ya tenía)
@@ -1952,6 +2232,8 @@ class OrderController extends Controller
             Table::where('id', $destTableId)->update([
                 'situation' => 'ocupada',
                 'opened_at' => $destOpenedAt,
+                'attending_user_id' => $sourceTable->attending_user_id,
+                'attending_waiter_name' => $sourceTable->attending_waiter_name,
             ]);
 
             DB::commit();
@@ -2061,6 +2343,16 @@ class OrderController extends Controller
 
         $tableId = $request->filled('table_id') ? $request->table_id : null;
         $areaId = $request->filled('area_id') ? $request->area_id : null;
+        if ($isMozoProfile && $tableId) {
+            $tableLock = Table::find($tableId);
+            $currentUserId = (int) ($user?->id ?? session('user_id'));
+            if ($tableLock?->attending_user_id && (int) $tableLock->attending_user_id !== $currentUserId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Esta mesa ya está siendo atendida por ' . ($tableLock->attending_waiter_name ?: 'otro mozo') . '.',
+                ], 409);
+            }
+        }
         $peopleCount = max(0, (int) $request->input('people_count', 0));
         $deliveryAmount = round((float) ($request->input('delivery_amount', 0) ?: 0), 6);
         $serviceType = strtoupper((string) $request->input('service_type', 'IN_SITU'));
@@ -2327,6 +2619,8 @@ class OrderController extends Controller
                     Table::where('id', $tableId)->update([
                         'situation' => 'libre',
                         'opened_at' => null,
+                        'attending_user_id' => null,
+                        'attending_waiter_name' => null,
                     ]);
                 } else {
                     $existingOpenedAt = Table::where('id', $tableId)->value('opened_at');
@@ -2337,9 +2631,52 @@ class OrderController extends Controller
                 }
             }
 
+            $allProductIds = collect(array_merge($items, $cancellations))
+                ->map(fn ($raw) => (int) ($raw['product_id'] ?? $raw['pId'] ?? 0))
+                ->filter(fn ($productId) => $productId > 0)
+                ->unique()
+                ->values();
+
+            $productsById = Product::query()
+                ->whereIn('id', $allProductIds)
+                ->get()
+                ->keyBy('id');
+
+            $defaultUnitId = Unit::query()->value('id');
+
+            $productBranchesByProductId = ProductBranch::query()
+                ->where('branch_id', $branchId)
+                ->whereIn('product_id', $allProductIds)
+                ->get()
+                ->keyBy('product_id');
+
+            $recipesByProductId = Recipe::query()
+                ->where('branch_id', $branchId)
+                ->whereIn('product_id', $allProductIds)
+                ->where('status', 'A')
+                ->with(['ingredients'])
+                ->get()
+                ->keyBy('product_id');
+
+            $ingredientProductIds = $recipesByProductId
+                ->flatMap(fn ($recipe) => collect($recipe->ingredients)->pluck('product_id'))
+                ->filter(fn ($productId) => (int) $productId > 0)
+                ->unique()
+                ->values();
+
+            $ingredientBranchesByProductId = ProductBranch::query()
+                ->where('branch_id', $branchId)
+                ->whereIn('product_id', $ingredientProductIds)
+                ->get()
+                ->keyBy('product_id');
+
+            $ingredientNamesById = Product::query()
+                ->whereIn('id', $ingredientProductIds)
+                ->pluck('description', 'id');
+
             foreach ($items as $rawItem) {
                 $productId = $rawItem['product_id'] ?? $rawItem['pId'] ?? null;
-                $product = $productId ? Product::find($productId) : null;
+                $product = $productId ? $productsById->get((int) $productId) : null;
 
                 $qty = (float) ($rawItem['quantity'] ?? $rawItem['qty'] ?? 1);
                 $price = (float) ($rawItem['price'] ?? 0);
@@ -2353,16 +2690,14 @@ class OrderController extends Controller
 
                 $unitId = $rawItem['unit_id'] ?? ($product?->unit_id ?? null);
                 if (! $unitId) {
-                    $unitId = Unit::query()->value('id'); // unidad por defecto
+                    $unitId = $defaultUnitId; // unidad por defecto
                 }
 
                 $code = $rawItem['code'] ?? ($product?->code ?? (string) $productId);
                 $description = $rawItem['description'] ?? ($product?->description ?? ($rawItem['name'] ?? 'Producto'));
 
                 // Validar stock disponible si no se permite vender sin stock
-                $productBranch = ProductBranch::where('product_id', $productId)
-                    ->where('branch_id', $branchId)
-                    ->first();
+                $productBranch = $productBranchesByProductId->get((int) $productId);
                 $currentStock = (float) ($productBranch->stock ?? 0);
                 $previousCommittedQty = (float) ($previousCommittedQtyByProduct->get((int) $productId, 0));
                 $newCommittedQty = (float) ($newCommittedQtyByProduct->get((int) $productId, 0));
@@ -2375,12 +2710,7 @@ class OrderController extends Controller
                 };
 
                 if ($deltaQty > 0) {
-                    $recipe = Recipe::query()
-                        ->where('branch_id', $branchId)
-                        ->where('product_id', (int) ($productId ?? 0))
-                        ->where('status', 'A')
-                        ->with(['ingredients'])
-                        ->first();
+                    $recipe = $recipesByProductId->get((int) ($productId ?? 0));
 
                     // Si tiene receta, validar por ingredientes; si no, validar por producto final.
                     if ($recipe && (float) ($recipe->yield_quantity ?? 0) > 0) {
@@ -2398,13 +2728,10 @@ class OrderController extends Controller
                                 continue;
                             }
 
-                            $ingredientBranch = ProductBranch::query()
-                                ->where('product_id', $ingredientProductId)
-                                ->where('branch_id', $branchId)
-                                ->first();
+                            $ingredientBranch = $ingredientBranchesByProductId->get($ingredientProductId);
                             $ingredientStock = (float) ($ingredientBranch?->stock ?? 0);
                             if ($ingredientStock < $needed) {
-                                $ingredientName = Product::query()->where('id', $ingredientProductId)->value('description') ?? ('Ingrediente #' . $ingredientProductId);
+                                $ingredientName = $ingredientNamesById->get($ingredientProductId) ?? ('Ingrediente #' . $ingredientProductId);
                                 throw new \Exception(
                                     "Stock insuficiente para el ingrediente \"{$ingredientName}\". " .
                                         "Stock disponible: {$ingredientStock}, Requerido: {$needed}"
@@ -2462,7 +2789,7 @@ class OrderController extends Controller
             // Registrar cancelaciones por plato como detalles con estado 'C'
             foreach ($cancellations as $rawCancel) {
                 $productId = $rawCancel['product_id'] ?? $rawCancel['pId'] ?? null;
-                $product = $productId ? Product::find($productId) : null;
+                $product = $productId ? $productsById->get((int) $productId) : null;
 
                 $qty = (float) ($rawCancel['qtyCanceled'] ?? $rawCancel['quantity'] ?? 0);
                 if ($qty <= 0) {
@@ -2474,7 +2801,7 @@ class OrderController extends Controller
 
                 $unitId = $rawCancel['unit_id'] ?? ($product?->unit_id ?? null);
                 if (! $unitId) {
-                    $unitId = Unit::query()->value('id'); // unidad por defecto
+                    $unitId = $defaultUnitId; // unidad por defecto
                 }
 
                 $code = $rawCancel['code'] ?? ($product?->code ?? (string) $productId);
@@ -2516,9 +2843,25 @@ class OrderController extends Controller
                 $newCommittedQtyByProduct
             );
 
-            app(KardexSyncService::class)->syncMovement($movement);
+            $kitchenPrintJobs = $this->persistKitchenPrintJobsForOrder(
+                $orderMovement,
+                $movement,
+                $items,
+                $cancellations,
+                $request
+            );
+            $kitchenPrintJobsCreated = count($kitchenPrintJobs);
 
             DB::commit();
+
+            try {
+                app(KardexSyncService::class)->syncMovement($movement);
+            } catch (\Throwable $syncError) {
+                Log::warning('Kardex sync diferido: processOrder', [
+                    'movement_id' => $movement->id,
+                    'error' => $syncError->getMessage(),
+                ]);
+            }
 
             if ($request->expectsJson()) {
                 return response()->json([
@@ -2528,6 +2871,15 @@ class OrderController extends Controller
                     'order_movement_id' => $orderMovement->id,
                     'client_person_id' => $clientPerson?->id,
                     'client_name' => $clientName,
+                    'kitchen_print_jobs_created' => $kitchenPrintJobsCreated,
+                    'kitchen_print_jobs' => collect($kitchenPrintJobs)
+                        ->map(fn (ThermalPrintJob $job) => [
+                            'id' => (int) $job->id,
+                            'printer_name' => (string) ($job->printer_name ?? ''),
+                            'ticket_text' => (string) ($job->ticket_text ?? ''),
+                        ])
+                        ->values()
+                        ->all(),
                 ]);
             }
         } catch (\Throwable $e) {
@@ -2548,6 +2900,459 @@ class OrderController extends Controller
         }
     }
 
+    public function prepareKitchenPrintJob(Request $request)
+    {
+        if (! $this->thermalPrintJobsSchemaReady()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Falta ejecutar la migracion de impresiones de comandas.',
+            ], 503);
+        }
+
+        $validated = $request->validate([
+            'movement_id' => ['required', 'integer', 'exists:movements,id'],
+            'ticket_text' => ['required', 'string'],
+            'content_summary' => ['nullable', 'string', 'max:2000'],
+            'printer_name' => ['required', 'string', 'max:120'],
+        ]);
+
+        $branchId = (int) session('branch_id');
+        $movement = Movement::query()
+            ->whereKey((int) $validated['movement_id'])
+            ->where('branch_id', $branchId)
+            ->whereHas('orderMovement')
+            ->first();
+
+        if (! $movement) {
+            return response()->json(['success' => false, 'message' => 'Pedido no encontrado en esta sucursal.'], 404);
+        }
+
+        $job = $this->touchKitchenPrintJob(
+            $movement,
+            trim((string) $validated['printer_name']),
+            (string) $validated['ticket_text'],
+            trim((string) ($validated['content_summary'] ?? '')),
+            $request
+        );
+
+        return response()->json([
+            'success' => true,
+            'print_job_id' => $job->id,
+            'movement_id' => $job->movement_id,
+        ]);
+    }
+
+    private function persistKitchenPrintJobsForOrder(
+        OrderMovement $orderMovement,
+        Movement $movement,
+        array $items,
+        array $cancellations,
+        Request $request
+    ): array {
+        $deltaItems = $this->extractKitchenDeltaItemsFromRequest($items);
+        $cancellationItems = $this->extractKitchenCancellationItemsFromRequest($cancellations);
+
+        if (empty($deltaItems) && empty($cancellationItems)) {
+            return [];
+        }
+
+        if (! $this->thermalPrintJobsSchemaReady()) {
+            throw new \RuntimeException('No se pudo guardar el pedido porque el modulo de comandas no esta listo. Avise al administrador.');
+        }
+
+        $orderMovement->loadMissing([
+            'movement',
+            'table.area.printers',
+            'area.printers',
+        ]);
+
+        $area = $orderMovement->table?->area ?: $orderMovement->area;
+        $areaAllowedPrinterNames = collect($area?->printers ?? [])
+            ->map(fn ($printer) => trim((string) ($printer->name ?? '')))
+            ->filter()
+            ->values()
+            ->all();
+
+        $productIds = collect(array_merge($deltaItems, $cancellationItems))
+            ->map(fn ($item) => (int) ($item['product_id'] ?? 0))
+            ->filter(fn ($productId) => $productId > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        $productBranches = ProductBranch::query()
+            ->with(['printers' => function ($query) use ($movement) {
+                $query
+                    ->where('branch_id', (int) $movement->branch_id)
+                    ->where('status', 'E');
+            }])
+            ->where('branch_id', (int) $movement->branch_id)
+            ->whereIn('product_id', $productIds)
+            ->get()
+            ->keyBy('product_id');
+
+        $printerMeta = [];
+        foreach ($productBranches as $productBranch) {
+            foreach ($productBranch->printers as $printer) {
+                $name = trim((string) ($printer->name ?? ''));
+                if ($name === '') {
+                    continue;
+                }
+                $printerMeta[mb_strtolower($name)] = $printer;
+            }
+        }
+
+        $byPrinter = [];
+        foreach ($deltaItems as $item) {
+            $printerNames = $this->resolveKitchenPrinterNamesForProduct(
+                (int) ($item['product_id'] ?? 0),
+                (string) ($item['name'] ?? 'Producto'),
+                $productBranches,
+                $areaAllowedPrinterNames
+            );
+
+            foreach ($printerNames as $printerName) {
+                $byPrinter[$printerName] ??= [];
+                $byPrinter[$printerName][] = $item;
+            }
+        }
+
+        $canceledByPrinter = [];
+        foreach ($cancellationItems as $item) {
+            $printerNames = $this->resolveKitchenPrinterNamesForProduct(
+                (int) ($item['product_id'] ?? 0),
+                (string) ($item['name'] ?? 'Producto'),
+                $productBranches,
+                $areaAllowedPrinterNames
+            );
+
+            foreach ($printerNames as $printerName) {
+                $canceledByPrinter[$printerName] ??= [];
+                $canceledByPrinter[$printerName][] = $item;
+            }
+        }
+
+        $printerNames = collect(array_merge(array_keys($byPrinter), array_keys($canceledByPrinter)))
+            ->map(fn ($name) => trim((string) $name))
+            ->filter()
+            ->unique(fn ($name) => mb_strtolower($name))
+            ->values()
+            ->all();
+
+        if (empty($printerNames)) {
+            throw new \RuntimeException('No se pudo guardar el pedido porque no se genero ninguna comanda. Revise las ticketeras de los productos y del area.');
+        }
+
+        $jobs = [];
+        foreach ($printerNames as $printerName) {
+            $printer = $printerMeta[mb_strtolower($printerName)] ?? null;
+            $paperWidth = $this->resolveKitchenPrinterPaperWidth($printer);
+            $lines = $byPrinter[$printerName] ?? [];
+            $canceledLines = $canceledByPrinter[$printerName] ?? [];
+
+            if (empty($lines) && empty($canceledLines)) {
+                continue;
+            }
+
+            $ticketText = $this->buildKitchenTicketTextForJob(
+                $orderMovement,
+                $movement,
+                $printerName,
+                $lines,
+                $canceledLines,
+                $paperWidth
+            );
+
+            $contentSummary = collect($lines)
+                ->map(fn ($line) => 'x' . $this->formatKitchenQty((float) ($line['qty'] ?? 0)) . ' ' . trim((string) ($line['name'] ?? 'Producto')))
+                ->merge(
+                    collect($canceledLines)->map(fn ($line) => 'ANULADO x' . $this->formatKitchenQty((float) ($line['qty'] ?? 0)) . ' ' . trim((string) ($line['name'] ?? 'Producto')))
+                )
+                ->implode(' · ');
+
+            $jobs[] = $this->touchKitchenPrintJob(
+                $movement,
+                $printerName,
+                $ticketText,
+                $contentSummary,
+                $request
+            );
+        }
+
+        return $jobs;
+    }
+
+    private function extractKitchenDeltaItemsFromRequest(array $items): array
+    {
+        $fallbackCommandTime = now()->format('H:i');
+
+        return collect($items)
+            ->map(function ($item) use ($fallbackCommandTime) {
+                $productId = (int) ($item['product_id'] ?? $item['pId'] ?? 0);
+                $qty = max(0, (float) ($item['quantity'] ?? $item['qty'] ?? 0));
+                if ($qty > 0 && $productId <= 0) {
+                    throw new \RuntimeException('Hay una linea del pedido sin producto valido para generar comanda. Revise el producto e intente de nuevo.');
+                }
+                $savedQty = max(0, (float) ($item['savedQty'] ?? 0));
+                $deltaQty = max(0, round($qty - $savedQty, 6));
+                if ($productId <= 0 || $deltaQty <= 0) {
+                    return null;
+                }
+
+                $courtesyQty = max(0, (float) ($item['courtesyQty'] ?? $item['courtesy_quantity'] ?? 0));
+                $savedCourtesyQty = max(0, (float) ($item['savedCourtesyQty'] ?? 0));
+                $takeawayQty = max(0, (float) ($item['takeawayQty'] ?? $item['takeaway_quantity'] ?? 0));
+                $savedTakeawayQty = max(0, (float) ($item['savedTakeawayQty'] ?? 0));
+
+                return [
+                    'product_id' => $productId,
+                    'name' => trim((string) ($item['name'] ?? $item['description'] ?? 'Producto')),
+                    'qty' => $deltaQty,
+                    'courtesyQty' => max(0, min($deltaQty, round($courtesyQty - $savedCourtesyQty, 6))),
+                    'takeawayQty' => max(0, min($deltaQty, round($takeawayQty - $savedTakeawayQty, 6))),
+                    'commandTime' => trim((string) ($item['commandTime'] ?? '')) ?: $fallbackCommandTime,
+                    'note' => trim((string) ($item['note'] ?? '')),
+                    'complements' => collect($item['complements'] ?? [])->map(fn ($value) => trim((string) $value))->filter()->values()->all(),
+                    'price' => (float) ($item['price'] ?? 0),
+                    'delivered' => ! empty($item['delivered']),
+                    'status' => strtoupper(trim((string) ($item['status'] ?? ''))),
+                ];
+            })
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    private function extractKitchenCancellationItemsFromRequest(array $cancellations): array
+    {
+        return collect($cancellations)
+            ->map(function ($item) {
+                $productId = (int) ($item['product_id'] ?? $item['pId'] ?? 0);
+                $qty = max(0, (float) ($item['qtyCanceled'] ?? $item['quantity'] ?? 0));
+                if ($qty > 0 && $productId <= 0) {
+                    throw new \RuntimeException('Hay una anulacion sin producto valido para generar comanda. Revise el producto e intente de nuevo.');
+                }
+                if ($productId <= 0 || $qty <= 0) {
+                    return null;
+                }
+
+                return [
+                    'product_id' => $productId,
+                    'name' => trim((string) ($item['name'] ?? $item['description'] ?? 'Producto')),
+                    'qty' => $qty,
+                    'complements' => collect($item['complements'] ?? [])->map(fn ($value) => trim((string) $value))->filter()->values()->all(),
+                    'reason' => trim((string) ($item['cancel_reason'] ?? $item['comment'] ?? '')),
+                ];
+            })
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    private function resolveKitchenPrinterNamesForProduct(
+        int $productId,
+        string $productName,
+        $productBranches,
+        array $areaAllowedPrinterNames
+    ): array {
+        if ($productId <= 0) {
+            throw new \RuntimeException('No se pudo generar la comanda porque una linea no tiene un producto valido.');
+        }
+
+        /** @var ProductBranch|null $productBranch */
+        $productBranch = $productBranches->get($productId);
+        if (! $productBranch) {
+            throw new \RuntimeException('No se pudo guardar el pedido. El producto "' . $productName . '" no tiene configuracion de sucursal para comanda.');
+        }
+
+        $printerNames = collect($productBranch->printers ?? [])
+            ->map(fn ($printer) => trim((string) ($printer->name ?? '')))
+            ->filter()
+            ->unique(fn ($name) => mb_strtolower($name))
+            ->values()
+            ->all();
+
+        if (! empty($areaAllowedPrinterNames)) {
+            $allowed = collect($areaAllowedPrinterNames)
+                ->map(fn ($name) => mb_strtolower(trim((string) $name)))
+                ->filter()
+                ->values()
+                ->all();
+
+            $printerNames = array_values(array_filter($printerNames, function ($name) use ($allowed) {
+                return in_array(mb_strtolower(trim((string) $name)), $allowed, true);
+            }));
+        }
+
+        if (empty($printerNames)) {
+            throw new \RuntimeException('No se pudo guardar el pedido. El producto "' . $productName . '" no tiene una ticketera activa para esta area. Revise la impresora asignada al producto o al area de la mesa.');
+        }
+
+        return $printerNames;
+    }
+
+    private function resolveKitchenPrinterPaperWidth(?PrinterBranch $printer): int
+    {
+        $rawWidth = preg_replace('/[^\d]/', '', (string) ($printer?->width ?? ''));
+        $width = (int) ($rawWidth ?: 58);
+
+        return $width === 80 ? 80 : 58;
+    }
+
+    private function buildKitchenTicketTextForJob(
+        OrderMovement $orderMovement,
+        Movement $movement,
+        string $printerName,
+        array $lines,
+        array $canceledLines,
+        int $paperWidth = 58
+    ): string {
+        $lineWidth = $paperWidth === 80 ? 48 : 24;
+        $colQty = 4;
+        $colTime = 6;
+        $colName = max(10, $lineWidth - $colTime - $colQty);
+        $separator = str_repeat('=', $lineWidth);
+        $tableLabel = $orderMovement->table?->name ? 'Mesa ' . $orderMovement->table->name : 'Mostrador';
+        $areaLabel = trim((string) ($orderMovement->table?->area?->name ?? $orderMovement->area?->name ?? ''));
+        $waiterLabel = trim((string) ($movement->responsible_name ?? $movement->user_name ?? '-'));
+        $clientLabel = trim((string) ($movement->person_name ?? ''));
+        $headerLines = [
+            $this->padKitchenCenter('COMANDA: ' . $orderMovement->id . (filled((string) $movement->number) ? ': ' . $movement->number : ''), $lineWidth),
+            $this->padKitchenCenter(trim($printerName) !== '' ? $printerName : 'COCINA', $lineWidth),
+        ];
+
+        if ($areaLabel !== '') {
+            $headerLines[] = $areaLabel;
+        }
+
+        $headerLines[] = $tableLabel;
+        $headerLines[] = 'Mozo: ' . ($waiterLabel !== '' ? $waiterLabel : '-');
+        if ($clientLabel !== '') {
+            $headerLines[] = 'Cliente: ' . $clientLabel;
+        }
+        $headerLines[] = 'Fecha: ' . now()->format('d/m/Y H:i');
+        $headerLines[] = $separator;
+        $headerLines[] = $this->padKitchenEnd('Producto', $colName) . $this->padKitchenCenter('Hora', $colTime) . $this->padKitchenStart('Cant', $colQty);
+        $headerLines[] = $separator;
+
+        $bodyLines = [];
+        foreach ($lines as $line) {
+            $name = trim((string) ($line['name'] ?? 'Producto'));
+            $qty = 'x' . $this->formatKitchenQty((float) ($line['qty'] ?? 0));
+            $commandTime = trim((string) ($line['commandTime'] ?? ''));
+            $bodyLines[] = $this->padKitchenEnd($name, $colName) . $this->padKitchenCenter($commandTime, $colTime) . $this->padKitchenStart($qty, $colQty);
+
+            $complementsLabel = $this->formatKitchenComplementsLabel($line['complements'] ?? []);
+            if ($complementsLabel !== '') {
+                $bodyLines[] = 'Detalle: ' . $complementsLabel;
+            }
+
+            $price = (float) ($line['price'] ?? 0);
+            if ($price > 0) {
+                $bodyLines[] = 'P.unit: S/ ' . number_format($price, 2, '.', '');
+            }
+
+            $tags = [];
+            $courtesyQty = max(0, (float) ($line['courtesyQty'] ?? 0));
+            $takeawayQty = max(0, (float) ($line['takeawayQty'] ?? 0));
+            if ($courtesyQty > 0) {
+                $tags[] = 'Cortesia: ' . $this->formatKitchenQty($courtesyQty);
+            }
+            if ($takeawayQty > 0) {
+                $tags[] = 'Llevar: ' . $this->formatKitchenQty($takeawayQty);
+            }
+            if (! empty($tags)) {
+                $bodyLines[] = '  * ' . implode(' | ', $tags);
+            }
+
+            $note = trim((string) ($line['note'] ?? ''));
+            if ($note !== '') {
+                $bodyLines[] = 'Nota: ' . $note;
+            }
+
+            $status = strtoupper(trim((string) ($line['status'] ?? '')));
+            $isDelivered = ! empty($line['delivered']) || in_array($status, ['ENTREGADO', 'E'], true);
+            $bodyLines[] = 'Estado: ' . ($isDelivered ? 'ENTREGADO' : 'PENDIENTE');
+            $bodyLines[] = '';
+        }
+
+        if (! empty($canceledLines)) {
+            $bodyLines[] = $separator;
+            $bodyLines[] = $this->padKitchenCenter('ANULADO', $lineWidth);
+            $bodyLines[] = $separator;
+
+            foreach ($canceledLines as $line) {
+                $name = trim((string) ($line['name'] ?? 'Producto'));
+                $qty = 'x' . $this->formatKitchenQty((float) ($line['qty'] ?? 0));
+                $bodyLines[] = $this->padKitchenEnd('ANULADO ' . $name, $colName) . $this->padKitchenCenter('', $colTime) . $this->padKitchenStart($qty, $colQty);
+
+                $complementsLabel = $this->formatKitchenComplementsLabel($line['complements'] ?? []);
+                if ($complementsLabel !== '') {
+                    $bodyLines[] = 'Detalle: ' . $complementsLabel;
+                }
+
+                $reason = trim((string) ($line['reason'] ?? ''));
+                if ($reason !== '') {
+                    $bodyLines[] = 'Motivo: ' . $reason;
+                }
+
+                $bodyLines[] = '';
+            }
+        }
+
+        return implode("\n", array_merge($headerLines, $bodyLines)) . "\n\n";
+    }
+
+    private function formatKitchenComplementsLabel(array $complements): string
+    {
+        return collect($complements)
+            ->map(fn ($value) => trim((string) $value))
+            ->filter()
+            ->implode(', ');
+    }
+
+    private function formatKitchenQty(float $qty): string
+    {
+        if (abs($qty - round($qty)) < 0.000001) {
+            return (string) (int) round($qty);
+        }
+
+        return rtrim(rtrim(number_format($qty, 2, '.', ''), '0'), '.');
+    }
+
+    private function padKitchenEnd(string $value, int $length): string
+    {
+        $text = trim($value);
+        if (mb_strlen($text) >= $length) {
+            return mb_substr($text, 0, $length);
+        }
+
+        return $text . str_repeat(' ', $length - mb_strlen($text));
+    }
+
+    private function padKitchenCenter(string $value, int $length): string
+    {
+        $text = trim($value);
+        if (mb_strlen($text) >= $length) {
+            return mb_substr($text, 0, $length);
+        }
+
+        $left = (int) floor(($length - mb_strlen($text)) / 2);
+        $right = $length - mb_strlen($text) - $left;
+
+        return str_repeat(' ', $left) . $text . str_repeat(' ', $right);
+    }
+
+    private function padKitchenStart(string $value, int $length): string
+    {
+        $text = trim($value);
+        if (mb_strlen($text) >= $length) {
+            return mb_substr($text, -$length);
+        }
+
+        return str_repeat(' ', $length - mb_strlen($text)) . $text;
+    }
+
     public function printKitchenTicketThermal(Request $request)
     {
         if (! config('local_network.thermal_print_enabled', true)) {
@@ -2562,8 +3367,12 @@ class OrderController extends Controller
         }
 
         $validated = $request->validate([
-            'ticket_text' => ['required', 'string'],
+            'ticket_text' => ['nullable', 'string'],
             'printer_name' => ['nullable', 'string', 'max:255'],
+            'movement_id' => ['nullable', 'integer', 'exists:movements,id'],
+            'print_job_id' => ['nullable', 'integer', 'exists:thermal_print_jobs,id'],
+            'content_summary' => ['nullable', 'string', 'max:2000'],
+            'retry_attempt' => ['nullable', 'boolean'],
         ]);
 
         $branchId = (int) session('branch_id');
@@ -2574,6 +3383,55 @@ class OrderController extends Controller
             ], 422);
         }
 
+        $printJob = null;
+        if (! empty($validated['print_job_id']) && Schema::hasColumn('thermal_print_jobs', 'ticket_text')) {
+            $printJob = ThermalPrintJob::query()
+                ->whereKey((int) $validated['print_job_id'])
+                ->where('branch_id', $branchId)
+                ->where('source', 'kitchen_order')
+                ->first();
+
+            if (! $printJob) {
+                return response()->json(['success' => false, 'message' => 'Comanda pendiente no encontrada.'], 404);
+            }
+            if ($printJob->status === 'printed') {
+                return response()->json(['success' => false, 'message' => 'Esta comanda ya fue impresa o descartada.'], 409);
+            }
+            if (! in_array($printJob->status, ['pending', 'printing'], true)) {
+                return response()->json(['success' => false, 'message' => 'Esta comanda ya fue descartada.'], 409);
+            }
+            if (! empty($validated['retry_attempt']) && $printJob->status === 'pending') {
+                $printJob->forceFill([
+                    'attempts' => (int) $printJob->attempts + 1,
+                    'last_attempt_at' => now(),
+                    'last_error' => null,
+                ])->save();
+            }
+        }
+
+        $ticketText = (string) ($printJob?->ticket_text ?? $validated['ticket_text'] ?? '');
+        if (trim($ticketText) === '') {
+            return response()->json(['success' => false, 'message' => 'La comanda no tiene contenido para imprimir.'], 422);
+        }
+
+        if (! $printJob && ! empty($validated['movement_id']) && Schema::hasColumn('thermal_print_jobs', 'ticket_text')) {
+            $movement = Movement::query()
+                ->whereKey((int) $validated['movement_id'])
+                ->where('branch_id', $branchId)
+                ->whereHas('orderMovement')
+                ->first();
+            if (! $movement) {
+                return response()->json(['success' => false, 'message' => 'Pedido no encontrado en esta sucursal.'], 404);
+            }
+            $printJob = $this->touchKitchenPrintJob(
+                $movement,
+                trim((string) ($validated['printer_name'] ?? '')),
+                $ticketText,
+                trim((string) ($validated['content_summary'] ?? '')),
+                $request
+            );
+        }
+
         $printerBaseQuery = PrinterBranch::query()
             ->where('branch_id', $branchId)
             ->where('status', 'E');
@@ -2582,24 +3440,43 @@ class OrderController extends Controller
         $isLocalhost = in_array($host, ['localhost', '127.0.0.1', '::1']);
         $defaultPrinterName = $isLocalhost ? 'barra' : 'barra2';
 
-        $requestedName = trim((string) ($validated['printer_name'] ?? '')) ?: $defaultPrinterName;
+        $requestedName = trim((string) ($printJob?->printer_name ?? $validated['printer_name'] ?? '')) ?: $defaultPrinterName;
         $printer = $this->findPrinterBranchForBarTicket($printerBaseQuery, $requestedName, $defaultPrinterName);
         if (! $printer) {
+            if ($printJob) {
+                $this->markKitchenPrintJobFailed($printJob, 'No hay una ticketera configurada para esta comanda.');
+            }
             return response()->json([
                 'success' => false,
                 'message' => 'No hay una ticketera de barra configurada para la comanda.',
             ], 422);
         }
 
-        $payload = $this->buildKitchenEscPosPayload((string) $validated['ticket_text']);
-        if ($this->shouldSkipDuplicateKitchenThermal($branchId, (string) $printer->name, $payload, 'comanda')) {
+        if ($printJob) {
+            $printJob->forceFill([
+                'printer_branch_id' => $printer->id,
+                'printer_name' => $printer->name,
+            ])->save();
+        }
+
+        $payload = $this->buildKitchenEscPosPayload($ticketText);
+        if (! $printJob && $this->shouldSkipDuplicateKitchenThermal($branchId, (string) $printer->name, $payload, 'comanda')) {
             return response()->json([
                 'success' => true,
                 'message' => 'Comanda duplicada detectada: se omitió la reimpresión.',
                 'duplicate_skipped' => true,
             ]);
         }
-        $bridgeResponse = $this->maybeQueuePrintBridge($printer, $branchId, $payload, 'comanda');
+        if ($printJob && $printJob->status === 'printing' && app(PrintBridgeQueue::class)->shouldQueueToStation($printer)) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Comanda tomada por el puente de impresiÃ³n. Se confirmarÃ¡ al terminar.',
+                'print_bridge' => true,
+                'print_job_id' => $printJob->id,
+            ]);
+        }
+
+        $bridgeResponse = $this->maybeQueuePrintBridge($printer, $branchId, $payload, 'comanda', $printJob?->id);
         if ($bridgeResponse) {
             return $bridgeResponse;
         }
@@ -2616,6 +3493,9 @@ class OrderController extends Controller
                 );
             } else {
                 if (! config('local_network.thermal_windows_local_enabled', true)) {
+                    if ($printJob) {
+                        $this->markKitchenPrintJobFailed($printJob, 'La impresión USB local está deshabilitada.');
+                    }
                     return response()->json([
                         'success' => false,
                         'message' => 'La ticketera no tiene IP y la impresión USB local está deshabilitada.',
@@ -2626,6 +3506,9 @@ class OrderController extends Controller
             }
         } catch (\Throwable $e) {
             Log::warning('Impresión comanda térmica: ' . $e->getMessage());
+            if ($printJob) {
+                $this->markKitchenPrintJobFailed($printJob, (string) $e->getMessage());
+            }
 
             return response()->json([
                 'success' => false,
@@ -2633,9 +3516,14 @@ class OrderController extends Controller
             ], 500);
         }
 
+        if ($printJob) {
+            $this->markKitchenPrintJobPrinted($printJob, $request);
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Comanda enviada a "' . ($printer->name ?? 'Ticketera') . '"',
+            'print_job_id' => $printJob?->id,
         ]);
     }
 
@@ -2910,13 +3798,102 @@ class OrderController extends Controller
     /**
      * Comanda / precuenta hacia BARRA2 (USB en otra PC): cola en caché; la PC con QZ activa el puente (worker o escucha global).
      */
-    private function maybeQueuePrintBridge(PrinterBranch $printer, int $branchId, string $escposPayload, string $kind = 'comanda'): ?\Illuminate\Http\JsonResponse
+    private function touchKitchenPrintJob(
+        Movement $movement,
+        string $printerName,
+        string $ticketText,
+        string $contentSummary,
+        Request $request
+    ): ThermalPrintJob {
+        $payloadHash = hash('sha256', $ticketText);
+        $job = ThermalPrintJob::query()
+            ->where('branch_id', (int) $movement->branch_id)
+            ->where('movement_id', (int) $movement->id)
+            ->where('source', 'kitchen_order')
+            ->whereIn('status', ['pending', 'printing'])
+            ->where('payload_hash', $payloadHash)
+            ->whereRaw('LOWER(TRIM(printer_name)) = ?', [mb_strtolower(trim($printerName))])
+            ->latest('id')
+            ->first();
+
+        $data = [
+            'branch_id' => (int) $movement->branch_id,
+            'movement_id' => (int) $movement->id,
+            'printer_name' => trim($printerName) ?: null,
+            'status' => 'pending',
+            'source' => 'kitchen_order',
+            'ticket_text' => $ticketText,
+            'content_summary' => Str::limit($contentSummary, 2000, ''),
+            'payload_hash' => $payloadHash,
+            'attempts' => (int) ($job?->attempts ?? 0) + 1,
+            'last_error' => null,
+            'last_attempt_at' => now(),
+            'requested_by' => $job?->requested_by ?: $request->user()?->id,
+        ];
+
+        if ($job) {
+            $job->fill($data)->save();
+
+            return $job->refresh();
+        }
+
+        return ThermalPrintJob::create($data);
+    }
+
+    private function markKitchenPrintJobPrinted(ThermalPrintJob $job, Request $request): void
+    {
+        ThermalPrintJob::query()
+            ->whereKey($job->id)
+            ->whereIn('status', ['pending', 'printing'])
+            ->update([
+                'status' => 'printed',
+                'printed_at' => now(),
+                'printed_by' => $request->user()?->id,
+                'last_error' => null,
+                'updated_at' => now(),
+            ]);
+    }
+
+    private function markKitchenPrintJobFailed(ThermalPrintJob $job, string $message): void
+    {
+        ThermalPrintJob::query()
+            ->whereKey($job->id)
+            ->whereIn('status', ['pending', 'printing'])
+            ->update([
+                'status' => 'pending',
+                'last_error' => Str::limit(trim($message) ?: 'No se pudo imprimir la comanda.', 2000, ''),
+                'last_attempt_at' => now(),
+                'updated_at' => now(),
+            ]);
+    }
+
+    private function maybeQueuePrintBridge(
+        PrinterBranch $printer,
+        int $branchId,
+        string $escposPayload,
+        string $kind = 'comanda',
+        ?int $thermalPrintJobId = null
+    ): ?\Illuminate\Http\JsonResponse
     {
         $queue = app(PrintBridgeQueue::class);
         if (! $queue->shouldQueueToStation($printer)) {
             return null;
         }
-        $queue->push($branchId, (string) $printer->name, $escposPayload);
+        if (
+            $thermalPrintJobId
+            && Schema::hasTable('thermal_print_jobs')
+            && Schema::hasColumn('thermal_print_jobs', 'ticket_text')
+        ) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Comanda en cola persistente para la estaciÃ³n (QZ en la PC con ' . $printer->name . ').',
+                'print_bridge' => true,
+                'print_job_id' => $thermalPrintJobId,
+            ]);
+        }
+        $queue->push($branchId, (string) $printer->name, $escposPayload, [
+            'thermal_print_job_id' => $thermalPrintJobId,
+        ]);
         if ($kind === 'precuenta') {
             $msg = 'Precuenta en cola para la estación (QZ en la PC con BARRA2). En esa PC, inicie sesión y active el puente (página /print-bridge/worker o “escuchar en todas las pantallas”).';
 
@@ -2931,6 +3908,7 @@ class OrderController extends Controller
             'success' => true,
             'message' => 'Comanda en cola para la estación (QZ en la PC con BARRA2). En esa PC, misma sucursal en sesión y puente activo (/print-bridge/worker o escuchar en todas las pantallas).',
             'print_bridge' => true,
+            'print_job_id' => $thermalPrintJobId,
         ]);
     }
 
@@ -3141,6 +4119,8 @@ class OrderController extends Controller
         }
 
         $cashEntryMovement = null;
+        $saleBaseMovement = null;
+        $salesMovement = null;
         DB::beginTransaction();
         try {
             /** @var OrderPaymentSplitService $splitService */
@@ -3171,7 +4151,204 @@ class OrderController extends Controller
             $orderMovement->save();
 
             $orderBaseMovement = Movement::find($orderMovement->movement_id);
-            if ($orderBaseMovement) {
+            if (! $orderBaseMovement) {
+                throw new \InvalidArgumentException('No se encontró el movimiento base del pedido.');
+            }
+
+            $requestDocumentTypeId = $request->input('document_type_id');
+            $defaultDocumentTypeId = effective_default_sale_document_type_id($branchId, [2]);
+            $resolvedDocumentTypeId = ($requestDocumentTypeId && DocumentType::where('id', $requestDocumentTypeId)->exists())
+                ? (int) $requestDocumentTypeId
+                : $defaultDocumentTypeId;
+            $resolvedDocumentType = $resolvedDocumentTypeId
+                ? DocumentType::find((int) $resolvedDocumentTypeId)
+                : null;
+            if ($resolvedDocumentType) {
+                $validationMessage = $this->validateCustomerForDocumentType(
+                    $resolvedDocumentType,
+                    $clientPerson,
+                    $saleTotal
+                );
+                if ($validationMessage) {
+                    throw new \InvalidArgumentException($validationMessage);
+                }
+            }
+            if ($detailMode === 'GLOSA' && $detailGlosa === '') {
+                throw new \InvalidArgumentException('Debes ingresar la glosa que saldra en el comprobante.');
+            }
+            if (! $clientPerson && $clientNameFromRequest) {
+                $clientPerson = $this->resolveOrCreateClientPerson(
+                    $branchId ?: null,
+                    $branch,
+                    $clientPersonId ? (int) $clientPersonId : null,
+                    $clientNameFromRequest
+                );
+                if ($clientPerson) {
+                    $clientName = trim(($clientPerson->first_name ?? '') . ' ' . ($clientPerson->last_name ?? ''));
+                }
+            }
+
+            $branch = $branch ?: Branch::find($branchId);
+            if (! $branch) {
+                throw new \Exception('Sucursal no encontrada.');
+            }
+
+            $salesMovementType = MovementType::where('description', 'like', '%venta%')
+                ->orWhere('description', 'like', '%sale%')
+                ->orWhere('description', 'like', '%Venta%')
+                ->first();
+            if (! $salesMovementType) {
+                $salesMovementType = MovementType::query()->orderBy('id')->first();
+            }
+            if (! $salesMovementType) {
+                throw new \Exception('No se encontró tipo de movimiento de venta.');
+            }
+
+            $saleNumber = $this->generateSaleNumberForSplit((int) $resolvedDocumentTypeId, $cashRegisterId);
+            $cashRegister = $cashRegisterId ? CashRegister::find($cashRegisterId) : null;
+            $activeSeries = $cashRegister?->series ?? '001';
+
+            $saleBaseMovement = Movement::create([
+                'number' => $saleNumber,
+                'moved_at' => now(),
+                'user_id' => $user?->id,
+                'user_name' => $user?->name ?? 'Sistema',
+                'person_id' => $clientPerson?->id,
+                'person_name' => $clientName ?: 'Publico General',
+                'responsible_id' => $user?->id,
+                'responsible_name' => $user?->person ? trim(($user->person->first_name ?? '') . ' ' . ($user->person->last_name ?? '')) : ($user?->name ?? 'Sistema'),
+                'comment' => 'Venta de pedido ' . ($orderBaseMovement->number ?? ''),
+                'status' => 'A',
+                'movement_type_id' => $salesMovementType->id,
+                'document_type_id' => (int) $resolvedDocumentTypeId,
+                'branch_id' => $branchId,
+                'parent_movement_id' => $orderBaseMovement->id,
+            ]);
+
+            $salesMovement = SalesMovement::create([
+                'branch_snapshot' => [
+                    'id' => $branch->id,
+                    'legal_name' => $branch->legal_name,
+                ],
+                'series' => $activeSeries,
+                'year' => now()->year,
+                'detail_type' => $detailMode === 'DETALLADO' ? 'DETALLADO' : 'GLOSA',
+                'consumption' => $detailMode === 'CONSUMO' ? 'Y' : 'N',
+                'payment_type' => $saleType === 'CREDITO' ? 'CREDIT' : 'CONTADO',
+                'status' => 'N',
+                'sale_type' => 'MINORISTA',
+                'currency' => 'PEN',
+                'exchange_rate' => 1.0,
+                'subtotal' => $saleSubtotal,
+                'tax' => $saleTax,
+                'total' => $saleTotal,
+                'movement_id' => $saleBaseMovement->id,
+                'branch_id' => $branchId,
+            ]);
+
+            $activeOrderDetails = $orderMovement->details
+                ->filter(fn($orderDetail) => ($orderDetail->status ?? 'A') !== 'C')
+                ->values();
+
+            if ($detailMode === 'DETALLADO') {
+                if ($remainingSaleDraft) {
+                    foreach ($remainingSaleDraft['lines'] as $line) {
+                        /** @var OrderMovementDetail $orderDetail */
+                        $orderDetail = $line['detail'];
+
+                        SalesMovementDetail::create([
+                            'detail_type' => 'DETAILED',
+                            'sales_movement_id' => $salesMovement->id,
+                            'code' => $orderDetail->code,
+                            'description' => $orderDetail->description,
+                            'product_id' => $orderDetail->product_id,
+                            'product_snapshot' => $orderDetail->product_snapshot,
+                            'unit_id' => $orderDetail->unit_id,
+                            'tax_rate_id' => $orderDetail->tax_rate_id,
+                            'tax_rate_snapshot' => $orderDetail->tax_rate_snapshot,
+                            'quantity' => $line['quantity'],
+                            'courtesy_quantity' => 0,
+                            'amount' => $line['amount'],
+                            'discount_percentage' => 0,
+                            'original_amount' => $line['line_subtotal'],
+                            'comment' => $orderDetail->comment,
+                            'complements' => $orderDetail->complements ?? [],
+                            'status' => 'A',
+                            'branch_id' => $branchId,
+                        ]);
+                    }
+                } else {
+                    foreach ($activeOrderDetails as $orderDetail) {
+                        if (($orderDetail->status ?? 'A') === 'C') {
+                            continue;
+                        }
+
+                        $totalDetail = (float) $orderDetail->amount;
+                        $taxRateVal = 0;
+                        if ($orderDetail->tax_rate_snapshot && isset($orderDetail->tax_rate_snapshot['tax_rate'])) {
+                            $taxRateVal = (float) $orderDetail->tax_rate_snapshot['tax_rate'] / 100;
+                        } else {
+                            $taxRateVal = 0.10;
+                        }
+
+                        $subtotalDetail = $taxRateVal > 0 ? ($totalDetail / (1 + $taxRateVal)) : $totalDetail;
+
+                        SalesMovementDetail::create([
+                            'detail_type' => 'DETAILED',
+                            'sales_movement_id' => $salesMovement->id,
+                            'code' => $orderDetail->code,
+                            'description' => $orderDetail->description,
+                            'product_id' => $orderDetail->product_id,
+                            'product_snapshot' => $orderDetail->product_snapshot,
+                            'unit_id' => $orderDetail->unit_id,
+                            'tax_rate_id' => $orderDetail->tax_rate_id,
+                            'tax_rate_snapshot' => $orderDetail->tax_rate_snapshot,
+                            'quantity' => $orderDetail->quantity,
+                            'courtesy_quantity' => (int) $orderDetail->courtesy_quantity,
+                            'amount' => $orderDetail->amount,
+                            'discount_percentage' => 0,
+                            'original_amount' => $subtotalDetail,
+                            'comment' => $orderDetail->comment,
+                            'complements' => $orderDetail->complements ?? [],
+                            'status' => 'A',
+                            'branch_id' => $branchId,
+                        ]);
+                    }
+                }
+            } else {
+                $referenceDetail = $remainingSaleDraft
+                    ? ($remainingSaleDraft['lines'][0]['detail'] ?? null)
+                    : $activeOrderDetails->first();
+                if (! $referenceDetail) {
+                    throw new \InvalidArgumentException('No hay detalles validos para generar la venta.');
+                }
+
+                SalesMovementDetail::create([
+                    'detail_type' => 'GLOSA',
+                    'sales_movement_id' => $salesMovement->id,
+                    'code' => 'GLOSA',
+                    'description' => $detailMode === 'CONSUMO' ? 'POR CONSUMO' : $detailGlosa,
+                    'product_id' => null,
+                    'product_snapshot' => [
+                        'type' => $detailMode,
+                        'source' => 'order_payment',
+                    ],
+                    'unit_id' => $referenceDetail->unit_id,
+                    'tax_rate_id' => $referenceDetail->tax_rate_id,
+                    'tax_rate_snapshot' => $referenceDetail->tax_rate_snapshot,
+                    'quantity' => 1,
+                    'courtesy_quantity' => 0,
+                    'amount' => $saleTotal,
+                    'discount_percentage' => 0,
+                    'original_amount' => $saleSubtotal,
+                    'comment' => null,
+                    'complements' => [],
+                    'status' => 'A',
+                    'branch_id' => $branchId,
+                ]);
+            }
+
+            if (false && $orderBaseMovement) {
                 $updateData = [
                     'status' => 'A',
                     'moved_at' => now(),
@@ -3379,16 +4556,16 @@ class OrderController extends Controller
                 throw new \Exception('No hay turno disponible para registrar el cobro.');
             }
 
-            // Movimiento de caja hijo del movimiento de pedido
-            $cashEntryMovement = $this->resolveCashEntryMovementByParentMovement((int) $orderMovement->movement_id);
+            // Movimiento de caja hijo del movimiento de venta
+            $cashEntryMovement = $this->resolveCashEntryMovementByParentMovement((int) $saleBaseMovement->id);
             if (! $cashEntryMovement) {
                 $cashEntryMovement = Movement::create([
                     'number' => $this->generateCashMovementNumber($branchId, (int) $cashRegisterId, (int) $paymentConcept->id),
                     'moved_at' => now(),
                     'user_id' => $user?->id,
                     'user_name' => $user?->name ?? 'Sistema',
-                    'person_id' => $orderBaseMovement?->person_id,
-                    'person_name' => $orderBaseMovement?->person_name ?? 'Publico General',
+                    'person_id' => $saleBaseMovement->person_id,
+                    'person_name' => $saleBaseMovement->person_name ?? 'Publico General',
                     'responsible_id' => $user?->id,
                     'responsible_name' => $user?->person ? trim(($user->person->first_name ?? '') . ' ' . ($user->person->last_name ?? '')) : ($user?->name ?? 'Sistema'),
                     'comment' => 'Cobro de pedido ' . ($orderBaseMovement?->number ?? ''),
@@ -3396,7 +4573,7 @@ class OrderController extends Controller
                     'movement_type_id' => $cashMovementTypeId,
                     'document_type_id' => $cashDocumentTypeId,
                     'branch_id' => $branchId,
-                    'parent_movement_id' => $orderMovement->movement_id,
+                    'parent_movement_id' => $saleBaseMovement->id,
                 ]);
             } else {
                 $cashEntryMovement->update([
@@ -3457,19 +4634,54 @@ class OrderController extends Controller
             $paymentMethodsForCashDetails = $creditIgnoresCashLines ? collect() : $paymentMethods;
 
             if ($paymentMethodsForCashDetails->isNotEmpty()) {
+                $paymentMethodIds = $paymentMethodsForCashDetails->pluck('payment_method_id')
+                    ->filter()
+                    ->map(fn ($id) => (int) $id)
+                    ->unique()
+                    ->values();
+                $paymentGatewayIds = $paymentMethodsForCashDetails->pluck('payment_gateway_id')
+                    ->filter()
+                    ->map(fn ($id) => (int) $id)
+                    ->unique()
+                    ->values();
+                $cardIds = $paymentMethodsForCashDetails->pluck('card_id')
+                    ->filter()
+                    ->map(fn ($id) => (int) $id)
+                    ->unique()
+                    ->values();
+                $digitalWalletIds = $paymentMethodsForCashDetails->pluck('digital_wallet_id')
+                    ->filter()
+                    ->map(fn ($id) => (int) $id)
+                    ->unique()
+                    ->values();
+                $bankIds = $paymentMethodsForCashDetails->pluck('bank_id')
+                    ->filter()
+                    ->map(fn ($id) => (int) $id)
+                    ->unique()
+                    ->values();
+
+                $paymentMethodsById = PaymentMethod::query()->whereIn('id', $paymentMethodIds)->get()->keyBy('id');
+                $paymentGatewaysById = PaymentGateways::query()->whereIn('id', $paymentGatewayIds)->get()->keyBy('id');
+                $cardsById = Card::query()->whereIn('id', $cardIds)->get()->keyBy('id');
+                $digitalWalletsById = DigitalWallet::query()->whereIn('id', $digitalWalletIds)->get()->keyBy('id');
+                $banksById = Bank::query()->whereIn('id', $bankIds)->get()->keyBy('id');
+
                 foreach ($paymentMethodsForCashDetails as $paymentMethodData) {
-                    $paymentMethod = PaymentMethod::findOrFail((int) ($paymentMethodData['payment_method_id'] ?? 0));
+                    $paymentMethod = $paymentMethodsById->get((int) ($paymentMethodData['payment_method_id'] ?? 0));
+                    if (! $paymentMethod) {
+                        throw new \InvalidArgumentException('Metodo de pago no valido para registrar el cobro.');
+                    }
                     $paymentGateway = ! empty($paymentMethodData['payment_gateway_id'])
-                        ? PaymentGateways::find((int) $paymentMethodData['payment_gateway_id'])
+                        ? $paymentGatewaysById->get((int) $paymentMethodData['payment_gateway_id'])
                         : null;
                     $card = ! empty($paymentMethodData['card_id'])
-                        ? Card::find((int) $paymentMethodData['card_id'])
+                        ? $cardsById->get((int) $paymentMethodData['card_id'])
                         : null;
                     $digitalWallet = ! empty($paymentMethodData['digital_wallet_id'])
-                        ? DigitalWallet::find((int) $paymentMethodData['digital_wallet_id'])
+                        ? $digitalWalletsById->get((int) $paymentMethodData['digital_wallet_id'])
                         : null;
                     $bank = ! empty($paymentMethodData['bank_id'])
-                        ? Bank::find((int) $paymentMethodData['bank_id'])
+                        ? $banksById->get((int) $paymentMethodData['bank_id'])
                         : null;
 
                     DB::table('cash_movement_details')->insert([
@@ -3501,7 +4713,7 @@ class OrderController extends Controller
                 if (! $orderBaseMovement) {
                     throw new \InvalidArgumentException('No se encontró el movimiento del pedido para registrar el crédito.');
                 }
-                $personIdForDebt = (int) ($orderBaseMovement->person_id ?? 0);
+                $personIdForDebt = (int) ($saleBaseMovement->person_id ?? 0);
                 if ($personIdForDebt <= 0) {
                     throw new \InvalidArgumentException('Para venta a crédito debe asignar un cliente al pedido (persona identificada).');
                 }
@@ -3509,16 +4721,16 @@ class OrderController extends Controller
                 $totalPaid = $creditIgnoresCashLines ? 0.0 : $paymentMethodsSum;
                 $dueAt = $dueDate ? \Carbon\Carbon::parse($dueDate) : now()->addDays(max(0, $creditDays));
 
-                $accountReceivablePayableService->syncDebtAccount(
+                $accountReceivablePayableService->syncDebtAccountForDirectSale(
                     $branchId,
                     $personIdForDebt,
-                    (int) $orderBaseMovement->id,
+                    (int) $saleBaseMovement->id,
                     $orderTotalForCash,
                     $totalPaid,
                     $dueAt,
                     (int) $cashMovement->id,
                     $cashEntryMovement,
-                    $orderMovement->fresh(),
+                    $salesMovement,
                     $creditDays,
                     $request->input('notes') ? (string) $request->input('notes') : null
                 );
@@ -3530,13 +4742,15 @@ class OrderController extends Controller
                 Table::where('id', $tableIdToFree)->update([
                     'situation' => 'libre',
                     'opened_at' => null,
+                    'attending_user_id' => null,
+                    'attending_waiter_name' => null,
                 ]);
             }
 
             DB::commit();
-            $orderBaseMovement?->refresh();
-            $electronicInvoice = $orderBaseMovement
-                ? $this->syncElectronicInvoiceForSale($orderBaseMovement, app(ApisunatService::class))
+            $saleBaseMovement->refresh();
+            $electronicInvoice = $saleBaseMovement
+                ? $this->syncElectronicInvoiceForSale($saleBaseMovement, app(ApisunatService::class))
                 : ['status' => 'SKIPPED', 'message' => 'No se encontró movimiento base para emitir.'];
 
             $thermalPrinterAvailable = PrinterBranch::query()
@@ -3549,7 +4763,7 @@ class OrderController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Cobro de pedido procesado correctamente',
-                'movement_id' => $orderMovement?->movement_id,
+                'movement_id' => $saleBaseMovement?->id,
                 'order_movement_id' => $orderMovement?->id,
                 'cash_movement_id' => $cashEntryMovement?->id,
                 'electronic_invoice' => $electronicInvoice,
@@ -3887,6 +5101,8 @@ class OrderController extends Controller
                 Table::where('id', $tableIdToFree)->update([
                     'situation' => 'libre',
                     'opened_at' => null,
+                    'attending_user_id' => null,
+                    'attending_waiter_name' => null,
                 ]);
             }
             $orderClosed = true;
@@ -4470,10 +5686,27 @@ class OrderController extends Controller
             ], 404);
         }
 
+        $branchId = (int) ($orderMovement->branch_id ?: $table->branch_id ?: session('branch_id'));
+        $configuredClosePassword = $this->closeTablePasswordForBranch($branchId);
+        if ($configuredClosePassword !== null) {
+            $providedPassword = trim((string) $request->input('close_password'));
+            if ($providedPassword === '') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Debe ingresar la clave para cerrar la mesa.',
+                ], 422);
+            }
+            if (! hash_equals($configuredClosePassword, $providedPassword)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'La clave para cerrar la mesa es incorrecta.',
+                ], 422);
+            }
+        }
+
         try {
             DB::beginTransaction();
 
-            $branchId = (int) ($orderMovement->branch_id ?: $table->branch_id ?: session('branch_id'));
             $branch = Branch::find($branchId);
             if (! $branch) {
                 throw new \Exception('No se encontró la sucursal del pedido para revertir stock.');
@@ -4511,13 +5744,21 @@ class OrderController extends Controller
             Table::where('id', $table->id)->update([
                 'situation' => 'libre',
                 'opened_at' => null,
+                'attending_user_id' => null,
+                'attending_waiter_name' => null,
             ]);
 
-            if ($orderMovement->movement) {
-                app(KardexSyncService::class)->syncMovement($orderMovement->movement);
-            }
-
             DB::commit();
+            if ($orderMovement->movement) {
+                try {
+                    app(KardexSyncService::class)->syncMovement($orderMovement->movement);
+                } catch (\Throwable $syncError) {
+                    Log::warning('Kardex sync diferido: closeTable', [
+                        'movement_id' => $orderMovement->movement->id,
+                        'error' => $syncError->getMessage(),
+                    ]);
+                }
+            }
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Error al cerrar mesa y revertir stock', [
@@ -4555,16 +5796,56 @@ class OrderController extends Controller
             ], 404);
         }
 
-        if ($table->situation !== 'ocupada') {
-            Table::where('id', $table->id)->update([
-                'situation' => 'ocupada',
-            ]);
+        $profileId = session('profile_id') ?? $request->user()?->profile_id;
+        if (Profile::userHasMozoProfile($profileId !== null && $profileId !== '' ? (int) $profileId : null)) {
+            $currentUserId = (int) ($request->user()?->id ?? session('user_id'));
+            if ($table->attending_user_id && (int) $table->attending_user_id !== $currentUserId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Esta mesa ya está siendo atendida por ' . ($table->attending_waiter_name ?: 'otro mozo') . '.',
+                ], 409);
+            }
+            if ($table->attending_user_id && (int) $table->attending_user_id === $currentUserId) {
+                $table->touch();
+            }
         }
 
         return response()->json([
             'success' => true,
-            'message' => 'Mesa abierta',
+            'message' => 'Bloqueo de mesa validado',
         ]);
+    }
+
+    /** Libera el bloqueo temporal de una mesa cuando el mozo sale sin comandar. */
+    public function releaseTableLock(Request $request)
+    {
+        $tableId = (int) $request->input('table_id');
+        $currentUserId = (int) ($request->user()?->id ?? session('user_id'));
+        $table = Table::find($tableId);
+
+        if (! $table || ! $currentUserId || (int) $table->attending_user_id !== $currentUserId) {
+            return response()->json(['success' => true]);
+        }
+
+        // Si ya se comandó algo, la mesa continúa ocupada y asignada a su mozo.
+        $hasPendingOrder = OrderMovement::where('table_id', $table->id)
+            ->whereIn('status', ['PENDIENTE', 'P'])
+            ->whereHas('details', function ($query) {
+                $query->where('quantity', '>', 0)
+                    ->where(function ($statusQuery) {
+                        $statusQuery->whereNull('status')->orWhere('status', '!=', 'C');
+                    });
+            })
+            ->exists();
+
+        if (! $hasPendingOrder) {
+            $table->update([
+                'attending_user_id' => null,
+                'attending_waiter_name' => null,
+            ]);
+        }
+
+        return response()->json(['success' => true]);
     }
 
     /**

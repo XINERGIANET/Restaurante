@@ -70,6 +70,17 @@
                     height="35" />
             </a>
 
+            @if($isMozo ?? false)
+                @php
+                    $ordersQuickUrl = \App\Helpers\MenuHelper::appendViewIdToPath(route('orders.index'), request('view_id'));
+                @endphp
+                <a href="{{ $ordersQuickUrl }}"
+                    class="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/15 hover:text-white xl:ml-2">
+                    <i class="ri-restaurant-2-line text-sm"></i>
+                    <span>Pedidos</span>
+                </a>
+            @endif
+
             <!-- Application Menu Toggle -->
             <button @click="toggleApplicationMenu()"
                 class="flex items-center justify-center w-10 h-10 text-white rounded-lg z-99999 hover:bg-white/10 hover:text-white transition-all xl:hidden">

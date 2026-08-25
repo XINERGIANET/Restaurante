@@ -31,6 +31,7 @@ use App\Models\SalesMovementDetail;
 use App\Models\Shift;
 use App\Models\TaxRate;
 use App\Models\Table;
+use App\Models\ThermalPrintJob;
 use App\Models\User;
 use App\Services\AccountReceivablePayableService;
 use App\Services\ApisunatService;
@@ -43,6 +44,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -135,8 +137,7 @@ class SalesController extends Controller
                 ->get();
         }
 
-        // Por defecto: filtrar por el turno actual (o último) de la caja seleccionada/en sesión
-        if (($cashShiftRelationId === null || $cashShiftRelationId === '') && $branchId && $effectiveCashRegisterId) {
+        if (! $request->has('cash_shift_relation_id') && $branchId && $effectiveCashRegisterId) {
             $lastShift = CashShiftRelation::query()
                 ->where('branch_id', $branchId)
                 ->whereHas('cashMovementStart', function ($q) use ($effectiveCashRegisterId) {
@@ -144,6 +145,7 @@ class SalesController extends Controller
                 })
                 ->latest('id')
                 ->first();
+
             if ($lastShift) {
                 $cashShiftRelationId = (string) $lastShift->id;
             }
@@ -261,6 +263,17 @@ class SalesController extends Controller
                 ->get(['id', 'name', 'ip', 'width'])
             : collect();
 
+        $thermalPrintJobsReady = Schema::hasTable('thermal_print_jobs');
+        $pendingThermalPrintJobs = $branchId && $thermalPrintJobsReady
+            ? ThermalPrintJob::query()
+                ->with(['movement.documentType', 'movement.salesMovement', 'movement.orderMovement'])
+                ->where('branch_id', $branchId)
+                ->whereIn('status', ['pending', 'printing'])
+                ->latest('id')
+                ->limit(15)
+                ->get()
+            : collect();
+
         if ($request->wantsJson() || $request->ajax()) {
             return response()->json([
                 'success' => true,
@@ -323,6 +336,8 @@ class SalesController extends Controller
             'clientOnLocalNetwork' => LocalNetworkClient::isOnLocalNetwork($request),
             'thermalPrinters' => $thermalPrintersIndex,
             'thermalPrintEnabled' => (bool) config('local_network.thermal_print_enabled', true),
+            'pendingThermalPrintJobs' => $pendingThermalPrintJobs,
+            'pendingThermalPrintJobsCount' => $pendingThermalPrintJobs->count(),
         ];
 
         return view('sales.index', $viewData);
@@ -1504,6 +1519,36 @@ class SalesController extends Controller
 
     public function destroy(Movement $sale)
     {
+        $branchId = $sale->branch_id ? (int) $sale->branch_id : (session('branch_id') !== null ? (int) session('branch_id') : null);
+        $configuredPassword = effective_sale_delete_admin_password($branchId);
+        $providedPassword = (string) request()->input('admin_delete_password', '');
+
+        if ($configuredPassword === null || trim($configuredPassword) === '' || strtolower(trim($configuredPassword)) === 'no') {
+            if (request()->expectsJson() || request()->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No hay una clave configurada para eliminar ventas. Configúrala en Configuración de Sistema.',
+                ], 409);
+            }
+
+            return redirect()
+                ->route('sales.index', request()->filled('view_id') ? ['view_id' => request()->input('view_id')] : [])
+                ->with('error', 'No hay una clave configurada para eliminar ventas. Configúrala en Configuración de Sistema.');
+        }
+
+        if ($providedPassword === '' || ! hash_equals((string) $configuredPassword, $providedPassword)) {
+            if (request()->expectsJson() || request()->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Clave incorrecta, contacta al administrador.',
+                ], 422);
+            }
+
+            return redirect()
+                ->route('sales.index', request()->filled('view_id') ? ['view_id' => request()->input('view_id')] : [])
+                ->with('error', 'Clave incorrecta, contacta al administrador.');
+        }
+
         DB::transaction(function () use ($sale) {
             $linkedOrderMovement = $this->resolveLinkedOrderMovementForSale($sale);
 
@@ -1530,6 +1575,14 @@ class SalesController extends Controller
             app(KardexSyncService::class)->deleteMovement((int) $sale->id);
             $sale->delete();
         });
+
+        if (request()->expectsJson() || request()->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Venta eliminada correctamente.',
+                'sale_id' => $sale->id,
+            ]);
+        }
 
         return redirect()
             ->route('sales.index', request()->filled('view_id') ? ['view_id' => request()->input('view_id')] : [])
@@ -1731,9 +1784,16 @@ class SalesController extends Controller
             ], 403);
         }
 
+        $thermalPrintJobsReady = Schema::hasTable('thermal_print_jobs');
+        $printJobIdRules = ['nullable', 'integer'];
+        if ($thermalPrintJobsReady) {
+            $printJobIdRules[] = 'exists:thermal_print_jobs,id';
+        }
+
         try {
             $validated = $request->validate([
                 'movement_id' => ['required', 'integer', 'exists:movements,id'],
+                'print_job_id' => $printJobIdRules,
                 'printer_id' => ['nullable', 'integer', 'exists:printers_branch,id'],
                 'printer_name' => ['nullable', 'string', 'max:120'],
                 'ticket_text' => ['nullable', 'string'],
@@ -1761,6 +1821,22 @@ class SalesController extends Controller
         }
 
         $movement = $this->resolvePrintableForTicket($movement);
+        $printJob = null;
+        if ($thermalPrintJobsReady && ! empty($validated['print_job_id'])) {
+            $printJob = ThermalPrintJob::query()
+                ->where('id', (int) $validated['print_job_id'])
+                ->where('branch_id', $branchId)
+                ->where('movement_id', $movement->id)
+                ->first();
+
+            if (! $printJob) {
+                return response()->json(['success' => false, 'message' => 'Pendiente de impresion no encontrado para esta venta.'], 404);
+            }
+
+            if ($printJob->status !== 'pending') {
+                return response()->json(['success' => false, 'message' => 'Este comprobante ya fue marcado como impreso.'], 409);
+            }
+        }
 
         $printer = null;
 
@@ -1790,6 +1866,16 @@ class SalesController extends Controller
             ? (string) $ticketText
             : $this->buildThermalTicketPlainTextApproved($movement, $request, $printer);
         $payload = $this->wrapEscPosPlainPayload($plain);
+        if ($thermalPrintJobsReady) {
+            $printJob = $this->touchThermalPrintJobAttempt(
+                $printJob,
+                $movement,
+                $printer,
+                $validated['printer_name'] ?? null,
+                $request,
+                $qzMode ? 'qz' : 'server'
+            );
+        }
 
         // Modo QZ: mismo ticket maquetado que la vista/PDF manual (wkhtmltopdf); fallback RAW si no hay PDF.
         if ($qzMode) {
@@ -1829,6 +1915,9 @@ class SalesController extends Controller
                 'printer_name' => $printer?->name ?? null,
                 'paper_width' => $paperWidthMm,
             ];
+            if ($printJob) {
+                $response['print_job_id'] = $printJob->id;
+            }
 
             if ($pdfBinary !== null && $pdfBinary !== '') {
                 $response['ticket_pdf_b64'] = base64_encode($pdfBinary);
@@ -1839,6 +1928,9 @@ class SalesController extends Controller
         }
 
         if (! $printer) {
+            if ($printJob) {
+                $this->markThermalPrintJobFailed($printJob, 'No hay ticketera activa configurada para esta sucursal.');
+            }
             return response()->json([
                 'success' => false,
                 'message' => 'No hay ticketera activa configurada para esta sucursal.',
@@ -1857,10 +1949,17 @@ class SalesController extends Controller
                     (int) config('local_network.thermal_timeout_seconds', 4)
                 );
 
+                if ($printJob) {
+                    $this->markThermalPrintJobPrinted($printJob, $request);
+                }
+
                 return response()->json(['success' => true, 'message' => 'Ticket enviado a la ticketera de red.']);
             }
 
             if (! config('local_network.thermal_windows_local_enabled', true)) {
+                if ($printJob) {
+                    $this->markThermalPrintJobFailed($printJob, 'La ticketera seleccionada no tiene IP y la impresion USB local esta deshabilitada.');
+                }
                 return response()->json([
                     'success' => false,
                     'message' => 'La ticketera seleccionada no tiene IP y la impresión USB local está deshabilitada.',
@@ -1873,6 +1972,10 @@ class SalesController extends Controller
                 (int) config('local_network.thermal_timeout_seconds', 4) + 4
             );
 
+            if ($printJob) {
+                $this->markThermalPrintJobPrinted($printJob, $request);
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Ticket enviado a la ticketera USB local.',
@@ -1880,6 +1983,9 @@ class SalesController extends Controller
         } catch (\Throwable $e) {
             Log::warning('Impresión térmica: '.$e->getMessage());
             $safeMessage = $this->normalizeUtf8ForJson((string) $e->getMessage());
+            if ($printJob) {
+                $this->markThermalPrintJobFailed($printJob, $safeMessage !== '' ? $safeMessage : 'No se pudo enviar el ticket a la ticketera.');
+            }
 
             return response()->json([
                 'success' => false,
@@ -1888,6 +1994,265 @@ class SalesController extends Controller
                     : 'No se pudo enviar el ticket a la ticketera. Verifica IP o nombre de impresora local en Windows.',
             ], 500);
         }
+    }
+
+    public function pendingThermalPrintJobs(Request $request)
+    {
+        if (! Schema::hasTable('thermal_print_jobs')) {
+            return response()->json(['success' => true, 'count' => 0, 'jobs' => []]);
+        }
+
+        $branchId = (int) session('branch_id');
+        if (! $branchId) {
+            return response()->json(['success' => true, 'count' => 0, 'jobs' => []]);
+        }
+
+        $jobs = ThermalPrintJob::query()
+            ->with(['movement.documentType', 'movement.salesMovement', 'movement.orderMovement'])
+            ->where('branch_id', $branchId)
+            ->whereIn('status', ['pending', 'printing'])
+            ->latest('id')
+            ->limit(25)
+            ->get()
+            ->map(fn (ThermalPrintJob $job) => $this->thermalPrintJobPayload($job))
+            ->values();
+
+        return response()->json([
+            'success' => true,
+            'count' => $jobs->count(),
+            'jobs' => $jobs,
+        ]);
+    }
+
+    public function confirmThermalPrintJob(Request $request)
+    {
+        if (! Schema::hasTable('thermal_print_jobs')) {
+            return response()->json(['success' => false, 'message' => 'La tabla de pendientes de impresion aun no esta migrada.'], 503);
+        }
+
+        $validated = $request->validate([
+            'print_job_id' => ['required', 'integer', 'exists:thermal_print_jobs,id'],
+            'movement_id' => ['required', 'integer', 'exists:movements,id'],
+            'printer_name' => ['nullable', 'string', 'max:120'],
+        ]);
+
+        $branchId = (int) session('branch_id');
+        $job = ThermalPrintJob::query()
+            ->where('id', (int) $validated['print_job_id'])
+            ->where('branch_id', $branchId)
+            ->where('movement_id', (int) $validated['movement_id'])
+            ->first();
+
+        if (! $job) {
+            return response()->json(['success' => false, 'message' => 'Pendiente de impresion no encontrado.'], 404);
+        }
+
+        if ($job->status === 'printed') {
+            return response()->json(['success' => true, 'message' => 'El comprobante ya estaba marcado como impreso.']);
+        }
+
+        if (! in_array($job->status, ['pending', 'printing'], true)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Este pendiente ya fue descartado y no puede marcarse como impreso.',
+            ], 409);
+        }
+
+        if (! empty($validated['printer_name'])) {
+            $job->printer_name = trim((string) $validated['printer_name']);
+        }
+        $this->markThermalPrintJobPrinted($job, $request);
+
+        return response()->json(['success' => true, 'message' => 'Comprobante marcado como impreso.']);
+    }
+
+    public function failThermalPrintJob(Request $request)
+    {
+        if (! Schema::hasTable('thermal_print_jobs')) {
+            return response()->json(['success' => false, 'message' => 'La tabla de pendientes de impresion aun no esta migrada.'], 503);
+        }
+
+        $validated = $request->validate([
+            'print_job_id' => ['nullable', 'integer', 'exists:thermal_print_jobs,id'],
+            'movement_id' => ['required', 'integer', 'exists:movements,id'],
+            'printer_name' => ['nullable', 'string', 'max:120'],
+            'message' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $branchId = (int) session('branch_id');
+        $job = null;
+        if (! empty($validated['print_job_id'])) {
+            $job = ThermalPrintJob::query()
+                ->where('id', (int) $validated['print_job_id'])
+                ->where('branch_id', $branchId)
+                ->where('movement_id', (int) $validated['movement_id'])
+                ->first();
+        }
+
+        if (! $job && ! empty($validated['print_job_id'])) {
+            return response()->json(['success' => false, 'message' => 'Pendiente de impresion no encontrado.'], 404);
+        }
+
+        if (! $job) {
+            $movement = Movement::query()
+                ->where('id', (int) $validated['movement_id'])
+                ->where('branch_id', $branchId)
+                ->first();
+
+            if (! $movement) {
+                return response()->json(['success' => false, 'message' => 'Venta no encontrada en esta sucursal.'], 404);
+            }
+
+            $job = $this->touchThermalPrintJobAttempt(
+                null,
+                $this->resolvePrintableForTicket($movement),
+                null,
+                $validated['printer_name'] ?? null,
+                $request,
+                'frontend_failure'
+            );
+        }
+
+        if ($job->status === 'pending') {
+            $this->markThermalPrintJobFailed($job, trim((string) ($validated['message'] ?? 'No se pudo confirmar la impresion.')));
+        }
+
+        return response()->json(['success' => true, 'print_job_id' => $job->id]);
+    }
+
+    public function dismissThermalPrintJob(Request $request)
+    {
+        if (! Schema::hasTable('thermal_print_jobs')) {
+            return response()->json(['success' => false, 'message' => 'La tabla de pendientes de impresion aun no esta migrada.'], 503);
+        }
+
+        $validated = $request->validate([
+            'print_job_id' => ['required', 'integer', 'exists:thermal_print_jobs,id'],
+        ]);
+
+        $branchId = (int) session('branch_id');
+        $job = ThermalPrintJob::query()
+            ->where('id', (int) $validated['print_job_id'])
+            ->where('branch_id', $branchId)
+            ->first();
+
+        if (! $job) {
+            return response()->json(['success' => false, 'message' => 'Pendiente de impresion no encontrado.'], 404);
+        }
+
+        $dismissed = ThermalPrintJob::query()
+            ->whereKey($job->id)
+            ->where('branch_id', $branchId)
+            ->whereIn('status', ['pending', 'printing'])
+            ->update([
+                'status' => 'dismissed',
+                'last_error' => null,
+                'updated_at' => now(),
+            ]);
+
+        if (! $dismissed) {
+            return response()->json([
+                'success' => false,
+                'message' => $job->fresh()?->status === 'printed'
+                    ? 'Este comprobante ya fue impreso y no puede eliminarse.'
+                    : 'Este pendiente ya fue eliminado.',
+            ], 409);
+        }
+
+        return response()->json(['success' => true, 'message' => 'El ticket pendiente fue eliminado.']);
+    }
+
+    private function touchThermalPrintJobAttempt(
+        ?ThermalPrintJob $job,
+        Movement $movement,
+        ?PrinterBranch $printer,
+        ?string $printerName,
+        Request $request,
+        string $source
+    ): ThermalPrintJob {
+        if (! $job) {
+            $job = ThermalPrintJob::query()
+                ->where('branch_id', (int) $movement->branch_id)
+                ->where('movement_id', (int) $movement->id)
+                ->where('status', 'pending')
+                ->where('source', '!=', 'kitchen_order')
+                ->latest('id')
+                ->first();
+        }
+
+        $printerName = trim((string) ($printer?->name ?? $printerName ?? ''));
+        $data = [
+            'branch_id' => (int) $movement->branch_id,
+            'movement_id' => (int) $movement->id,
+            'printer_branch_id' => $printer?->id,
+            'printer_name' => $printerName !== '' ? $printerName : null,
+            'status' => 'pending',
+            'source' => $source,
+            'attempts' => (int) ($job?->attempts ?? 0) + 1,
+            'last_attempt_at' => now(),
+            'last_error' => null,
+            'requested_by' => $job?->requested_by ?: $request->user()?->id,
+        ];
+
+        if ($job) {
+            $job->fill($data)->save();
+            return $job->refresh();
+        }
+
+        return ThermalPrintJob::create($data);
+    }
+
+    private function markThermalPrintJobPrinted(ThermalPrintJob $job, Request $request): void
+    {
+        $job->forceFill([
+            'status' => 'printed',
+            'printed_at' => now(),
+            'printed_by' => $request->user()?->id,
+            'last_error' => null,
+        ])->save();
+    }
+
+    private function markThermalPrintJobFailed(ThermalPrintJob $job, string $message): void
+    {
+        $job->forceFill([
+            'status' => 'pending',
+            'last_error' => Str::limit($message !== '' ? $message : 'No se pudo imprimir el comprobante.', 2000, ''),
+            'last_attempt_at' => now(),
+        ])->save();
+    }
+
+    private function thermalPrintJobPayload(ThermalPrintJob $job): array
+    {
+        $movement = $job->movement;
+        $isKitchen = $job->source === 'kitchen_order';
+        $documentName = $movement?->documentType?->name ?? 'Ticket';
+        $series = $movement?->salesMovement?->series ?? '';
+        $number = $movement?->number ?? '';
+        $displayNumber = trim(strtoupper(substr($documentName, 0, 1)).$series.'-'.$number, '-');
+
+        if ($isKitchen) {
+            $displayNumber = 'COMANDA '.($number !== '' ? '#'.$number : '#'.$job->movement_id);
+            $documentName = 'Comanda';
+        }
+
+        return [
+            'id' => $job->id,
+            'movement_id' => $job->movement_id,
+            'job_type' => $isKitchen ? 'kitchen_order' : 'sale_receipt',
+            'display_number' => $displayNumber !== '' ? $displayNumber : ('Venta #'.$job->movement_id),
+            'document_type' => $documentName,
+            'customer' => $movement?->person_name ?? 'Publico General',
+            'total' => (float) ($movement?->salesMovement?->total ?? 0),
+            'printer_name' => $job->printer_name,
+            'content_summary' => $isKitchen ? $job->content_summary : null,
+            'attempts' => (int) $job->attempts,
+            'last_error' => $job->last_error,
+            'pending_seconds' => $job->created_at
+                ? max(0, (int) $job->created_at->diffInSeconds(now()))
+                : 0,
+            'created_at' => optional($job->created_at)->format('d/m/Y H:i'),
+            'last_attempt_at' => optional($job->last_attempt_at)->format('d/m/Y H:i'),
+        ];
     }
 
     private function resolveBranchThermalPrinter(int $branchId): ?PrinterBranch

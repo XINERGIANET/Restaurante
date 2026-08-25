@@ -281,6 +281,105 @@
                 </form>
             </div>
 
+            @if (false && !empty($thermalPrintEnabled))
+                <div id="thermal-pending-panel"
+                    class="{{ ($pendingThermalPrintJobs ?? collect())->isEmpty() ? 'hidden' : '' }} mt-4 rounded-xl border border-amber-200 bg-amber-50/90 p-4 shadow-sm dark:border-amber-800/70 dark:bg-amber-900/20">
+                    <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-2">
+                                <span class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+                                    <i class="ri-alert-line text-lg"></i>
+                                </span>
+                                <div>
+                                    <h3 class="text-sm font-bold text-amber-900 dark:text-amber-100">
+                                        Impresiones pendientes
+                                    </h3>
+                                    <p class="text-xs text-amber-800/80 dark:text-amber-200/80">
+                                        Comprobantes y comandas que no fueron confirmados por su ticketera.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="button" id="refresh-thermal-pending"
+                            class="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-amber-300 bg-white px-3 text-xs font-semibold text-amber-800 shadow-sm transition hover:bg-amber-100 dark:border-amber-700 dark:bg-gray-900 dark:text-amber-200 dark:hover:bg-amber-900/30">
+                            <i class="ri-refresh-line"></i>
+                            Actualizar
+                        </button>
+                    </div>
+                    <div id="thermal-pending-list" class="mt-3 grid gap-2">
+                        @foreach (($pendingThermalPrintJobs ?? collect()) as $job)
+                            @php
+                                $jobMovement = $job->movement;
+                                $jobIsKitchen = $job->source === 'kitchen_order';
+                                $jobDocName = $jobMovement?->documentType?->name ?? 'Ticket';
+                                $jobSeries = $jobMovement?->salesMovement?->series ?? '';
+                                $jobNumber = trim(strtoupper(substr($jobDocName, 0, 1)) . $jobSeries . '-' . ($jobMovement?->number ?? ''), '-');
+                                $jobPendingSeconds = $job->created_at
+                                    ? max(0, (int) $job->created_at->diffInSeconds(now()))
+                                    : 0;
+                                if ($jobIsKitchen) {
+                                    $jobNumber = 'COMANDA #' . ($jobMovement?->number ?? $job->movement_id);
+                                }
+                            @endphp
+                            <div class="thermal-pending-item flex flex-col gap-3 rounded-lg border border-amber-200 bg-white p-3 text-sm shadow-sm dark:border-amber-800 dark:bg-gray-900 sm:flex-row sm:items-center sm:justify-between"
+                                data-print-job-id="{{ $job->id }}" data-movement-id="{{ $job->movement_id }}">
+                                <div class="min-w-0">
+                                    <p class="font-semibold text-gray-900 dark:text-white">
+                                        {{ $jobNumber !== '' ? $jobNumber : 'Venta #' . $job->movement_id }}
+                                        @if ($jobIsKitchen)
+                                            <span class="ml-2 rounded bg-orange-100 px-1.5 py-0.5 text-[10px] font-bold text-orange-700">COCINA</span>
+                                        @endif
+                                        <span class="ml-2 text-xs font-medium text-gray-500">Intentos: {{ (int) $job->attempts }}</span>
+                                    </p>
+                                    @if ($jobIsKitchen)
+                                        <p class="text-xs font-medium text-gray-700 dark:text-gray-200">
+                                            Ticketera: {{ $job->printer_name ?: 'Sin asignar' }}
+                                        </p>
+                                        @if ($job->content_summary)
+                                            <p class="mt-0.5 text-xs text-gray-600 dark:text-gray-300">{{ $job->content_summary }}</p>
+                                        @endif
+                                    @else
+                                        <p class="text-xs text-gray-600 dark:text-gray-300">
+                                            {{ $jobMovement?->person_name ?? 'Publico General' }} · S/
+                                            {{ number_format((float) ($jobMovement?->salesMovement?->total ?? 0), 2) }}
+                                        </p>
+                                    @endif
+                                    <p class="mt-1 flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-300">
+                                        <i class="ri-time-line"></i>
+                                        Sin imprimir:
+                                        <span data-pending-duration data-pending-seconds="{{ $jobPendingSeconds }}"></span>
+                                    </p>
+                                    @if ($job->last_error)
+                                        <p class="mt-1 text-xs text-amber-700 dark:text-amber-300">{{ $job->last_error }}</p>
+                                    @endif
+                                </div>
+                                <div class="flex shrink-0 items-center gap-2">
+                                    <button type="button"
+                                        class="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-teal-600 px-3 text-xs font-semibold text-white shadow-sm transition hover:bg-teal-700"
+                                        @if ($jobIsKitchen) data-kitchen-retry-job="{{ $job->id }}" @else data-thermal-retry-job="{{ $job->id }}" @endif
+                                        data-movement-id="{{ $job->movement_id }}">
+                                        <i class="ri-printer-line"></i>
+                                        Imprimir
+                                    </button>
+                                    @unless ($jobIsKitchen)
+                                        <button type="button"
+                                            class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
+                                            data-open-ticket-pdf="{{ $job->movement_id }}" title="Abrir PDF">
+                                            <i class="ri-file-pdf-2-line"></i>
+                                        </button>
+                                    @endunless
+                                    <button type="button"
+                                        class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-red-200 bg-white text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-900 dark:bg-gray-800 dark:text-red-400 dark:hover:bg-red-950/30"
+                                        data-dismiss-thermal-job="{{ $job->id }}" title="Eliminar pendiente" aria-label="Eliminar ticket pendiente">
+                                        <i class="ri-delete-bin-line"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+
             <div x-data="{ openRow: null }"
                 class="table-responsive mt-4 rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
                 <table class="w-full min-w-[1100px]">
@@ -291,6 +390,9 @@
                             </th>
                             <th class="px-5 py-3 text-left sm:px-6">
                                 <p class="font-semibold text-white text-theme-xs uppercase">Comprobante</p>
+                            </th>
+                            <th class="px-5 py-3 text-left sm:px-6">
+                                <p class="font-semibold text-white text-theme-xs uppercase">Fecha</p>
                             </th>
                             <th class= "px-5 py-3 text-left sm:px-6">
                                 <p class="font-semibold text-white text-theme-xs uppercase">Subtotal</p>
@@ -314,7 +416,7 @@
                     </thead>
                     <tbody>
                         @forelse ($sales as $sale)
-                            <tr
+                            <tr data-sale-row="{{ $sale->id }}"
                                 class="border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-white/5">
                                 <td class="px-4 text-center justify-center py-4 sm:px-6 sticky-left">
                                     <div class="flex items-center justify-center gap-2">
@@ -341,6 +443,17 @@
                                             {{ $sale->documentType?->name ?? '-' }}
                                         </p>
                                     </div>
+                                </td>
+                                <td class="px-5 py-4 sm:px-6">
+                                    @php
+                                        $saleDate = $sale->moved_at ?? $sale->created_at;
+                                    @endphp
+                                    <p class="text-gray-800 text-theme-sm dark:text-white/90">
+                                        {{ $saleDate ? \Carbon\Carbon::parse($saleDate)->format('Y-m-d') : '-' }}
+                                    </p>
+                                    <p class="text-[11px] font-medium text-gray-500 dark:text-gray-400">
+                                        {{ $saleDate ? \Carbon\Carbon::parse($saleDate)->format('h:i:s A') : '-' }}
+                                    </p>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6">
                                     <p class="text-gray-800 text-theme-sm dark:text-white/90">S/
@@ -558,15 +671,21 @@
                                             @endphp
                                             <form method="POST"
                                                 action="{{ route('sales.destroy', array_merge([$sale], $viewId ? ['view_id' => $viewId] : [])) }}"
-                                                class="relative group js-swal-delete" data-swal-title="Eliminar venta?"
+                                                class="relative group js-swal-delete js-sale-delete-password" data-swal-title="Eliminar venta?"
                                                 data-swal-text="{{ $deleteMessage }}"
                                                 data-swal-confirm="Si, eliminar" data-swal-cancel="Cancelar"
-                                                data-swal-confirm-color="#ef4444" data-swal-cancel-color="#6b7280">
+                                                data-swal-confirm-color="#ef4444" data-swal-cancel-color="#6b7280"
+                                                data-swal-input="password"
+                                                data-swal-input-name="admin_delete_password"
+                                                data-swal-input-label="Código de eliminación"
+                                                data-swal-input-placeholder="Ingresa el código de eliminación"
+                                                data-swal-input-error="Debes ingresar el código de eliminación.">
                                                 @csrf
                                                 @method('DELETE')
                                                 @if ($viewId)
                                                     <input type="hidden" name="view_id" value="{{ $viewId }}">
                                                 @endif
+                                                <input type="hidden" name="admin_delete_password" value="">
                                                 <x-ui.button size="icon" variant="eliminate" type="submit"
                                                     className="bg-error-500 text-white hover:bg-error-600 ring-0 rounded-full"
                                                     style="border-radius: 100%; background-color: #EF4444; color: #FFFFFF;"
@@ -581,7 +700,7 @@
                                     </div>
                                 </td>
                             </tr>
-                            <tr x-show="openRow === {{ $sale->id }}" x-cloak
+                            <tr x-show="openRow === {{ $sale->id }}" x-cloak data-sale-detail-row="{{ $sale->id }}"
                                 class="bg-gray-50/70 dark:bg-gray-800/40 border-b border-gray-100 justify-center dark:border-gray-800">
                                 <td colspan="8" class="px-6 py-5">
                                     <div class="rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900 overflow-hidden shadow-sm">
@@ -798,6 +917,11 @@
         <script>
             (function() {
                 const salesThermalPrintUrl = @json(route('sales.print.ticket.thermal'));
+                const salesThermalPrintPendingUrl = @json(route('sales.print.ticket.thermal.pending'));
+                const salesThermalPrintConfirmUrl = @json(route('sales.print.ticket.thermal.confirm'));
+                const salesThermalPrintFailUrl = @json(route('sales.print.ticket.thermal.fail'));
+                const salesThermalPrintDismissUrl = @json(route('sales.print.ticket.thermal.dismiss'));
+                const kitchenThermalPrintUrl = @json(route('orders.print.kitchen.thermal'));
                 const salesTicketPrintBaseUrl = @json(route('admin.sales.print.ticket', ['sale' => '__SALE__']));
                 const salesIndexViewId = @json($viewId ?? '');
 
@@ -884,7 +1008,249 @@
                     }
                 }
 
-                async function printThermalSaleReceipt(movementId) {
+                async function postThermalPrintStatus(url, payload) {
+                    const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                    try {
+                        await fetch(url, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrf,
+                                Accept: 'application/json',
+                            },
+                            credentials: 'same-origin',
+                            body: JSON.stringify(payload),
+                        });
+                    } catch (e) {
+                        console.warn('Estado de impresion no sincronizado:', e);
+                    }
+                }
+
+                async function confirmThermalPrintJob(printJobId, movementId, printerName) {
+                    if (!printJobId || !movementId) return;
+                    await postThermalPrintStatus(salesThermalPrintConfirmUrl, {
+                        print_job_id: printJobId,
+                        movement_id: movementId,
+                        printer_name: printerName || null,
+                    });
+                    refreshThermalPendingJobs();
+                }
+
+                async function reportThermalPrintFailure(movementId, printJobId, message, printerName) {
+                    if (!movementId) return;
+                    await postThermalPrintStatus(salesThermalPrintFailUrl, {
+                        print_job_id: printJobId || null,
+                        movement_id: movementId,
+                        printer_name: printerName || null,
+                        message: message || 'No se pudo confirmar la impresion.',
+                    });
+                    refreshThermalPendingJobs();
+                }
+
+                function renderThermalPendingJobs(jobs) {
+                    const panel = document.getElementById('thermal-pending-panel');
+                    const list = document.getElementById('thermal-pending-list');
+                    if (!panel || !list) return;
+                    if (!Array.isArray(jobs) || jobs.length === 0) {
+                        panel.classList.add('hidden');
+                        list.innerHTML = '';
+                        return;
+                    }
+                    panel.classList.remove('hidden');
+                    list.innerHTML = jobs.map((job) => {
+                        const isKitchen = job.job_type === 'kitchen_order';
+                        const total = Number(job.total || 0).toFixed(2);
+                        const error = job.last_error ? `<p class="mt-1 text-xs text-amber-700 dark:text-amber-300">${escapeHtml(String(job.last_error))}</p>` : '';
+                        const typeBadge = isKitchen ? '<span class="ml-2 rounded bg-orange-100 px-1.5 py-0.5 text-[10px] font-bold text-orange-700">COCINA</span>' : '';
+                        const detail = isKitchen
+                            ? `<p class="text-xs font-medium text-gray-700 dark:text-gray-200">Ticketera: ${escapeHtml(job.printer_name || 'Sin asignar')}</p>
+                               ${job.content_summary ? `<p class="mt-0.5 text-xs text-gray-600 dark:text-gray-300">${escapeHtml(job.content_summary)}</p>` : ''}`
+                            : `<p class="text-xs text-gray-600 dark:text-gray-300">${escapeHtml(job.customer || 'Publico General')} · S/ ${total}</p>`;
+                        const retryAttribute = isKitchen ? 'data-kitchen-retry-job' : 'data-thermal-retry-job';
+                        const pdfButton = isKitchen ? '' : `
+                            <button type="button" class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
+                                data-open-ticket-pdf="${job.movement_id}" title="Abrir PDF">
+                                <i class="ri-file-pdf-2-line"></i>
+                            </button>`;
+                        return `
+                            <div class="thermal-pending-item flex flex-col gap-3 rounded-lg border border-amber-200 bg-white p-3 text-sm shadow-sm dark:border-amber-800 dark:bg-gray-900 sm:flex-row sm:items-center sm:justify-between"
+                                data-print-job-id="${job.id}" data-movement-id="${job.movement_id}">
+                                <div class="min-w-0">
+                                    <p class="font-semibold text-gray-900 dark:text-white">
+                                        ${escapeHtml(job.display_number || ('Venta #' + job.movement_id))}
+                                        ${typeBadge}
+                                        <span class="ml-2 text-xs font-medium text-gray-500">Intentos: ${parseInt(job.attempts || 0, 10)}</span>
+                                    </p>
+                                    ${detail}
+                                    <p class="mt-1 flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-300">
+                                        <i class="ri-time-line"></i>
+                                        Sin imprimir: <span data-pending-duration data-pending-seconds="${Math.max(0, parseInt(job.pending_seconds || 0, 10))}"></span>
+                                    </p>
+                                    ${error}
+                                </div>
+                                <div class="flex shrink-0 items-center gap-2">
+                                    <button type="button" class="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-teal-600 px-3 text-xs font-semibold text-white shadow-sm transition hover:bg-teal-700"
+                                        ${retryAttribute}="${job.id}" data-movement-id="${job.movement_id}">
+                                        <i class="ri-printer-line"></i> Imprimir
+                                    </button>
+                                    ${pdfButton}
+                                    <button type="button" class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-red-200 bg-white text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-900 dark:bg-gray-800 dark:text-red-400 dark:hover:bg-red-950/30"
+                                        data-dismiss-thermal-job="${job.id}" title="Eliminar pendiente" aria-label="Eliminar ticket pendiente">
+                                        <i class="ri-delete-bin-line"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                    updatePendingDurations();
+                }
+
+                function escapeHtml(value) {
+                    const div = document.createElement('div');
+                    div.textContent = value == null ? '' : String(value);
+                    return div.innerHTML;
+                }
+
+                function formatPendingDuration(totalSeconds) {
+                    const seconds = Math.max(0, Number(totalSeconds) || 0);
+                    if (seconds < 60) return 'menos de 1 min';
+
+                    const totalMinutes = Math.floor(seconds / 60);
+                    if (totalMinutes < 60) return `${totalMinutes} min`;
+
+                    const totalHours = Math.floor(totalMinutes / 60);
+                    const minutes = totalMinutes % 60;
+                    if (totalHours < 24) {
+                        return minutes > 0 ? `${totalHours} h ${minutes} min` : `${totalHours} h`;
+                    }
+
+                    const days = Math.floor(totalHours / 24);
+                    const hours = totalHours % 24;
+                    const dayLabel = days === 1 ? 'día' : 'días';
+                    return hours > 0 ? `${days} ${dayLabel} ${hours} h` : `${days} ${dayLabel}`;
+                }
+
+                function updatePendingDurations() {
+                    const now = Date.now();
+                    document.querySelectorAll('[data-pending-duration]').forEach((element) => {
+                        const baseSeconds = Math.max(0, parseInt(element.dataset.pendingSeconds || '0', 10));
+                        let observedAt = parseInt(element.dataset.pendingObservedAt || '0', 10);
+                        if (!observedAt) {
+                            observedAt = now;
+                            element.dataset.pendingObservedAt = String(observedAt);
+                        }
+                        const elapsedSeconds = Math.max(0, Math.floor((now - observedAt) / 1000));
+                        element.textContent = formatPendingDuration(baseSeconds + elapsedSeconds);
+                    });
+                }
+
+                async function refreshThermalPendingJobs() {
+                    try {
+                        const res = await fetch(salesThermalPrintPendingUrl, {
+                            headers: { Accept: 'application/json' },
+                            credentials: 'same-origin',
+                        });
+                        const data = res.headers.get('content-type')?.includes('application/json') ? await res.json() : null;
+                        if (res.ok && data?.success) {
+                            renderThermalPendingJobs(data.jobs || []);
+                        }
+                    } catch (e) {
+                        console.warn('No se pudo refrescar pendientes de impresion:', e);
+                    }
+                }
+
+                async function dismissThermalPrintJob(button, printJobId) {
+                    if (!printJobId) return;
+
+                    let confirmed = false;
+                    if (window.Swal) {
+                        const result = await Swal.fire({
+                            icon: 'warning',
+                            title: 'Eliminar ticket pendiente',
+                            text: 'El ticket dejará de aparecer en esta lista. La venta no será eliminada.',
+                            showCancelButton: true,
+                            confirmButtonText: 'Sí, eliminar',
+                            cancelButtonText: 'Cancelar',
+                            confirmButtonColor: '#dc2626',
+                            reverseButtons: true,
+                        });
+                        confirmed = result.isConfirmed;
+                    } else {
+                        confirmed = window.confirm('¿Eliminar este ticket de la lista de pendientes? La venta no será eliminada.');
+                    }
+
+                    if (!confirmed) return;
+
+                    button.disabled = true;
+                    const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                    try {
+                        const response = await fetch(salesThermalPrintDismissUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrf,
+                                Accept: 'application/json',
+                            },
+                            credentials: 'same-origin',
+                            body: JSON.stringify({ print_job_id: printJobId }),
+                        });
+                        const data = response.headers.get('content-type')?.includes('application/json')
+                            ? await response.json()
+                            : null;
+
+                        if (!response.ok || !data?.success) {
+                            throw new Error(data?.message || 'No se pudo eliminar el ticket pendiente.');
+                        }
+
+                        button.closest('.thermal-pending-item')?.remove();
+                        thermalPrintToast('Pendiente eliminado', data.message, 'success');
+                        await refreshThermalPendingJobs();
+                    } catch (error) {
+                        button.disabled = false;
+                        thermalPrintToast('No se pudo eliminar', error?.message || 'Intenta nuevamente.', 'error');
+                        await refreshThermalPendingJobs();
+                    }
+                }
+
+                async function retryKitchenPrintJob(button, printJobId, movementId) {
+                    if (!printJobId || !movementId) return;
+                    button.disabled = true;
+                    const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                    try {
+                        const response = await fetch(kitchenThermalPrintUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrf,
+                                Accept: 'application/json',
+                            },
+                            credentials: 'same-origin',
+                            body: JSON.stringify({
+                                print_job_id: printJobId,
+                                movement_id: movementId,
+                                retry_attempt: true,
+                            }),
+                        });
+                        const data = response.headers.get('content-type')?.includes('application/json')
+                            ? await response.json()
+                            : null;
+                        if (!response.ok || !data?.success) {
+                            throw new Error(data?.message || 'No se pudo reimprimir la comanda.');
+                        }
+                        thermalPrintToast(
+                            data.print_bridge ? 'Comanda en cola' : 'Comanda impresa',
+                            data.message || 'La comanda fue enviada a su ticketera.',
+                            'success'
+                        );
+                    } catch (error) {
+                        thermalPrintToast('No se pudo imprimir', error?.message || 'Intenta nuevamente.', 'error');
+                    } finally {
+                        button.disabled = false;
+                        await refreshThermalPendingJobs();
+                    }
+                }
+
+                async function printThermalSaleReceipt(movementId, printJobId) {
                     if (!movementId) return;
                     const qzApi = window.qz;
                     const sel = document.getElementById('sales-index-thermal-printer');
@@ -898,6 +1264,9 @@
                     };
                     if (printerId) {
                         body.printer_id = printerId;
+                    }
+                    if (printJobId) {
+                        body.print_job_id = printJobId;
                     }
 
                     if (qzApi && await ensureQzTrayConnected(qzApi, preferredPrinterName)) {
@@ -951,9 +1320,11 @@
                                     data: td.payload_b64,
                                 }]);
                             }
+                            await confirmThermalPrintJob(td.print_job_id || printJobId, movementId, printerName);
                             thermalPrintToast('Impresión', 'Comprobante enviado a "' + printerName + '".', 'success');
                         } catch (e) {
                             console.warn('QZ Ticket listado:', e);
+                            await reportThermalPrintFailure(movementId, printJobId, e?.message || 'No se pudo imprimir con QZ Tray.', preferredPrinterName);
                             if (strictLocalQz) {
                                 openSaleTicketPdfTab(movementId);
                                 return;
@@ -971,11 +1342,14 @@
                                 });
                                 const td = tr.headers.get('content-type')?.includes('application/json') ? await tr.json() : null;
                                 if (tr.ok && td?.success) {
+                                    refreshThermalPendingJobs();
                                     thermalPrintToast('Impresión', td.message || 'Enviado a la ticketera.', 'success');
                                 } else {
+                                    await reportThermalPrintFailure(movementId, printJobId, td?.message || 'No se pudo enviar a la ticketera.', preferredPrinterName);
                                     openSaleTicketPdfTab(movementId);
                                 }
                             } catch (e2) {
+                                await reportThermalPrintFailure(movementId, printJobId, e2?.message || 'Error de red al imprimir.', preferredPrinterName);
                                 openSaleTicketPdfTab(movementId);
                             }
                         }
@@ -983,6 +1357,7 @@
                     }
 
                     if (strictLocalQz) {
+                        await reportThermalPrintFailure(movementId, printJobId, 'QZ Tray no esta disponible para esta ticketera.', preferredPrinterName);
                         openSaleTicketPdfTab(movementId);
                         return;
                     }
@@ -1000,11 +1375,14 @@
                         });
                         const td = tr.headers.get('content-type')?.includes('application/json') ? await tr.json() : null;
                         if (tr.ok && td?.success) {
+                            refreshThermalPendingJobs();
                             thermalPrintToast('Impresión', td.message || 'Enviado a la ticketera.', 'success');
                         } else {
+                            await reportThermalPrintFailure(movementId, printJobId, td?.message || 'No se pudo enviar a la ticketera.', preferredPrinterName);
                             openSaleTicketPdfTab(movementId);
                         }
                     } catch (e) {
+                        await reportThermalPrintFailure(movementId, printJobId, e?.message || 'Error de red al imprimir.', preferredPrinterName);
                         openSaleTicketPdfTab(movementId);
                     }
                 }
@@ -1012,6 +1390,44 @@
                 window.printThermalSaleReceipt = printThermalSaleReceipt;
 
                 document.addEventListener('click', function (e) {
+                    const dismissBtn = e.target.closest('[data-dismiss-thermal-job]');
+                    if (dismissBtn) {
+                        e.preventDefault();
+                        const jobId = parseInt(dismissBtn.getAttribute('data-dismiss-thermal-job'), 10);
+                        dismissThermalPrintJob(dismissBtn, jobId);
+                        return;
+                    }
+
+                    const kitchenRetryBtn = e.target.closest('[data-kitchen-retry-job]');
+                    if (kitchenRetryBtn) {
+                        e.preventDefault();
+                        const jobId = parseInt(kitchenRetryBtn.getAttribute('data-kitchen-retry-job'), 10);
+                        const movementId = parseInt(kitchenRetryBtn.getAttribute('data-movement-id'), 10);
+                        retryKitchenPrintJob(kitchenRetryBtn, jobId, movementId);
+                        return;
+                    }
+
+                    const retryBtn = e.target.closest('[data-thermal-retry-job]');
+                    if (retryBtn) {
+                        e.preventDefault();
+                        const jobId = parseInt(retryBtn.getAttribute('data-thermal-retry-job'), 10);
+                        const movementId = parseInt(retryBtn.getAttribute('data-movement-id'), 10);
+                        if (jobId && movementId) {
+                            printThermalSaleReceipt(movementId, jobId);
+                        }
+                        return;
+                    }
+
+                    const pdfBtn = e.target.closest('[data-open-ticket-pdf]');
+                    if (pdfBtn) {
+                        e.preventDefault();
+                        const movementId = parseInt(pdfBtn.getAttribute('data-open-ticket-pdf'), 10);
+                        if (movementId) {
+                            openSaleTicketPdfTab(movementId);
+                        }
+                        return;
+                    }
+
                     const btn = e.target.closest('[data-thermal-print-sale]');
                     if (!btn) {
                         return;
@@ -1022,6 +1438,14 @@
                         printThermalSaleReceipt(id);
                     }
                 });
+
+                document.getElementById('refresh-thermal-pending')?.addEventListener('click', function () {
+                    refreshThermalPendingJobs();
+                });
+
+                updatePendingDurations();
+                setInterval(updatePendingDurations, 60000);
+                setInterval(refreshThermalPendingJobs, 30000);
 
                 function runThermalReprintFromQuery() {
                     const params = new URLSearchParams(window.location.search);
@@ -1176,6 +1600,7 @@
             setupSalesConvertQuickClientForm();
             document.addEventListener('DOMContentLoaded', setupSalesConvertQuickClientForm);
             document.addEventListener('turbo:load', setupSalesConvertQuickClientForm);
+
         </script>
     @endpush
 @endsection

@@ -328,12 +328,12 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
     @if (!empty($errorMessage))
     <script>
     (function() {
-        const showErrorToast = () => {
-            const message = @json($errorMessage);
-            const key = 'toast:error';
-            if (window.sessionStorage && sessionStorage.getItem(key) === message) {
-                return;
-            }
+            const showErrorToast = () => {
+                const message = @json($errorMessage);
+            // Evita el doble evento DOMContentLoaded/turbo:load solo en esta vista.
+            // No usar sessionStorage: impediría mostrar el mismo aviso al siguiente intento.
+            if (window.__lastErrorToast === message) return;
+            window.__lastErrorToast = message;
             if (window.Swal) {
                 Swal.fire({
                     toast: true,
@@ -345,9 +345,9 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
                     timerProgressBar: true
                 });
             }
-            if (window.sessionStorage) {
-                sessionStorage.setItem(key, message);
-            }
+            window.setTimeout(() => {
+                if (window.__lastErrorToast === message) window.__lastErrorToast = null;
+            }, 1000);
         };
         document.addEventListener('DOMContentLoaded', showErrorToast, { once: true });
         document.addEventListener('turbo:load', showErrorToast);
@@ -355,6 +355,124 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
     </script>
     @endif
     <script>
+        if (!window.__salesDeleteCodeHandler) {
+            document.addEventListener('submit', (event) => {
+                const form = event.target.closest('form');
+                if (!form) return;
+
+                const title = form.dataset.swalTitle || '';
+                const action = form.getAttribute('action') || '';
+                const isSalesDelete = form.classList.contains('js-sale-delete-password') ||
+                    title.toLowerCase().includes('eliminar venta') ||
+                    action.includes('/ventas/');
+
+                if (!isSalesDelete || !form.classList.contains('js-swal-delete')) return;
+
+                event.preventDefault();
+                event.stopImmediatePropagation();
+
+                if (!window.Swal) {
+                    form.submit();
+                    return;
+                }
+
+                const text = form.dataset.swalText || 'Esta accion no se puede deshacer.';
+                const confirmText = form.dataset.swalConfirm || 'Si, eliminar';
+                const cancelText = form.dataset.swalCancel || 'Cancelar';
+                const confirmColor = form.dataset.swalConfirmColor || '#ef4444';
+                const cancelColor = form.dataset.swalCancelColor || '#6b7280';
+                const inputName = form.dataset.swalInputName || 'admin_delete_password';
+                const inputLabel = form.dataset.swalInputLabel || 'Codigo de eliminacion';
+                const inputPlaceholder = form.dataset.swalInputPlaceholder || 'Ingresa el codigo de eliminacion';
+                const inputError = form.dataset.swalInputError || 'Debes ingresar el codigo de eliminacion.';
+                const isDark = document.documentElement.classList.contains('dark');
+                const escapeHtml = (value) => String(value ?? '')
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+
+                Swal.fire({
+                    title: form.dataset.swalTitle || 'Eliminar venta?',
+                    icon: 'warning',
+                    html: `
+                        <div style="text-align:center;">
+                            <p style="display:block;margin:0 0 18px 0;color:${isDark ? '#d1d5db' : '#4b5563'};">${escapeHtml(text)}</p>
+                            <label for="swal-sale-delete-code" style="display:block;text-align:left;margin:0 0 6px 0;font-size:13px;font-weight:700;color:${isDark ? '#e5e7eb' : '#374151'};">${escapeHtml(inputLabel)}</label>
+                            <input id="swal-sale-delete-code" type="password" autocomplete="new-password" autocapitalize="off" autocorrect="off" placeholder="${escapeHtml(inputPlaceholder)}" style="display:block !important;visibility:visible !important;opacity:1 !important;width:100%;height:42px;box-sizing:border-box;border:1px solid #d1d5db;border-radius:8px;padding:8px 12px;font-size:14px;background:${isDark ? '#1f2937' : '#ffffff'};color:${isDark ? '#ffffff' : '#111827'};">
+                        </div>
+                    `,
+                    showCancelButton: true,
+                    confirmButtonText: confirmText,
+                    cancelButtonText: cancelText,
+                    confirmButtonColor: confirmColor,
+                    cancelButtonColor: cancelColor,
+                    reverseButtons: true,
+                    allowOutsideClick: false,
+                    showLoaderOnConfirm: true,
+                    background: isDark ? '#111827' : '#ffffff',
+                    color: isDark ? '#e5e7eb' : '#111827',
+                    preConfirm: async () => {
+                        const code = document.getElementById('swal-sale-delete-code')?.value || '';
+                        if (!code.trim()) {
+                            Swal.showValidationMessage(inputError);
+                            return false;
+                        }
+
+                        const formData = new FormData(form);
+                        formData.set(inputName, code);
+
+                        try {
+                            const response = await fetch(form.action, {
+                                method: 'POST',
+                                headers: {
+                                    'Accept': 'application/json',
+                                    'X-Requested-With': 'XMLHttpRequest',
+                                },
+                                credentials: 'same-origin',
+                                body: formData,
+                            });
+
+                            const data = await response.json().catch(() => ({}));
+                            if (!response.ok || data?.success === false) {
+                                Swal.showValidationMessage(data?.message || 'No se pudo eliminar la venta.');
+                                return false;
+                            }
+
+                            return data;
+                        } catch (error) {
+                            Swal.showValidationMessage('No se pudo conectar con el servidor.');
+                            return false;
+                        }
+                    },
+                }).then((result) => {
+                    if (!result.isConfirmed) return;
+
+                    const row = form.closest('tr');
+                    const saleId = row?.dataset?.saleRow || result.value?.sale_id;
+                    if (row) {
+                        row.remove();
+                    }
+
+                    if (saleId) {
+                        document.querySelector(`[data-sale-detail-row="${saleId}"]`)?.remove();
+                    }
+
+                    Swal.fire({
+                        toast: true,
+                        position: 'bottom-end',
+                        icon: 'success',
+                        title: result.value?.message || 'Venta eliminada correctamente.',
+                        showConfirmButton: false,
+                        timer: 3000,
+                        timerProgressBar: true,
+                    });
+                });
+            }, true);
+            window.__salesDeleteCodeHandler = true;
+        }
+
         if (!window.__globalSwalDeleteHandler) {
             document.addEventListener('submit', (event) => {
                 const form = event.target.closest('.js-swal-delete');
@@ -372,17 +490,44 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
                 const cancelText = form.dataset.swalCancel || 'Cancelar';
                 const confirmColor = form.dataset.swalConfirmColor || '#ef4444';
                 const cancelColor = form.dataset.swalCancelColor || '#6b7280';
+                const inputType = form.dataset.swalInput || null;
+                const inputName = form.dataset.swalInputName || '';
+                const inputLabel = form.dataset.swalInputLabel || '';
+                const inputPlaceholder = form.dataset.swalInputPlaceholder || '';
+                const inputError = form.dataset.swalInputError || 'Este campo es obligatorio.';
+                const useSaleDeleteCodeInput = form.classList.contains('js-sale-delete-password');
+                const escapeHtml = (value) => String(value ?? '')
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
 
                 const isDark = document.documentElement.classList.contains('dark');
                 Swal.fire({
                     title,
-                    text,
+                    text: useSaleDeleteCodeInput ? undefined : text,
+                    html: useSaleDeleteCodeInput ? `
+                        <div class="text-center">
+                            <p class="swal2-html-container" style="display:block;margin:0 0 18px 0;">${escapeHtml(text)}</p>
+                            <label for="swal-sale-delete-code" style="display:block;text-align:left;margin:0 0 6px 0;font-size:13px;font-weight:700;color:${isDark ? '#e5e7eb' : '#374151'};">${escapeHtml(inputLabel || 'Código de eliminación')}</label>
+                            <input id="swal-sale-delete-code" type="password" autocomplete="new-password" autocapitalize="off" autocorrect="off" placeholder="${escapeHtml(inputPlaceholder || 'Ingresa el código de eliminación')}" style="display:block;width:100%;height:42px;box-sizing:border-box;border:1px solid #d1d5db;border-radius:8px;padding:8px 12px;font-size:14px;background:${isDark ? '#1f2937' : '#ffffff'};color:${isDark ? '#ffffff' : '#111827'};">
+                        </div>
+                    ` : undefined,
                     icon,
                     showCancelButton: true,
                     confirmButtonText: confirmText,
                     cancelButtonText: cancelText,
                     confirmButtonColor: confirmColor,
                     cancelButtonColor: cancelColor,
+                    input: useSaleDeleteCodeInput ? null : inputType,
+                    inputLabel: useSaleDeleteCodeInput ? '' : inputLabel,
+                    inputPlaceholder: useSaleDeleteCodeInput ? '' : inputPlaceholder,
+                    inputAttributes: !useSaleDeleteCodeInput && inputType === 'password' ? {
+                        autocapitalize: 'off',
+                        autocorrect: 'off',
+                        autocomplete: 'new-password',
+                    } : {},
                     reverseButtons: true,
                     allowOutsideClick: false,
                     background: isDark ? '#111827' : '#ffffff',
@@ -390,11 +535,35 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
                     customClass: {
                         backdrop: 'swal-backdrop-blur',
                     },
+                    preConfirm: (value) => {
+                        if (useSaleDeleteCodeInput) {
+                            const code = document.getElementById('swal-sale-delete-code')?.value || '';
+                            if (!code.trim()) {
+                                Swal.showValidationMessage(inputError);
+                                return false;
+                            }
+
+                            return code;
+                        }
+
+                        if (inputType && !String(value ?? '').trim()) {
+                            Swal.showValidationMessage(inputError);
+                            return false;
+                        }
+
+                        return value;
+                    },
                     didOpen: (popup) => {
                         popup.classList.toggle('swal-dark', isDark);
                     },
                 }).then((result) => {
                     if (result.isConfirmed) {
+                        if (inputType && inputName) {
+                            const hiddenInput = form.querySelector(`input[name="${inputName}"]`);
+                            if (hiddenInput) {
+                                hiddenInput.value = String(result.value ?? '');
+                            }
+                        }
                         if (window.showLoadingModal) {
                             window.showLoadingModal();
                         }

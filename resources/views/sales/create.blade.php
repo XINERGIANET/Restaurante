@@ -424,6 +424,8 @@ es                        style="max-height: 80vh;">
             const salesProcessUrl = @json(route('sales.process'));
             const salesIndexUrl = @json($salesIndexUrl ?? route('sales.index'));
             const salesThermalPrintUrl = @json(route('sales.print.ticket.thermal'));
+            const salesThermalPrintConfirmUrl = @json(route('sales.print.ticket.thermal.confirm'));
+            const salesThermalPrintFailUrl = @json(route('sales.print.ticket.thermal.fail'));
             const salesTicketPrintBaseUrl = @json(route('admin.sales.print.ticket', ['sale' => '__SALE__']));
 
             function openSaleTicketPdfTab(movementId) {
@@ -435,6 +437,43 @@ es                        style="max-height: 80vh;">
                     ticketUrl += (ticketUrl.includes('?') ? '&' : '?') + 'view_id=' + encodeURIComponent(viewId);
                 }
                 window.open(ticketUrl, '_blank', 'noopener,noreferrer');
+            }
+
+            async function postThermalPrintStatus(url, payload) {
+                const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                try {
+                    await fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrf,
+                            'Accept': 'application/json'
+                        },
+                        credentials: 'same-origin',
+                        body: JSON.stringify(payload)
+                    });
+                } catch (e) {
+                    console.warn('Estado de impresion no sincronizado:', e);
+                }
+            }
+
+            async function confirmThermalPrintJob(printJobId, movementId, printerName) {
+                if (!printJobId || !movementId) return;
+                await postThermalPrintStatus(salesThermalPrintConfirmUrl, {
+                    print_job_id: printJobId,
+                    movement_id: movementId,
+                    printer_name: printerName || null
+                });
+            }
+
+            async function reportThermalPrintFailure(movementId, printJobId, message, printerName) {
+                if (!movementId) return;
+                await postThermalPrintStatus(salesThermalPrintFailUrl, {
+                    print_job_id: printJobId || null,
+                    movement_id: movementId,
+                    printer_name: printerName || null,
+                    message: message || 'No se pudo confirmar la impresion.'
+                });
             }
 
             function escapeHtml(text) {
@@ -1559,12 +1598,14 @@ es                        style="max-height: 80vh;">
                         const td = tr.headers.get('content-type')?.includes('application/json') ? await tr.json() :
                             null;
                         if (!tr.ok || !td?.success || (!td?.ticket_pdf_b64 && !td?.payload_b64)) {
+                            await reportThermalPrintFailure(movementId, td?.print_job_id || null, td?.message || 'No se pudo obtener el ticket del servidor.', preferredPrinterName);
                             openSaleTicketPdfTab(movementId);
                             return;
                         }
                         let printerName = preferredPrinterName || td.printer_name || '';
                         if (!printerName) printerName = await qzApi.printers.getDefault();
                         if (!printerName) {
+                            await reportThermalPrintFailure(movementId, td?.print_job_id || null, 'No se encontro una ticketera disponible en QZ Tray.', preferredPrinterName);
                             openSaleTicketPdfTab(movementId);
                             return;
                         }
@@ -1595,10 +1636,12 @@ es                        style="max-height: 80vh;">
                                 data: td.payload_b64
                             }]);
                         }
+                        await confirmThermalPrintJob(td.print_job_id, movementId, printerName);
                         showCobroNotification('Impresión', 'Ticket enviado a "' + printerName + '".', 'success');
                     } catch (e) {
                         markQzTrayUnavailable();
                         console.warn('QZ Ticket:', e);
+                        await reportThermalPrintFailure(movementId, null, e?.message || 'No se pudo imprimir con QZ Tray.', preferredPrinterName);
                         if (strictLocalQz) {
                             openSaleTicketPdfTab(movementId);
                             return;
@@ -1610,6 +1653,7 @@ es                        style="max-height: 80vh;">
 
                 // Fallback: impresión TCP por red (requiere red local e IP en impresora)
                 if (strictLocalQz) {
+                    await reportThermalPrintFailure(movementId, null, 'QZ Tray no esta disponible para esta ticketera.', preferredPrinterName);
                     openSaleTicketPdfTab(movementId);
                     return;
                 }
@@ -1631,10 +1675,12 @@ es                        style="max-height: 80vh;">
                         showCobroNotification('Impresión', td.message || 'Ticket enviado a la ticketera.',
                             'success');
                     } else {
+                        await reportThermalPrintFailure(movementId, td?.print_job_id || null, td?.message || 'No se pudo enviar a la ticketera.', preferredPrinterName);
                         openSaleTicketPdfTab(movementId);
                     }
                 } catch (e) {
                     console.warn('Ticketera red:', e);
+                    await reportThermalPrintFailure(movementId, null, e?.message || 'Error de red al imprimir.', preferredPrinterName);
                     openSaleTicketPdfTab(movementId);
                 }
             }

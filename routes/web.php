@@ -141,6 +141,14 @@ Route::middleware('auth')->group(function () {
     Route::post('/admin/ventas/{sale}/convertir-electronico', [SalesController::class, 'convertTicketToElectronic'])->name('sales.convert.electronic');
     Route::post('/admin/ventas/ticket-termica', [SalesController::class, 'printTicketThermalNetwork'])
         ->name('sales.print.ticket.thermal');
+    Route::get('/admin/ventas/impresiones-termicas/pendientes', [SalesController::class, 'pendingThermalPrintJobs'])
+        ->name('sales.print.ticket.thermal.pending');
+    Route::post('/admin/ventas/impresiones-termicas/confirmar', [SalesController::class, 'confirmThermalPrintJob'])
+        ->name('sales.print.ticket.thermal.confirm');
+    Route::post('/admin/ventas/impresiones-termicas/fallar', [SalesController::class, 'failThermalPrintJob'])
+        ->name('sales.print.ticket.thermal.fail');
+    Route::post('/admin/ventas/impresiones-termicas/descartar', [SalesController::class, 'dismissThermalPrintJob'])
+        ->name('sales.print.ticket.thermal.dismiss');
 
     // POS: vista de cobro (antes era modal)
     Route::get('/ventas/cobrar', [SalesController::class, 'charge'])
@@ -214,15 +222,22 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/Pedidos/reporte', [OrderController::class, 'list'])
         ->name('orders.list');
+    Route::get('/Pedidos/comandas', [OrderController::class, 'commands'])
+        ->name('orders.commands.index');
     Route::get('/Pedidos/cobrar', [OrderController::class, 'charge'])
         ->name('orders.charge');
     Route::get('/Pedidos/reporte/pdf', [OrderController::class, 'pdfReport'])
         ->name('orders.pdf');
+    Route::patch('/Pedidos/detalles/{detail}/entregar', [OrderController::class, 'markDetailDelivered'])
+        ->name('orders.details.deliver');
     Route::post('/Pedidos/procesar', [OrderController::class, 'processOrder'])
         ->name('orders.process')
         ->middleware('active.shift');
     Route::post('/Pedidos/imprimir-comanda', [OrderController::class, 'printKitchenTicketThermal'])
         ->name('orders.print.kitchen.thermal')
+        ->middleware('active.shift');
+    Route::post('/Pedidos/imprimir-comanda/preparar', [OrderController::class, 'prepareKitchenPrintJob'])
+        ->name('orders.print.kitchen.prepare')
         ->middleware('active.shift');
     Route::post('/Pedidos/imprimir-comanda/pdf', [OrderController::class, 'printKitchenTicketPdf'])
         ->name('orders.print.kitchen.pdf')
@@ -252,6 +267,8 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/Pedidos/abrir-mesa', [OrderController::class, 'openTable'])
         ->name('orders.openTable');
+    Route::post('/Pedidos/liberar-bloqueo-mesa', [OrderController::class, 'releaseTableLock'])
+        ->name('orders.releaseTableLock');
 
     Route::post('/Pedidos/mover-mesa', [OrderController::class, 'moveTable'])
         ->name('orders.moveTable');
