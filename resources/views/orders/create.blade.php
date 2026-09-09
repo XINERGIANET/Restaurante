@@ -25,12 +25,12 @@
             $breadcrumbAreaName = $table->area?->name ?? ($area?->name ?? 'Sin área');
         @endphp
         @if (!empty($isCounterSale))
-            <x-common.page-breadcrumb pageTitle="Nueva venta (mostrador)" :breadcrumbs="[
+            <x-common.page-breadcrumb :pageTitle="'Nueva venta (mostrador)'" :breadcrumbs="[
                 ['label' => 'Ventas', 'url' => route('sales.index', $viewId ? ['view_id' => $viewId] : [])],
                 ['label' => 'Nueva venta', 'active' => true],
             ]" />
         @else
-            <x-common.page-breadcrumb pageTitle="{{ $breadcrumbAreaName }} | Mesa {{ $table->name ?? $table->id }}"
+            <x-common.page-breadcrumb :pageTitle="$breadcrumbAreaName . ' | Mesa ' . ($table->name ?? $table->id)"
                 :breadcrumbs="[
                     ['label' => 'Salones', 'url' => route('orders.index')],
                     ['label' => 'Mesa ' . ($table->name ?? $table->id), 'active' => true],

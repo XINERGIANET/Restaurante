@@ -1540,8 +1540,8 @@
                 const baseUrl = btn ? btn.dataset.excelUrl : "{{ route('admin.sales.excel') }}";
 
                 const url = new URL(baseUrl, window.location.origin);
-                const dfVal = document.querySelector('[name=\"date_from\"]')?.value;
-                const dtVal = document.querySelector('[name=\"date_to\"]')?.value;
+                const dfVal = document.querySelector('[name="date_from"]')?.value;
+                const dtVal = document.querySelector('[name="date_to"]')?.value;
                 if (dfVal) url.searchParams.set('date_from', dfVal);
                 if (dtVal) url.searchParams.set('date_to', dtVal);
 
