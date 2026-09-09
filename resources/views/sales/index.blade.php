@@ -966,11 +966,13 @@
                         const localPrinter = String(localStorage.getItem('xinergia_local_printer_name') ||
                             localStorage.getItem('xinergia_print_bridge_printer') || '').trim();
                         if (localPrinter) return localPrinter;
+                        const stationName = String(localStorage.getItem('restaurant_print_station_name') || '').trim();
+                        if (stationName) return stationName;
                     } catch (e) {}
-                    const sel = document.getElementById('sales-index-thermal-printer');
+                    const sel = document.getElementById('sales-index-thermal-printer') || document.getElementById('cobro-thermal-printer');
                     if (sel && sel.value) {
                         const opt = sel.options[sel.selectedIndex];
-                        const label = String(opt?.textContent || '').split('â€”')[0].trim();
+                        const label = String(opt?.textContent || '').split('—')[0].split('-')[0].trim();
                         if (label) return label;
                     }
                     const host = String(window.location.hostname || '').trim().toLowerCase();
@@ -1258,9 +1260,13 @@
                     const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
                     const preferredPrinterName = resolveStrictLocalPrinterName();
                     const strictLocalQz = requiresStrictLocalQz(preferredPrinterName);
+                    const stationUuid = String(localStorage.getItem('restaurant_print_station_uuid') || '').trim();
+                    const stationName = String(localStorage.getItem('restaurant_print_station_name') || '').trim();
                     const body = {
                         movement_id: movementId,
-                        printer_name: preferredPrinterName || null
+                        printer_name: preferredPrinterName || null,
+                        station_uuid: stationUuid || null,
+                        station_name: stationName || null
                     };
                     if (printerId) {
                         body.printer_id = printerId;
@@ -1277,6 +1283,8 @@
                                     'Content-Type': 'application/json',
                                     'X-CSRF-TOKEN': csrf,
                                     Accept: 'application/json',
+                                    'X-Print-Station-Uuid': stationUuid,
+                                    'X-Print-Station-Name': stationName
                                 },
                                 credentials: 'same-origin',
                                 body: JSON.stringify({ ...body, mode: 'qz' }),

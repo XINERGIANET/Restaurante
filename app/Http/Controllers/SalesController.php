@@ -2261,6 +2261,30 @@ class SalesController extends Controller
             ->where('branch_id', $branchId)
             ->where('status', 'E');
 
+        $stationUuid = trim((string) (request()->header('X-Print-Station-Uuid') ?: request()->input('station_uuid', '')));
+        $stationName = trim((string) (request()->header('X-Print-Station-Name') ?: request()->input('station_name', '')));
+
+        if ($stationUuid !== '') {
+            $printer = (clone $printerBaseQuery)
+                ->whereHas('station', fn ($q) => $q->where('uuid', $stationUuid))
+                ->first();
+            if ($printer) {
+                return $printer;
+            }
+        }
+
+        if ($stationName !== '') {
+            $printer = (clone $printerBaseQuery)
+                ->where(function ($q) use ($stationName) {
+                    $q->whereRaw('LOWER(TRIM(name)) = ?', [mb_strtolower($stationName)])
+                        ->orWhereHas('station', fn ($sq) => $sq->whereRaw('LOWER(TRIM(name)) = ?', [mb_strtolower($stationName)]));
+                })
+                ->first();
+            if ($printer) {
+                return $printer;
+            }
+        }
+
         $host = strtolower(trim(request()->getHost() ?: ''));
         $isLocalhost = in_array($host, ['localhost', '127.0.0.1', '::1']);
         $printerName = $isLocalhost ? 'barra' : 'barra2';
