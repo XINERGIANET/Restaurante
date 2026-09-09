@@ -1554,10 +1554,7 @@ es                        style="max-height: 80vh;">
                     const opt = sel.options[sel.selectedIndex];
                     const label = String(opt?.textContent || '').split('—')[0].split('-')[0].trim();
                     if (label) return label;
-                }
-                const host = String(window.location.hostname || '').trim().toLowerCase();
-                const isLocalhost = ['localhost', '127.0.0.1', '::1'].includes(host);
-                return isLocalhost ? 'BARRA' : 'BARRA2';
+                return '';
             }
 
             function requiresStrictLocalQz(printerName) {
@@ -1616,8 +1613,24 @@ es                        style="max-height: 80vh;">
                             openSaleTicketPdfTab(movementId);
                             return;
                         }
-                        let printerName = preferredPrinterName || td.printer_name || '';
-                        if (!printerName) printerName = await qzApi.printers.getDefault();
+                        let candidatePrinterName = preferredPrinterName || td.printer_name || '';
+                        let printerName = '';
+                        if (candidatePrinterName) {
+                            try {
+                                await qzApi.printers.find(candidatePrinterName);
+                                printerName = candidatePrinterName;
+                            } catch (findErr) {
+                                console.warn('QZ Tray: Impresora "' + candidatePrinterName + '" no encontrada en la PC local. Buscando predeterminada...', findErr);
+                            }
+                        }
+                        if (!printerName) {
+                            try {
+                                printerName = await qzApi.printers.getDefault();
+                            } catch (defErr) {}
+                        }
+                        if (!printerName && candidatePrinterName) {
+                            printerName = candidatePrinterName;
+                        }
                         if (!printerName) {
                             await reportThermalPrintFailure(movementId, td?.print_job_id || null, 'No se encontro una ticketera disponible en QZ Tray.', preferredPrinterName);
                             openSaleTicketPdfTab(movementId);

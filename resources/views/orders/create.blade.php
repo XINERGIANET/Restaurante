@@ -2449,10 +2449,7 @@
                             const opt = sel.options[sel.selectedIndex];
                             const label = String(opt?.textContent || '').split('—')[0].split('-')[0].trim();
                             if (label) return label;
-                        }
-                        const host = String(window.location.hostname || '').trim().toLowerCase();
-                        const isLocalhost = ['localhost', '127.0.0.1', '::1'].includes(host);
-                        return isLocalhost ? 'BARRA' : 'BARRA2';
+                        return '';
                     }
 
                     function requiresStrictLocalQz(printerName) {
@@ -5418,8 +5415,24 @@
                                     await reportThermalPrintFailure(movementId, td?.print_job_id || null, td?.message || 'No se pudo obtener el ticket del servidor.', printerName);
                                     throw new Error(td?.message || 'No se pudo obtener el ticket del servidor.');
                                 }
-                                let currentPrinterName = printerName || td.printer_name || '';
-                                if (!currentPrinterName) currentPrinterName = await qzApi.printers.getDefault();
+                                let candidatePrinterName = printerName || td.printer_name || '';
+                                let currentPrinterName = '';
+                                if (candidatePrinterName) {
+                                    try {
+                                        await qzApi.printers.find(candidatePrinterName);
+                                        currentPrinterName = candidatePrinterName;
+                                    } catch (findErr) {
+                                        console.warn('QZ Tray: Impresora "' + candidatePrinterName + '" no encontrada en la PC local. Buscando predeterminada...', findErr);
+                                    }
+                                }
+                                if (!currentPrinterName) {
+                                    try {
+                                        currentPrinterName = await qzApi.printers.getDefault();
+                                    } catch (defErr) {}
+                                }
+                                if (!currentPrinterName && candidatePrinterName) {
+                                    currentPrinterName = candidatePrinterName;
+                                }
                                 if (!currentPrinterName) {
                                     await reportThermalPrintFailure(movementId, td?.print_job_id || null, 'No se encontro una ticketera disponible en QZ Tray.', printerName);
                                     openSaleTicketPdfTab(movementId);
@@ -6325,9 +6338,7 @@
 
                             if (payData.split_remaining_total !== undefined && payData.order_closed === false) {
                                 const splitSaleMovId = payData?.split_sale_movement_id || payData?.movement_id;
-                                if (!counterPosMode) {
-                                    await sendThermalTicketAfterSale(splitSaleMovId, payData);
-                                }
+                                await sendThermalTicketAfterSale(splitSaleMovId, payData);
                                 sessionStorage.setItem('flash_success_message', payData.message ||
                                     'Cobro parcial registrado.');
                                 window.location.reload();
@@ -6335,9 +6346,7 @@
                             }
 
                             const payMovementId = payData?.split_sale_movement_id || payData?.movement_id;
-                            if (!counterPosMode) {
-                                await sendThermalTicketAfterSale(payMovementId, payData);
-                            }
+                            await sendThermalTicketAfterSale(payMovementId, payData);
 
                             if (db && activeKey && db[activeKey]) {
                                 delete db[activeKey];

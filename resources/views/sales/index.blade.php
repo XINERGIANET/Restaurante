@@ -974,10 +974,7 @@
                         const opt = sel.options[sel.selectedIndex];
                         const label = String(opt?.textContent || '').split('—')[0].split('-')[0].trim();
                         if (label) return label;
-                    }
-                    const host = String(window.location.hostname || '').trim().toLowerCase();
-                    const isLocalhost = ['localhost', '127.0.0.1', '::1'].includes(host);
-                    return isLocalhost ? 'BARRA' : 'BARRA2';
+                    return '';
                 }
 
                 function requiresStrictLocalQz(printerName) {
@@ -1293,9 +1290,23 @@
                             if (!tr.ok || !td?.success || (!td?.ticket_pdf_b64 && !td?.payload_b64)) {
                                 throw new Error(td?.message || 'No se pudo obtener el ticket del servidor.');
                             }
-                            let printerName = preferredPrinterName || td.printer_name || '';
+                            let candidatePrinterName = preferredPrinterName || td.printer_name || '';
+                            let printerName = '';
+                            if (candidatePrinterName) {
+                                try {
+                                    await qzApi.printers.find(candidatePrinterName);
+                                    printerName = candidatePrinterName;
+                                } catch (findErr) {
+                                    console.warn('QZ Tray: Impresora "' + candidatePrinterName + '" no encontrada en la PC local. Buscando predeterminada...', findErr);
+                                }
+                            }
                             if (!printerName) {
-                                printerName = await qzApi.printers.getDefault();
+                                try {
+                                    printerName = await qzApi.printers.getDefault();
+                                } catch (defErr) {}
+                            }
+                            if (!printerName && candidatePrinterName) {
+                                printerName = candidatePrinterName;
                             }
                             if (!printerName) {
                                 openSaleTicketPdfTab(movementId);
