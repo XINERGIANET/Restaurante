@@ -561,6 +561,8 @@ Route::middleware('auth')->group(function () {
         ->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
     Route::post('/configuracion/impresoras-sucursal/{printerBranch}/test', [PrinterBranchController::class, 'testPrint'])
         ->name('printers_branch.test');
+    Route::post('/configuracion/impresoras-sucursal/{printerBranch}/assign-products', [PrinterBranchController::class, 'assignProducts'])
+        ->name('printers_branch.assign_products');
 
     Route::get('/configuracion/personal', [PersonController::class, 'indexBranch'])
         ->name('configuracion.personal.index');

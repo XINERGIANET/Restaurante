@@ -7,11 +7,14 @@ use Illuminate\Support\Facades\DB;
 use App\Models\PrinterBranch;
 use App\Models\Operation;
 use App\Models\PrintStation;
+use App\Models\ProductBranch;
+use App\Services\ThermalNetworkPrintService;
 use Illuminate\Validation\Rule;
 
 class PrinterBranchController extends Controller
 {
-    public function index(Request $request){
+    public function index(Request $request)
+    {
         $branchId = $request->session()->get('branch_id');
         $profileId = $request->session()->get('profile_id') ?? $request->user()?->profile_id;
         $search = $request->input('search');
@@ -48,7 +51,7 @@ class PrinterBranchController extends Controller
         }
 
         $printers = PrinterBranch::query()
-            ->with(['branch', 'station'])
+            ->with(['branch', 'station', 'productBranches.product'])
             ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
             ->when($search, function ($query, $search) {
                 $query->where('name', 'like', '%' . $search . '%');
@@ -58,8 +61,18 @@ class PrinterBranchController extends Controller
             ->withQueryString();
 
         $stations = $branchId
-            ? PrintStation::query()->with(['printers' => fn ($q) => $q->orderBy('name')])
+            ? PrintStation::query()->with(['printers' => fn ($q) => $q->with('productBranches')->orderBy('name')])
                 ->where('branch_id', $branchId)->orderBy('name')->get()
+            : collect();
+
+        $productBranches = $branchId
+            ? ProductBranch::query()
+                ->with(['product.category'])
+                ->where('branch_id', $branchId)
+                ->whereHas('product', fn ($q) => $q->whereNull('deleted_at'))
+                ->get()
+                ->sortBy(fn ($pb) => strtolower($pb->product?->name ?? ''))
+                ->values()
             : collect();
 
         return view('printers_branch.index', [
@@ -69,32 +82,46 @@ class PrinterBranchController extends Controller
             'allowedPerPage' => $allowedPerPage,
             'operaciones' => $operaciones,
             'stations' => $stations,
+            'productBranches' => $productBranches,
         ]);
     }
 
-    public function create(Request $request){
-        $stations = PrintStation::query()->where('branch_id', $request->session()->get('branch_id'))->where('status', 'E')->orderBy('name')->get();
-        return view('printers_branch.create', compact('stations'));
+    public function create(Request $request)
+    {
+        $branchId = $request->session()->get('branch_id');
+        $stations = PrintStation::query()->where('branch_id', $branchId)->where('status', 'E')->orderBy('name')->get();
+        $productBranches = $branchId
+            ? ProductBranch::query()
+                ->with(['product.category'])
+                ->where('branch_id', $branchId)
+                ->whereHas('product', fn ($q) => $q->whereNull('deleted_at'))
+                ->get()
+                ->sortBy(fn ($pb) => strtolower($pb->product?->name ?? ''))
+                ->values()
+            : collect();
+
+        return view('printers_branch.create', [
+            'stations' => $stations,
+            'productBranches' => $productBranches,
+            'assignedProductBranchIds' => [],
+        ]);
     }
 
-    public function store(Request $request){
+    public function store(Request $request)
+    {
         $branchId = $request->session()->get('branch_id');
         if (!$branchId) {
             return redirect()->back()->with('error', 'No se detectó una sucursal activa en la sesión.');
         }
 
         $validated = $this->validatePrinter($request, (int) $branchId);
-        /*$validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'width' => 'nullable|string|max:50',
-            'ip' => 'nullable|string|max:45',
-            'status' => 'nullable|string|in:E,I',
-        ]);*/
-
         $validated['branch_id'] = $branchId;
         $validated['status'] = $validated['status'] ?? 'E';
 
-        PrinterBranch::create($validated);
+        $printer = PrinterBranch::create($validated);
+        if ($request->has('product_branch_ids')) {
+            $printer->productBranches()->sync($request->input('product_branch_ids', []));
+        }
 
         return redirect()
             ->route('printers_branch.index', $request->input('view_id') ? ['view_id' => $request->input('view_id')] : [])
@@ -113,10 +140,22 @@ class PrinterBranchController extends Controller
                 ->with('error', 'No autorizado para editar ticketeras de otra sucursal.');
         }
 
+        $productBranches = ProductBranch::query()
+            ->with(['product.category'])
+            ->where('branch_id', $branchId)
+            ->whereHas('product', fn ($q) => $q->whereNull('deleted_at'))
+            ->get()
+            ->sortBy(fn ($pb) => strtolower($pb->product?->name ?? ''))
+            ->values();
+
+        $assignedProductBranchIds = $printerBranch->productBranches()->pluck('product_branch.id')->toArray();
+
         return view('printers_branch.edit', [
             'printer' => $printerBranch,
             'viewId' => $request->input('view_id'),
             'stations' => PrintStation::query()->where('branch_id', $branchId)->where('status', 'E')->orderBy('name')->get(),
+            'productBranches' => $productBranches,
+            'assignedProductBranchIds' => $assignedProductBranchIds,
         ]);
     }
 
@@ -137,9 +176,37 @@ class PrinterBranchController extends Controller
         $printerBranch->fill($validated);
         $printerBranch->save();
 
+        if ($request->has('product_branch_ids')) {
+            $printerBranch->productBranches()->sync($request->input('product_branch_ids', []));
+        }
+
         return redirect()
             ->route('printers_branch.edit', ['printerBranch' => $printerBranch->id] + ($request->input('view_id') ? ['view_id' => $request->input('view_id')] : []))
             ->with('success', 'Ticketera actualizada correctamente');
+    }
+
+    public function assignProducts(Request $request, PrinterBranch $printerBranch)
+    {
+        $branchId = (int) $request->session()->get('branch_id');
+        if ($branchId && (int) $printerBranch->branch_id !== $branchId) {
+            return response()->json(['success' => false, 'message' => 'No autorizado para esta ticketera.'], 403);
+        }
+
+        $validated = $request->validate([
+            'product_branch_ids' => ['nullable', 'array'],
+            'product_branch_ids.*' => ['integer', 'exists:product_branch,id'],
+        ]);
+
+        $ids = array_map('intval', $validated['product_branch_ids'] ?? []);
+        $printerBranch->productBranches()->sync($ids);
+
+        return response()->json([
+            'success' => true,
+            'count' => count($ids),
+            'assigned_ids' => $ids,
+            'printer_id' => $printerBranch->id,
+            'message' => 'Se asignaron ' . count($ids) . ' producto(s) a la ticketera ' . $printerBranch->name,
+        ]);
     }
 
     private function validatePrinter(Request $request, int $branchId): array
@@ -156,6 +223,8 @@ class PrinterBranchController extends Controller
             'location' => ['nullable', 'string', 'max:160'],
             'notes' => ['nullable', 'string', 'max:1000'],
             'status' => ['nullable', Rule::in(['E', 'I'])],
+            'product_branch_ids' => ['nullable', 'array'],
+            'product_branch_ids.*' => ['integer', 'exists:product_branch,id'],
         ]);
 
         if ($connection === 'usb') {
@@ -240,4 +309,3 @@ class PrinterBranchController extends Controller
         }
     }
 }
-

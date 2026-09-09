@@ -9,61 +9,14 @@
         $topOperations = $operacionesCollection->where('type', 'T');
         $rowOperations = $operacionesCollection->where('type', 'R');
 
-        $resolveActionUrl = function ($action, $model = null, $operation = null) use ($viewId) {
-            if (!$action) {
-                return '#';
-            }
-
-            $normalizedAction = str_replace('printers_branch', 'printers-branch', $action);
-
-            if (str_starts_with($normalizedAction, '/') || str_starts_with($normalizedAction, 'http')) {
-                $url = $normalizedAction;
-            } else {
-                $routeCandidates = [$normalizedAction];
-                if (!str_starts_with($normalizedAction, 'admin.')) {
-                    $routeCandidates[] = 'admin.' . $normalizedAction;
-                }
-                $routeCandidates = array_merge(
-                    $routeCandidates,
-                    array_map(fn($name) => $name . '.index', $routeCandidates),
-                );
-
-                $routeName = null;
-                foreach ($routeCandidates as $candidate) {
-                    if (Route::has($candidate)) {
-                        $routeName = $candidate;
-                        break;
-                    }
-                }
-
-                if ($routeName) {
-                    try {
-                        $url = $model ? route($routeName, $model) : route($routeName);
-                    } catch (\Exception $e) {
-                        $url = '#';
-                    }
-                } else {
-                    $url = '#';
-                }
-            }
-
-            $targetViewId = $viewId;
-            if ($operation && !empty($operation->view_id_action)) {
-                $targetViewId = $operation->view_id_action;
-            }
-
-            if ($targetViewId && $url !== '#') {
-                $separator = str_contains($url, '?') ? '&' : '?';
-                $url .= $separator . 'view_id=' . urlencode($targetViewId);
-            }
-
-            return $url;
-        };
-
         $allPrintersCollection = collect($printers->items());
         $networkPrinters = $allPrintersCollection->filter(fn($p) => ($p->connection_type ?? 'network') === 'network' || filled($p->ip));
         $usbPrinters = $allPrintersCollection->filter(fn($p) => ($p->connection_type ?? 'network') === 'usb');
         $unassignedUsbPrinters = $usbPrinters->filter(fn($p) => empty($p->print_station_id));
+
+        $productBranchesCollection = collect($productBranches ?? []);
+        $allProductIds = $productBranchesCollection->pluck('id')->map(fn($id) => (int)$id)->values()->all();
+        $groupedProducts = $productBranchesCollection->groupBy(fn($pb) => $pb->product?->category?->description ?? 'Sin Categoría');
     @endphp
 
     <x-common.page-breadcrumb pageTitle="Impresoras de Sucursal" />
@@ -74,6 +27,100 @@
         testingMessage: '',
         activeStationUuid: localStorage.getItem('restaurant_print_station_uuid') || '',
         
+        // Modal de Asignación Masiva de Productos
+        assignModalOpen: false,
+        assignPrinterId: null,
+        assignPrinterName: '',
+        assignSelectedProducts: [],
+        assignSearch: '',
+        assignSaving: false,
+        allProductIds: @js($allProductIds),
+
+        // Mapeo dinámico de conteos de productos asignados por ID de impresora
+        printerProductCounts: {
+            @foreach($allPrintersCollection as $p)
+                '{{ $p->id }}': {{ $p->productBranches->count() }},
+            @endforeach
+        },
+
+        // Mapeo dinámico de IDs de productos asignados por ID de impresora
+        printerAssignedProductIds: {
+            @foreach($allPrintersCollection as $p)
+                '{{ $p->id }}': @js($p->productBranches->pluck('id')->map(fn($id) => (int)$id)->values()->all()),
+            @endforeach
+        },
+
+        openAssignModal(printerId, printerName) {
+            this.assignPrinterId = printerId;
+            this.assignPrinterName = printerName;
+            this.assignSelectedProducts = [...(this.printerAssignedProductIds[printerId] || [])];
+            this.assignSearch = '';
+            this.assignModalOpen = true;
+        },
+
+        selectAllAssign() {
+            this.assignSelectedProducts = [...this.allProductIds];
+        },
+
+        deselectAllAssign() {
+            this.assignSelectedProducts = [];
+        },
+
+        toggleCategoryAssign(categoryIds) {
+            const catIds = categoryIds.map(Number);
+            const allSelected = catIds.every(id => this.assignSelectedProducts.includes(id));
+            if (allSelected) {
+                this.assignSelectedProducts = this.assignSelectedProducts.filter(id => !catIds.includes(id));
+            } else {
+                const newSet = new Set([...this.assignSelectedProducts, ...catIds]);
+                this.assignSelectedProducts = Array.from(newSet);
+            }
+        },
+
+        isCategorySelectedAssign(categoryIds) {
+            if (!categoryIds || categoryIds.length === 0) return false;
+            return categoryIds.every(id => this.assignSelectedProducts.includes(Number(id)));
+        },
+
+        async saveAssignedProducts() {
+            if (!this.assignPrinterId) return;
+            this.assignSaving = true;
+            try {
+                const csrfToken = document.querySelector('meta[name=csrf-token]')?.content || '';
+                const response = await fetch('/restaurante/configuracion/impresoras-sucursal/' + this.assignPrinterId + '/assign-products', {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken
+                    },
+                    body: JSON.stringify({
+                        product_branch_ids: this.assignSelectedProducts
+                    })
+                });
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                    Swal.fire({ icon: 'error', title: 'Error', text: result.message || 'No se pudo guardar la asignación.' });
+                    return;
+                }
+
+                this.printerProductCounts[this.assignPrinterId] = result.count;
+                this.printerAssignedProductIds[this.assignPrinterId] = result.assigned_ids;
+                this.assignModalOpen = false;
+
+                Swal.fire({
+                    icon: 'success',
+                    title: '¡Asignación Guardada!',
+                    text: result.message,
+                    timer: 2500
+                });
+            } catch (e) {
+                Swal.fire({ icon: 'error', title: 'Excepción', text: e.message || 'Error de red.' });
+            } finally {
+                this.assignSaving = false;
+            }
+        },
+
         async testPrinter(printerId, printerName) {
             this.testingPrinterId = printerId;
             this.testingMessage = 'Probando conexión con ' + printerName + '...';
@@ -157,7 +204,7 @@
         }
     }">
 
-        <x-common.component-card title="Red de Impresión de Sucursal" desc="Visualiza y gestiona computadoras, ticketeras USB y LAN de la sucursal.">
+        <x-common.component-card title="Red de Impresión de Sucursal" desc="Visualiza y gestiona computadoras, ticketeras USB, impresoras LAN y sus productos asignados.">
             
             {{-- Toolbar Superior: Búsqueda, Acciones y Selector de Vista --}}
             <div class="mb-6 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
@@ -257,13 +304,11 @@
 
                 <div class="flex items-center gap-4 rounded-xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
                     <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400">
-                        <i class="ri-[#C43B25] ri-shield-check-line text-2xl"></i>
+                        <i class="ri-restaurant-2-line text-2xl"></i>
                     </div>
                     <div>
-                        <p class="text-xs font-semibold uppercase text-gray-500">Certificados QZ</p>
-                        <p class="text-2xl font-black text-gray-900 dark:text-white">
-                            {{ $stations->filter(fn($s) => $s->hasCredentials())->count() }} / {{ $stations->count() }}
-                        </p>
+                        <p class="text-xs font-semibold uppercase text-gray-500">Productos en Sucursal</p>
+                        <p class="text-2xl font-black text-gray-900 dark:text-white">{{ count($productBranchesCollection) }} <span class="text-xs font-normal text-gray-400">asignables</span></p>
                     </div>
                 </div>
             </div>
@@ -322,7 +367,6 @@
                                 <div class="space-y-6">
                                     @forelse($stations as $station)
                                         @php
-                                            $isOnline = $station->last_seen_at && $station->last_seen_at->diffInMinutes(now()) < 5;
                                             $stationPrinters = $station->printers ?? collect();
                                         @endphp
                                         <div class="relative rounded-xl border border-slate-800 bg-slate-900 p-4 transition hover:border-slate-700">
@@ -371,16 +415,25 @@
                                                             </span>
                                                             <div>
                                                                 <p class="text-xs font-bold text-white">{{ $printer->name }}</p>
-                                                                <p class="text-[10px] text-slate-400">Driver Windows: <span class="text-slate-200 font-mono">{{ $printer->driver_name ?: $printer->name }}</span> · {{ $printer->width ?? '80' }}mm</p>
+                                                                <p class="text-[10px] text-slate-400">Driver: <span class="text-slate-200 font-mono">{{ $printer->driver_name ?: $printer->name }}</span> · {{ $printer->width ?? '80' }}mm</p>
                                                             </div>
                                                         </div>
 
-                                                        <button type="button" @click="testPrinter({{ $printer->id }}, '{{ $printer->name }}')"
-                                                            :disabled="testingPrinterId === {{ $printer->id }}"
-                                                            class="inline-flex h-7 items-center gap-1.5 rounded bg-blue-600/80 px-2.5 text-[11px] font-bold text-white hover:bg-blue-500 disabled:opacity-50">
-                                                            <i class="ri-printer-line"></i>
-                                                            <span>Probar USB</span>
-                                                        </button>
+                                                        <div class="flex items-center gap-2">
+                                                            {{-- Badge de Productos Asignados --}}
+                                                            <button type="button" @click="openAssignModal({{ $printer->id }}, '{{ $printer->name }}')"
+                                                                class="inline-flex h-7 items-center gap-1 rounded bg-purple-500/20 px-2 text-[11px] font-bold text-purple-300 hover:bg-purple-500/30 border border-purple-500/30">
+                                                                <i class="ri-restaurant-2-line"></i>
+                                                                <span x-text="(printerProductCounts[{{ $printer->id }}] || 0) + ' Productos'"></span>
+                                                            </button>
+
+                                                            <button type="button" @click="testPrinter({{ $printer->id }}, '{{ $printer->name }}')"
+                                                                :disabled="testingPrinterId === {{ $printer->id }}"
+                                                                class="inline-flex h-7 items-center gap-1.5 rounded bg-blue-600/80 px-2 text-[11px] font-bold text-white hover:bg-blue-500 disabled:opacity-50">
+                                                                <i class="ri-printer-line"></i>
+                                                                <span>Probar USB</span>
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                 @empty
                                                     <p class="text-xs text-slate-500 italic py-1">No hay ticketeras USB asignadas a esta PC.</p>
@@ -404,7 +457,9 @@
                                                 @foreach($unassignedUsbPrinters as $unPrinter)
                                                     <div class="flex items-center justify-between text-xs text-slate-300 bg-slate-900/80 p-2 rounded border border-slate-800">
                                                         <span>{{ $unPrinter->name }}</span>
-                                                        <span class="text-[10px] text-amber-300">Asignar PC en Editar</span>
+                                                        <button type="button" @click="openAssignModal({{ $unPrinter->id }}, '{{ $unPrinter->name }}')" class="text-purple-400 font-bold hover:underline">
+                                                            <span x-text="(printerProductCounts[{{ $unPrinter->id }}] || 0) + ' Prods.'"></span>
+                                                        </button>
                                                     </div>
                                                 @endforeach
                                             </div>
@@ -437,12 +492,19 @@
                                                         <p class="text-xs text-slate-400">
                                                             IP LAN: <code class="text-emerald-400 font-mono">{{ $netPrinter->ip ?: 'Sin IP' }}</code>
                                                             : <code class="text-slate-300">{{ $netPrinter->port ?? 9100 }}</code>
-                                                            · Papel: {{ $netPrinter->width ?? '80' }}mm
+                                                            · {{ $netPrinter->width ?? '80' }}mm
                                                         </p>
                                                     </div>
                                                 </div>
 
                                                 <div class="flex items-center gap-2">
+                                                    {{-- Badge de Productos Asignados --}}
+                                                    <button type="button" @click="openAssignModal({{ $netPrinter->id }}, '{{ $netPrinter->name }}')"
+                                                        class="inline-flex h-8 items-center gap-1.5 rounded-lg bg-purple-500/20 px-3 text-xs font-bold text-purple-300 hover:bg-purple-500/30 border border-purple-500/30">
+                                                        <i class="ri-restaurant-2-line"></i>
+                                                        <span x-text="(printerProductCounts[{{ $netPrinter->id }}] || 0) + ' Productos'"></span>
+                                                    </button>
+
                                                     <button type="button" @click="testPrinter({{ $netPrinter->id }}, '{{ $netPrinter->name }}')"
                                                         :disabled="testingPrinterId === {{ $netPrinter->id }}"
                                                         class="inline-flex h-8 items-center gap-1.5 rounded-lg bg-emerald-600 px-3 text-xs font-bold text-white hover:bg-emerald-500 disabled:opacity-50 shadow-sm">
@@ -488,7 +550,7 @@
                                 <p class="font-semibold text-white text-theme-xs uppercase">Estación PC / IP</p>
                             </th>
                             <th class="px-5 py-3 text-center sm:px-6">
-                                <p class="font-semibold text-white text-theme-xs uppercase">Ancho</p>
+                                <p class="font-semibold text-white text-theme-xs uppercase">Productos Asignados</p>
                             </th>
                             <th class="px-5 py-3 text-center sm:px-6">
                                 <p class="font-semibold text-white text-theme-xs uppercase">Estado</p>
@@ -529,9 +591,11 @@
                                     @endif
                                 </td>
                                 <td class="px-5 py-4 sm:px-6 text-center">
-                                    <span class="rounded bg-gray-100 px-2 py-1 text-xs font-bold text-gray-700 dark:bg-gray-800 dark:text-gray-300">
-                                        {{ $printer->width ?? '80' }} mm
-                                    </span>
+                                    <button type="button" @click="openAssignModal({{ $printer->id }}, '{{ $printer->name }}')"
+                                        class="inline-flex items-center gap-1 rounded-full bg-purple-50 px-3 py-1 text-xs font-bold text-purple-700 hover:bg-purple-100 dark:bg-purple-500/10 dark:text-purple-400">
+                                        <i class="ri-restaurant-2-line"></i>
+                                        <span x-text="(printerProductCounts[{{ $printer->id }}] || 0) + ' Productos'"></span>
+                                    </button>
                                 </td>
                                 <td class="px-5 py-4 sm:px-6 text-center">
                                     <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $printer->status === 'E' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-red-50 text-red-700' }}">
@@ -601,6 +665,108 @@
                 </div>
             </div>
         </x-common.component-card>
+
+        {{-- MODAL RÁPIDO: ASIGNACIÓN MASIVA DE PRODUCTOS A TICKETERA --}}
+        <div x-show="assignModalOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+            <div @click.outside="assignModalOpen = false" class="w-full max-w-3xl rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl dark:border-gray-800 dark:bg-gray-900">
+                <div class="mb-4 flex items-center justify-between border-b border-gray-100 pb-3 dark:border-gray-800">
+                    <div class="flex items-center gap-3">
+                        <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400">
+                            <i class="ri-restaurant-2-line text-2xl"></i>
+                        </span>
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-900 dark:text-white">Asignación Masiva de Productos</h3>
+                            <p class="text-xs text-gray-500">Ticketera: <strong class="text-[#C43B25]" x-text="assignPrinterName"></strong></p>
+                        </div>
+                    </div>
+                    <button type="button" @click="assignModalOpen = false" class="rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800">
+                        <i class="ri-close-line text-xl"></i>
+                    </button>
+                </div>
+
+                {{-- Toolbar de Controles del Modal --}}
+                <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="relative flex-1">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                            <i class="ri-search-line text-sm"></i>
+                        </span>
+                        <input type="text" x-model="assignSearch" placeholder="Buscar producto por nombre..."
+                            class="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 pl-9 text-xs dark:border-gray-700 dark:bg-gray-900 dark:text-white">
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <button type="button" @click="selectAllAssign()" class="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400">
+                            <i class="ri-checkbox-circle-line"></i> Seleccionar Todos
+                        </button>
+                        <button type="button" @click="deselectAllAssign()" class="rounded-lg bg-gray-200 px-3 py-2 text-xs font-bold text-gray-700 hover:bg-gray-300 dark:bg-gray-800 dark:text-gray-300">
+                            <i class="ri-close-circle-line"></i> Desmarcar Todos
+                        </button>
+                    </div>
+                </div>
+
+                {{-- Lista de Productos agrupados por Categoría --}}
+                <div class="max-h-96 overflow-y-auto space-y-4 rounded-xl border border-gray-200 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-900/50">
+                    @forelse($groupedProducts as $categoryName => $pItems)
+                        @php
+                            $catIds = $pItems->pluck('id')->map(fn($id) => (int)$id)->values()->all();
+                        @endphp
+                        <div x-data="{
+                            categoryName: @js($categoryName),
+                            catIds: @js($catIds),
+                            matchesAssignSearch(name) {
+                                if (!assignSearch.trim()) return true;
+                                return name.toLowerCase().includes(assignSearch.toLowerCase());
+                            }
+                        }" class="space-y-2">
+                            <div class="flex items-center justify-between rounded-lg bg-white px-3 py-2 shadow-xs dark:bg-gray-800">
+                                <span class="text-xs font-bold uppercase text-gray-800 dark:text-gray-200">
+                                    {{ $categoryName }} ({{ count($pItems) }})
+                                </span>
+                                <button type="button" @click="toggleCategoryAssign(catIds)" class="text-xs font-bold text-blue-600 hover:underline dark:text-blue-400">
+                                    <span x-text="isCategorySelectedAssign(catIds) ? 'Desmarcar Categoría' : 'Marcar Categoría'"></span>
+                                </button>
+                            </div>
+
+                            <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                                @foreach($pItems as $pb)
+                                    @php
+                                        $pbId = (int) $pb->id;
+                                        $pName = $pb->product?->name ?? 'Producto ID ' . $pb->id;
+                                    @endphp
+                                    <label x-show="matchesAssignSearch(@js($pName))"
+                                        class="flex items-center gap-2.5 rounded-lg border border-gray-200 bg-white p-2.5 text-xs hover:border-[#C43B25] cursor-pointer dark:border-gray-800 dark:bg-gray-900 dark:hover:border-[#C43B25]">
+                                        <input type="checkbox" value="{{ $pbId }}" x-model.number="assignSelectedProducts"
+                                            class="rounded border-gray-300 text-[#C43B25] focus:ring-[#C43B25]">
+                                        <span class="truncate font-medium text-gray-800 dark:text-gray-200">{{ $pName }}</span>
+                                    </label>
+                                @endforeach
+                            </div>
+                        </div>
+                    @empty
+                        <p class="p-4 text-center text-xs text-gray-400">No hay productos disponibles en esta sucursal.</p>
+                    @endforelse
+                </div>
+
+                {{-- Footer con Conteo y Guardado --}}
+                <div class="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 dark:border-gray-800">
+                    <span class="text-xs font-bold text-gray-600 dark:text-gray-400">
+                        <span class="text-[#C43B25]" x-text="assignSelectedProducts.length"></span> de {{ count($productBranchesCollection) }} productos seleccionados
+                    </span>
+
+                    <div class="flex items-center gap-2">
+                        <button type="button" @click="assignModalOpen = false" class="rounded-xl border border-gray-300 px-4 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300">
+                            Cancelar
+                        </button>
+                        <button type="button" @click="saveAssignedProducts()" :disabled="assignSaving"
+                            class="inline-flex items-center gap-2 rounded-xl bg-[#C43B25] px-5 py-2 text-xs font-bold text-white hover:bg-[#a8301d] disabled:opacity-50">
+                            <i class="ri-save-line"></i>
+                            <span x-text="assignSaving ? 'Guardando...' : 'Guardar Asignación'"></span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     {{-- Modal: Crear impresora/ticketera --}}
@@ -609,7 +775,7 @@
     @endphp
 
     <x-ui.modal x-data="{ open: false }" @open-create-printer-modal.window="open = true"
-        @close-create-printer-modal.window="open = false" :isOpen="false" :showCloseButton="false" class="w-full max-w-lg">
+        @close-create-printer-modal.window="open = false" :isOpen="false" :showCloseButton="false" class="w-full max-w-2xl">
         <div x-show="open" x-cloak class="flex w-full flex-col min-h-0 p-6 sm:p-8">
             <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div class="flex items-center gap-4">
@@ -619,7 +785,7 @@
                     </div>
                     <div>
                         <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Nueva ticketera</h3>
-                        <p class="mt-1 text-sm text-gray-500">Registra una ticketera para la sucursal activa.</p>
+                        <p class="mt-1 text-sm text-gray-500">Registra una ticketera y asigna sus productos.</p>
                     </div>
                 </div>
                 <button type="button" @click="open = false"
