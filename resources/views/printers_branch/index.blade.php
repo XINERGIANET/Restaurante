@@ -87,7 +87,8 @@
             this.assignSaving = true;
             try {
                 const csrfToken = document.querySelector('meta[name=csrf-token]')?.content || '';
-                const response = await fetch('/restaurante/configuracion/impresoras-sucursal/' + this.assignPrinterId + '/assign-products', {
+                const baseUrl = @json(url('/configuracion/impresoras-sucursal'));
+                const response = await fetch(baseUrl + '/' + this.assignPrinterId + '/assign-products', {
                     method: 'POST',
                     headers: {
                         'Accept': 'application/json',
@@ -126,7 +127,8 @@
             this.testingMessage = 'Probando conexión con ' + printerName + '...';
             try {
                 const csrfToken = document.querySelector('meta[name=csrf-token]')?.content || '';
-                const response = await fetch('/restaurante/configuracion/impresoras-sucursal/' + printerId + '/test', {
+                const baseUrl = @json(url('/configuracion/impresoras-sucursal'));
+                const response = await fetch(baseUrl + '/' + printerId + '/test', {
                     method: 'POST',
                     headers: {
                         'Accept': 'application/json',
@@ -731,7 +733,7 @@
                                 @foreach($pItems as $pb)
                                     @php
                                         $pbId = (int) $pb->id;
-                                        $pName = $pb->product?->name ?? 'Producto ID ' . $pb->id;
+                                        $pName = $pb->product?->description ?? $pb->product?->name ?? 'Producto ID ' . $pb->id;
                                     @endphp
                                     <label x-show="matchesAssignSearch(@js($pName))"
                                         class="flex items-center gap-2.5 rounded-lg border border-gray-200 bg-white p-2.5 text-xs hover:border-[#C43B25] cursor-pointer dark:border-gray-800 dark:bg-gray-900 dark:hover:border-[#C43B25]">

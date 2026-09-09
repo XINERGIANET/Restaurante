@@ -185,7 +185,7 @@
                         @foreach($pItems as $pb)
                             @php
                                 $pbId = (int) $pb->id;
-                                $pName = $pb->product?->name ?? 'Producto ID ' . $pb->id;
+                                $pName = $pb->product?->description ?? $pb->product?->name ?? 'Producto ID ' . $pb->id;
                             @endphp
                             <label x-show="matchesSearch(@js($pName))"
                                 class="flex items-center gap-2 rounded-lg border border-gray-100 p-2 text-xs hover:bg-gray-50 cursor-pointer dark:border-gray-800 dark:hover:bg-gray-800/50">

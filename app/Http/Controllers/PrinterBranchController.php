@@ -71,7 +71,7 @@ class PrinterBranchController extends Controller
                 ->where('branch_id', $branchId)
                 ->whereHas('product', fn ($q) => $q->whereNull('deleted_at'))
                 ->get()
-                ->sortBy(fn ($pb) => strtolower($pb->product?->name ?? ''))
+                ->sortBy(fn ($pb) => strtolower($pb->product?->description ?? $pb->product?->name ?? ''))
                 ->values()
             : collect();
 
@@ -96,7 +96,7 @@ class PrinterBranchController extends Controller
                 ->where('branch_id', $branchId)
                 ->whereHas('product', fn ($q) => $q->whereNull('deleted_at'))
                 ->get()
-                ->sortBy(fn ($pb) => strtolower($pb->product?->name ?? ''))
+                ->sortBy(fn ($pb) => strtolower($pb->product?->description ?? $pb->product?->name ?? ''))
                 ->values()
             : collect();
 
@@ -145,7 +145,7 @@ class PrinterBranchController extends Controller
             ->where('branch_id', $branchId)
             ->whereHas('product', fn ($q) => $q->whereNull('deleted_at'))
             ->get()
-            ->sortBy(fn ($pb) => strtolower($pb->product?->name ?? ''))
+            ->sortBy(fn ($pb) => strtolower($pb->product?->description ?? $pb->product?->name ?? ''))
             ->values();
 
         $assignedProductBranchIds = $printerBranch->productBranches()->pluck('product_branch.id')->toArray();

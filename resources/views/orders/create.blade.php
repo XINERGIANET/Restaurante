@@ -2910,6 +2910,7 @@
                         }
 
                         const byPrinterAcc = {};
+                        const unassignedProductNames = [];
                         activeItems.forEach((it) => {
                             const pId = parseInt(it.pId, 10) || 0;
                             if (!pId) return;
@@ -2917,7 +2918,10 @@
                             const pnamesRaw = pdefs.length ? pdefs.map(p => p.name) : resolveQzPrinterNames(pId);
                             const pnames = filterByAreaPrinters(dedupeKitchenPrinterNameList(pnamesRaw),
                                 areaAllowedPrinterNames);
-                            if (!pnames.length) return;
+                            if (!pnames.length) {
+                                unassignedProductNames.push(String(it.name || 'Producto ID ' + pId).trim());
+                                return;
+                            }
                             // Si un producto está asignado a varias impresoras (pivote), se imprime en todas.
                             pnames.forEach((pname) => {
                                 if (!byPrinterAcc[pname]) byPrinterAcc[pname] = [];
@@ -2933,7 +2937,10 @@
                             const pnamesRaw = pdefs.length ? pdefs.map(p => p.name) : resolveQzPrinterNames(pId);
                             const pnames = filterByAreaPrinters(dedupeKitchenPrinterNameList(pnamesRaw),
                                 areaAllowedPrinterNames);
-                            if (!pnames.length) return;
+                            if (!pnames.length) {
+                                unassignedProductNames.push(String(c?.name ?? c?.description ?? 'Producto ID ' + pId).trim());
+                                return;
+                            }
                             pnames.forEach((pname) => {
                                 if (!canceledByPrinterAcc[pname]) canceledByPrinterAcc[pname] = [];
                                 canceledByPrinterAcc[pname].push({
@@ -2945,6 +2952,23 @@
                                 });
                             });
                         });
+
+                        const uniqueUnassigned = Array.from(new Set(unassignedProductNames));
+                        if (uniqueUnassigned.length > 0) {
+                            const warnMsg = 'Los siguientes productos no tienen ticketera asignada (o activa en esta área) y no se enviarán a comandar: ' + uniqueUnassigned.join(', ');
+                            console.warn(warnMsg);
+                            if (window.Swal) {
+                                window.Swal.fire({
+                                    icon: 'warning',
+                                    title: 'Productos sin Ticketera',
+                                    html: '<p class="text-sm font-semibold text-gray-700">Los siguientes productos no tienen ticketera asignada (o activa):</p><div class="mt-2 text-xs font-bold text-red-600 bg-red-50 p-2.5 rounded-lg border border-red-200 text-left max-h-36 overflow-y-auto">• ' + uniqueUnassigned.join('<br>• ') + '</div><p class="mt-2 text-xs text-gray-500">Por favor asigne una ticketera a estos productos en la configuración de Impresoras de Sucursal.</p>',
+                                    confirmButtonText: 'Entendido'
+                                });
+                            } else if (typeof showNotification === 'function') {
+                                showNotification('Productos sin Ticketera', warnMsg, 'error');
+                            }
+                        }
+
                         const mergedBuckets = mergeKitchenBucketsSharedCanon(byPrinterAcc, canceledByPrinterAcc);
 
                         function mergePrinterBucketsByNameCase(mapByPrinter) {
