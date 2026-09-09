@@ -12,13 +12,24 @@ class PrinterBranch extends Model
         'name',
         'width',
         'branch_id',
+        'print_station_id',
+        'connection_type',
         'ip',
+        'port',
+        'driver_name',
+        'location',
+        'notes',
         'status',
     ];
 
     public function branch()
     {
         return $this->belongsTo(Branch::class);
+    }
+
+    public function station()
+    {
+        return $this->belongsTo(PrintStation::class, 'print_station_id');
     }
 
     public function productBranches()

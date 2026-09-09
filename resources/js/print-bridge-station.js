@@ -15,11 +15,11 @@ export function startPrintBridgeStationPoll() {
     window.__xinergiaPrintBridgePollStarted = true;
     let busy = false;
 
-    const getPrinter = () => {
+    const getStationUuid = () => {
         try {
-            return localStorage.getItem('xinergia_print_bridge_printer') || 'BARRA2';
+            return localStorage.getItem('restaurant_print_station_uuid') || '';
         } catch (e) {
-            return 'BARRA2';
+            return '';
         }
     };
 
@@ -29,8 +29,10 @@ export function startPrintBridgeStationPoll() {
         }
         busy = true;
         try {
+            const stationUuid = getStationUuid();
+            if (!stationUuid) return;
             const u = new URL(pullBase, window.location.origin);
-            u.searchParams.set('printer_name', getPrinter());
+            u.searchParams.set('station_uuid', stationUuid);
             const r = await fetch(u.toString(), {
                 credentials: 'same-origin',
                 cache: 'no-store',
@@ -51,7 +53,8 @@ export function startPrintBridgeStationPoll() {
             if (!qzApi) {
                 return;
             }
-            const name = String(j.job.printer_name || getPrinter()).trim() || 'BARRA2';
+            const name = String(j.job.printer_name || '').trim();
+            if (!name) return;
             if (typeof window.__qzConnectWithCertPairFallback === 'function') {
                 const ok = await window.__qzConnectWithCertPairFallback(qzApi, name);
                 if (!ok) {
@@ -75,8 +78,9 @@ export function startPrintBridgeStationPoll() {
                 const ackUrl = pullBase.replace('/pull', '/ack');
                 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
                 const fd = new FormData();
-                fd.append('printer_name', name);
+                fd.append('printer_name', String(j.job.configured_printer_name || name));
                 fd.append('job_id', j.job.id);
+                fd.append('station_uuid', stationUuid);
                 
                 await fetch(ackUrl, {
                     method: 'POST',

@@ -1944,7 +1944,7 @@ class SalesController extends Controller
             if ($hasNetworkIp) {
                 $printerService->sendRaw(
                     (string) $printer->ip,
-                    (int) config('local_network.thermal_port', 9100),
+                    (int) ($printer->port ?: config('local_network.thermal_port', 9100)),
                     $payload,
                     (int) config('local_network.thermal_timeout_seconds', 4)
                 );

@@ -20,8 +20,22 @@ function qzCsrfToken() {
     return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 }
 
+function currentPrintStationUuid() {
+    try {
+        return String(window.localStorage?.getItem('restaurant_print_station_uuid') || '').trim();
+    } catch (e) {
+        return '';
+    }
+}
+
 function appendPairQuery(url, pair) {
     const u = new URL(url, window.location.href);
+    const station = currentPrintStationUuid();
+    if (station) {
+        u.searchParams.set('station', station);
+    } else {
+        u.searchParams.delete('station');
+    }
     if (pair === 'primary' || pair === 'secondary' || pair === 'tertiary') {
         u.searchParams.set('pair', pair);
     } else {
@@ -140,6 +154,10 @@ export function printerRequiresTertiaryCertFirst(printerName) {
 }
 
 export function applyQzCertPairOverrideForPrinter(printerName) {
+    if (currentPrintStationUuid()) {
+        window.__qzCertPairOrderOverride = ['primary'];
+        return;
+    }
     if (printerRequiresTertiaryCertFirst(printerName)) {
         window.__qzCertPairOrderOverride = ['tertiary', 'primary', 'secondary'];
         console.info('[QZ Xinergia] Ticketera qz3 primero: orden tertiary â†’ primary â†’ secondary (app/qz3 antes que otros pares).');
@@ -161,6 +179,9 @@ export function resetQzTraySecurityState() {
 }
 
 function resolveCertPairTryOrder() {
+    if (currentPrintStationUuid()) {
+        return ['primary'];
+    }
     const allowed = ['primary', 'secondary', 'tertiary'];
     if (Array.isArray(window.__qzCertPairOrderOverride) && window.__qzCertPairOrderOverride.length > 0) {
         const order = [];

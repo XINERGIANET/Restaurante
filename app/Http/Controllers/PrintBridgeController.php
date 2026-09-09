@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ThermalPrintJob;
+use App\Models\PrintStation;
 use App\Services\PrintBridgeQueue;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -35,14 +36,33 @@ class PrintBridgeController extends Controller
         }
         $request->validate([
             'printer_name' => 'nullable|string|max:120',
+            'station_uuid' => 'nullable|uuid',
         ]);
         $name = trim((string) $request->input('printer_name', 'BARRA2')) ?: 'BARRA2';
-        if (! $queue->isStationPrinterName($name)) {
+        if (! $request->filled('station_uuid') && ! $queue->isStationPrinterName($name)) {
             return response()->json(['message' => 'impresora no permitida'], 422);
         }
         $branchId = (int) session('branch_id');
         if (! $branchId) {
             return response()->json(['job' => null, 'message' => 'sin sucursal en sesión'], 200);
+        }
+        if ($request->filled('station_uuid')) {
+            $station = PrintStation::query()
+                ->where('uuid', $request->string('station_uuid'))
+                ->where('branch_id', $branchId)
+                ->where('status', 'E')
+                ->firstOrFail();
+            $station->forceFill(['last_seen_at' => now()])->save();
+            foreach ($station->printers()->where('status', 'E')->where('connection_type', 'usb')->orderBy('id')->get() as $assignedPrinter) {
+                $stationJob = $this->claimPendingThermalPrintJob($branchId, (string) $assignedPrinter->name)
+                    ?: $this->nextLegacyQueuedJob($queue, $branchId, (string) $assignedPrinter->name);
+                if ($stationJob) {
+                    $stationJob['printer_name'] = filled($assignedPrinter->driver_name) ? $assignedPrinter->driver_name : $assignedPrinter->name;
+                    $stationJob['configured_printer_name'] = $assignedPrinter->name;
+                    return response()->json(['job' => $stationJob, 'station' => $station->name]);
+                }
+            }
+            return response()->json(['job' => null, 'station' => $station->name]);
         }
         $job = $this->claimPendingThermalPrintJob($branchId, $name);
             if (! $job) {
@@ -63,14 +83,18 @@ class PrintBridgeController extends Controller
         $request->validate([
             'printer_name' => 'nullable|string|max:120',
             'job_id' => 'required|string|max:120',
+            'station_uuid' => 'nullable|uuid',
         ]);
         $name = trim((string) $request->input('printer_name', 'BARRA2')) ?: 'BARRA2';
-        if (! $queue->isStationPrinterName($name)) {
+        if (! $request->filled('station_uuid') && ! $queue->isStationPrinterName($name)) {
             return response()->json(['success' => false, 'message' => 'impresora no permitida'], 422);
         }
         $branchId = (int) session('branch_id');
         if (! $branchId) {
             return response()->json(['success' => false, 'message' => 'sin sucursal en sesión'], 200);
+        }
+        if ($request->filled('station_uuid')) {
+            PrintStation::query()->where('uuid', $request->string('station_uuid'))->where('branch_id', $branchId)->where('status', 'E')->firstOrFail();
         }
         $jobId = trim((string) $request->input('job_id'));
         if ($jobId === '') {

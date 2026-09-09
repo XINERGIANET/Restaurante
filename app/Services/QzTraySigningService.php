@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\PrintStation;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 
@@ -83,6 +84,27 @@ class QzTraySigningService
         }
 
         return base64_encode($signature);
+    }
+
+    public function certificateContentsForStation(PrintStation $station): ?string
+    {
+        return $station->hasCredentials() ? trim((string) $station->qz_certificate) : null;
+    }
+
+    public function signForStation(PrintStation $station, string $request): ?string
+    {
+        if (! $station->hasCredentials()) {
+            return null;
+        }
+        $key = openssl_pkey_get_private((string) $station->qz_private_key);
+        if ($key === false) {
+            return null;
+        }
+        $signature = '';
+
+        return openssl_sign($request, $signature, $key, $this->opensslAlgorithmFromConfig())
+            ? base64_encode($signature)
+            : null;
     }
 
     /**

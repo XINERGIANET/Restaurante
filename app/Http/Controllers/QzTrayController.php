@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\PrintStation;
 use App\Services\QzTraySigningService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -41,12 +42,16 @@ class QzTrayController extends Controller
         }
 
         try {
+            $station = $this->resolveStation($request);
             $pair = strtolower(trim((string) $request->query('pair', '')));
             if ($pair !== '' && ! in_array($pair, ['primary', 'secondary', 'tertiary'], true)) {
                 abort(400, 'Par de certificado QZ inválido.');
             }
 
-            if ($pair === '') {
+            if ($station) {
+                $certificate = $signing->certificateContentsForStation($station);
+                $station->forceFill(['last_seen_at' => now()])->save();
+            } elseif ($pair === '') {
                 $certificate = $signing->certificateContents();
             } else {
                 $certificate = $signing->certificateContentsForPair($pair);
@@ -54,6 +59,7 @@ class QzTrayController extends Controller
 
             Log::debug('QZ Tray: entrega de certificado', [
                 'pair' => $pair === '' ? 'auto' : $pair,
+                'station_id' => $station?->id,
                 'ip' => $request->ip(),
             ]);
 
@@ -83,12 +89,16 @@ class QzTrayController extends Controller
             // Soporta GET ?request=... (qz-tray-init actual) y POST JSON {request: "..."} (ejemplo legado).
             $request->validate(['request' => 'required|string']);
             $payload = (string) $request->input('request');
+            $station = $this->resolveStation($request);
             $pair = strtolower(trim((string) ($request->query('pair') ?? $request->input('pair') ?? '')));
             if ($pair !== '' && ! in_array($pair, ['primary', 'secondary', 'tertiary'], true)) {
                 abort(400, 'Par de certificado QZ inválido.');
             }
 
-            if ($pair === '') {
+            if ($station) {
+                $signature = $signing->signForStation($station, $payload);
+                $station->forceFill(['last_seen_at' => now()])->save();
+            } elseif ($pair === '') {
                 $signature = $signing->sign($payload);
             } else {
                 $signature = $signing->signForPair($pair, $payload);
@@ -96,6 +106,7 @@ class QzTrayController extends Controller
 
             Log::info('QZ Tray: firma de solicitud', [
                 'pair' => $pair === '' ? 'auto' : $pair,
+                'station_id' => $station?->id,
                 'ip' => $request->ip(),
             ]);
 
@@ -118,5 +129,21 @@ class QzTrayController extends Controller
             Log::error('QZ sign error: ' . $e->getMessage());
             abort(500, 'No se pudo firmar la solicitud de QZ.');
         }
+    }
+
+    private function resolveStation(Request $request): ?PrintStation
+    {
+        $uuid = trim((string) ($request->query('station') ?: $request->input('station', '')));
+        if ($uuid === '') {
+            return null;
+        }
+        $branchId = (int) $request->session()->get('branch_id');
+        abort_if($branchId < 1, 403, 'Sucursal no identificada para QZ.');
+
+        return PrintStation::query()
+            ->where('uuid', $uuid)
+            ->where('branch_id', $branchId)
+            ->where('status', 'E')
+            ->firstOrFail();
     }
 }

@@ -30,8 +30,11 @@ class PrintBridgeQueue
         if (! config('qz.enabled', true)) {
             return false;
         }
-        if (filled((string) $printer->ip)) {
+        if (($printer->connection_type ?? (filled((string) $printer->ip) ? 'network' : 'usb')) !== 'usb') {
             return false;
+        }
+        if (! empty($printer->print_station_id)) {
+            return true;
         }
         $n = mb_strtolower(trim($printer->name));
         foreach ($this->stationPrinterNames() as $t) {

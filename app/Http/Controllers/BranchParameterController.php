@@ -12,6 +12,7 @@ use App\Models\DocumentType;
 use App\Models\TaxRate;
 use App\Models\PaymentMethod;
 use App\Models\Parameters;
+use App\Models\PrintStation;
 
 class BranchParameterController extends Controller
 {
@@ -162,6 +163,10 @@ class BranchParameterController extends Controller
                 : $pivotIds;
         }
 
+        $printStations = $branchId
+            ? PrintStation::query()->withCount('printers')->where('branch_id', $branchId)->orderBy('name')->get()
+            : collect();
+
         return view('branch_parameters.index', [
             'title' => 'Parámetros de Sucursal',
             'categories' => $categories,
@@ -170,6 +175,7 @@ class BranchParameterController extends Controller
             'igv' => $igv,
             'paymentMethods' => $paymentMethods,
             'branchPaymentMethodIds' => $branchPaymentMethodIds,
+            'printStations' => $printStations,
         ]);
     }
 

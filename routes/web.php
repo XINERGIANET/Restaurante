@@ -46,6 +46,7 @@ use App\Http\Controllers\ProductTypeController;
 use App\Http\Controllers\PrintBridgeController;
 use App\Http\Controllers\PrinterBranchController;
 use App\Http\Controllers\QzTrayController;
+use App\Http\Controllers\PrintStationController;
 
 Route::prefix('restaurante')->name('restaurant.')->group(function () {
     Route::view('/', 'restaurant.home', ['title' => 'Xinergia Restaurante'])->name('home');
@@ -548,12 +549,18 @@ Route::middleware('auth')->group(function () {
         ->name('branch-parameter.index');
     Route::post('/configuracion/parametros-sucursal/guardar', [BranchParameterController::class, 'store'])
         ->name('branch-parameter.store');
+    Route::post('/configuracion/estaciones-impresion', [PrintStationController::class, 'store'])->name('print-stations.store');
+    Route::put('/configuracion/estaciones-impresion/{printStation}', [PrintStationController::class, 'update'])->name('print-stations.update');
+    Route::delete('/configuracion/estaciones-impresion/{printStation}', [PrintStationController::class, 'destroy'])->name('print-stations.destroy');
+    Route::post('/configuracion/estaciones-impresion/heartbeat', [PrintStationController::class, 'heartbeat'])->name('print-stations.heartbeat');
 
     //Configuracion de impresoras de sucursal
     Route::resource('/configuracion/impresoras-sucursal', PrinterBranchController::class)
         ->names('printers_branch')
         ->parameters(['impresoras-sucursal' => 'printerBranch'])
         ->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
+    Route::post('/configuracion/impresoras-sucursal/{printerBranch}/test', [PrinterBranchController::class, 'testPrint'])
+        ->name('printers_branch.test');
 
     Route::get('/configuracion/personal', [PersonController::class, 'indexBranch'])
         ->name('configuracion.personal.index');

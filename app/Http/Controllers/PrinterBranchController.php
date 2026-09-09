@@ -6,6 +6,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\PrinterBranch;
 use App\Models\Operation;
+use App\Models\PrintStation;
+use Illuminate\Validation\Rule;
 
 class PrinterBranchController extends Controller
 {
@@ -46,7 +48,7 @@ class PrinterBranchController extends Controller
         }
 
         $printers = PrinterBranch::query()
-            ->with('branch')
+            ->with(['branch', 'station'])
             ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
             ->when($search, function ($query, $search) {
                 $query->where('name', 'like', '%' . $search . '%');
@@ -55,17 +57,24 @@ class PrinterBranchController extends Controller
             ->paginate($perPage)
             ->withQueryString();
 
+        $stations = $branchId
+            ? PrintStation::query()->with(['printers' => fn ($q) => $q->orderBy('name')])
+                ->where('branch_id', $branchId)->orderBy('name')->get()
+            : collect();
+
         return view('printers_branch.index', [
             'printers' => $printers,
             'search' => $search,
             'perPage' => $perPage,
             'allowedPerPage' => $allowedPerPage,
             'operaciones' => $operaciones,
+            'stations' => $stations,
         ]);
     }
 
-    public function create(){
-        return view('printers_branch.create');
+    public function create(Request $request){
+        $stations = PrintStation::query()->where('branch_id', $request->session()->get('branch_id'))->where('status', 'E')->orderBy('name')->get();
+        return view('printers_branch.create', compact('stations'));
     }
 
     public function store(Request $request){
@@ -74,12 +83,13 @@ class PrinterBranchController extends Controller
             return redirect()->back()->with('error', 'No se detectó una sucursal activa en la sesión.');
         }
 
-        $validated = $request->validate([
+        $validated = $this->validatePrinter($request, (int) $branchId);
+        /*$validated = $request->validate([
             'name' => 'required|string|max:255',
             'width' => 'nullable|string|max:50',
             'ip' => 'nullable|string|max:45',
             'status' => 'nullable|string|in:E,I',
-        ]);
+        ]);*/
 
         $validated['branch_id'] = $branchId;
         $validated['status'] = $validated['status'] ?? 'E';
@@ -106,6 +116,7 @@ class PrinterBranchController extends Controller
         return view('printers_branch.edit', [
             'printer' => $printerBranch,
             'viewId' => $request->input('view_id'),
+            'stations' => PrintStation::query()->where('branch_id', $branchId)->where('status', 'E')->orderBy('name')->get(),
         ]);
     }
 
@@ -121,12 +132,7 @@ class PrinterBranchController extends Controller
                 ->with('error', 'No autorizado para editar ticketeras de otra sucursal.');
         }
 
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'width' => 'nullable|string|max:50',
-            'ip' => 'nullable|string|max:45',
-            'status' => 'required|string|in:E,I',
-        ]);
+        $validated = $this->validatePrinter($request, (int) $branchId);
 
         $printerBranch->fill($validated);
         $printerBranch->save();
@@ -134,6 +140,32 @@ class PrinterBranchController extends Controller
         return redirect()
             ->route('printers_branch.edit', ['printerBranch' => $printerBranch->id] + ($request->input('view_id') ? ['view_id' => $request->input('view_id')] : []))
             ->with('success', 'Ticketera actualizada correctamente');
+    }
+
+    private function validatePrinter(Request $request, int $branchId): array
+    {
+        $connection = (string) $request->input('connection_type', 'network');
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'width' => ['nullable', Rule::in(['58', '80'])],
+            'connection_type' => ['required', Rule::in(['usb', 'network'])],
+            'print_station_id' => [Rule::requiredIf($connection === 'usb'), 'nullable', 'integer', Rule::exists('print_stations', 'id')->where('branch_id', $branchId)],
+            'ip' => [Rule::requiredIf($connection === 'network'), 'nullable', 'ip'],
+            'port' => [Rule::requiredIf($connection === 'network'), 'nullable', 'integer', 'between:1,65535'],
+            'driver_name' => ['nullable', 'string', 'max:180'],
+            'location' => ['nullable', 'string', 'max:160'],
+            'notes' => ['nullable', 'string', 'max:1000'],
+            'status' => ['nullable', Rule::in(['E', 'I'])],
+        ]);
+
+        if ($connection === 'usb') {
+            $data['ip'] = null;
+            $data['port'] = 9100;
+            $data['driver_name'] = filled($data['driver_name'] ?? null) ? trim($data['driver_name']) : trim($data['name']);
+        }
+        $data['status'] ??= 'E';
+
+        return $data;
     }
 
     public function destroy(Request $request, PrinterBranch $printerBranch)
@@ -149,5 +181,63 @@ class PrinterBranchController extends Controller
             ->route('printers_branch.index', $request->input('view_id') ? ['view_id' => $request->input('view_id')] : [])
             ->with('success', 'Ticketera eliminada correctamente');
     }
-    
+
+    public function testPrint(Request $request, PrinterBranch $printerBranch, ThermalNetworkPrintService $thermalService)
+    {
+        $branchId = (int) $request->session()->get('branch_id');
+        if ($branchId && (int) $printerBranch->branch_id !== $branchId) {
+            return response()->json(['success' => false, 'message' => 'No autorizado para esta ticketera.'], 403);
+        }
+
+        $payload = "\x1B\x40"
+            . "\x1B\x61\x01"
+            . "\x1D\x21\x11" . "TEST DE IMPRESION\n"
+            . "\x1D\x21\x00" . "XINERGIA RESTAURANTE\n"
+            . "--------------------------------\n"
+            . "\x1B\x61\x00"
+            . "Ticketera: " . $printerBranch->name . "\n"
+            . "Conexion: " . strtoupper($printerBranch->connection_type ?? 'network') . "\n"
+            . ($printerBranch->connection_type === 'usb'
+                ? "Estacion: " . ($printerBranch->station?->name ?? 'Sin asignar') . "\nDriver: " . ($printerBranch->driver_name ?: $printerBranch->name) . "\n"
+                : "IP: " . $printerBranch->ip . ":" . ($printerBranch->port ?? 9100) . "\n")
+            . "Fecha: " . date('d/m/Y H:i:s') . "\n"
+            . "--------------------------------\n\n\n"
+            . "\x1D\x56\x42\x10";
+
+        if (($printerBranch->connection_type ?? 'network') === 'usb') {
+            return response()->json([
+                'success' => true,
+                'is_usb' => true,
+                'driver_name' => $printerBranch->driver_name ?: $printerBranch->name,
+                'printer_name' => $printerBranch->name,
+                'b64' => base64_encode($payload),
+                'message' => 'Prueba enviada a QZ Tray para la impresora local ' . $printerBranch->name,
+            ]);
+        }
+
+        if (blank($printerBranch->ip)) {
+            return response()->json(['success' => false, 'message' => 'La ticketera de red no tiene IP configurada.'], 422);
+        }
+
+        try {
+            $thermalService->sendRaw(
+                (string) $printerBranch->ip,
+                (int) ($printerBranch->port ?: 9100),
+                $payload,
+                3
+            );
+
+            return response()->json([
+                'success' => true,
+                'is_usb' => false,
+                'message' => 'Ticket de prueba enviado correctamente a la IP ' . $printerBranch->ip . ':' . ($printerBranch->port ?: 9100),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al conectar con la ticketera LAN (' . $printerBranch->ip . '): ' . $e->getMessage(),
+            ], 500);
+        }
+    }
 }
+

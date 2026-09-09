@@ -3487,7 +3487,7 @@ class OrderController extends Controller
             if (filled((string) $printer->ip)) {
                 $printerService->sendRaw(
                     (string) $printer->ip,
-                    (int) config('local_network.thermal_port', 9100),
+                    (int) ($printer->port ?: config('local_network.thermal_port', 9100)),
                     $payload,
                     $timeout
                 );
@@ -3590,7 +3590,7 @@ class OrderController extends Controller
             if (filled((string) $printer->ip)) {
                 $printerService->sendRaw(
                     (string) $printer->ip,
-                    (int) config('local_network.thermal_port', 9100),
+                    (int) ($printer->port ?: config('local_network.thermal_port', 9100)),
                     $payload,
                     $timeout
                 );

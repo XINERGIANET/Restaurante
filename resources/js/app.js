@@ -497,7 +497,7 @@ let alpineBooted = false;
 
 function tryStartPrintBridgeStation() {
     try {
-        if (localStorage.getItem('xinergia_print_bridge_station') !== '1') {
+        if (!localStorage.getItem('restaurant_print_station_uuid')) {
             return;
         }
     } catch (e) {
