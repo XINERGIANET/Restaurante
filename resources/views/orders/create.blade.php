@@ -2449,6 +2449,7 @@
                             const opt = sel.options[sel.selectedIndex];
                             const label = String(opt?.textContent || '').split('—')[0].split('-')[0].trim();
                             if (label) return label;
+                        }
                         return '';
                     }
 
