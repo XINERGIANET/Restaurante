@@ -3270,9 +3270,6 @@ class OrderController extends Controller
                 $bodyLines[] = 'Nota: ' . $note;
             }
 
-            $status = strtoupper(trim((string) ($line['status'] ?? '')));
-            $isDelivered = ! empty($line['delivered']) || in_array($status, ['ENTREGADO', 'E'], true);
-            $bodyLines[] = 'Estado: ' . ($isDelivered ? 'ENTREGADO' : 'PENDIENTE');
             $bodyLines[] = '';
         }
 

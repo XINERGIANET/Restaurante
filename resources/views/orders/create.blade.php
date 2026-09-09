@@ -3246,17 +3246,6 @@
                                 }
                                 if (it.note && String(it.note).trim()) {
                                     body += 'Nota: ' + String(it.note).trim() + '\n';
-                                }
-                                const status = String(it?.status || '').toUpperCase();
-                                const isDelivered = !!it?.delivered || status === 'ENTREGADO' || status === 'E';
-                                // Cancelado: desde el item (si existe) o desde la lista de cancelaciones de la mesa.
-                                const pId = parseInt(it?.pId ?? it?.product_id, 10) || 0;
-                                const canceledQty = canceledByProduct[pId] || 0;
-                                const isCanceled = status === 'CANCELADO' || status === 'C' || canceledQty > 0;
-                                const statusLabel = isCanceled ?
-                                    ('CANCELADO' + (canceledQty > 0 ? ' x' + canceledQty : '')) :
-                                    (isDelivered ? 'ENTREGADO' : 'PENDIENTE');
-                                body += 'Estado: ' + statusLabel + '\n';
                                 body += '\n';
                             });
                             const canceledItems = canceledByPrinter[pname] || [];
