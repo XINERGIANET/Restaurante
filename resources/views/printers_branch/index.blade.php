@@ -17,6 +17,10 @@
         $productBranchesCollection = collect($productBranches ?? []);
         $allProductIds = $productBranchesCollection->pluck('id')->map(fn($id) => (int)$id)->values()->all();
         $groupedProducts = $productBranchesCollection->groupBy(fn($pb) => $pb->product?->category?->description ?? 'Sin Categoría');
+
+        $printerProductCounts = $allPrintersCollection->mapWithKeys(fn($p) => [(string)$p->id => $p->productBranches->count()])->all();
+        $printerAssignedProductIds = $allPrintersCollection->mapWithKeys(fn($p) => [(string)$p->id => $p->productBranches->pluck('id')->map(fn($id) => (int)$id)->values()->all()])->all();
+        $assignBaseUrl = url('/configuracion/impresoras-sucursal');
     @endphp
 
     <x-common.page-breadcrumb pageTitle="Impresoras de Sucursal" />
@@ -37,18 +41,11 @@
         allProductIds: @js($allProductIds),
 
         // Mapeo dinámico de conteos de productos asignados por ID de impresora
-        printerProductCounts: {
-            @foreach($allPrintersCollection as $p)
-                '{{ $p->id }}': {{ $p->productBranches->count() }},
-            @endforeach
-        },
+        printerProductCounts: @js($printerProductCounts),
 
         // Mapeo dinámico de IDs de productos asignados por ID de impresora
-        printerAssignedProductIds: {
-            @foreach($allPrintersCollection as $p)
-                '{{ $p->id }}': @js($p->productBranches->pluck('id')->map(fn($id) => (int)$id)->values()->all()),
-            @endforeach
-        },
+        printerAssignedProductIds: @js($printerAssignedProductIds),
+        assignBaseUrl: @js($assignBaseUrl),
 
         openAssignModal(printerId, printerName) {
             this.assignPrinterId = printerId;
@@ -82,13 +79,17 @@
             return categoryIds.every(id => this.assignSelectedProducts.includes(Number(id)));
         },
 
+        matchesAssignSearch(name) {
+            if (!this.assignSearch || !this.assignSearch.trim()) return true;
+            return String(name || '').toLowerCase().includes(this.assignSearch.toLowerCase().trim());
+        },
+
         async saveAssignedProducts() {
             if (!this.assignPrinterId) return;
             this.assignSaving = true;
             try {
                 const csrfToken = document.querySelector('meta[name=csrf-token]')?.content || '';
-                const baseUrl = @json(url('/configuracion/impresoras-sucursal'));
-                const response = await fetch(baseUrl + '/' + this.assignPrinterId + '/assign-products', {
+                const response = await fetch(this.assignBaseUrl + '/' + this.assignPrinterId + '/assign-products', {
                     method: 'POST',
                     headers: {
                         'Accept': 'application/json',
@@ -127,8 +128,7 @@
             this.testingMessage = 'Probando conexión con ' + printerName + '...';
             try {
                 const csrfToken = document.querySelector('meta[name=csrf-token]')?.content || '';
-                const baseUrl = @json(url('/configuracion/impresoras-sucursal'));
-                const response = await fetch(baseUrl + '/' + printerId + '/test', {
+                const response = await fetch(this.assignBaseUrl + '/' + printerId + '/test', {
                     method: 'POST',
                     headers: {
                         'Accept': 'application/json',
@@ -712,20 +712,13 @@
                         @php
                             $catIds = $pItems->pluck('id')->map(fn($id) => (int)$id)->values()->all();
                         @endphp
-                        <div x-data="{
-                            categoryName: @js($categoryName),
-                            catIds: @js($catIds),
-                            matchesAssignSearch(name) {
-                                if (!assignSearch.trim()) return true;
-                                return name.toLowerCase().includes(assignSearch.toLowerCase());
-                            }
-                        }" class="space-y-2">
+                        <div class="space-y-2">
                             <div class="flex items-center justify-between rounded-lg bg-white px-3 py-2 shadow-xs dark:bg-gray-800">
                                 <span class="text-xs font-bold uppercase text-gray-800 dark:text-gray-200">
                                     {{ $categoryName }} ({{ count($pItems) }})
                                 </span>
-                                <button type="button" @click="toggleCategoryAssign(catIds)" class="text-xs font-bold text-blue-600 hover:underline dark:text-blue-400">
-                                    <span x-text="isCategorySelectedAssign(catIds) ? 'Desmarcar Categoría' : 'Marcar Categoría'"></span>
+                                <button type="button" @click="toggleCategoryAssign(@js($catIds))" class="text-xs font-bold text-blue-600 hover:underline dark:text-blue-400">
+                                    <span x-text="isCategorySelectedAssign(@js($catIds)) ? 'Desmarcar Categoría' : 'Marcar Categoría'"></span>
                                 </button>
                             </div>
 
