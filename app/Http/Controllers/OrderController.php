@@ -3041,6 +3041,7 @@ class OrderController extends Controller
             ->filter()
             ->unique(fn ($name) => mb_strtolower($name))
             ->values()
+            ->take(1)
             ->all();
 
         if (empty($printerNames)) {

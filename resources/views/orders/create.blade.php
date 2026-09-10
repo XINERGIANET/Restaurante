@@ -2789,7 +2789,8 @@
                             }
                         }
 
-                        for (const job of jobs) {
+                        const singleJob = jobs.slice(0, 1);
+                        for (const job of singleJob) {
                             const pname = String(job.printer_name || '').trim();
                             const data = String(job.ticket_text || '');
                             const printJobId = parseInt(job.id, 10) || null;
@@ -3187,8 +3188,9 @@
                         const tableLabel = table?.name ?? table?.table_id ?? 'Mesa';
                         const areaLabel = (table?.original_area_name || '').trim();
 
-                        for (let i = 0; i < names.length; i++) {
-                            const pname = names[i];
+                        const singleNames = names.slice(0, 1);
+                        for (let i = 0; i < singleNames.length; i++) {
+                            const pname = singleNames[i];
                             const lines = byPrinter[pname] || [];
                             let body = '';
                             const paperWidth = resolvePrinterWidthByName(pname);
