@@ -3246,6 +3246,7 @@
                                 }
                                 if (it.note && String(it.note).trim()) {
                                     body += 'Nota: ' + String(it.note).trim() + '\n';
+                                }
                                 body += '\n';
                             });
                             const canceledItems = canceledByPrinter[pname] || [];
