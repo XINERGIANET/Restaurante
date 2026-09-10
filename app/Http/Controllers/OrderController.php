@@ -3011,9 +3011,11 @@ class OrderController extends Controller
                 $areaAllowedPrinterNames
             );
 
-            foreach ($printerNames as $printerName) {
-                $byPrinter[$printerName] ??= [];
-                $byPrinter[$printerName][] = $item;
+            // Solo enviar a la primera ticketera asignada para evitar impresión duplicada
+            $primaryPrinterName = $printerNames[0] ?? null;
+            if ($primaryPrinterName) {
+                $byPrinter[$primaryPrinterName] ??= [];
+                $byPrinter[$primaryPrinterName][] = $item;
             }
         }
 
@@ -3026,9 +3028,11 @@ class OrderController extends Controller
                 $areaAllowedPrinterNames
             );
 
-            foreach ($printerNames as $printerName) {
-                $canceledByPrinter[$printerName] ??= [];
-                $canceledByPrinter[$printerName][] = $item;
+            // Solo enviar a la primera ticketera asignada para evitar impresión duplicada
+            $primaryPrinterName = $printerNames[0] ?? null;
+            if ($primaryPrinterName) {
+                $canceledByPrinter[$primaryPrinterName] ??= [];
+                $canceledByPrinter[$primaryPrinterName][] = $item;
             }
         }
 

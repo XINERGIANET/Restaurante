@@ -2928,11 +2928,12 @@
                                 unassignedProductNames.push(String(it.name || 'Producto ID ' + pId).trim());
                                 return;
                             }
-                            // Si un producto está asignado a varias impresoras (pivote), se imprime en todas.
-                            pnames.forEach((pname) => {
-                                if (!byPrinterAcc[pname]) byPrinterAcc[pname] = [];
-                                byPrinterAcc[pname].push(it);
-                            });
+                            // Solo enviar a la primera ticketera asignada para evitar impresión duplicada
+                            const primaryPrinterName = pnames[0];
+                            if (primaryPrinterName) {
+                                if (!byPrinterAcc[primaryPrinterName]) byPrinterAcc[primaryPrinterName] = [];
+                                byPrinterAcc[primaryPrinterName].push(it);
+                            }
                         });
                         const canceledByPrinterAcc = {};
                         mergedCancellations.forEach((c) => {
@@ -2947,16 +2948,18 @@
                                 unassignedProductNames.push(String(c?.name ?? c?.description ?? 'Producto ID ' + pId).trim());
                                 return;
                             }
-                            pnames.forEach((pname) => {
-                                if (!canceledByPrinterAcc[pname]) canceledByPrinterAcc[pname] = [];
-                                canceledByPrinterAcc[pname].push({
+                            // Solo enviar a la primera ticketera asignada para evitar impresión duplicada
+                            const primaryPrinterName = pnames[0];
+                            if (primaryPrinterName) {
+                                if (!canceledByPrinterAcc[primaryPrinterName]) canceledByPrinterAcc[primaryPrinterName] = [];
+                                canceledByPrinterAcc[primaryPrinterName].push({
                                     pId,
                                     name: String(c?.name ?? c?.description ?? 'Producto').trim(),
                                     qty,
                                     complements: normalizeComplements(c?.complements),
                                     reason: String(c?.cancel_reason ?? c?.comment ?? '').trim(),
                                 });
-                            });
+                            }
                         });
 
                         const uniqueUnassigned = Array.from(new Set(unassignedProductNames));
