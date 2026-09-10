@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ThermalPrintJob;
 use App\Models\PrintStation;
+use App\Models\PrinterBranch;
 use App\Services\PrintBridgeQueue;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
