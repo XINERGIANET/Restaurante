@@ -2,6 +2,10 @@
 
 @section('title', 'Punto de Venta')
 
+@push('head')
+    <meta name="turbo-cache-control" content="no-cache">
+@endpush
+
 @section('content')
     <div class="px-4 md:px-6 pt-4 pb-2">
         <x-common.page-breadcrumb pageTitle="Salones de Pedidos" />
