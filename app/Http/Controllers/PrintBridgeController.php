@@ -53,11 +53,16 @@ class PrintBridgeController extends Controller
                 ->where('branch_id', $branchId)
                 ->where('status', 'E')
                 ->firstOrFail();
+            $station->forceFill(['last_seen_at' => now()])->save();
+
+            // 1. Primero revisar impresoras asignadas a esta estación
             $assignedPrinters = $station->printers()->where('status', 'E')->orderBy('id')->get();
-            if ($assignedPrinters->isEmpty()) {
-                $assignedPrinters = PrinterBranch::query()->where('branch_id', $branchId)->where('status', 'E')->orderBy('id')->get();
-            }
-            foreach ($assignedPrinters as $assignedPrinter) {
+
+            // 2. Revisar todas las demás impresoras activas de la sucursal
+            $allBranchPrinters = PrinterBranch::query()->where('branch_id', $branchId)->where('status', 'E')->orderBy('id')->get();
+            $printersToPull = $assignedPrinters->concat($allBranchPrinters)->unique('id');
+
+            foreach ($printersToPull as $assignedPrinter) {
                 $stationJob = $this->claimPendingThermalPrintJob($branchId, (string) $assignedPrinter->name)
                     ?: $this->nextLegacyQueuedJob($queue, $branchId, (string) $assignedPrinter->name);
                 if ($stationJob) {
@@ -66,13 +71,35 @@ class PrintBridgeController extends Controller
                     return response()->json(['job' => $stationJob, 'station' => $station->name]);
                 }
             }
+
+            // 3. Fallback: reclamar cualquier comanda pendiente de la sucursal
+            $unmatchedJob = $this->claimAnyPendingThermalPrintJobForBranch($branchId);
+            if ($unmatchedJob) {
+                return response()->json(['job' => $unmatchedJob, 'station' => $station->name]);
+            }
+
             return response()->json(['job' => null, 'station' => $station->name]);
         }
+
         $job = $this->claimPendingThermalPrintJob($branchId, $name);
-            if (! $job) {
-                $job = $this->nextLegacyQueuedJob($queue, $branchId, $name);
+        if (! $job) {
+            $job = $this->nextLegacyQueuedJob($queue, $branchId, $name);
+        }
+        if (! $job) {
+            $allBranchPrinters = PrinterBranch::query()->where('branch_id', $branchId)->where('status', 'E')->orderBy('id')->get();
+            foreach ($allBranchPrinters as $p) {
+                $job = $this->claimPendingThermalPrintJob($branchId, (string) $p->name);
+                if ($job) {
+                    $job['printer_name'] = filled($p->driver_name) ? $p->driver_name : $p->name;
+                    $job['configured_printer_name'] = $p->name;
+                    break;
+                }
             }
-        if ($job) {
+        }
+        if (! $job) {
+            $job = $this->claimAnyPendingThermalPrintJobForBranch($branchId);
+        }
+        if ($job && empty($job['printer_name'])) {
             $job['printer_name'] = $name;
         }
 
@@ -264,5 +291,73 @@ class PrintBridgeController extends Controller
         );
 
         return str_replace("\r\n", "\n", (string) $value);
+    }
+
+    private function claimAnyPendingThermalPrintJobForBranch(int $branchId): ?array
+    {
+        if (
+            ! Schema::hasTable('thermal_print_jobs')
+            || ! Schema::hasColumn('thermal_print_jobs', 'ticket_text')
+        ) {
+            return null;
+        }
+
+        $leaseSeconds = max(15, (int) config('print_bridge.lease_seconds', 45));
+        $leaseExpiredAt = now()->subSeconds($leaseSeconds);
+        if ($branchId <= 0) {
+            return null;
+        }
+
+        return DB::transaction(function () use ($branchId, $leaseExpiredAt) {
+            $job = ThermalPrintJob::query()
+                ->where('branch_id', $branchId)
+                ->where('source', 'kitchen_order')
+                ->where(function ($query) use ($leaseExpiredAt) {
+                    $query->where('status', 'pending')
+                        ->orWhere(function ($subQuery) use ($leaseExpiredAt) {
+                            $subQuery->where('status', 'printing')
+                                ->where(function ($expiredQuery) use ($leaseExpiredAt) {
+                                    $expiredQuery->whereNull('last_attempt_at')
+                                        ->orWhere('last_attempt_at', '<', $leaseExpiredAt);
+                                });
+                        });
+                })
+                ->whereNotNull('ticket_text')
+                ->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")
+                ->orderBy('created_at')
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->first();
+
+            if (! $job) {
+                return null;
+            }
+
+            $job->forceFill([
+                'status' => 'printing',
+                'attempts' => (int) $job->attempts + 1,
+                'last_attempt_at' => now(),
+                'last_error' => null,
+            ])->save();
+
+            $pname = trim((string) ($job->printer_name ?: 'BARRA'));
+            $driver = $pname;
+            $printerModel = PrinterBranch::query()
+                ->where('branch_id', $branchId)
+                ->whereRaw('LOWER(TRIM(name)) = ?', [mb_strtolower($pname)])
+                ->first();
+            if ($printerModel && filled($printerModel->driver_name)) {
+                $driver = $printerModel->driver_name;
+            }
+
+            return [
+                'id' => 'thermal:' . $job->id,
+                'thermal_print_job_id' => (int) $job->id,
+                'b64' => base64_encode($this->buildKitchenEscPosPayload((string) $job->ticket_text)),
+                'at' => time(),
+                'printer_name' => $driver,
+                'configured_printer_name' => $pname,
+            ];
+        }, 3);
     }
 }
