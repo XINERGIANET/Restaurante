@@ -52,33 +52,36 @@ class PrintBridgeController extends Controller
                 ->where('uuid', $request->string('station_uuid'))
                 ->where('branch_id', $branchId)
                 ->where('status', 'E')
-                ->firstOrFail();
-            $station->forceFill(['last_seen_at' => now()])->save();
+                ->first();
 
-            // 1. Primero revisar impresoras asignadas a esta estación
-            $assignedPrinters = $station->printers()->where('status', 'E')->orderBy('id')->get();
+            if ($station) {
+                $station->forceFill(['last_seen_at' => now()])->save();
 
-            // 2. Revisar todas las demás impresoras activas de la sucursal
-            $allBranchPrinters = PrinterBranch::query()->where('branch_id', $branchId)->where('status', 'E')->orderBy('id')->get();
-            $printersToPull = $assignedPrinters->concat($allBranchPrinters)->unique('id');
+                // 1. Primero revisar impresoras asignadas a esta estación
+                $assignedPrinters = $station->printers()->where('status', 'E')->orderBy('id')->get();
 
-            foreach ($printersToPull as $assignedPrinter) {
-                $stationJob = $this->claimPendingThermalPrintJob($branchId, (string) $assignedPrinter->name)
-                    ?: $this->nextLegacyQueuedJob($queue, $branchId, (string) $assignedPrinter->name);
-                if ($stationJob) {
-                    $stationJob['printer_name'] = filled($assignedPrinter->driver_name) ? $assignedPrinter->driver_name : $assignedPrinter->name;
-                    $stationJob['configured_printer_name'] = $assignedPrinter->name;
-                    return response()->json(['job' => $stationJob, 'station' => $station->name]);
+                // 2. Revisar todas las demás impresoras activas de la sucursal
+                $allBranchPrinters = PrinterBranch::query()->where('branch_id', $branchId)->where('status', 'E')->orderBy('id')->get();
+                $printersToPull = $assignedPrinters->concat($allBranchPrinters)->unique('id');
+
+                foreach ($printersToPull as $assignedPrinter) {
+                    $stationJob = $this->claimPendingThermalPrintJob($branchId, (string) $assignedPrinter->name)
+                        ?: $this->nextLegacyQueuedJob($queue, $branchId, (string) $assignedPrinter->name);
+                    if ($stationJob) {
+                        $stationJob['printer_name'] = filled($assignedPrinter->driver_name) ? $assignedPrinter->driver_name : $assignedPrinter->name;
+                        $stationJob['configured_printer_name'] = $assignedPrinter->name;
+                        return response()->json(['job' => $stationJob, 'station' => $station->name]);
+                    }
                 }
-            }
 
-            // 3. Fallback: reclamar cualquier comanda pendiente de la sucursal
-            $unmatchedJob = $this->claimAnyPendingThermalPrintJobForBranch($branchId);
-            if ($unmatchedJob) {
-                return response()->json(['job' => $unmatchedJob, 'station' => $station->name]);
-            }
+                // 3. Fallback: reclamar cualquier comanda pendiente de la sucursal
+                $unmatchedJob = $this->claimAnyPendingThermalPrintJobForBranch($branchId);
+                if ($unmatchedJob) {
+                    return response()->json(['job' => $unmatchedJob, 'station' => $station->name]);
+                }
 
-            return response()->json(['job' => null, 'station' => $station->name]);
+                return response()->json(['job' => null, 'station' => $station->name]);
+            }
         }
 
         $job = $this->claimPendingThermalPrintJob($branchId, $name);
@@ -125,7 +128,10 @@ class PrintBridgeController extends Controller
             return response()->json(['success' => false, 'message' => 'sin sucursal en sesión'], 200);
         }
         if ($request->filled('station_uuid')) {
-            PrintStation::query()->where('uuid', $request->string('station_uuid'))->where('branch_id', $branchId)->where('status', 'E')->firstOrFail();
+            $station = PrintStation::query()->where('uuid', $request->string('station_uuid'))->where('branch_id', $branchId)->where('status', 'E')->first();
+            if ($station) {
+                $station->forceFill(['last_seen_at' => now()])->save();
+            }
         }
         $jobId = trim((string) $request->input('job_id'));
         if ($jobId === '') {

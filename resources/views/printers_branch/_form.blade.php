@@ -70,19 +70,21 @@
     <div x-show="connection === 'usb'" x-cloak class="rounded-xl border border-blue-100 bg-blue-50/60 p-4 dark:border-blue-900 dark:bg-blue-500/5">
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">PC a la que está conectada</label>
-                <select name="print_station_id" :required="connection === 'usb'" class="h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white">
-                    <option value="">Seleccionar estación...</option>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">PC / Estación a la que está conectada <span class="text-error-500">*</span></label>
+                <select name="print_station_id" :required="connection === 'usb'" class="h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white font-medium">
+                    <option value="">-- Seleccionar estación PC (Ej: PRINCIPAL / CAJA) --</option>
                     @foreach($stations ?? [] as $station)
-                        <option value="{{ $station->id }}" @selected((string) old('print_station_id', $printer?->print_station_id) === (string) $station->id)>{{ $station->name }} · {{ $station->ip_address }}</option>
+                        <option value="{{ $station->id }}" @selected((string) old('print_station_id', $printer?->print_station_id) === (string) $station->id)>{{ $station->name }} · {{ $station->ip_address }} @if($station->location) ({{ $station->location }}) @endif</option>
                     @endforeach
                 </select>
+                <p class="mt-1 text-xs text-gray-500">Selecciona la computadora donde está conectada físicamente por USB esta ticketera para que los cobros, precuentas y comandas se impriman ahí.</p>
                 @error('print_station_id')<p class="mt-1 text-sm text-error-500">{{ $message }}</p>@enderror
             </div>
             <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Nombre exacto en Windows/QZ</label>
-                <input name="driver_name" value="{{ old('driver_name', $printer?->driver_name) }}" placeholder="Ej: EPSON TM-T20III Receipt"
+                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Nombre exacto de la impresora en Windows / QZ Tray</label>
+                <input name="driver_name" value="{{ old('driver_name', $printer?->driver_name) }}" placeholder="Ej: BARRA o EPSON TM-T20III Receipt"
                     class="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white">
+                <p class="mt-1 text-xs text-gray-500">Nombre tal como figura instalada en el Panel de Control de Windows en esa PC.</p>
             </div>
         </div>
     </div>

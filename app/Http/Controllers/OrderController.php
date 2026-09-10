@@ -3426,12 +3426,31 @@ class OrderController extends Controller
             ->where('branch_id', $branchId)
             ->where('status', 'E');
 
-        $host = strtolower(trim($request->getHost() ?: ''));
-        $isLocalhost = in_array($host, ['localhost', '127.0.0.1', '::1']);
-        $defaultPrinterName = $isLocalhost ? 'barra' : 'barra2';
+        $requestedName = trim((string) ($printJob?->printer_name ?? $validated['printer_name'] ?? ''));
+        $stationUuid = trim((string) ($request->header('X-Print-Station-Uuid') ?: $request->input('station_uuid', '')));
+        $stationName = trim((string) ($request->header('X-Print-Station-Name') ?: $request->input('station_name', '')));
 
-        $requestedName = trim((string) ($printJob?->printer_name ?? $validated['printer_name'] ?? '')) ?: $defaultPrinterName;
-        $printer = $this->findPrinterBranchForBarTicket($printerBaseQuery, $requestedName, $defaultPrinterName);
+        $printer = null;
+        if ($requestedName !== '') {
+            $printer = $this->findPrinterBranchForBarTicket($printerBaseQuery, $requestedName, 'BARRA');
+        }
+        if (! $printer && $stationUuid !== '') {
+            $station = PrintStation::query()->where('uuid', $stationUuid)->where('branch_id', $branchId)->where('status', 'E')->first();
+            if ($station) {
+                $printer = $station->printers()->where('status', 'E')->first();
+            }
+        }
+        if (! $printer && $stationName !== '') {
+            $printer = (clone $printerBaseQuery)
+                ->where(function ($q) use ($stationName) {
+                    $q->whereRaw('LOWER(TRIM(name)) = ?', [mb_strtolower($stationName)])
+                        ->orWhereHas('station', fn ($sq) => $sq->whereRaw('LOWER(TRIM(name)) = ?', [mb_strtolower($stationName)]));
+                })
+                ->first();
+        }
+        if (! $printer) {
+            $printer = $this->findPrinterBranchForBarTicket($printerBaseQuery, $requestedName, 'BARRA');
+        }
         if (! $printer) {
             if ($printJob) {
                 $this->markKitchenPrintJobFailed($printJob, 'No hay una ticketera configurada para esta comanda.');
@@ -3564,12 +3583,31 @@ class OrderController extends Controller
             ->where('branch_id', $branchId)
             ->where('status', 'E');
 
-        $host = strtolower(trim($request->getHost() ?: ''));
-        $isLocalhost = in_array($host, ['localhost', '127.0.0.1', '::1']);
-        $defaultPrinterName = $isLocalhost ? 'barra' : 'barra2';
+        $requestedName = trim((string) ($validated['printer_name'] ?? ''));
+        $stationUuid = trim((string) ($request->header('X-Print-Station-Uuid') ?: $request->input('station_uuid', '')));
+        $stationName = trim((string) ($request->header('X-Print-Station-Name') ?: $request->input('station_name', '')));
 
-        $requestedName = trim((string) ($validated['printer_name'] ?? '')) ?: $defaultPrinterName;
-        $printer = $this->findPrinterBranchForBarTicket($printerBaseQuery, $requestedName, $defaultPrinterName);
+        $printer = null;
+        if ($requestedName !== '') {
+            $printer = $this->findPrinterBranchForBarTicket($printerBaseQuery, $requestedName, 'BARRA');
+        }
+        if (! $printer && $stationUuid !== '') {
+            $station = PrintStation::query()->where('uuid', $stationUuid)->where('branch_id', $branchId)->where('status', 'E')->first();
+            if ($station) {
+                $printer = $station->printers()->where('status', 'E')->first();
+            }
+        }
+        if (! $printer && $stationName !== '') {
+            $printer = (clone $printerBaseQuery)
+                ->where(function ($q) use ($stationName) {
+                    $q->whereRaw('LOWER(TRIM(name)) = ?', [mb_strtolower($stationName)])
+                        ->orWhereHas('station', fn ($sq) => $sq->whereRaw('LOWER(TRIM(name)) = ?', [mb_strtolower($stationName)]));
+                })
+                ->first();
+        }
+        if (! $printer) {
+            $printer = $this->findPrinterBranchForBarTicket($printerBaseQuery, $requestedName, 'BARRA');
+        }
 
         if (! $printer) {
             return response()->json([
@@ -3762,44 +3800,33 @@ class OrderController extends Controller
      * cuando un LIKE "barra%" o el orden de filas en BD entregaba la impresora incorrecta
      * (móvil en la LAN enviando comanda a BARRA2 por USB vía IP en otra PC).
      */
-    private function findPrinterBranchForBarTicket($printerBaseQuery, string $requestedName, string $defaultPrinterName): ?PrinterBranch
+    private function findPrinterBranchForBarTicket($printerBaseQuery, string $requestedName = '', string $defaultPrinterName = 'BARRA'): ?PrinterBranch
     {
-        $n = trim($requestedName) !== '' ? trim($requestedName) : trim($defaultPrinterName);
-        if ($n === '') {
-            $n = $defaultPrinterName;
-        }
-        $ln = mb_strtolower($n);
-        $printer = (clone $printerBaseQuery)
-            ->whereRaw('LOWER(TRIM(name)) = ?', [mb_strtolower($n)])
-            ->first();
-        if ($printer) {
-            return $printer;
-        }
-        if ($ln !== '') {
-            $printer = (clone $printerBaseQuery)
-                ->whereRaw('LOWER(TRIM(name)) LIKE ?', [$ln . '%'])
-                ->orderByRaw('LENGTH(TRIM(name)) ASC')
-                ->orderBy('id')
-                ->first();
+        $n = trim($requestedName);
+        if ($n !== '') {
+            $printer = (clone $printerBaseQuery)->whereRaw('LOWER(TRIM(name)) = ?', [mb_strtolower($n)])->first();
             if ($printer) {
                 return $printer;
             }
-        }
-        $def = trim($defaultPrinterName);
-        if ($def !== '') {
-            $printer = (clone $printerBaseQuery)
-                ->whereRaw('LOWER(TRIM(name)) = ?', [mb_strtolower($def)])
-                ->first();
+            $printer = (clone $printerBaseQuery)->whereRaw('LOWER(TRIM(name)) LIKE ?', [mb_strtolower($n) . '%'])->orderBy('id')->first();
             if ($printer) {
                 return $printer;
             }
         }
 
-        return (clone $printerBaseQuery)
-            ->whereRaw('LOWER(TRIM(name)) LIKE ?', ['barra%'])
-            ->orderByRaw('LENGTH(TRIM(name)) DESC')
-            ->orderBy('id')
-            ->first();
+        foreach (['BARRA', 'CAJA', 'PRINCIPAL', 'BARRA2', 'BARRA3'] as $candidate) {
+            $printer = (clone $printerBaseQuery)->whereRaw('LOWER(TRIM(name)) = ?', [mb_strtolower($candidate)])->first();
+            if ($printer) {
+                return $printer;
+            }
+        }
+
+        $stationPrinter = (clone $printerBaseQuery)->whereNotNull('print_station_id')->orderBy('id')->first();
+        if ($stationPrinter) {
+            return $stationPrinter;
+        }
+
+        return (clone $printerBaseQuery)->orderBy('id')->first();
     }
 
     /**
@@ -3902,7 +3929,7 @@ class OrderController extends Controller
             'thermal_print_job_id' => $thermalPrintJobId,
         ]);
         if ($kind === 'precuenta') {
-            $msg = 'Precuenta en cola para la estación (QZ en la PC con BARRA2). En esa PC, inicie sesión y active el puente (página /print-bridge/worker o “escuchar en todas las pantallas”).';
+            $msg = 'Precuenta en cola para la estación (QZ en la PC con ' . ($printer->name ?? 'BARRA') . '). En esa PC, inicie sesión y active el puente (página /print-bridge/worker o “escuchar en todas las pantallas”).';
 
             return response()->json([
                 'success' => true,
@@ -3913,7 +3940,7 @@ class OrderController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Comanda en cola para la estación (QZ en la PC con BARRA2). En esa PC, misma sucursal en sesión y puente activo (/print-bridge/worker o escuchar en todas las pantallas).',
+            'message' => 'Comanda en cola para la estación (QZ en la PC con ' . ($printer->name ?? 'BARRA') . '). En esa PC, misma sucursal en sesión y puente activo (/print-bridge/worker o escuchar en todas las pantallas).',
             'print_bridge' => true,
             'print_job_id' => $thermalPrintJobId,
         ]);

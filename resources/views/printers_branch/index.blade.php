@@ -445,6 +445,13 @@
                                                                 <i class="ri-printer-line"></i>
                                                                 <span>Probar USB</span>
                                                             </button>
+
+                                                            <a href="{{ route('printers_branch.edit', ['printerBranch' => $printer->id] + ($viewId ? ['view_id' => $viewId] : [])) }}"
+                                                                class="inline-flex h-7 items-center gap-1 rounded bg-gray-100 px-2 text-[11px] font-bold text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 transition"
+                                                                title="Editar ticketera">
+                                                                <i class="ri-edit-line"></i>
+                                                                <span>Editar</span>
+                                                            </a>
                                                         </div>
                                                     </div>
                                                 @empty
@@ -461,17 +468,36 @@
                                     @endforelse
 
                                     @if($unassignedUsbPrinters->count() > 0)
-                                        <div class="rounded-xl border border-amber-200 bg-amber-50 p-3 dark:border-amber-500/30 dark:bg-amber-500/10">
-                                            <p class="text-xs font-bold text-amber-800 dark:text-amber-400 flex items-center gap-1.5 mb-2">
-                                                <i class="ri-alert-line"></i> Ticketeras USB sin PC asignada ({{ $unassignedUsbPrinters->count() }}):
-                                            </p>
-                                            <div class="space-y-1.5">
+                                        <div class="rounded-xl border border-amber-200 bg-amber-50 p-3.5 dark:border-amber-500/30 dark:bg-amber-500/10">
+                                            <div class="flex items-center justify-between mb-2">
+                                                <p class="text-xs font-bold text-amber-800 dark:text-amber-400 flex items-center gap-1.5">
+                                                    <i class="ri-alert-line text-sm"></i> Ticketeras USB sin PC asignada ({{ $unassignedUsbPrinters->count() }}):
+                                                </p>
+                                                <span class="text-[11px] text-amber-700 dark:text-amber-300">Asigna la PC para habilitar cobros y comandas</span>
+                                            </div>
+                                            <div class="space-y-2">
                                                 @foreach($unassignedUsbPrinters as $unPrinter)
-                                                    <div class="flex items-center justify-between text-xs text-gray-700 bg-white p-2 rounded border border-amber-200 dark:text-gray-300 dark:bg-gray-900 dark:border-gray-800">
-                                                        <span>{{ $unPrinter->name }}</span>
-                                                        <button type="button" @click="openAssignModal({{ $unPrinter->id }}, '{{ $unPrinter->name }}')" class="text-purple-600 font-bold hover:underline dark:text-purple-400">
-                                                            <span x-text="(printerProductCounts[{{ $unPrinter->id }}] || 0) + ' Prods.'"></span>
-                                                        </button>
+                                                    <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-700 bg-white p-2.5 rounded-lg border border-amber-200 dark:text-gray-300 dark:bg-gray-900 dark:border-gray-800 shadow-xs">
+                                                        <div class="flex items-center gap-2">
+                                                            <span class="flex h-6 w-6 items-center justify-center rounded bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400">
+                                                                <i class="ri-usb-line"></i>
+                                                            </span>
+                                                            <div>
+                                                                <span class="font-bold text-gray-900 dark:text-white">{{ $unPrinter->name }}</span>
+                                                                <span class="text-[10px] text-gray-400 ml-1 font-mono">({{ $unPrinter->driver_name ?: $unPrinter->name }})</span>
+                                                            </div>
+                                                        </div>
+                                                        <div class="flex items-center gap-2">
+                                                            <button type="button" @click="openAssignModal({{ $unPrinter->id }}, '{{ $unPrinter->name }}')" class="inline-flex h-7 items-center gap-1 rounded bg-purple-50 px-2 text-[11px] font-bold text-purple-700 hover:bg-purple-100 border border-purple-200 dark:bg-purple-500/20 dark:text-purple-300 dark:border-purple-500/30">
+                                                                <i class="ri-restaurant-2-line"></i>
+                                                                <span x-text="(printerProductCounts[{{ $unPrinter->id }}] || 0) + ' Prods.'"></span>
+                                                            </button>
+                                                            <a href="{{ route('printers_branch.edit', ['printerBranch' => $unPrinter->id] + ($viewId ? ['view_id' => $viewId] : [])) }}"
+                                                                class="inline-flex h-7 items-center gap-1 rounded bg-amber-600 px-2.5 text-[11px] font-bold text-white hover:bg-amber-700 transition shadow-xs">
+                                                                <i class="ri-computer-line"></i>
+                                                                <span>Asignar PC / Editar</span>
+                                                            </a>
+                                                        </div>
                                                     </div>
                                                 @endforeach
                                             </div>
@@ -523,6 +549,13 @@
                                                         <i class="ri-send-plane-line"></i>
                                                         <span>Probar LAN</span>
                                                     </button>
+
+                                                    <a href="{{ route('printers_branch.edit', ['printerBranch' => $netPrinter->id] + ($viewId ? ['view_id' => $viewId] : [])) }}"
+                                                        class="inline-flex h-8 items-center gap-1 rounded-lg bg-gray-100 px-2.5 text-xs font-bold text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 transition"
+                                                        title="Editar ticketera">
+                                                        <i class="ri-edit-line"></i>
+                                                        <span>Editar</span>
+                                                    </a>
                                                 </div>
                                             </div>
 

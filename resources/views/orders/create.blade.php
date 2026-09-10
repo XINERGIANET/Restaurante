@@ -2623,17 +2623,23 @@
                         }
                         try {
                             const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                            const stationUuid = (typeof localStorage !== 'undefined' ? (localStorage.getItem('restaurant_print_station_uuid') || '') : '');
+                            const stationName = (typeof localStorage !== 'undefined' ? (localStorage.getItem('restaurant_print_station_name') || '') : '');
                             const tr = await fetch(orderPreAccountPrintUrl, {
                                 method: 'POST',
                                 headers: {
                                     'Content-Type': 'application/json',
                                     'X-CSRF-TOKEN': csrf,
-                                    'Accept': 'application/json'
+                                    'Accept': 'application/json',
+                                    'X-Print-Station-Uuid': stationUuid,
+                                    'X-Print-Station-Name': stationName
                                 },
                                 credentials: 'same-origin',
                                 body: JSON.stringify({
                                     ticket_text: ticketText,
-                                    printer_name: printerName || ''
+                                    printer_name: printerName || '',
+                                    station_uuid: stationUuid,
+                                    station_name: stationName
                                 }),
                             });
                             const td = tr.headers.get('content-type')?.includes('application/json') ? await tr.json() :

@@ -2285,22 +2285,18 @@ class SalesController extends Controller
             }
         }
 
-        $host = strtolower(trim(request()->getHost() ?: ''));
-        $isLocalhost = in_array($host, ['localhost', '127.0.0.1', '::1']);
-        $printerName = $isLocalhost ? 'barra' : 'barra2';
-
-        $printer = (clone $printerBaseQuery)
-            ->whereRaw('LOWER(TRIM(name)) = ?', [$printerName])
-            ->first();
-        if ($printer) {
-            return $printer;
+        foreach (['BARRA', 'CAJA', 'PRINCIPAL', 'BARRA2', 'BARRA3'] as $candidate) {
+            $printer = (clone $printerBaseQuery)
+                ->whereRaw('LOWER(TRIM(name)) = ?', [mb_strtolower($candidate)])
+                ->first();
+            if ($printer) {
+                return $printer;
+            }
         }
 
-        $printer = (clone $printerBaseQuery)
-            ->whereRaw('LOWER(name) LIKE ?', ['%' . $printerName . '%'])
-            ->first();
-        if ($printer) {
-            return $printer;
+        $stationPrinter = (clone $printerBaseQuery)->whereNotNull('print_station_id')->orderBy('id')->first();
+        if ($stationPrinter) {
+            return $stationPrinter;
         }
 
         $printer = (clone $printerBaseQuery)

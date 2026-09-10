@@ -39,7 +39,7 @@ class PrintStation extends Model
 
     public function printers(): HasMany
     {
-        return $this->hasMany(PrinterBranch::class);
+        return $this->hasMany(PrinterBranch::class, 'print_station_id');
     }
 
     public function hasCredentials(): bool
