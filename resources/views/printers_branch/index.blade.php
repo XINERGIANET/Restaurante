@@ -316,20 +316,20 @@
             </div>
 
             {{-- VISTA 1: ESTRUCTURA Y MAPA GRÁFICO DE LA RED DE IMPRESIÓN --}}
-            <div x-show="viewMode === 'map'" x-transition class="rounded-2xl border border-gray-200 bg-slate-950 p-6 text-white shadow-xl dark:border-gray-800">
-                <div class="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-slate-800 pb-4">
+            <div x-show="viewMode === 'map'" x-transition class="rounded-2xl border border-gray-200 bg-white p-6 text-gray-900 shadow-xs dark:border-gray-800 dark:bg-gray-900 dark:text-white">
+                <div class="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-gray-100 dark:border-gray-800 pb-4">
                     <div class="flex items-center gap-3">
-                        <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-[#C43B25]/20 text-[#FF4622]">
+                        <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-[#FF4622]/10 text-[#FF4622] dark:bg-[#FF4622]/20">
                             <i class="ri-node-tree text-2xl"></i>
                         </span>
                         <div>
-                            <h3 class="text-base font-bold text-white">Mapa de Topología y Estructura de Red</h3>
-                            <p class="text-xs text-slate-400">Visualiza la comunicación entre el servidor, las computadoras (con QZ Tray) y las impresoras.</p>
+                            <h3 class="text-base font-bold text-gray-900 dark:text-white">Mapa de Topología y Estructura de Red</h3>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">Visualiza la comunicación entre el servidor, las computadoras (con QZ Tray) y las impresoras.</p>
                         </div>
                     </div>
                     <div class="flex items-center gap-2">
-                        <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-400 border border-emerald-500/20">
-                            <span class="h-2 w-2 rounded-full bg-emerald-400 animate-ping"></span> Red Activa
+                        <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20">
+                            <span class="h-2 w-2 rounded-full bg-emerald-500 animate-ping"></span> Red Activa
                         </span>
                     </div>
                 </div>
@@ -340,14 +340,14 @@
 
                         {{-- NODO CENTRAL: Servidor / Router Central --}}
                         <div class="mb-10 flex justify-center">
-                            <div class="relative flex items-center gap-4 rounded-2xl border border-red-500/30 bg-slate-900/90 px-6 py-4 shadow-lg shadow-red-950/40">
-                                <div class="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-[#FF4622] to-[#991B1B] text-white shadow-md">
+                            <div class="relative flex items-center gap-4 rounded-2xl border border-[#FF4622]/30 bg-red-50/60 dark:bg-red-950/20 px-6 py-4 shadow-xs">
+                                <div class="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-[#FF4622] to-[#C43B25] text-white shadow-sm">
                                     <i class="ri-server-line text-3xl"></i>
                                 </div>
                                 <div>
                                     <span class="text-[10px] font-bold tracking-widest text-[#FF4622] uppercase">Servidor / Gateway Central</span>
-                                    <h4 class="text-lg font-black text-white">Red Local Sucursal</h4>
-                                    <p class="text-xs text-slate-400">IP Gateway: <code class="text-emerald-400">192.168.1.1</code> · Puerto RAW 9100 / WebSocket QZ</p>
+                                    <h4 class="text-lg font-black text-gray-900 dark:text-white">Red Local Sucursal</h4>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">IP Gateway: <code class="text-emerald-600 dark:text-emerald-400 font-bold">192.168.1.1</code> · Puerto RAW 9100 / WebSocket QZ</p>
                                 </div>
                             </div>
                         </div>
@@ -356,12 +356,12 @@
                         <div class="grid grid-cols-1 gap-8 lg:grid-cols-2">
 
                             {{-- SECCIÓN ESTACIONES PC (Con QZ Tray) --}}
-                            <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
-                                <div class="mb-4 flex items-center justify-between border-b border-slate-800/80 pb-3">
-                                    <h4 class="flex items-center gap-2 text-sm font-bold text-blue-400">
+                            <div class="rounded-2xl border border-gray-200 bg-gray-50/50 p-5 dark:border-gray-800 dark:bg-gray-800/40">
+                                <div class="mb-4 flex items-center justify-between border-b border-gray-200/80 dark:border-gray-700/80 pb-3">
+                                    <h4 class="flex items-center gap-2 text-sm font-bold text-blue-600 dark:text-blue-400">
                                         <i class="ri-computer-line text-lg"></i> Estaciones PC Registradas (QZ Tray)
                                     </h4>
-                                    <span class="rounded-md bg-blue-500/10 px-2 py-0.5 text-xs font-medium text-blue-300 border border-blue-500/20">
+                                    <span class="rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 border border-blue-200 dark:bg-blue-500/10 dark:text-blue-300 dark:border-blue-500/20">
                                         {{ $stations->count() }} Computadoras
                                     </span>
                                 </div>
@@ -371,35 +371,35 @@
                                         @php
                                             $stationPrinters = $station->printers ?? collect();
                                         @endphp
-                                        <div class="relative rounded-xl border border-slate-800 bg-slate-900 p-4 transition hover:border-slate-700">
+                                        <div class="relative rounded-xl border border-gray-200 bg-white p-4 transition hover:border-gray-300 shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:hover:border-gray-600">
                                             {{-- Encabezado Estación PC --}}
-                                            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+                                            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 dark:border-gray-800 pb-3">
                                                 <div class="flex items-center gap-3">
-                                                    <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600/20 text-blue-400 border border-blue-500/30">
+                                                    <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-600 border border-blue-200 dark:bg-blue-600/20 dark:text-blue-400 dark:border-blue-500/30">
                                                         <i class="ri-computer-line text-xl"></i>
                                                     </span>
                                                     <div>
                                                         <div class="flex items-center gap-2">
-                                                            <h5 class="font-bold text-white">{{ $station->name }}</h5>
+                                                            <h5 class="font-bold text-gray-900 dark:text-white">{{ $station->name }}</h5>
                                                             @if($station->location)
-                                                                <span class="text-[10px] rounded bg-slate-800 px-1.5 py-0.5 text-slate-300">{{ $station->location }}</span>
+                                                                <span class="text-[10px] rounded bg-gray-100 px-1.5 py-0.5 text-gray-600 dark:bg-gray-800 dark:text-gray-300">{{ $station->location }}</span>
                                                             @endif
                                                         </div>
-                                                        <p class="text-xs text-slate-400">
-                                                            IP: <code class="text-blue-300 font-mono">{{ $station->ip_address }}</code>
+                                                        <p class="text-xs text-gray-500 dark:text-gray-400">
+                                                            IP: <code class="text-blue-600 dark:text-blue-300 font-mono">{{ $station->ip_address }}</code>
                                                             @if($station->hostname) · {{ $station->hostname }} @endif
                                                         </p>
                                                     </div>
                                                 </div>
 
                                                 <div class="flex items-center gap-2">
-                                                    <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold {{ $station->hasCredentials() ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/10 text-amber-400 border border-amber-500/30' }}">
+                                                    <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold {{ $station->hasCredentials() ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/30' : 'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/30' }}">
                                                         <i class="{{ $station->hasCredentials() ? 'ri-shield-check-line' : 'ri-alert-line' }}"></i>
                                                         {{ $station->hasCredentials() ? 'Certificado PEM' : 'Sin Certificado' }}
                                                     </span>
 
                                                     <button type="button" @click="setActiveStation('{{ $station->uuid }}', '{{ $station->name }}')"
-                                                        :class="activeStationUuid === '{{ $station->uuid }}' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'"
+                                                        :class="activeStationUuid === '{{ $station->uuid }}' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'"
                                                         class="rounded-lg px-2.5 py-1 text-xs font-bold transition">
                                                         <span x-text="activeStationUuid === '{{ $station->uuid }}' ? '✓ Esta PC' : 'Usar esta PC'"></span>
                                                     </button>
@@ -407,59 +407,59 @@
                                             </div>
 
                                             {{-- Ticketeras USB asociadas a esta PC --}}
-                                            <div class="mt-3 pl-4 border-l-2 border-dashed border-blue-500/40 space-y-2">
-                                                <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Ticketeras conectadas por USB:</p>
+                                            <div class="mt-3 pl-4 border-l-2 border-dashed border-blue-300 dark:border-blue-500/40 space-y-2">
+                                                <p class="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Ticketeras conectadas por USB:</p>
                                                 @forelse($stationPrinters as $printer)
-                                                    <div class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-800/80 bg-slate-950/70 p-2.5">
+                                                    <div class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-gray-200 bg-gray-50/70 p-2.5 dark:border-gray-800 dark:bg-gray-950/70">
                                                         <div class="flex items-center gap-2.5">
-                                                            <span class="flex h-7 w-7 items-center justify-center rounded bg-orange-500/10 text-orange-400">
+                                                            <span class="flex h-7 w-7 items-center justify-center rounded bg-orange-50 text-orange-600 dark:bg-orange-500/10 dark:text-orange-400">
                                                                 <i class="ri-usb-line text-sm"></i>
                                                             </span>
                                                             <div>
-                                                                <p class="text-xs font-bold text-white">{{ $printer->name }}</p>
-                                                                <p class="text-[10px] text-slate-400">Driver: <span class="text-slate-200 font-mono">{{ $printer->driver_name ?: $printer->name }}</span> · {{ $printer->width ?? '80' }}mm</p>
+                                                                <p class="text-xs font-bold text-gray-900 dark:text-white">{{ $printer->name }}</p>
+                                                                <p class="text-[10px] text-gray-500 dark:text-gray-400">Driver: <span class="text-gray-700 dark:text-gray-200 font-mono">{{ $printer->driver_name ?: $printer->name }}</span> · {{ $printer->width ?? '80' }}mm</p>
                                                             </div>
                                                         </div>
 
                                                         <div class="flex items-center gap-2">
                                                             {{-- Badge de Productos Asignados --}}
                                                             <button type="button" @click="openAssignModal({{ $printer->id }}, '{{ $printer->name }}')"
-                                                                class="inline-flex h-7 items-center gap-1 rounded bg-purple-500/20 px-2 text-[11px] font-bold text-purple-300 hover:bg-purple-500/30 border border-purple-500/30">
+                                                                class="inline-flex h-7 items-center gap-1 rounded bg-purple-50 px-2 text-[11px] font-bold text-purple-700 hover:bg-purple-100 border border-purple-200 dark:bg-purple-500/20 dark:text-purple-300 dark:border-purple-500/30">
                                                                 <i class="ri-restaurant-2-line"></i>
                                                                 <span x-text="(printerProductCounts[{{ $printer->id }}] || 0) + ' Productos'"></span>
                                                             </button>
 
                                                             <button type="button" @click="testPrinter({{ $printer->id }}, '{{ $printer->name }}')"
                                                                 :disabled="testingPrinterId === {{ $printer->id }}"
-                                                                class="inline-flex h-7 items-center gap-1.5 rounded bg-blue-600/80 px-2 text-[11px] font-bold text-white hover:bg-blue-500 disabled:opacity-50">
+                                                                class="inline-flex h-7 items-center gap-1.5 rounded bg-blue-600 px-2 text-[11px] font-bold text-white hover:bg-blue-700 disabled:opacity-50 shadow-xs">
                                                                 <i class="ri-printer-line"></i>
                                                                 <span>Probar USB</span>
                                                             </button>
                                                         </div>
                                                     </div>
                                                 @empty
-                                                    <p class="text-xs text-slate-500 italic py-1">No hay ticketeras USB asignadas a esta PC.</p>
+                                                    <p class="text-xs text-gray-400 dark:text-gray-500 italic py-1">No hay ticketeras USB asignadas a esta PC.</p>
                                                 @endforelse
                                             </div>
                                         </div>
                                     @empty
-                                        <div class="rounded-xl border border-dashed border-slate-800 p-6 text-center text-slate-500">
-                                            <i class="ri-computer-line text-3xl text-slate-600"></i>
+                                        <div class="rounded-xl border border-dashed border-gray-300 dark:border-gray-700 p-6 text-center text-gray-500">
+                                            <i class="ri-computer-line text-3xl text-gray-400"></i>
                                             <p class="mt-2 text-sm">No hay estaciones PC registradas en esta sucursal.</p>
                                             <a href="{{ route('branch-parameter.index', $viewId ? ['view_id' => $viewId] : []) }}" class="mt-2 inline-block text-xs font-bold text-[#FF4622] hover:underline">+ Registrar PC en Parámetros</a>
                                         </div>
                                     @endforelse
 
                                     @if($unassignedUsbPrinters->count() > 0)
-                                        <div class="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3">
-                                            <p class="text-xs font-bold text-amber-400 flex items-center gap-1.5 mb-2">
+                                        <div class="rounded-xl border border-amber-200 bg-amber-50 p-3 dark:border-amber-500/30 dark:bg-amber-500/10">
+                                            <p class="text-xs font-bold text-amber-800 dark:text-amber-400 flex items-center gap-1.5 mb-2">
                                                 <i class="ri-alert-line"></i> Ticketeras USB sin PC asignada ({{ $unassignedUsbPrinters->count() }}):
                                             </p>
                                             <div class="space-y-1.5">
                                                 @foreach($unassignedUsbPrinters as $unPrinter)
-                                                    <div class="flex items-center justify-between text-xs text-slate-300 bg-slate-900/80 p-2 rounded border border-slate-800">
+                                                    <div class="flex items-center justify-between text-xs text-gray-700 bg-white p-2 rounded border border-amber-200 dark:text-gray-300 dark:bg-gray-900 dark:border-gray-800">
                                                         <span>{{ $unPrinter->name }}</span>
-                                                        <button type="button" @click="openAssignModal({{ $unPrinter->id }}, '{{ $unPrinter->name }}')" class="text-purple-400 font-bold hover:underline">
+                                                        <button type="button" @click="openAssignModal({{ $unPrinter->id }}, '{{ $unPrinter->name }}')" class="text-purple-600 font-bold hover:underline dark:text-purple-400">
                                                             <span x-text="(printerProductCounts[{{ $unPrinter->id }}] || 0) + ' Prods.'"></span>
                                                         </button>
                                                     </div>
@@ -471,29 +471,29 @@
                             </div>
 
                             {{-- SECCIÓN TICKETERAS DE RED LAN (IP Directa) --}}
-                            <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
-                                <div class="mb-4 flex items-center justify-between border-b border-slate-800/80 pb-3">
-                                    <h4 class="flex items-center gap-2 text-sm font-bold text-emerald-400">
+                            <div class="rounded-2xl border border-gray-200 bg-gray-50/50 p-5 dark:border-gray-800 dark:bg-gray-800/40">
+                                <div class="mb-4 flex items-center justify-between border-b border-gray-200/80 dark:border-gray-700/80 pb-3">
+                                    <h4 class="flex items-center gap-2 text-sm font-bold text-emerald-600 dark:text-emerald-400">
                                         <i class="ri-router-line text-lg"></i> Ticketeras de Red LAN (IP Directa / Puerto 9100)
                                     </h4>
-                                    <span class="rounded-md bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-300 border border-emerald-500/20">
+                                    <span class="rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/20">
                                         {{ $networkPrinters->count() }} Impresoras LAN
                                     </span>
                                 </div>
 
                                 <div class="space-y-4">
                                     @forelse($networkPrinters as $netPrinter)
-                                        <div class="relative rounded-xl border border-slate-800 bg-slate-900 p-4 transition hover:border-slate-700">
+                                        <div class="relative rounded-xl border border-gray-200 bg-white p-4 transition hover:border-gray-300 shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:hover:border-gray-600">
                                             <div class="flex flex-wrap items-center justify-between gap-3">
                                                 <div class="flex items-center gap-3">
-                                                    <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-600/20 text-emerald-400 border border-emerald-500/30">
+                                                    <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200 dark:bg-emerald-600/20 dark:text-emerald-400 dark:border-emerald-500/30">
                                                         <i class="ri-wifi-line text-xl"></i>
                                                     </span>
                                                     <div>
-                                                        <h5 class="font-bold text-white">{{ $netPrinter->name }}</h5>
-                                                        <p class="text-xs text-slate-400">
-                                                            IP LAN: <code class="text-emerald-400 font-mono">{{ $netPrinter->ip ?: 'Sin IP' }}</code>
-                                                            : <code class="text-slate-300">{{ $netPrinter->port ?? 9100 }}</code>
+                                                        <h5 class="font-bold text-gray-900 dark:text-white">{{ $netPrinter->name }}</h5>
+                                                        <p class="text-xs text-gray-500 dark:text-gray-400">
+                                                            IP LAN: <code class="text-emerald-600 dark:text-emerald-400 font-mono">{{ $netPrinter->ip ?: 'Sin IP' }}</code>
+                                                            : <code class="text-gray-700 dark:text-gray-300">{{ $netPrinter->port ?? 9100 }}</code>
                                                             · {{ $netPrinter->width ?? '80' }}mm
                                                         </p>
                                                     </div>
@@ -502,14 +502,14 @@
                                                 <div class="flex items-center gap-2">
                                                     {{-- Badge de Productos Asignados --}}
                                                     <button type="button" @click="openAssignModal({{ $netPrinter->id }}, '{{ $netPrinter->name }}')"
-                                                        class="inline-flex h-8 items-center gap-1.5 rounded-lg bg-purple-500/20 px-3 text-xs font-bold text-purple-300 hover:bg-purple-500/30 border border-purple-500/30">
+                                                        class="inline-flex h-8 items-center gap-1.5 rounded-lg bg-purple-50 px-3 text-xs font-bold text-purple-700 hover:bg-purple-100 border border-purple-200 dark:bg-purple-500/20 dark:text-purple-300 dark:border-purple-500/30">
                                                         <i class="ri-restaurant-2-line"></i>
                                                         <span x-text="(printerProductCounts[{{ $netPrinter->id }}] || 0) + ' Productos'"></span>
                                                     </button>
 
                                                     <button type="button" @click="testPrinter({{ $netPrinter->id }}, '{{ $netPrinter->name }}')"
                                                         :disabled="testingPrinterId === {{ $netPrinter->id }}"
-                                                        class="inline-flex h-8 items-center gap-1.5 rounded-lg bg-emerald-600 px-3 text-xs font-bold text-white hover:bg-emerald-500 disabled:opacity-50 shadow-sm">
+                                                        class="inline-flex h-8 items-center gap-1.5 rounded-lg bg-emerald-600 px-3 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50 shadow-xs">
                                                         <i class="ri-send-plane-line"></i>
                                                         <span>Probar LAN</span>
                                                     </button>
@@ -517,15 +517,15 @@
                                             </div>
 
                                             @if($netPrinter->notes || $netPrinter->location)
-                                                <div class="mt-2.5 pt-2 border-t border-slate-800/60 flex items-center gap-3 text-[11px] text-slate-400">
+                                                <div class="mt-2.5 pt-2 border-t border-gray-100 dark:border-gray-800 flex items-center gap-3 text-[11px] text-gray-500 dark:text-gray-400">
                                                     @if($netPrinter->location) <span><i class="ri-map-pin-line"></i> {{ $netPrinter->location }}</span> @endif
                                                     @if($netPrinter->notes) <span><i class="ri-file-text-line"></i> {{ $netPrinter->notes }}</span> @endif
                                                 </div>
                                             @endif
                                         </div>
                                     @empty
-                                        <div class="rounded-xl border border-dashed border-slate-800 p-6 text-center text-slate-500">
-                                            <i class="ri-router-line text-3xl text-slate-600"></i>
+                                        <div class="rounded-xl border border-dashed border-gray-300 dark:border-gray-700 p-6 text-center text-gray-500">
+                                            <i class="ri-router-line text-3xl text-gray-400"></i>
                                             <p class="mt-2 text-sm">No hay ticketeras de red LAN con IP registradas.</p>
                                         </div>
                                     @endforelse
