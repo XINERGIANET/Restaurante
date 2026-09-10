@@ -1541,6 +1541,42 @@ es                        style="max-height: 80vh;">
                 }
             }
 
+            async function findActualQzPrinter(qzApi, preferredName) {
+                if (!qzApi) return null;
+                const candidate = String(preferredName || '').trim();
+                if (candidate) {
+                    try {
+                        const found = await qzApi.printers.find(candidate);
+                        if (found) return found;
+                    } catch (e) {}
+                }
+                try {
+                    const allPrinters = await qzApi.printers.find();
+                    if (Array.isArray(allPrinters) && allPrinters.length > 0) {
+                        if (candidate) {
+                            const cLow = candidate.toLowerCase();
+                            const matched = allPrinters.find(p => String(p).toLowerCase().includes(cLow) || cLow.includes(String(p).toLowerCase()));
+                            if (matched) return matched;
+                        }
+                        for (const kw of ['barra', 'caja', 'termica', 'thermal', 'receipt', 'pos', 'epson', 'bixolon', 'xprinter', 'tm-t']) {
+                            const matched = allPrinters.find(p => String(p).toLowerCase().includes(kw));
+                            if (matched) return matched;
+                        }
+                    }
+                } catch (e) {}
+                try {
+                    const def = await qzApi.printers.getDefault();
+                    if (def) return def;
+                } catch (e) {}
+                try {
+                    const allPrinters = await qzApi.printers.find();
+                    if (Array.isArray(allPrinters) && allPrinters.length > 0) {
+                        return allPrinters[0];
+                    }
+                } catch (e) {}
+                return candidate || null;
+            }
+
             function resolveStrictLocalPrinterName() {
                 try {
                     const localPrinter = String(localStorage.getItem('xinergia_local_printer_name') ||
@@ -1554,6 +1590,7 @@ es                        style="max-height: 80vh;">
                     const opt = sel.options[sel.selectedIndex];
                     const label = String(opt?.textContent || '').split('—')[0].split('-')[0].trim();
                     if (label) return label;
+                }
                 return '';
             }
 
@@ -1614,23 +1651,7 @@ es                        style="max-height: 80vh;">
                             return;
                         }
                         let candidatePrinterName = preferredPrinterName || td.printer_name || '';
-                        let printerName = '';
-                        if (candidatePrinterName) {
-                            try {
-                                await qzApi.printers.find(candidatePrinterName);
-                                printerName = candidatePrinterName;
-                            } catch (findErr) {
-                                console.warn('QZ Tray: Impresora "' + candidatePrinterName + '" no encontrada en la PC local. Buscando predeterminada...', findErr);
-                            }
-                        }
-                        if (!printerName) {
-                            try {
-                                printerName = await qzApi.printers.getDefault();
-                            } catch (defErr) {}
-                        }
-                        if (!printerName && candidatePrinterName) {
-                            printerName = candidatePrinterName;
-                        }
+                        let printerName = await findActualQzPrinter(qzApi, candidatePrinterName);
                         if (!printerName) {
                             await reportThermalPrintFailure(movementId, td?.print_job_id || null, 'No se encontro una ticketera disponible en QZ Tray.', preferredPrinterName);
                             openSaleTicketPdfTab(movementId);
