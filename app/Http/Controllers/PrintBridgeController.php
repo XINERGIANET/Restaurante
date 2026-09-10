@@ -132,6 +132,9 @@ class PrintBridgeController extends Controller
             return response()->json(['success' => false, 'message' => 'job_id inválido'], 422);
         }
 
+        $targetStatus = $request->input('status') === 'error' ? 'error' : 'printed';
+        $errorMessage = $targetStatus === 'error' ? Str::limit((string) $request->input('error_message', 'Error en QZ Tray'), 500, '') : null;
+
         $thermalJobFromDirectId = $this->thermalPrintJobIdFromBridgeJobId($jobId);
         if ($thermalJobFromDirectId > 0) {
             ThermalPrintJob::query()
@@ -140,10 +143,10 @@ class PrintBridgeController extends Controller
                 ->where('source', 'kitchen_order')
                 ->whereIn('status', ['pending', 'printing'])
                 ->update([
-                    'status' => 'printed',
-                    'printed_at' => now(),
+                    'status' => $targetStatus,
+                    'printed_at' => $targetStatus === 'printed' ? now() : null,
                     'printed_by' => $request->user()?->id,
-                    'last_error' => null,
+                    'last_error' => $errorMessage,
                     'updated_at' => now(),
                 ]);
 
@@ -159,16 +162,14 @@ class PrintBridgeController extends Controller
                 ->where('source', 'kitchen_order')
                 ->whereIn('status', ['pending', 'printing'])
                 ->update([
-                    'status' => 'printed',
-                    'printed_at' => now(),
+                    'status' => $targetStatus,
+                    'printed_at' => $targetStatus === 'printed' ? now() : null,
                     'printed_by' => $request->user()?->id,
-                    'last_error' => null,
+                    'last_error' => $errorMessage,
                     'updated_at' => now(),
                 ]);
         }
         // Idempotente: devolver éxito incluso si el trabajo ya no existe.
-        // El objetivo se logró: el trabajo no está en la cola.
-
         return response()->json(['success' => true]);
     }
 
@@ -192,6 +193,7 @@ class PrintBridgeController extends Controller
             $job = ThermalPrintJob::query()
                 ->where('branch_id', $branchId)
                 ->where('source', 'kitchen_order')
+                ->where('created_at', '>=', now()->subHours(48))
                 ->whereRaw('LOWER(TRIM(printer_name)) = ?', [$normalizedPrinterName])
                 ->where(function ($query) use ($leaseExpiredAt) {
                     $query->where('status', 'pending')
@@ -205,8 +207,7 @@ class PrintBridgeController extends Controller
                 })
                 ->whereNotNull('ticket_text')
                 ->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")
-                ->orderBy('created_at')
-                ->orderBy('id')
+                ->orderByDesc('id')
                 ->lockForUpdate()
                 ->first();
 
@@ -221,11 +222,23 @@ class PrintBridgeController extends Controller
                 'last_error' => null,
             ])->save();
 
+            $pname = trim((string) ($job->printer_name ?: 'BARRA'));
+            $driver = $pname;
+            $printerModel = PrinterBranch::query()
+                ->where('branch_id', $branchId)
+                ->whereRaw('LOWER(TRIM(name)) = ?', [mb_strtolower($pname)])
+                ->first();
+            if ($printerModel && filled($printerModel->driver_name)) {
+                $driver = $printerModel->driver_name;
+            }
+
             return [
                 'id' => 'thermal:' . $job->id,
                 'thermal_print_job_id' => (int) $job->id,
                 'b64' => base64_encode($this->buildKitchenEscPosPayload((string) $job->ticket_text)),
                 'at' => time(),
+                'printer_name' => $driver,
+                'configured_printer_name' => $pname,
             ];
         }, 3);
     }
