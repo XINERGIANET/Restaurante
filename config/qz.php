@@ -55,9 +55,9 @@ return [
         explode(',', (string) env('QZ_TERTIARY_FIRST_PRINTER_NAMES', 'BARRA3'))
     ))),
 
-    // Comanda: ticketera con IP → RAW por servidor (sin QZ en el navegador). El resto usa QZ como cobro.
+    // Comanda: ticketera con IP → si false, usa QZ Tray local en el navegador (necesario en servidores cloud/VPS).
     'kitchen_skip_client_qz_when_printer_has_ip' => filter_var(
-        env('QZ_KITCHEN_SKIP_CLIENT_WHEN_PRINTER_IP', true),
+        env('QZ_KITCHEN_SKIP_CLIENT_WHEN_PRINTER_IP', false),
         FILTER_VALIDATE_BOOL
     ),
 

@@ -280,7 +280,7 @@ class PrinterBranchController extends Controller
                 'driver_name' => $printerBranch->driver_name ?: $printerBranch->name,
                 'printer_name' => $printerBranch->name,
                 'b64' => base64_encode($payload),
-                'message' => 'Prueba enviada a QZ Tray para la impresora local ' . $printerBranch->name,
+                'message' => 'Prueba enviada a QZ Tray para la impresora ' . $printerBranch->name,
             ]);
         }
 
@@ -293,19 +293,32 @@ class PrinterBranchController extends Controller
                 (string) $printerBranch->ip,
                 (int) ($printerBranch->port ?: 9100),
                 $payload,
-                3
+                2
             );
 
             return response()->json([
                 'success' => true,
                 'is_usb' => false,
+                'driver_name' => $printerBranch->driver_name ?: $printerBranch->name,
+                'printer_name' => $printerBranch->name,
+                'b64' => base64_encode($payload),
                 'message' => 'Ticket de prueba enviado correctamente a la IP ' . $printerBranch->ip . ':' . ($printerBranch->port ?: 9100),
             ]);
         } catch (\Exception $e) {
+            // Si el servidor es remoto (VPS en la nube) y no puede acceder a la IP privada LAN (ej. 192.168.x.x),
+            // se devuelve el payload b64 para que el navegador cliente imprima vía QZ Tray local.
             return response()->json([
-                'success' => false,
-                'message' => 'Error al conectar con la ticketera LAN (' . $printerBranch->ip . '): ' . $e->getMessage(),
-            ], 500);
+                'success' => true,
+                'is_usb' => false,
+                'fallback_qz' => true,
+                'driver_name' => $printerBranch->driver_name ?: $printerBranch->name,
+                'printer_name' => $printerBranch->name,
+                'ip' => $printerBranch->ip,
+                'port' => (int) ($printerBranch->port ?: 9100),
+                'b64' => base64_encode($payload),
+                'server_error' => $e->getMessage(),
+                'message' => 'El servidor no tiene acceso directo a la IP LAN (' . $printerBranch->ip . '). Se enviará mediante QZ Tray local.',
+            ]);
         }
     }
 }

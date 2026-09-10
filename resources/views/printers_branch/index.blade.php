@@ -146,7 +146,7 @@
                     return;
                 }
 
-                if (result.is_usb && result.b64) {
+                if (result.b64) {
                     const qzApi = window.qz;
                     if (!qzApi) {
                         Swal.fire({
@@ -164,13 +164,23 @@
                             return;
                         }
                     }
-                    const config = qzApi.configs.create(driver, { units: 'mm', size: { width: 80, height: 200 }, margins: 0 });
+                    let targetPrinter = driver;
+                    try {
+                        targetPrinter = await qzApi.printers.find(driver);
+                    } catch (findErr) {
+                        try {
+                            targetPrinter = await qzApi.printers.find(printerName);
+                        } catch (findErr2) {
+                            targetPrinter = driver;
+                        }
+                    }
+                    const config = qzApi.configs.create(targetPrinter, { units: 'mm', size: { width: 80, height: 200 }, margins: 0 });
                     const rawData = atob(result.b64);
                     await qzApi.print(config, [{ type: 'raw', format: 'command', flavor: 'plain', data: rawData }]);
                     Swal.fire({
                         icon: 'success',
                         title: '¡Prueba Exitosa!',
-                        text: 'Ticket de prueba enviado a QZ Tray (' + driver + ').',
+                        text: 'Ticket de prueba enviado a QZ Tray (' + targetPrinter + ').',
                         timer: 2500
                     });
                 } else {
