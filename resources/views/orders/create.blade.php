@@ -1943,14 +1943,54 @@
                             .replace(/\"/g, '&quot;');
                     }
 
+                    async function findActualQzPrinter(qzApi, preferredName) {
+                        if (!qzApi) return null;
+                        const candidate = String(preferredName || '').trim();
+                        if (candidate) {
+                            try {
+                                const found = await qzApi.printers.find(candidate);
+                                if (found) return found;
+                            } catch (e) {}
+                        }
+                        try {
+                            const allPrinters = await qzApi.printers.find();
+                            if (Array.isArray(allPrinters) && allPrinters.length > 0) {
+                                if (candidate) {
+                                    const cLow = candidate.toLowerCase();
+                                    const matched = allPrinters.find(p => String(p).toLowerCase().includes(cLow) || cLow.includes(String(p).toLowerCase()));
+                                    if (matched) return matched;
+                                }
+                                for (const kw of ['barra', 'caja', 'termica', 'thermal', 'receipt', 'pos', 'epson', 'bixolon', 'xprinter', 'tm-t']) {
+                                    const matched = allPrinters.find(p => String(p).toLowerCase().includes(kw));
+                                    if (matched) return matched;
+                                }
+                            }
+                        } catch (e) {}
+                        try {
+                            const def = await qzApi.printers.getDefault();
+                            if (def) return def;
+                        } catch (e) {}
+                        try {
+                            const allPrinters = await qzApi.printers.find();
+                            if (Array.isArray(allPrinters) && allPrinters.length > 0) {
+                                return allPrinters[0];
+                            }
+                        } catch (e) {}
+                        return candidate || null;
+                    }
+
                     /**
                      * RAW para térmicas; si falla (p. ej. Epson tinta), reintenta como HTML/pixel.
                      * Esto permite "imprimir en todos" aunque no todos acepten RAW.
                      */
                     async function printTicketWithQz(qzApi, printerName, plainText) {
-                        const paperWidth = resolvePrinterWidthByName(printerName);
+                        const targetPrinter = await findActualQzPrinter(qzApi, printerName);
+                        if (!targetPrinter) {
+                            throw new Error('No se encontró ninguna ticketera instalada en Windows / QZ Tray.');
+                        }
+                        const paperWidth = resolvePrinterWidthByName(targetPrinter || printerName);
                         const paperMm = paperWidth === 80 ? 80 : 58;
-                        const config = qzApi.configs.create(printerName, {
+                        const config = qzApi.configs.create(targetPrinter, {
                             units: 'mm',
                             size: {
                                 width: paperMm,
@@ -1973,12 +2013,6 @@
                                     .replace(/¿/g, '?').replace(/¡/g, '!');
                             }
                             // ESC/POS: init + código de página PC850 (español) + contenido + feeds + corte
-                            // Separa líneas para aplicar tamaños distintos:
-                            //   - primera línea (COMANDA / ANULADO / PRECUENTA): doble alto + doble ancho (título)
-                            //   - separadores (===...): tamaño normal
-                            //   - cabecera (Mesa, Mozo, Fecha, Area, Salon, Hora): tamaño normal
-                            //   - líneas de producto (Producto + cantidad al final): negrita + doble alto
-                            //   - resto (Nota, Estado, Motivo): normal
                             const rawContent = toEscPos(plainText);
                             const rawLines = rawContent.split('\n');
                             let formattedContent = '';
@@ -1992,26 +2026,23 @@
                                     /^(Mesa |COMANDA|COCINA|PRECUENTA|ANULADO)/.test(trimmed);
                                 const isMeta = /^(Nota|Estado|Motivo|DETALLE|S\/\.)/.test(trimmed) || trimmed === '';
                                 if (li === 0) {
-                                    // Título principal: solo negrita
                                     formattedContent += '\x1B\x45\x01' + line + '\x1B\x45\x00\n';
                                 } else if (isSep || isHeader || isMeta) {
-                                    // Separadores, cabecera y metadatos: tamaño normal
                                     formattedContent += '\x1B\x21\x00' + line + '\n';
                                 } else {
-                                    // Líneas de producto: negrita + doble alto
-                                    formattedContent += '\x1B\x45\x01' + // ESC E 1 → negrita ON
-                                        '\x1B\x21\x10' + // ESC ! 0x10 → doble alto
+                                    formattedContent += '\x1B\x45\x01' +
+                                        '\x1B\x21\x10' +
                                         line +
-                                        '\x1B\x45\x00' + // ESC E 0 → negrita OFF
-                                        '\x1B\x21\x00\n'; // tamaño normal
+                                        '\x1B\x45\x00' +
+                                        '\x1B\x21\x00\n';
                                 }
                             }
                             const ticketCommands =
                                 '\x1B\x40' + // ESC @ (init/reset)
-                                '\x1B\x74\x02' + // ESC t 2 → code page PC850 (Latin-1, incluye español)
+                                '\x1B\x74\x02' + // ESC t 2 → code page PC850
                                 formattedContent +
                                 '\n\n' +
-                                '\x1D\x56\x42\x10'; // GS V B 16 → avance + corte parcial
+                                '\x1D\x56\x42\x10'; // corte
 
                             await qzApi.print(config, [{
                                 type: 'raw',
@@ -2021,7 +2052,7 @@
                             }]);
                             return;
                         } catch (rawErr) {
-                            console.warn('QZ Tray: RAW no disponible en "' + printerName + '", usando HTML.', rawErr);
+                            console.warn('QZ Tray: RAW no disponible en "' + targetPrinter + '", usando HTML.', rawErr);
                         }
 
                         const htmlLines = String(plainText || '')
@@ -2546,14 +2577,7 @@
                             if (!await ensureQzTrayConnected(qzApi, printerName)) {
                                 return false;
                             }
-                            let currentPrinterName = printerName ? String(printerName).trim() : '';
-                            if (!currentPrinterName) {
-                                currentPrinterName = await qzApi.printers.getDefault();
-                            }
-                            if (!currentPrinterName) {
-                                return false;
-                            }
-                            await printTicketWithQz(qzApi, currentPrinterName, ticketText);
+                            await printTicketWithQz(qzApi, printerName, ticketText);
                             return true;
                         } catch (e) {
                             console.warn('Precuenta: impresión QZ Tray', e);
@@ -2577,50 +2601,19 @@
                         const printerName = resolvePreAccountPrinterNameLocal();
                         const paperWidth = resolvePrinterWidthByName(printerName);
                         const ticketText = buildPreAccountTicketText(currentTable, groupedItems, canceledItems, paperWidth);
-                        const strictLocalQz = requiresStrictLocalQz(printerName);
 
-                        let qzFailed = false;
-                        // Si QZ está disponible y funciona, intentar imprimir por QZ
-                        if (qzApi && await ensureQzTrayConnected(qzApi, printerName)) {
-                            let currentPrinterName = printerName;
-                            try {
-                                // Si no hay impresora asignada en productos, usar la impresora por defecto de QZ
-                                if (!currentPrinterName) {
-                                    currentPrinterName = await qzApi.printers.getDefault();
-                                }
-                                if (!currentPrinterName) {
-                                    throw new Error('No se encontró ninguna impresora disponible en QZ Tray.');
-                                }
-                                await printTicketWithQz(qzApi, currentPrinterName, ticketText);
+                        // 1. Si QZ está disponible en esta PC, intentar imprimir directamente
+                        if (qzApi && isQzTrayAvailable()) {
+                            const qzOk = await tryPrintPrecuentaWithQz(qzApi, printerName, ticketText);
+                            if (qzOk) {
                                 if (typeof showNotification === 'function') {
-                                    showNotification('Precuenta', 'Ticket enviado a "' + currentPrinterName + '".',
-                                        'success');
+                                    showNotification('Precuenta', 'Precuenta enviada a ticketera local.', 'success');
                                 }
                                 return;
-                            } catch (e) {
-                                qzFailed = true;
-                                if (strictLocalQz) {
-                                    openPreAccountPdfTab();
-                                    return;
-                                }
-                                if (typeof showNotification === 'function') {
-                                    showNotification('Impresión', 'QZ no disponible. Intentando impresora de red...',
-                                        'warning');
-                                }
                             }
                         }
 
-                        if (strictLocalQz) {
-                            openPreAccountPdfTab();
-                            return;
-                        }
-
-                        // Fallback: ticketera por red (server-side ESC/POS usando el endpoint de pedidos)
-                        const movementId = currentTable?.movement_id;
-                        if (!movementId) {
-                            openPreAccountPdfTab();
-                            return;
-                        }
+                        // 2. Si no hay QZ en esta pantalla (ej. celular o terminal), enviar al servidor para despachar a la PC asignada
                         try {
                             const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
                             const stationUuid = (typeof localStorage !== 'undefined' ? (localStorage.getItem('restaurant_print_station_uuid') || '') : '');
@@ -2642,34 +2635,19 @@
                                     station_name: stationName
                                 }),
                             });
-                            const td = tr.headers.get('content-type')?.includes('application/json') ? await tr.json() :
-                            null;
+                            const td = tr.headers.get('content-type')?.includes('application/json') ? await tr.json() : null;
                             if (tr.ok && td?.success) {
-                                if (typeof showNotification === 'function') showNotification('Precuenta', td.message ||
-                                    'Ticket enviado.', 'success');
-                            } else {
-                                const qzOk = await tryPrintPrecuentaWithQz(qzApi, printerName, ticketText);
-                                if (qzOk) {
-                                    if (typeof showNotification === 'function') {
-                                        showNotification('Precuenta',
-                                            'Impreso con QZ Tray (el servidor no pudo usar la impresora USB).',
-                                            'success');
-                                    }
-                                } else {
-                                    openPreAccountPdfTab();
+                                if (typeof showNotification === 'function') {
+                                    showNotification('Precuenta', td.message || 'Ticket enviado.', 'success');
                                 }
+                                return;
                             }
                         } catch (e) {
-                            const qzOk = await tryPrintPrecuentaWithQz(qzApi, printerName, ticketText);
-                            if (qzOk) {
-                                if (typeof showNotification === 'function') {
-                                    showNotification('Precuenta', 'Impreso con QZ Tray (error al contactar el servidor).',
-                                        'success');
-                                }
-                            } else {
-                                openPreAccountPdfTab();
-                            }
+                            console.warn('Precuenta: error enviando a servidor', e);
                         }
+
+                        // 3. Fallback a PDF únicamente si no hubo respuesta ni de QZ ni del servidor
+                        openPreAccountPdfTab();
                     }
 
                     /**

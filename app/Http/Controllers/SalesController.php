@@ -1912,7 +1912,8 @@ class SalesController extends Controller
             $response = [
                 'success' => true,
                 'payload_b64' => base64_encode($payload),
-                'printer_name' => $printer?->name ?? null,
+                'printer_name' => filled($printer?->driver_name) ? $printer->driver_name : ($printer?->name ?? null),
+                'configured_printer_name' => $printer?->name ?? null,
                 'paper_width' => $paperWidthMm,
             ];
             if ($printJob) {
