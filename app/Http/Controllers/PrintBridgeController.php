@@ -52,8 +52,11 @@ class PrintBridgeController extends Controller
                 ->where('branch_id', $branchId)
                 ->where('status', 'E')
                 ->firstOrFail();
-            $station->forceFill(['last_seen_at' => now()])->save();
-            foreach ($station->printers()->where('status', 'E')->where('connection_type', 'usb')->orderBy('id')->get() as $assignedPrinter) {
+            $assignedPrinters = $station->printers()->where('status', 'E')->orderBy('id')->get();
+            if ($assignedPrinters->isEmpty()) {
+                $assignedPrinters = PrinterBranch::query()->where('branch_id', $branchId)->where('status', 'E')->orderBy('id')->get();
+            }
+            foreach ($assignedPrinters as $assignedPrinter) {
                 $stationJob = $this->claimPendingThermalPrintJob($branchId, (string) $assignedPrinter->name)
                     ?: $this->nextLegacyQueuedJob($queue, $branchId, (string) $assignedPrinter->name);
                 if ($stationJob) {

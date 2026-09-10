@@ -30,10 +30,17 @@ class PrintBridgeQueue
         if (! config('qz.enabled', true)) {
             return false;
         }
-        if (($printer->connection_type ?? (filled((string) $printer->ip) ? 'network' : 'usb')) !== 'usb') {
-            return false;
-        }
         if (! empty($printer->print_station_id)) {
+            return true;
+        }
+        // En servidores en la nube / remotos (no localhost), la estación PC con QZ Tray local
+        // se encarga de despachar la impresión a impresoras locales (USB y Red LAN).
+        $host = strtolower(trim((string) (request()?->getHost() ?? '')));
+        $isLocalhost = in_array($host, ['localhost', '127.0.0.1', '::1']);
+        if (! $isLocalhost) {
+            return true;
+        }
+        if (($printer->connection_type ?? (filled((string) $printer->ip) ? 'network' : 'usb')) === 'usb') {
             return true;
         }
         $n = mb_strtolower(trim($printer->name));

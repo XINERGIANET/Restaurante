@@ -3361,13 +3361,6 @@ class OrderController extends Controller
             abort(404);
         }
 
-        if (! LocalNetworkClient::isOnLocalNetwork($request)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'La impresión por red desde el servidor solo está permitida dentro de la red del local.',
-            ], 403);
-        }
-
         $validated = $request->validate([
             'ticket_text' => ['nullable', 'string'],
             'printer_name' => ['nullable', 'string', 'max:255'],
@@ -3396,14 +3389,9 @@ class OrderController extends Controller
             if (! $printJob) {
                 return response()->json(['success' => false, 'message' => 'Comanda pendiente no encontrada.'], 404);
             }
-            if ($printJob->status === 'printed') {
-                return response()->json(['success' => false, 'message' => 'Esta comanda ya fue impresa o descartada.'], 409);
-            }
-            if (! in_array($printJob->status, ['pending', 'printing'], true)) {
-                return response()->json(['success' => false, 'message' => 'Esta comanda ya fue descartada.'], 409);
-            }
-            if (! empty($validated['retry_attempt']) && $printJob->status === 'pending') {
+            if (! empty($validated['retry_attempt'])) {
                 $printJob->forceFill([
+                    'status' => 'pending',
                     'attempts' => (int) $printJob->attempts + 1,
                     'last_attempt_at' => now(),
                     'last_error' => null,
@@ -3462,19 +3450,27 @@ class OrderController extends Controller
         }
 
         $payload = $this->buildKitchenEscPosPayload($ticketText);
+        $b64 = base64_encode($payload);
+
         if (! $printJob && $this->shouldSkipDuplicateKitchenThermal($branchId, (string) $printer->name, $payload, 'comanda')) {
             return response()->json([
                 'success' => true,
                 'message' => 'Comanda duplicada detectada: se omitió la reimpresión.',
                 'duplicate_skipped' => true,
+                'b64' => $b64,
+                'driver_name' => $printer->driver_name ?: $printer->name,
+                'printer_name' => $printer->name,
             ]);
         }
         if ($printJob && $printJob->status === 'printing' && app(PrintBridgeQueue::class)->shouldQueueToStation($printer)) {
             return response()->json([
                 'success' => true,
-                'message' => 'Comanda tomada por el puente de impresiÃ³n. Se confirmarÃ¡ al terminar.',
+                'message' => 'Comanda tomada por el puente de impresión. Se confirmará al terminar.',
                 'print_bridge' => true,
                 'print_job_id' => $printJob->id,
+                'b64' => $b64,
+                'driver_name' => $printer->driver_name ?: $printer->name,
+                'printer_name' => $printer->name,
             ]);
         }
 
@@ -3483,7 +3479,7 @@ class OrderController extends Controller
             return $bridgeResponse;
         }
         $printerService = app(ThermalNetworkPrintService::class);
-        $timeout = (int) config('local_network.thermal_timeout_seconds', 4);
+        $timeout = (int) config('local_network.thermal_timeout_seconds', 3);
 
         try {
             if (filled((string) $printer->ip)) {
@@ -3501,21 +3497,34 @@ class OrderController extends Controller
                     return response()->json([
                         'success' => false,
                         'message' => 'La ticketera no tiene IP y la impresión USB local está deshabilitada.',
+                        'b64' => $b64,
+                        'driver_name' => $printer->driver_name ?: $printer->name,
+                        'printer_name' => $printer->name,
                     ], 422);
                 }
 
-                $printerService->sendRawToWindowsPrinter((string) $printer->name, $payload, $timeout + 4);
+                $printerService->sendRawToWindowsPrinter((string) $printer->name, $payload, $timeout + 3);
             }
         } catch (\Throwable $e) {
             Log::warning('Impresión comanda térmica: ' . $e->getMessage());
+            // Si el servidor es cloud o no tiene ruta a la IP local, se deja en cola para la estación QZ del local
             if ($printJob) {
-                $this->markKitchenPrintJobFailed($printJob, (string) $e->getMessage());
+                $printJob->forceFill([
+                    'status' => 'pending',
+                    'last_error' => Str::limit($e->getMessage(), 500, ''),
+                    'last_attempt_at' => now(),
+                ])->save();
             }
 
             return response()->json([
-                'success' => false,
-                'message' => config('app.debug') ? (string) $e->getMessage() : 'No se pudo imprimir la comanda.',
-            ], 500);
+                'success' => true,
+                'print_bridge' => true,
+                'b64' => $b64,
+                'driver_name' => $printer->driver_name ?: $printer->name,
+                'printer_name' => $printer->name,
+                'print_job_id' => $printJob?->id,
+                'message' => 'Comanda en cola para la estación QZ en la PC del local.',
+            ], 200);
         }
 
         if ($printJob) {
@@ -3526,6 +3535,9 @@ class OrderController extends Controller
             'success' => true,
             'message' => 'Comanda enviada a "' . ($printer->name ?? 'Ticketera') . '"',
             'print_job_id' => $printJob?->id,
+            'b64' => $b64,
+            'driver_name' => $printer->driver_name ?: $printer->name,
+            'printer_name' => $printer->name,
         ]);
     }
 
@@ -3533,13 +3545,6 @@ class OrderController extends Controller
     {
         if (! config('local_network.thermal_print_enabled', true)) {
             abort(404);
-        }
-
-        if (! LocalNetworkClient::isOnLocalNetwork($request)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'La impresión por red desde el servidor solo está permitida dentro de la red del local.',
-            ], 403);
         }
 
         $validated = $request->validate([

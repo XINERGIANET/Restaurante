@@ -293,15 +293,17 @@
 
             const originalHtml = button.innerHTML;
             button.disabled = true;
-            button.innerHTML = '<i class="ri-loader-4-line animate-spin"></i> Enviando';
+            button.innerHTML = '<i class="ri-loader-4-line animate-spin"></i> Imprimiendo';
 
             try {
                 const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
                 const ticketText = window.decodeCommandTicket(button.getAttribute('data-ticket-b64') || '');
                 const jobId = button.getAttribute('data-job-id') || '';
+                const printerName = button.getAttribute('data-printer-name') || '';
+                const movementId = parseInt(button.getAttribute('data-movement-id') || '0', 10) || null;
                 const body = {
-                    movement_id: parseInt(button.getAttribute('data-movement-id') || '0', 10) || null,
-                    printer_name: button.getAttribute('data-printer-name') || null,
+                    movement_id: movementId,
+                    printer_name: printerName || null,
                     ticket_text: ticketText,
                     content_summary: button.getAttribute('data-summary') || null,
                     retry_attempt: true
@@ -324,15 +326,69 @@
                 });
                 const data = response.headers.get('content-type')?.includes('application/json') ? await response.json() : null;
                 if (!response.ok || !data?.success) {
-                    throw new Error(data?.message || 'No se pudo reimprimir la comanda.');
+                    throw new Error(data?.message || 'No se pudo procesar la comanda.');
                 }
 
-                if (window.Swal) {
-                    window.Swal.fire({ icon: 'success', title: 'Comanda enviada', text: data.message || 'Reimpresion enviada.', timer: 2200, showConfirmButton: false });
+                const qzApi = window.qz;
+                if (qzApi && data.b64) {
+                    const driver = data.driver_name || printerName;
+                    if (typeof window.__qzConnectWithCertPairFallback === 'function') {
+                        const connected = await window.__qzConnectWithCertPairFallback(qzApi, driver);
+                        if (!connected) {
+                            throw new Error('No se pudo conectar a QZ Tray local. Verifique que QZ Tray esté abierto.');
+                        }
+                    }
+                    let targetPrinter = driver;
+                    try {
+                        targetPrinter = await qzApi.printers.find(driver);
+                    } catch (findErr) {
+                        try {
+                            targetPrinter = await qzApi.printers.find(printerName);
+                        } catch (findErr2) {
+                            targetPrinter = driver;
+                        }
+                    }
+                    const config = qzApi.configs.create(targetPrinter, { units: 'mm', size: { width: 80, height: 200 }, margins: 0 });
+                    const rawData = atob(data.b64);
+                    await qzApi.print(config, [{ type: 'raw', format: 'command', flavor: 'plain', data: rawData }]);
+
+                    if (data.print_job_id) {
+                        try {
+                            await fetch(@json(route('sales.print.ticket.thermal.confirm')), {
+                                method: 'POST',
+                                cache: 'no-store',
+                                credentials: 'same-origin',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': csrf,
+                                    'Accept': 'application/json',
+                                    'X-Requested-With': 'XMLHttpRequest'
+                                },
+                                body: JSON.stringify({
+                                    print_job_id: data.print_job_id,
+                                    movement_id: movementId,
+                                    printer_name: targetPrinter
+                                })
+                            });
+                        } catch (confirmErr) {
+                            console.warn('Confirmación print_job:', confirmErr);
+                        }
+                    }
+
+                    if (window.Swal) {
+                        window.Swal.fire({ icon: 'success', title: '¡Reimpresión Exitosa!', text: 'Ticket enviado a QZ Tray (' + targetPrinter + ').', timer: 2000, showConfirmButton: false });
+                    } else {
+                        alert('Reimpresión exitosa en ' + targetPrinter);
+                    }
                 } else {
-                    alert(data.message || 'Comanda enviada.');
+                    if (window.Swal) {
+                        window.Swal.fire({ icon: 'success', title: 'Comanda en cola', text: data.message || 'Comanda enviada a la cola de la estación.', timer: 2200, showConfirmButton: false });
+                    } else {
+                        alert(data.message || 'Comanda enviada.');
+                    }
                 }
-                window.setTimeout(() => window.location.reload(), 900);
+
+                window.setTimeout(() => window.location.reload(), 1200);
             } catch (error) {
                 if (window.Swal) {
                     window.Swal.fire({ icon: 'error', title: 'No se pudo reimprimir', text: error?.message || 'Intenta nuevamente.' });
