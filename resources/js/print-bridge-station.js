@@ -54,7 +54,7 @@ export function startPrintBridgeStationPoll() {
             currentJob = j.job;
             const qzApi = window.qz;
             if (!qzApi) {
-                return;
+                throw new Error('QZ Tray no está disponible en esta estación.');
             }
             const driver = String(j.job.printer_name || '').trim();
             const configName = String(j.job.configured_printer_name || driver).trim();
@@ -63,7 +63,7 @@ export function startPrintBridgeStationPoll() {
             if (typeof window.__qzConnectWithCertPairFallback === 'function') {
                 const ok = await window.__qzConnectWithCertPairFallback(qzApi, driver || configName);
                 if (!ok) {
-                    return;
+                    throw new Error('No se pudo conectar con QZ Tray en esta estación.');
                 }
             }
 
@@ -111,7 +111,7 @@ export function startPrintBridgeStationPoll() {
                 fd.append('station_uuid', stationUuid);
                 fd.append('status', 'printed');
                 
-                await fetch(ackUrl, {
+                const ackResponse = await fetch(ackUrl, {
                     method: 'POST',
                     credentials: 'same-origin',
                     headers: {
@@ -120,6 +120,9 @@ export function startPrintBridgeStationPoll() {
                     },
                     body: fd
                 });
+                if (!ackResponse.ok) {
+                    throw new Error('La impresión salió, pero el servidor no pudo confirmarla.');
+                }
             }
         } catch (e) {
             console.warn('[print-bridge-station]', e);
@@ -134,7 +137,7 @@ export function startPrintBridgeStationPoll() {
                     fd.append('status', 'error');
                     fd.append('error_message', e?.message || 'Error en QZ Tray');
                     
-                    await fetch(ackUrl, {
+                    const reportResponse = await fetch(ackUrl, {
                         method: 'POST',
                         credentials: 'same-origin',
                         headers: {
@@ -143,6 +146,9 @@ export function startPrintBridgeStationPoll() {
                         },
                         body: fd
                     });
+                    if (!reportResponse.ok) {
+                        console.warn('[print-bridge-station] No se pudo registrar el error:', reportResponse.status);
+                    }
                 } catch (reportErr) {}
             }
         } finally {

@@ -101,7 +101,7 @@
                 }]);
             }
 
-            async function ackJob(job) {
+            async function ackJob(job, status = 'printed', errorMessage = '') {
                 try {
                     const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
                     const r = await fetch(ackBase, {
@@ -116,6 +116,8 @@
                         body: JSON.stringify({
                             printer_name: targetPrinter,
                             job_id: String(job.id || ''),
+                            status,
+                            error_message: errorMessage,
                         }),
                     });
                     if (!r.ok) {
@@ -138,6 +140,7 @@
             async function tick() {
                 if (busy) return;
                 busy = true;
+                let currentJob = null;
                 try {
                     // Si hay fallos previos de ack, esperar 3s antes de reintentar
                     const now = Date.now();
@@ -166,6 +169,7 @@
                     const j = r.headers.get('content-type') && r.headers.get('content-type').includes('application/json')
                         ? await r.json() : null;
                     if (j && j.job && j.job.b64) {
+                        currentJob = j.job;
                         const jobId = String(j.job.id || '').trim();
                         if (!jobId) {
                             log('Trabajo inválido recibido.');
@@ -204,6 +208,13 @@
                 } catch (e) {
                     console.error(e);
                     log('Error: ' + (e && e.message ? e.message : e));
+                    if (currentJob?.id) {
+                        await ackJob(
+                            currentJob,
+                            'error',
+                            e && e.message ? e.message : 'Error en QZ Tray'
+                        );
+                    }
                 } finally {
                     busy = false;
                 }

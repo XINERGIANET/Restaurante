@@ -2773,12 +2773,17 @@
                             }
                         }
 
-                        const singleJob = jobs.slice(0, 1);
-                        for (const job of singleJob) {
+                        for (const job of jobs) {
                             const pname = String(job.printer_name || '').trim();
                             const data = String(job.ticket_text || '');
                             const printJobId = parseInt(job.id, 10) || null;
                             if (!pname || !data || !printJobId) continue;
+                            // En nube la comanda ya quedó en la cola persistente durante
+                            // el guardado. La estación del local la recoge; no hacemos al
+                            // mozo esperar otro POST por cada ticketera.
+                            if (job.print_bridge === true) {
+                                continue;
+                            }
                             if (shouldSkipDuplicateKitchenTicket(pname, data)) {
                                 console.warn('Comanda duplicada evitada en ' + pname);
                                 continue;
@@ -3172,9 +3177,8 @@
                         const tableLabel = table?.name ?? table?.table_id ?? 'Mesa';
                         const areaLabel = (table?.original_area_name || '').trim();
 
-                        const singleNames = names.slice(0, 1);
-                        for (let i = 0; i < singleNames.length; i++) {
-                            const pname = singleNames[i];
+                        for (let i = 0; i < names.length; i++) {
+                            const pname = names[i];
                             const lines = byPrinter[pname] || [];
                             let body = '';
                             const paperWidth = resolvePrinterWidthByName(pname);

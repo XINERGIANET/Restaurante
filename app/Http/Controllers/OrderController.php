@@ -2843,13 +2843,41 @@ class OrderController extends Controller
                 $newCommittedQtyByProduct
             );
 
-            $kitchenPrintJobs = $this->persistKitchenPrintJobsForOrder(
-                $orderMovement,
-                $movement,
-                $items,
-                $cancellations,
-                $request
-            );
+            $kitchenPrintError = null;
+            try {
+                $kitchenPrintJobs = $this->persistKitchenPrintJobsForOrder(
+                    $orderMovement,
+                    $movement,
+                    $items,
+                    $cancellations,
+                    $request
+                );
+            } catch (\Throwable $printPreparationError) {
+                // La impresora nunca debe revertir el pedido. La comanda se deja
+                // registrada con error para que sea visible y recuperable.
+                $kitchenPrintJobs = [];
+                $kitchenPrintError = $printPreparationError->getMessage();
+                Log::warning('Pedido guardado con comanda pendiente de preparar', [
+                    'movement_id' => $movement->id,
+                    'error' => $kitchenPrintError,
+                ]);
+
+                try {
+                    $this->recordKitchenPrintPreparationFailure(
+                        $orderMovement,
+                        $movement,
+                        $items,
+                        $cancellations,
+                        $request,
+                        $kitchenPrintError
+                    );
+                } catch (\Throwable $recordError) {
+                    Log::error('No se pudo registrar el error de comanda', [
+                        'movement_id' => $movement->id,
+                        'error' => $recordError->getMessage(),
+                    ]);
+                }
+            }
             $kitchenPrintJobsCreated = count($kitchenPrintJobs);
 
             DB::commit();
@@ -2872,12 +2900,20 @@ class OrderController extends Controller
                     'client_person_id' => $clientPerson?->id,
                     'client_name' => $clientName,
                     'kitchen_print_jobs_created' => $kitchenPrintJobsCreated,
+                    'kitchen_print_error' => $kitchenPrintError,
                     'kitchen_print_jobs' => collect($kitchenPrintJobs)
-                        ->map(fn (ThermalPrintJob $job) => [
-                            'id' => (int) $job->id,
-                            'printer_name' => (string) ($job->printer_name ?? ''),
-                            'ticket_text' => (string) ($job->ticket_text ?? ''),
-                        ])
+                        ->map(function (ThermalPrintJob $job) {
+                            $printer = $job->printerBranch;
+
+                            return [
+                                'id' => (int) $job->id,
+                                'printer_name' => (string) ($job->printer_name ?? ''),
+                                'ticket_text' => (string) ($job->ticket_text ?? ''),
+                                'print_bridge' => $printer
+                                    ? app(PrintBridgeQueue::class)->shouldQueueToStation($printer)
+                                    : false,
+                            ];
+                        })
                         ->values()
                         ->all(),
                 ]);
@@ -3041,7 +3077,6 @@ class OrderController extends Controller
             ->filter()
             ->unique(fn ($name) => mb_strtolower($name))
             ->values()
-            ->take(1)
             ->all();
 
         if (empty($printerNames)) {
@@ -3850,9 +3885,16 @@ class OrderController extends Controller
             ->latest('id')
             ->first();
 
+        $printer = PrinterBranch::query()
+            ->where('branch_id', (int) $movement->branch_id)
+            ->where('status', 'E')
+            ->whereRaw('LOWER(TRIM(name)) = ?', [mb_strtolower(trim($printerName))])
+            ->first();
+
         $data = [
             'branch_id' => (int) $movement->branch_id,
             'movement_id' => (int) $movement->id,
+            'printer_branch_id' => $printer?->id,
             'printer_name' => trim($printerName) ?: null,
             'status' => 'pending',
             'source' => 'kitchen_order',
@@ -3872,6 +3914,59 @@ class OrderController extends Controller
         }
 
         return ThermalPrintJob::create($data);
+    }
+
+    private function recordKitchenPrintPreparationFailure(
+        OrderMovement $orderMovement,
+        Movement $movement,
+        array $items,
+        array $cancellations,
+        Request $request,
+        string $message
+    ): ?ThermalPrintJob {
+        if (! $this->thermalPrintJobsSchemaReady()) {
+            return null;
+        }
+
+        $lines = collect($items)->map(function ($item) {
+            $qty = max(0, (float) ($item['quantity'] ?? $item['qty'] ?? 0));
+            $savedQty = max(0, (float) ($item['savedQty'] ?? 0));
+            $delta = max(0, round($qty - $savedQty, 6));
+
+            return $delta > 0
+                ? 'x' . $this->formatKitchenQty($delta) . ' ' . trim((string) ($item['name'] ?? $item['description'] ?? 'Producto'))
+                : null;
+        })->filter()->values();
+
+        $cancelLines = collect($cancellations)->map(function ($item) {
+            $qty = max(0, (float) ($item['qtyCanceled'] ?? $item['quantity'] ?? 0));
+
+            return $qty > 0
+                ? 'ANULADO x' . $this->formatKitchenQty($qty) . ' ' . trim((string) ($item['name'] ?? $item['description'] ?? 'Producto'))
+                : null;
+        })->filter()->values();
+
+        $summary = $lines->merge($cancelLines)->implode(' · ');
+        $ticketText = "COMANDA PENDIENTE\nPEDIDO #" . ($movement->number ?: $orderMovement->id)
+            . "\n--------------------------------\n"
+            . $lines->merge($cancelLines)->implode("\n")
+            . "\n\n";
+        $payloadHash = hash('sha256', $ticketText . '|' . $message);
+
+        return ThermalPrintJob::create([
+            'branch_id' => (int) $movement->branch_id,
+            'movement_id' => (int) $movement->id,
+            'printer_name' => null,
+            'status' => 'pending',
+            'source' => 'kitchen_order',
+            'ticket_text' => $ticketText,
+            'content_summary' => Str::limit($summary, 2000, ''),
+            'payload_hash' => $payloadHash,
+            'attempts' => 1,
+            'last_error' => Str::limit($message, 2000, ''),
+            'last_attempt_at' => now(),
+            'requested_by' => $request->user()?->id,
+        ]);
     }
 
     private function markKitchenPrintJobPrinted(ThermalPrintJob $job, Request $request): void

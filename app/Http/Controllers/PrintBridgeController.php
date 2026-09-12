@@ -8,6 +8,7 @@ use App\Models\PrinterBranch;
 use App\Services\PrintBridgeQueue;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Illuminate\Http\JsonResponse;
@@ -138,8 +139,11 @@ class PrintBridgeController extends Controller
             return response()->json(['success' => false, 'message' => 'job_id inválido'], 422);
         }
 
-        $targetStatus = $request->input('status') === 'error' ? 'error' : 'printed';
-        $errorMessage = $targetStatus === 'error' ? Str::limit((string) $request->input('error_message', 'Error en QZ Tray'), 500, '') : null;
+        // La pantalla de comandas clasifica un fallo como pending + last_error.
+        // Mantenerlo pendiente permite reintentar y evita que desaparezca de "Con error".
+        $isError = $request->input('status') === 'error';
+        $targetStatus = $isError ? 'pending' : 'printed';
+        $errorMessage = $isError ? Str::limit((string) $request->input('error_message', 'Error en QZ Tray'), 500, '') : null;
 
         $thermalJobFromDirectId = $this->thermalPrintJobIdFromBridgeJobId($jobId);
         if ($thermalJobFromDirectId > 0) {
@@ -202,7 +206,14 @@ class PrintBridgeController extends Controller
                 ->where('created_at', '>=', now()->subHours(48))
                 ->whereRaw('LOWER(TRIM(printer_name)) = ?', [$normalizedPrinterName])
                 ->where(function ($query) use ($leaseExpiredAt) {
-                    $query->where('status', 'pending')
+                    $query->where(function ($pendingQuery) use ($leaseExpiredAt) {
+                        $pendingQuery->where('status', 'pending')
+                            ->where(function ($retryQuery) use ($leaseExpiredAt) {
+                                $retryQuery->whereNull('last_error')
+                                    ->orWhereNull('last_attempt_at')
+                                    ->orWhere('last_attempt_at', '<', $leaseExpiredAt);
+                            });
+                    })
                         ->orWhere(function ($subQuery) use ($leaseExpiredAt) {
                             $subQuery->where('status', 'printing')
                                 ->where(function ($expiredQuery) use ($leaseExpiredAt) {
@@ -213,7 +224,7 @@ class PrintBridgeController extends Controller
                 })
                 ->whereNotNull('ticket_text')
                 ->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")
-                ->orderByDesc('id')
+                ->orderBy('id')
                 ->lockForUpdate()
                 ->first();
 
@@ -332,7 +343,14 @@ class PrintBridgeController extends Controller
                 ->where('branch_id', $branchId)
                 ->where('source', 'kitchen_order')
                 ->where(function ($query) use ($leaseExpiredAt) {
-                    $query->where('status', 'pending')
+                    $query->where(function ($pendingQuery) use ($leaseExpiredAt) {
+                        $pendingQuery->where('status', 'pending')
+                            ->where(function ($retryQuery) use ($leaseExpiredAt) {
+                                $retryQuery->whereNull('last_error')
+                                    ->orWhereNull('last_attempt_at')
+                                    ->orWhere('last_attempt_at', '<', $leaseExpiredAt);
+                            });
+                    })
                         ->orWhere(function ($subQuery) use ($leaseExpiredAt) {
                             $subQuery->where('status', 'printing')
                                 ->where(function ($expiredQuery) use ($leaseExpiredAt) {
