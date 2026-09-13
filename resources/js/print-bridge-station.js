@@ -181,6 +181,20 @@ export function startPrintBridgeStationPoll() {
         }
     };
 
+    // Despertar la cola inmediatamente al comandar desde esta PC u otra pestaña.
+    window.__xinergiaPrintBridgeTick = tick;
+    window.addEventListener('xinergia:print-bridge:wake', tick);
+    window.addEventListener('storage', (event) => {
+        if (event.key === 'xinergia_print_bridge_wake') tick();
+    });
+    if ('BroadcastChannel' in window) {
+        const channel = new BroadcastChannel('xinergia-print-bridge');
+        channel.addEventListener('message', (event) => {
+            if (event.data === 'wake') tick();
+        });
+        window.__xinergiaPrintBridgeChannel = channel;
+    }
+
     warmUpQz();
     window.__xinergiaPrintBridgeInterval = setInterval(tick, 250);
     tick();

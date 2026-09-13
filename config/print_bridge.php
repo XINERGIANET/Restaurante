@@ -13,4 +13,10 @@ return [
 
     'max_queue_length' => 200,
 
+    // Solo esta estación puede despachar las ticketeras LAN sin estación propia.
+    'lan_gateway_station_names' => array_values(array_filter(array_map(
+        'trim',
+        explode(',', (string) env('PRINT_BRIDGE_LAN_GATEWAY_STATIONS', 'PRINCIPAL'))
+    ))),
+
 ];

@@ -75,10 +75,13 @@ class PrintBridgeController extends Controller
                     }
                 }
 
-                // Una sola consulta para LAN/no asignadas. Nunca toma la USB de otra PC.
-                $unmatchedJob = $this->claimAnyPendingThermalPrintJobForBranch($branchId, (int) $station->id);
-                if ($unmatchedJob) {
-                    return response()->json(['job' => $unmatchedJob, 'station' => $station->name]);
+                // Las LAN COCINA/CEVICHES las despacha exclusivamente la PC PRINCIPAL.
+                // Las demás estaciones solo atienden sus USB y jamás cruzan trabajos.
+                if ($this->isLanGatewayStation($station)) {
+                    $unmatchedJob = $this->claimAnyPendingThermalPrintJobForBranch($branchId, (int) $station->id);
+                    if ($unmatchedJob) {
+                        return response()->json(['job' => $unmatchedJob, 'station' => $station->name]);
+                    }
                 }
 
                 return response()->json(['job' => null, 'station' => $station->name]);
@@ -89,25 +92,21 @@ class PrintBridgeController extends Controller
         if (! $job) {
             $job = $this->nextLegacyQueuedJob($queue, $branchId, $name);
         }
-        if (! $job) {
-            $allBranchPrinters = PrinterBranch::query()->where('branch_id', $branchId)->where('status', 'E')->orderBy('id')->get();
-            foreach ($allBranchPrinters as $p) {
-                $job = $this->claimPendingThermalPrintJob($branchId, (string) $p->name);
-                if ($job) {
-                    $job['printer_name'] = filled($p->driver_name) ? $p->driver_name : $p->name;
-                    $job['configured_printer_name'] = $p->name;
-                    break;
-                }
-            }
-        }
-        if (! $job) {
-            $job = $this->claimAnyPendingThermalPrintJobForBranch($branchId);
-        }
         if ($job && empty($job['printer_name'])) {
             $job['printer_name'] = $name;
         }
 
         return response()->json(['job' => $job]);
+    }
+
+    private function isLanGatewayStation(PrintStation $station): bool
+    {
+        $stationName = mb_strtolower(trim((string) $station->name));
+        $allowedNames = collect(config('print_bridge.lan_gateway_station_names', ['PRINCIPAL']))
+            ->map(fn ($name) => mb_strtolower(trim((string) $name)))
+            ->filter();
+
+        return $stationName !== '' && $allowedNames->contains($stationName);
     }
 
     public function ack(Request $request, PrintBridgeQueue $queue): JsonResponse

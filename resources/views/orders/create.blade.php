@@ -2715,6 +2715,22 @@
                             'Ticketera') + '".'));
                     }
 
+                    function wakePrintBridgeNow() {
+                        try {
+                            window.dispatchEvent(new CustomEvent('xinergia:print-bridge:wake'));
+                        } catch (e) {}
+                        try {
+                            localStorage.setItem('xinergia_print_bridge_wake', String(Date.now()));
+                        } catch (e) {}
+                        try {
+                            if ('BroadcastChannel' in window) {
+                                const channel = new BroadcastChannel('xinergia-print-bridge');
+                                channel.postMessage('wake');
+                                channel.close();
+                            }
+                        } catch (e) {}
+                    }
+
                     async function printPersistedKitchenTicketJobs(printJobs, table) {
                         const jobs = Array.isArray(printJobs) ? printJobs.filter((job) => {
                             return job && parseInt(job.id, 10) > 0 && String(job.printer_name || '').trim() &&
@@ -5236,6 +5252,9 @@
                                         .cancellations || []).length > 0;
                                     const persistedKitchenJobs = Array.isArray(data.kitchen_print_jobs) ? data
                                         .kitchen_print_jobs : [];
+                                    if (persistedKitchenJobs.length > 0) {
+                                        wakePrintBridgeNow();
+                                    }
                                     let kitchenPrintedOk = true;
                                     try {
                                         if (hasKitchenOutput) {

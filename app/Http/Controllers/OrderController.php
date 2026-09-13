@@ -1358,7 +1358,11 @@ class OrderController extends Controller
 
         // Solo product_branches de esta sucursal cuyo producto es vendible (mismo criterio que Ventas).
         $productBranches = $branchId
-            ? ProductBranch::with(['product.productType', 'taxRate', 'printers'])
+            ? ProductBranch::with(['product.productType', 'taxRate', 'printers' => function ($query) {
+                $query->where('printers_branch.status', 'E')
+                    ->orderByRaw("CASE WHEN printers_branch.ip IS NOT NULL AND TRIM(printers_branch.ip) <> '' THEN 0 ELSE 1 END")
+                    ->orderBy('printers_branch.id');
+            }])
             ->where('branch_id', $branchId)
             ->whereIn('product_id', function ($q) {
                 $q->select('id')->from('products')
@@ -1735,7 +1739,11 @@ class OrderController extends Controller
             });
 
         $productBranches = $branchId
-            ? ProductBranch::with(['product.productType', 'taxRate', 'printers'])
+            ? ProductBranch::with(['product.productType', 'taxRate', 'printers' => function ($query) {
+                $query->where('printers_branch.status', 'E')
+                    ->orderByRaw("CASE WHEN printers_branch.ip IS NOT NULL AND TRIM(printers_branch.ip) <> '' THEN 0 ELSE 1 END")
+                    ->orderBy('printers_branch.id');
+            }])
             ->where('branch_id', $branchId)
             ->whereIn('product_id', function ($q) {
                 $q->select('id')->from('products')
@@ -3068,8 +3076,10 @@ class OrderController extends Controller
         $productBranches = ProductBranch::query()
             ->with(['printers' => function ($query) use ($movement) {
                 $query
-                    ->where('branch_id', (int) $movement->branch_id)
-                    ->where('status', 'E');
+                    ->where('printers_branch.branch_id', (int) $movement->branch_id)
+                    ->where('printers_branch.status', 'E')
+                    ->orderByRaw("CASE WHEN printers_branch.ip IS NOT NULL AND TRIM(printers_branch.ip) <> '' THEN 0 ELSE 1 END")
+                    ->orderBy('printers_branch.id');
             }])
             ->where('branch_id', (int) $movement->branch_id)
             ->whereIn('product_id', $productIds)
