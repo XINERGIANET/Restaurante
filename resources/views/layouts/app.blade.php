@@ -12,7 +12,15 @@
         </script>
     @endauth
     @php
-        $qzDefaultPrinter = config('qz.printer_name', 'BARRA');
+        $branchId = session('branch_id');
+        $branchPrinterName = null;
+        if ($branchId) {
+            $branchPrinterName = \App\Models\PrinterBranch::query()
+                ->where('branch_id', $branchId)
+                ->where('status', 'E')
+                ->value('name');
+        }
+        $qzDefaultPrinter = $branchPrinterName ?: config('qz.printer_name', 'CAJA');
         $qzCertPairTryOrder = config('qz.cert_pair_try_order', ['primary', 'secondary', 'tertiary']);
     @endphp
     @stack('head')
