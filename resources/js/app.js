@@ -139,7 +139,8 @@ const loadingOverlay = (() => {
     let overlayEl = null;
 
     const getEl = () => {
-        if (!overlayEl) {
+        // Turbo reemplaza el body; nunca reutilizar el overlay de la vista anterior.
+        if (!overlayEl || !overlayEl.isConnected) {
             overlayEl = document.querySelector('[data-loading-overlay]');
         }
         return overlayEl;
@@ -164,25 +165,6 @@ const loadingOverlay = (() => {
 
 window.showLoadingModal = loadingOverlay.show;
 window.hideLoadingModal = loadingOverlay.hide;
-
-const bindGlobalLoadingOverlay = () => {
-    if (!window.showLoadingModal || !window.hideLoadingModal) {
-        return;
-    }
-
-    document.addEventListener('turbo:visit', () => {
-        window.showLoadingModal();
-    });
-
-    const hideEvents = ['turbo:load', 'turbo:render', 'turbo:frame-load', 'turbo:frame-render'];
-    hideEvents.forEach((eventName) => {
-        document.addEventListener(eventName, () => {
-            window.hideLoadingModal();
-        });
-    });
-};
-
-bindGlobalLoadingOverlay();
 
 const shouldIgnoreLink = (link, event) => {
     if (!link) return true;
@@ -217,28 +199,31 @@ const bindLoadingOverlay = () => {
     if (window.__loadingOverlayBound) return;
     window.__loadingOverlayBound = true;
 
+    // Captura: se ejecuta antes de los handlers propios de cada CRUD.
     document.addEventListener('click', (event) => {
         const link = event.target.closest('a');
         if (shouldIgnoreLink(link, event)) return;
         loadingOverlay.show();
-    });
+    }, true);
 
     document.addEventListener('submit', (event) => {
         const form = event.target;
         if (shouldIgnoreForm(form, event)) return;
         loadingOverlay.show();
-    });
+    }, true);
 
     document.addEventListener('pageshow', () => loadingOverlay.hide());
 
     if (window.Turbo) {
+        document.addEventListener('turbo:before-visit', () => loadingOverlay.show());
         document.addEventListener('turbo:visit', () => loadingOverlay.show());
         document.addEventListener('turbo:submit-start', () => loadingOverlay.show());
-        document.addEventListener('turbo:submit-end', () => loadingOverlay.hide());
-        document.addEventListener('turbo:render', () => loadingOverlay.hide());
+        // Ocultar únicamente cuando Turbo terminó de cargar la vista, no en
+        // turbo:render/submit-end, que ocurren antes de inicializar sus datos.
         document.addEventListener('turbo:load', () => loadingOverlay.hide());
         document.addEventListener('turbo:before-cache', () => loadingOverlay.hide());
         document.addEventListener('turbo:frame-load', () => loadingOverlay.hide());
+        document.addEventListener('turbo:fetch-request-error', () => loadingOverlay.hide());
     } else {
         document.addEventListener('DOMContentLoaded', () => loadingOverlay.hide(), { once: true });
     }

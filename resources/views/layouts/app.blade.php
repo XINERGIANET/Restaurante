@@ -245,9 +245,6 @@ body.swal2-shown #sidebar { z-index: 1 !important; }
     window.addEventListener('resize', window.__sidebarResizeHandler);
     checkMobile();">
 
-    {{-- preloader --}}
-    <x-common.preloader/>
-    {{-- preloader end --}}
     <x-common.loading-overlay/>
 
     <div class="flex-1 flex flex-col xl:flex-row min-h-screen">
