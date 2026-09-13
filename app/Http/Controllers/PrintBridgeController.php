@@ -123,9 +123,6 @@ class PrintBridgeController extends Controller
             'station_uuid' => 'nullable|uuid',
         ]);
         $name = trim((string) $request->input('printer_name', 'BARRA2')) ?: 'BARRA2';
-        if (! $request->filled('station_uuid') && ! $queue->isStationPrinterName($name)) {
-            return response()->json(['success' => false, 'message' => 'impresora no permitida'], 422);
-        }
         $branchId = (int) session('branch_id');
         if (! $branchId) {
             return response()->json(['success' => false, 'message' => 'sin sucursal en sesión'], 200);
@@ -163,6 +160,10 @@ class PrintBridgeController extends Controller
                 ]);
 
             return response()->json(['success' => true]);
+        }
+
+        if (! $request->filled('station_uuid') && ! $queue->isStationPrinterName($name)) {
+            return response()->json(['success' => false, 'message' => 'impresora no permitida'], 422);
         }
 
         $job = $queue->ack($branchId, $name, $jobId);
