@@ -7,7 +7,7 @@
     <style>
         body { font-family: Arial, sans-serif; color: #111827; margin: 24px; }
         .head { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; }
-        .logo { max-height: 96px; max-width: 240px; object-fit: contain; }
+        .logo { max-height: 288px; max-width: 720px; object-fit: contain; }
         .doc-box { border: 1px solid #334155; padding: 16px; min-width: 300px; text-align: center; }
         .doc-box h1 { margin: 0; font-size: 30px; }
         .doc-box p { margin: 4px 0; font-size: 18px; }
@@ -26,12 +26,14 @@
         .totals { margin-top: 18px; width: 360px; margin-left: auto; }
         .totals div { display: flex; justify-content: space-between; padding: 3px 0; }
         .totals .final { border-top: 2px solid #111827; margin-top: 6px; padding-top: 6px; font-weight: 700; font-size: 20px; }
+        .totals .discount-total { color: #b91c1c; }
         .notes { margin-top: 20px; }
         .notes p { margin: 6px 0 0; }
         .qr-box { margin-top: 18px; display: flex; justify-content: flex-end; }
         .qr-box-inner { width: 180px; text-align: center; }
         .qr-box img { width: 170px; height: 170px; object-fit: contain; display: block; margin: 0 auto; }
         .qr-caption { margin-top: 6px; font-size: 10px; color: #475569; word-break: break-all; }
+        .table-items .discount-cell { color: #b91c1c; font-style: italic; }
         @media print {
             body { margin: 10mm; }
         }
@@ -58,6 +60,27 @@
     if ($customerDocument === '' || $customerDocument === '-') {
         $customerDocument = '0';
     }
+
+    // ── Descuentos ──
+    $pdfTotalDiscount = 0;
+    $pdfHasDiscounts = false;
+    foreach ($details as $d) {
+        $dPct = (float) ($d->discount_percentage ?? 0);
+        $dOrig = $d->original_amount !== null ? (float) $d->original_amount : null;
+        $dAmt = (float) ($d->amount ?? 0);
+        if ($dOrig !== null && $dOrig > $dAmt + 0.009) {
+            $pdfTotalDiscount += round($dOrig - $dAmt, 2);
+            $pdfHasDiscounts = true;
+        } elseif ($dPct > 0.009) {
+            $denom = 1 - ($dPct / 100);
+            if ($denom > 0.0001) {
+                $origCalc = $dAmt / $denom;
+                $pdfTotalDiscount += round(max(0, $origCalc - $dAmt), 2);
+                $pdfHasDiscounts = true;
+            }
+        }
+    }
+    $pdfTotalDiscount = round($pdfTotalDiscount, 2);
 @endphp
 
 <div class="head">
@@ -112,6 +135,10 @@
         <th style="width:60px;">U.M.</th>
         <th style="width:80px;" class="num">Cantidad</th>
         <th style="width:90px;" class="num">P.Unit</th>
+        @if($pdfHasDiscounts)
+            <th style="width:60px;" class="num">Dcto.%</th>
+            <th style="width:90px;" class="num">Descuento</th>
+        @endif
         <th style="width:100px;" class="num">Subtotal</th>
     </tr>
     </thead>
@@ -121,22 +148,48 @@
             $qty = (float) $detail->quantity;
             $lineTotal = (float) $detail->amount;
             $unitPrice = $qty > 0 ? ($lineTotal / $qty) : 0;
+            // Descuento de esta línea
+            $lineDctoPct = (float) ($detail->discount_percentage ?? 0);
+            $lineOrigAmt = $detail->original_amount !== null ? (float) $detail->original_amount : null;
+            $lineDiscAmt = 0;
+            $lineHasDisc = false;
+            if ($lineOrigAmt !== null && $lineOrigAmt > $lineTotal + 0.009) {
+                $lineDiscAmt = round($lineOrigAmt - $lineTotal, 2);
+                $lineHasDisc = true;
+            } elseif ($lineDctoPct > 0.009) {
+                $denom = 1 - ($lineDctoPct / 100);
+                if ($denom > 0.0001) {
+                    $origCalc = $lineTotal / $denom;
+                    $lineDiscAmt = round(max(0, $origCalc - $lineTotal), 2);
+                    $lineHasDisc = true;
+                }
+            }
+            $lineOrigUnitPrice = $lineHasDisc && $qty > 0
+                ? (($lineTotal + $lineDiscAmt) / $qty)
+                : $unitPrice;
         @endphp
         <tr>
             <td>{{ $i + 1 }}</td>
             <td>{{ $detail->description ?? $detail->product?->description ?? '-' }}</td>
             <td>{{ $detail->unit?->code ?? $detail->unit?->description ?? '-' }}</td>
             <td class="num">{{ number_format($qty, 2) }}</td>
-            <td class="num">S/ {{ number_format($unitPrice, 2) }}</td>
+            <td class="num">S/ {{ number_format($lineHasDisc ? $lineOrigUnitPrice : $unitPrice, 2) }}</td>
+            @if($pdfHasDiscounts)
+                <td class="num discount-cell">{{ $lineHasDisc ? number_format($lineDctoPct, 1) . '%' : '-' }}</td>
+                <td class="num discount-cell">{{ $lineHasDisc ? '-S/ ' . number_format($lineDiscAmt, 2) : '-' }}</td>
+            @endif
             <td class="num">S/ {{ number_format($lineTotal, 2) }}</td>
         </tr>
     @empty
-        <tr><td colspan="6">Sin detalle</td></tr>
+        <tr><td colspan="{{ $pdfHasDiscounts ? 8 : 6 }}">Sin detalle</td></tr>
     @endforelse
     </tbody>
 </table>
 
 <div class="totals">
+    @if($pdfHasDiscounts)
+        <div class="discount-total"><span>Descuento total:</span><span>&minus;S/ {{ number_format($pdfTotalDiscount, 2) }}</span></div>
+    @endif
     <div><span>Op. gravada:</span><span>S/ {{ number_format($ticketSubtotal, 2) }}</span></div>
     <div><span>I.G.V.:</span><span>S/ {{ number_format($ticketTax, 2) }}</span></div>
     <div class="final"><span>Importe total:</span><span>S/ {{ number_format($ticketTotal, 2) }}</span></div>
