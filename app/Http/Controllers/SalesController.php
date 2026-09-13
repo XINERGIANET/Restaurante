@@ -1878,10 +1878,7 @@ class SalesController extends Controller
 
         // Modo QZ: mismo ticket maquetado que la vista/PDF manual (wkhtmltopdf); fallback RAW si no hay PDF.
         if ($qzMode) {
-            $paperWidthMm = (int) ($printer?->width ?? 80);
-            if (! in_array($paperWidthMm, [58, 80], true)) {
-                $paperWidthMm = 80;
-            }
+            $paperWidthMm = 80;
 
             $printData = $this->buildSalePrintData($movement, $request);
             $printData['autoPrint'] = false;
@@ -1916,6 +1913,7 @@ class SalesController extends Controller
                 'printer_name' => filled($printer?->driver_name) ? $printer->driver_name : ($printer?->name ?? null),
                 'configured_printer_name' => $printer?->name ?? null,
                 'paper_width' => $paperWidthMm,
+                'paper_height' => (float) $pageHeight,
             ];
             if ($printJob) {
                 $response['print_job_id'] = $printJob->id;
