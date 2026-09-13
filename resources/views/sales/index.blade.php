@@ -1309,29 +1309,7 @@
                         body.print_job_id = printJobId;
                     }
 
-                    // Igual que ALLAHUASCA: primero impresión RAW por la IP configurada.
-                    if (@json((bool) ($clientOnLocalNetwork ?? false))) try {
-                        const networkResponse = await fetch(salesThermalPrintUrl, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': csrf,
-                                Accept: 'application/json',
-                            },
-                            credentials: 'same-origin',
-                            body: JSON.stringify(body),
-                        });
-                        const networkData = networkResponse.headers.get('content-type')?.includes('application/json') ?
-                            await networkResponse.json() : null;
-                        if (networkResponse.ok && networkData?.success) {
-                            thermalPrintToast('Impresión', networkData.message || 'Comprobante enviado por red.', 'success');
-                            return;
-                        }
-                    } catch (networkError) {
-                        console.warn('Impresión por IP no disponible; se intentará QZ.', networkError);
-                    }
-
-                    // QZ recibe el mismo RAW ESC/POS usado por ALLAHUASCA.
+                    // Reimpresión rápida: ir directo a QZ y evitar el timeout previo de red.
                     if (qzApi && await ensureQzTrayConnected(qzApi, preferredPrinterName)) {
                         try {
                             const tr = await fetch(salesThermalPrintUrl, {
@@ -1473,6 +1451,24 @@
                 }
 
                 window.printThermalSaleReceipt = printThermalSaleReceipt;
+
+                // Dejar QZ conectado antes del primer clic para que la reimpresión
+                // solo tenga que solicitar el payload y enviarlo a la ticketera.
+                function warmUpSalesReceiptPrinter() {
+                    if (window.__salesReceiptQzWarmupPromise || !window.qz) return;
+                    window.__salesReceiptQzWarmupPromise = ensureQzTrayConnected(
+                        window.qz,
+                        resolveStrictLocalPrinterName()
+                    ).catch(function (error) {
+                        console.warn('No se pudo precargar QZ para reimpresión:', error);
+                        return false;
+                    });
+                }
+
+                setTimeout(warmUpSalesReceiptPrinter, 250);
+                document.addEventListener('turbo:load', function () {
+                    setTimeout(warmUpSalesReceiptPrinter, 250);
+                });
 
                 document.addEventListener('click', function (e) {
                     const dismissBtn = e.target.closest('[data-dismiss-thermal-job]');

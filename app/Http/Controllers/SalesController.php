@@ -2397,7 +2397,7 @@ class SalesController extends Controller
         }
     }
 
-    private function buildSalePrintData(Movement $sale, Request $request): array
+    private function buildSalePrintData(Movement $sale, Request $request, bool $includeRenderedQrImage = true): array
     {
         $sale->loadMissing([
             'documentType',
@@ -2498,7 +2498,7 @@ class SalesController extends Controller
                 'time' => optional($sale->moved_at)->format('H:i:s') ?: now()->format('H:i:s'),
             ],
             'qrPayload' => $this->buildSaleQrPayload($sale, $branchForLogo),
-            'qrImageUrl' => $this->buildSaleQrImageUrl($sale, $branchForLogo),
+            'qrImageUrl' => $includeRenderedQrImage ? $this->buildSaleQrImageUrl($sale, $branchForLogo) : null,
             'viewId' => $request->input('view_id'),
             'ticketPageWidthMm' => 80,
             'thermalPrint' => true,
@@ -3476,9 +3476,14 @@ class SalesController extends Controller
         return implode("\n", $lines);
     }
 
-    private function buildThermalTicketPlainTextApproved(Movement $sale, Request $request, ?PrinterBranch $printer = null): string
+    private function buildThermalTicketPlainTextApproved(
+        Movement $sale,
+        Request $request,
+        ?PrinterBranch $printer = null,
+        ?array $preparedPrintData = null
+    ): string
     {
-        $printData = $this->buildSalePrintData($sale, $request);
+        $printData = $preparedPrintData ?? $this->buildSalePrintData($sale, $request, false);
         $sale = $printData['sale'];
         $details = $printData['details'];
         $branch = $printData['branchForLogo'];
@@ -3716,8 +3721,8 @@ class SalesController extends Controller
      */
     private function buildEscPosSaleTicketPayload(Movement $sale, Request $request, ?PrinterBranch $printer = null): string
     {
-        $printData = $this->buildSalePrintData($sale, $request);
-        $text = $this->buildThermalTicketPlainTextApproved($sale, $request, $printer);
+        $printData = $this->buildSalePrintData($sale, $request, false);
+        $text = $this->buildThermalTicketPlainTextApproved($sale, $request, $printer, $printData);
         $text = str_replace(["\r\n", "\r"], "\n", $text);
 
         $printerWidthMm = (int) ($printer?->width ?? 80);
