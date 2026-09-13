@@ -1876,40 +1876,16 @@ class SalesController extends Controller
             );
         }
 
-        // Modo QZ: mismo ticket maquetado que la vista/PDF manual (wkhtmltopdf); fallback RAW si no hay PDF.
+        // El comprobante físico se entrega exclusivamente como RAW ESC/POS.
+        // Así conserva el ancho, centrado y tipografía nativos de la ticketera.
         if ($qzMode) {
             $paperWidthMm = 80;
-
-            $printData = $this->buildSalePrintData($movement, $request);
-            $printData['autoPrint'] = false;
-            $printData['ticketPageWidthMm'] = $paperWidthMm;
-            $printData['useEmbeddedAssets'] = true;
-            $printData['thermalPrint'] = true;
-
-            $html = view('sales.print.ticket', $printData)->render();
             $pageHeight = $this->estimateSaleTicketHeight($movement);
-            $pdfBinary = $this->renderPdfWithWkhtmltopdf($html, null, [
-                '--page-width',
-                $paperWidthMm.'mm',
-                '--page-height',
-                $pageHeight,
-                '--margin-top',
-                '0',
-                '--margin-right',
-                '0',
-                '--margin-bottom',
-                '0',
-                '--margin-left',
-                '0',
-                '--print-media-type',
-                '--disable-smart-shrinking',
-                '--dpi',
-                '203',
-            ]);
 
             $response = [
                 'success' => true,
                 'payload_b64' => base64_encode($payload),
+                'qz_print_format' => 'raw',
                 'printer_name' => filled($printer?->driver_name) ? $printer->driver_name : ($printer?->name ?? null),
                 'configured_printer_name' => $printer?->name ?? null,
                 'paper_width' => $paperWidthMm,
@@ -1917,14 +1893,6 @@ class SalesController extends Controller
             ];
             if ($printJob) {
                 $response['print_job_id'] = $printJob->id;
-            }
-
-            $printData['usePublicAssets'] = true;
-            $response['ticket_html_b64'] = base64_encode(view('sales.print.ticket', $printData)->render());
-
-            if ($pdfBinary !== null && $pdfBinary !== '') {
-                $response['ticket_pdf_b64'] = base64_encode($pdfBinary);
-                $response['qz_print_format'] = 'pdf';
             }
 
             return response()->json($response);

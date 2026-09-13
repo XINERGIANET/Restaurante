@@ -1625,7 +1625,29 @@ es                        style="max-height: 80vh;">
                 };
                 if (printerId) body.printer_id = printerId;
 
-                // Si QZ Tray está activo y conectado, obtener el payload del servidor e imprimir por QZ (USB o red)
+                // Igual que ALLAHUASCA: primero impresión RAW por la IP configurada.
+                if (@json((bool) ($clientOnLocalNetwork ?? false))) try {
+                    const networkResponse = await fetch(salesThermalPrintUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrf,
+                            'Accept': 'application/json'
+                        },
+                        credentials: 'same-origin',
+                        body: JSON.stringify(body)
+                    });
+                    const networkData = networkResponse.headers.get('content-type')?.includes('application/json') ?
+                        await networkResponse.json() : null;
+                    if (networkResponse.ok && networkData?.success) {
+                        showCobroNotification('Impresión', networkData.message || 'Ticket enviado por red.', 'success');
+                        return;
+                    }
+                } catch (networkError) {
+                    console.warn('Impresión por IP no disponible; se intentará QZ.', networkError);
+                }
+
+                // QZ recibe el mismo RAW ESC/POS usado por ALLAHUASCA.
                 if (qzApi && await ensureQzTrayConnected(qzApi, preferredPrinterName)) {
                     try {
                         const tr = await fetch(salesThermalPrintUrl, {
