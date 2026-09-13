@@ -1582,8 +1582,6 @@ es                        style="max-height: 80vh;">
                     const localPrinter = String(localStorage.getItem('xinergia_local_printer_name') ||
                         localStorage.getItem('xinergia_print_bridge_printer') || '').trim();
                     if (localPrinter) return localPrinter;
-                    const stationName = String(localStorage.getItem('restaurant_print_station_name') || '').trim();
-                    if (stationName) return stationName;
                 } catch (e) {}
                 const sel = document.getElementById('cobro-thermal-printer') || document.getElementById('sales-index-thermal-printer');
                 if (sel && sel.value) {
@@ -1619,11 +1617,11 @@ es                        style="max-height: 80vh;">
                 const stationName = String(localStorage.getItem('restaurant_print_station_name') || '').trim();
                 const body = {
                     movement_id: movementId,
-                    printer_name: preferredPrinterName || null,
+                    printer_name: stationUuid ? null : (preferredPrinterName || null),
                     station_uuid: stationUuid || null,
                     station_name: stationName || null
                 };
-                if (printerId) body.printer_id = printerId;
+                if (printerId && !stationUuid) body.printer_id = printerId;
 
                 // Igual que ALLAHUASCA: primero impresión RAW por la IP configurada.
                 if (@json((bool) ($clientOnLocalNetwork ?? false))) try {
@@ -1672,7 +1670,7 @@ es                        style="max-height: 80vh;">
                             openSaleTicketPdfTab(movementId);
                             return;
                         }
-                        let candidatePrinterName = preferredPrinterName || td.printer_name || '';
+                        let candidatePrinterName = td.printer_name || preferredPrinterName || '';
                         let printerName = await findActualQzPrinter(qzApi, candidatePrinterName);
                         if (!printerName) {
                             await reportThermalPrintFailure(movementId, td?.print_job_id || null, 'No se encontro una ticketera disponible en QZ Tray.', preferredPrinterName);

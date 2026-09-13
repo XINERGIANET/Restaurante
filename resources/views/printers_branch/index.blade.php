@@ -203,9 +203,14 @@
             }
         },
 
-        setActiveStation(uuid, name) {
+        setActiveStation(uuid, name, printerName) {
             localStorage.setItem('restaurant_print_station_uuid', uuid);
             localStorage.setItem('restaurant_print_station_name', name);
+            if (printerName) {
+                localStorage.setItem('xinergia_local_printer_name', printerName);
+            } else {
+                localStorage.removeItem('xinergia_local_printer_name');
+            }
             this.activeStationUuid = uuid;
             Swal.fire({
                 icon: 'success',
@@ -380,6 +385,8 @@
                                     @forelse($stations as $station)
                                         @php
                                             $stationPrinters = $station->printers ?? collect();
+                                            $stationReceiptPrinter = $stationPrinters->first(fn ($printer) => $printer->status === 'E' && ($printer->connection_type ?? 'usb') === 'usb')
+                                                ?? $stationPrinters->first(fn ($printer) => $printer->status === 'E');
                                         @endphp
                                         <div class="relative rounded-xl border border-gray-200 bg-white p-4 transition hover:border-gray-300 shadow-xs dark:border-gray-700 dark:bg-gray-900 dark:hover:border-gray-600">
                                             {{-- Encabezado Estación PC --}}
@@ -408,7 +415,7 @@
                                                         {{ $station->hasCredentials() ? 'Certificado PEM' : 'Sin Certificado' }}
                                                     </span>
 
-                                                    <button type="button" @click="setActiveStation('{{ $station->uuid }}', '{{ $station->name }}')"
+                                                    <button type="button" @click="setActiveStation(@js($station->uuid), @js($station->name), @js($stationReceiptPrinter?->driver_name ?: $stationReceiptPrinter?->name))"
                                                         :class="activeStationUuid === '{{ $station->uuid }}' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'"
                                                         class="rounded-lg px-2.5 py-1 text-xs font-bold transition">
                                                         <span x-text="activeStationUuid === '{{ $station->uuid }}' ? '✓ Esta PC' : 'Usar esta PC'"></span>

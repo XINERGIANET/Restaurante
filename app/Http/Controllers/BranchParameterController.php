@@ -164,7 +164,12 @@ class BranchParameterController extends Controller
         }
 
         $printStations = $branchId
-            ? PrintStation::query()->withCount('printers')->where('branch_id', $branchId)->orderBy('name')->get()
+            ? PrintStation::query()
+                ->with(['printers' => fn ($query) => $query->where('status', 'E')->orderByRaw("CASE WHEN connection_type = 'usb' THEN 0 ELSE 1 END")->orderBy('id')])
+                ->withCount('printers')
+                ->where('branch_id', $branchId)
+                ->orderBy('name')
+                ->get()
             : collect();
 
         return view('branch_parameters.index', [

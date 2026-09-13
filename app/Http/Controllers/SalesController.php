@@ -22,6 +22,7 @@ use App\Models\PaymentGateways;
 use App\Models\PaymentMethod;
 use App\Models\Person;
 use App\Models\PrinterBranch;
+use App\Models\PrintStation;
 use App\Models\Product;
 use App\Models\ProductBranch;
 use App\Models\ProductType;
@@ -1796,6 +1797,8 @@ class SalesController extends Controller
                 'print_job_id' => $printJobIdRules,
                 'printer_id' => ['nullable', 'integer', 'exists:printers_branch,id'],
                 'printer_name' => ['nullable', 'string', 'max:120'],
+                'station_uuid' => ['nullable', 'uuid'],
+                'station_name' => ['nullable', 'string', 'max:120'],
                 'ticket_text' => ['nullable', 'string'],
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -1838,9 +1841,21 @@ class SalesController extends Controller
             }
         }
 
-        $printer = null;
+        // La PC registrada manda sobre cualquier selector o nombre guardado en el
+        // navegador: cada cobro debe salir por la USB asociada a esa estación.
+        $stationUuid = trim((string) ($request->header('X-Print-Station-Uuid') ?: ($validated['station_uuid'] ?? '')));
+        $stationName = trim((string) ($request->header('X-Print-Station-Name') ?: ($validated['station_name'] ?? '')));
+        $stationWasRequested = $stationUuid !== '' || $stationName !== '';
+        $printer = $this->resolveStationThermalPrinter($branchId, $stationUuid, $stationName);
 
-        if (! empty($validated['printer_id'])) {
+        if ($stationWasRequested && ! $printer) {
+            return response()->json([
+                'success' => false,
+                'message' => 'La PC registrada no tiene una ticketera USB activa asignada. Revise la Red de Impresión de la sucursal.',
+            ], 422);
+        }
+
+        if (! $printer && ! empty($validated['printer_id'])) {
             $printer = PrinterBranch::query()
                 ->where('id', $validated['printer_id'])
                 ->where('branch_id', $branchId)
@@ -2280,6 +2295,37 @@ class SalesController extends Controller
         }
 
         return (clone $printerBaseQuery)->orderBy('id')->first();
+    }
+
+    private function resolveStationThermalPrinter(int $branchId, string $stationUuid, string $stationName): ?PrinterBranch
+    {
+        if ($stationUuid === '' && $stationName === '') {
+            return null;
+        }
+
+        $stationQuery = PrintStation::query()
+            ->where('branch_id', $branchId)
+            ->where('status', 'E');
+
+        $station = $stationUuid !== ''
+            ? (clone $stationQuery)->where('uuid', $stationUuid)->first()
+            : null;
+
+        if (! $station && $stationName !== '') {
+            $station = (clone $stationQuery)
+                ->whereRaw('LOWER(TRIM(name)) = ?', [mb_strtolower($stationName)])
+                ->first();
+        }
+
+        if (! $station) {
+            return null;
+        }
+
+        return $station->printers()
+            ->where('status', 'E')
+            ->orderByRaw("CASE WHEN connection_type = 'usb' THEN 0 ELSE 1 END")
+            ->orderBy('id')
+            ->first();
     }
 
     private function normalizeUtf8ForJson(string $text): string

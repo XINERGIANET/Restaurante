@@ -2482,8 +2482,6 @@
                             const localPrinter = String(localStorage.getItem('xinergia_local_printer_name') ||
                                 localStorage.getItem('xinergia_print_bridge_printer') || '').trim();
                             if (localPrinter) return localPrinter;
-                            const stationName = String(localStorage.getItem('restaurant_print_station_name') || '').trim();
-                            if (stationName) return stationName;
                         } catch (e) {}
                         const sel = document.getElementById('cobro-thermal-printer') || document.getElementById('sales-index-thermal-printer');
                         if (sel && sel.value) {
@@ -5379,11 +5377,11 @@
                         const stationName = String(localStorage.getItem('restaurant_print_station_name') || '').trim();
                         const body = {
                             movement_id: movementId,
-                            printer_name: printerName || null,
+                            printer_name: stationUuid ? null : (printerName || null),
                             station_uuid: stationUuid || null,
                             station_name: stationName || null
                         };
-                        if (printerId) body.printer_id = printerId;
+                        if (printerId && !stationUuid) body.printer_id = printerId;
 
                         let qzFailed = false;
                         if (qzApi && await ensureQzTrayConnected(qzApi, printerName)) {
@@ -5409,7 +5407,7 @@
                                     await reportThermalPrintFailure(movementId, td?.print_job_id || null, td?.message || 'No se pudo obtener el ticket del servidor.', printerName);
                                     throw new Error(td?.message || 'No se pudo obtener el ticket del servidor.');
                                 }
-                                let candidatePrinterName = printerName || td.printer_name || '';
+                                let candidatePrinterName = td.printer_name || printerName || '';
                                 let currentPrinterName = '';
                                 if (candidatePrinterName) {
                                     try {

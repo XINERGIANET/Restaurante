@@ -126,7 +126,7 @@
                                 <input name="hostname" value="{{ $station->hostname }}" placeholder="Nombre en Windows" class="h-10 rounded-lg border border-gray-300 bg-transparent px-3 text-sm dark:border-gray-700 dark:text-white">
                                 <input name="location" value="{{ $station->location }}" placeholder="Ubicación: Caja 1" class="h-10 rounded-lg border border-gray-300 bg-transparent px-3 text-sm dark:border-gray-700 dark:text-white">
                                 <select name="status" class="h-10 rounded-lg border border-gray-300 bg-transparent px-3 text-sm dark:border-gray-700 dark:text-white"><option value="E" @selected($station->status === 'E')>Activa</option><option value="I" @selected($station->status === 'I')>Inactiva</option></select>
-                                <button type="button" data-activate-station="{{ $station->uuid }}" data-station-name="{{ $station->name }}" class="activate-print-station h-10 rounded-lg border border-blue-200 bg-blue-50 px-3 text-sm font-semibold text-blue-700 hover:bg-blue-100">Usar esta PC</button>
+                                <button type="button" data-activate-station="{{ $station->uuid }}" data-station-name="{{ $station->name }}" data-station-printer="{{ $station->printers->first()?->driver_name ?: $station->printers->first()?->name }}" class="activate-print-station h-10 rounded-lg border border-blue-200 bg-blue-50 px-3 text-sm font-semibold text-blue-700 hover:bg-blue-100">Usar esta PC</button>
                             </div>
                             <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                                 <label class="text-xs font-medium text-gray-600 dark:text-gray-300">Reemplazar certificado<input type="file" name="qz_certificate" accept=".txt,.pem,.crt,.cer" class="mt-1 block w-full text-xs"></label>
@@ -406,6 +406,11 @@
                 button.addEventListener('click', () => {
                     localStorage.setItem('restaurant_print_station_uuid', uuid);
                     localStorage.setItem('restaurant_print_station_name', button.dataset.stationName || '');
+                    if (button.dataset.stationPrinter) {
+                        localStorage.setItem('xinergia_local_printer_name', button.dataset.stationPrinter);
+                    } else {
+                        localStorage.removeItem('xinergia_local_printer_name');
+                    }
                     window.location.reload();
                 });
             });
