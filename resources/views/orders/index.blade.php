@@ -691,9 +691,28 @@
                         });
                         this.tickElapsed();
                         const elapsedInterval = setInterval(() => this.tickElapsed(), 1000);
+
+                        // Sincronización en tiempo real de mesas para todos los dispositivos (cada 3s si está activo)
+                        const autoRefreshInterval = setInterval(() => {
+                            if (document.visibilityState === 'visible') {
+                                this.refreshTables();
+                            }
+                        }, 3000);
+
+                        const handleVisibilityChange = () => {
+                            if (document.visibilityState === 'visible') {
+                                this.refreshTables();
+                            }
+                        };
+                        document.addEventListener('visibilitychange', handleVisibilityChange);
+                        window.addEventListener('focus', handleVisibilityChange);
+
                         // Alpine $cleanup no está disponible en todas las builds; con Turbo, limpiamos al cachear/navegar.
                         const cleanup = () => {
                             try { clearInterval(elapsedInterval); } catch (e) {}
+                            try { clearInterval(autoRefreshInterval); } catch (e) {}
+                            document.removeEventListener('visibilitychange', handleVisibilityChange);
+                            window.removeEventListener('focus', handleVisibilityChange);
                         };
                         window.addEventListener('beforeunload', cleanup, { once: true });
                         document.addEventListener('turbo:before-cache', cleanup, { once: true });
