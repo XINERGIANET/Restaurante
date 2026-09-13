@@ -795,7 +795,7 @@
                         </div>
                     </div>
 
-                    <form method="POST" id="quick-client-form"
+                    <form method="POST" id="quick-client-form" data-no-loading data-quick-client-form
                         action="{{ route('admin.companies.branches.people.store', [$branch->company_id ?? '0', $branch->id ?? '0']) }}"
                         class="space-y-6">
                         @csrf
@@ -7069,6 +7069,9 @@
 
                     async function submitQuickClientForm(event) {
                         event.preventDefault();
+                        if (typeof window.hideLoadingModal === 'function') {
+                            window.hideLoadingModal();
+                        }
                         const form = event.target;
                         if (!form) return;
 
@@ -7107,6 +7110,9 @@
                         } catch (error) {
                             showNotification('Cliente', 'No se pudo guardar el cliente en este momento.', 'error');
                         } finally {
+                            if (typeof window.hideLoadingModal === 'function') {
+                                window.hideLoadingModal();
+                            }
                             if (submitButton) {
                                 submitButton.disabled = false;
                                 submitButton.innerHTML = originalContent;

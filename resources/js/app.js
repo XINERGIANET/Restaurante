@@ -188,6 +188,9 @@ const shouldIgnoreLink = (link, event) => {
 const shouldIgnoreForm = (form, event) => {
     if (!form) return true;
     if (form.closest('[data-no-loading]')) return true;
+    if (form.hasAttribute('data-no-loading')) return true;
+    if (form.hasAttribute('data-quick-client-form')) return true;
+    if (form.id && form.id.includes('quick-client')) return true;
     if (form.classList.contains('js-swal-delete')) return true;
     const target = form.getAttribute('target');
     if (target && target !== '_self') return true;

@@ -889,7 +889,7 @@
                     </button>
                 </div>
 
-                <form id="quick-client-form-sales-convert" method="POST" data-client-combobox-name="person_id"
+                <form id="quick-client-form-sales-convert" method="POST" data-no-loading data-quick-client-form data-client-combobox-name="person_id"
                     action="{{ route('admin.companies.branches.people.store', [$branch->company_id ?? '0', $branch->id ?? '0']) }}"
                     class="space-y-6">
                     @csrf
