@@ -7021,9 +7021,11 @@
                     }
 
                     function buildClientOption(person) {
-                        if (!person || !person.person_id) return null;
+                        if (!person) return null;
+                        const personId = person.person_id || person.id;
+                        if (!personId) return null;
                         return {
-                            id: person.person_id,
+                            id: personId,
                             description: person.description || person.name || 'Cliente',
                             client_name: person.name || 'Cliente',
                             document_number: person.document_number || ''
@@ -7055,7 +7057,28 @@
                         }
 
                         const picker = document.getElementById('order-client-picker');
-                        safeSetAlpineDataProperty(picker, 'clientId', option.id);
+                        if (picker) {
+                            safeSetAlpineDataProperty(picker, 'clientId', option.id);
+                            const comboboxEl = picker.querySelector('[x-data]');
+                            if (comboboxEl && window.Alpine && typeof Alpine.$data === 'function') {
+                                try {
+                                    const comboData = Alpine.$data(comboboxEl);
+                                    if (comboData) {
+                                        comboData.allOptions = filtered;
+                                        if (typeof comboData.selectOption === 'function') {
+                                            comboData.selectOption(option);
+                                        } else {
+                                            comboData.value = option.id;
+                                            if (typeof comboData.syncQueryFromId === 'function') {
+                                                comboData.syncQueryFromId();
+                                            }
+                                        }
+                                    }
+                                } catch (e) {
+                                    console.error('Error updating combobox instance:', e);
+                                }
+                            }
+                        }
 
                         const headerInput = document.getElementById('header-client-name');
                         if (headerInput) {

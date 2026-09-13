@@ -1145,20 +1145,17 @@ es                        style="max-height: 80vh;">
                         }
 
                         const comboName = form.dataset.clientComboboxName || 'header_client_id';
-                        const label = [data.name, data.document_number].filter(Boolean).join(' - ') ||
-                            'Cliente';
-                        const newOpts = [...(window.__salesClientOptions || [])];
-                        if (!newOpts.some(o => String(o.id) === String(data.id))) {
-                            newOpts.push({
-                                id: data.id,
-                                description: label
-                            });
-                        } else {
-                            const o = newOpts.find(x => String(x.id) === String(data.id));
-                            if (o) {
-                                o.description = label;
-                            }
-                        }
+                        const docNum = data.document_number || '';
+                        const name = data.name || data.client_name || 'Cliente';
+                        const desc = data.description || (docNum ? `${docNum} - ${name}` : (data.name ? data.name : (data.document_number ? `${data.document_number} - Cliente` : 'Cliente')));
+                        const newOpt = {
+                            id: data.id,
+                            description: desc,
+                            client_name: name,
+                            document_number: docNum
+                        };
+                        const newOpts = [...(window.__salesClientOptions || [])].filter(o => String(o.id) !== String(data.id));
+                        newOpts.unshift(newOpt);
                         window.__salesClientOptions = newOpts;
                         window.dispatchEvent(new CustomEvent('update-combobox-options', {
                             detail: {
@@ -1167,7 +1164,26 @@ es                        style="max-height: 80vh;">
                             }
                         }));
                         const root = document.getElementById('sales-client-picker');
-                        safeSetAlpineDataProperty(root, 'person_id', data.id);
+                        if (root) {
+                            safeSetAlpineDataProperty(root, 'person_id', data.id);
+                            const comboboxEl = root.querySelector('[x-data]');
+                            if (comboboxEl && window.Alpine && typeof Alpine.$data === 'function') {
+                                try {
+                                    const comboData = Alpine.$data(comboboxEl);
+                                    if (comboData) {
+                                        comboData.allOptions = newOpts;
+                                        if (typeof comboData.selectOption === 'function') {
+                                            comboData.selectOption(newOpt);
+                                        } else {
+                                            comboData.value = data.id;
+                                            if (typeof comboData.syncQueryFromId === 'function') {
+                                                comboData.syncQueryFromId();
+                                            }
+                                        }
+                                    }
+                                } catch (e) {}
+                            }
+                        }
                         window.dispatchEvent(new CustomEvent('close-person-modal'));
                     } catch (err) {
                         alert(err?.message || 'Error al crear cliente.');
