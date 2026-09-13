@@ -208,7 +208,17 @@
                                 waiterId: null,
                                 init() {
                                     if (window.currentTable && window.currentTable.waiter_id) {
-                                        this.waiterId = window.currentTable.waiter_id;
+                                        const opts = window.__orderWaiterOptions || [];
+                                        const found = opts.find(o => String(o.id) === String(window.currentTable.waiter_id));
+                                        this.waiterId = found ? found.id : window.currentTable.waiter_id;
+                                    } else if (window.currentTable && window.currentTable.waiter) {
+                                        const opts = window.__orderWaiterOptions || [];
+                                        const found = opts.find(o => String(o.description).trim().toLowerCase() === String(window.currentTable.waiter).trim().toLowerCase());
+                                        if (found) {
+                                            this.waiterId = found.id;
+                                        } else if (opts.length > 0) {
+                                            this.waiterId = opts[0]?.id ?? null;
+                                        }
                                     } else if ((window.__orderWaiterOptions || []).length > 0) {
                                         const firstWaiter = window.__orderWaiterOptions[0];
                                         this.waiterId = firstWaiter?.id ?? null;

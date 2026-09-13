@@ -1213,66 +1213,64 @@ class OrderController extends Controller
         }
 
         // El bloqueo debe ocurrir en el servidor, antes de mostrar el POS. Así dos
-        // mozos que pulsan una mesa a la vez no pueden atenderla simultáneamente.
+        // mozos o usuarios que pulsan una mesa a la vez no pueden atenderla simultáneamente.
         $isMozo = Profile::userHasMozoProfile(
             $profileId !== null && $profileId !== '' ? (int) $profileId : null
         );
-        if ($isMozo) {
-            $currentUserId = (int) ($request->user()?->id ?? $userId);
-            $waiterName = trim(($person?->first_name ?? '') . ' ' . ($person?->last_name ?? '')) ?: ($user?->name ?? 'Otro mozo');
+        $currentUserId = (int) ($request->user()?->id ?? $userId);
+        $waiterName = trim(($person?->first_name ?? '') . ' ' . ($person?->last_name ?? '')) ?: ($user?->name ?? 'Admin');
 
-            $lockedByAnother = DB::transaction(function () use ($table, $currentUserId, $waiterName) {
-                $lockedTable = Table::whereKey($table->id)->lockForUpdate()->firstOrFail();
-                // Compatibilidad con pedidos que ya estaban abiertos antes de
-                // incorporar el bloqueo de mesa: respetar su mozo responsable.
-                $pendingOrder = OrderMovement::with(['movement', 'details'])
-                    ->where('table_id', $lockedTable->id)
-                    ->whereIn('status', ['PENDIENTE', 'P'])
-                    ->orderByDesc('id')
-                    ->first();
-                $hasComanda = $pendingOrder?->details->contains(function ($detail) {
-                    return (float) $detail->quantity > 0 && ($detail->status === null || $detail->status !== 'C');
-                }) ?? false;
+        $lockedByAnother = DB::transaction(function () use ($table, $currentUserId, $waiterName) {
+            $lockedTable = Table::whereKey($table->id)->lockForUpdate()->firstOrFail();
+            // Compatibilidad con pedidos que ya estaban abiertos antes de
+            // incorporar el bloqueo de mesa: respetar su mozo responsable.
+            $pendingOrder = OrderMovement::with(['movement', 'details'])
+                ->where('table_id', $lockedTable->id)
+                ->whereIn('status', ['PENDIENTE', 'P'])
+                ->orderByDesc('id')
+                ->first();
+            $hasComanda = $pendingOrder?->details->contains(function ($detail) {
+                return (float) $detail->quantity > 0 && ($detail->status === null || $detail->status !== 'C');
+            }) ?? false;
 
-                if ($lockedTable->attending_user_id && (int) $lockedTable->attending_user_id !== $currentUserId) {
-                    // Sin comanda, el bloqueo es temporal. Si el navegador se cerró
-                    // sin poder avisar, vence solo después de tres minutos.
-                    if (! $hasComanda && $lockedTable->updated_at?->lt(now()->subMinutes(3))) {
-                        $lockedTable->update([
-                            'attending_user_id' => null,
-                            'attending_waiter_name' => null,
-                        ]);
-                        $lockedTable->refresh();
-                    } else {
-                        return $lockedTable->attending_waiter_name
-                            ?: User::find($lockedTable->attending_user_id)?->name
-                            ?: 'otro mozo';
-                    }
+            if ($lockedTable->attending_user_id && (int) $lockedTable->attending_user_id !== $currentUserId) {
+                // Sin comanda, el bloqueo es temporal. Si el navegador se cerró
+                // sin poder avisar, vence solo después de tres minutos.
+                if (! $hasComanda && $lockedTable->updated_at?->lt(now()->subMinutes(3))) {
+                    $lockedTable->update([
+                        'attending_user_id' => null,
+                        'attending_waiter_name' => null,
+                    ]);
+                    $lockedTable->refresh();
+                } else {
+                    return $lockedTable->attending_waiter_name
+                        ?: User::find($lockedTable->attending_user_id)?->name
+                        ?: 'otro usuario';
                 }
-
-                $orderWaiterId = (int) ($pendingOrder?->movement?->responsible_id ?? $pendingOrder?->movement?->user_id ?? 0);
-                $orderWaiterName = $pendingOrder?->movement?->responsible_name
-                    ?: $pendingOrder?->movement?->user_name;
-                if ($hasComanda && $orderWaiterId && $orderWaiterId !== $currentUserId) {
-                    return $orderWaiterName ?: 'otro mozo';
-                }
-
-                $lockedTable->update([
-                    'attending_user_id' => $hasComanda && $orderWaiterId ? $orderWaiterId : $currentUserId,
-                    'attending_waiter_name' => $hasComanda && $orderWaiterName ? $orderWaiterName : $waiterName,
-                ]);
-
-                return null;
-            });
-
-            if ($lockedByAnother !== null) {
-                $areaName = $table->area?->name ?? 'este salón';
-                return redirect()->route('orders.index', ['area_id' => $table->area_id])
-                    ->with('error', "La mesa {$table->name} del salón {$areaName} ya está siendo atendida por {$lockedByAnother}.");
             }
 
-            $table->refresh();
+            $orderWaiterId = (int) ($pendingOrder?->movement?->responsible_id ?? $pendingOrder?->movement?->user_id ?? 0);
+            $orderWaiterName = $pendingOrder?->movement?->responsible_name
+                ?: $pendingOrder?->movement?->user_name;
+            if ($hasComanda && $orderWaiterId && $orderWaiterId !== $currentUserId) {
+                return $orderWaiterName ?: 'otro usuario';
+            }
+
+            $lockedTable->update([
+                'attending_user_id' => $hasComanda && $orderWaiterId ? $orderWaiterId : $currentUserId,
+                'attending_waiter_name' => $hasComanda && $orderWaiterName ? $orderWaiterName : $waiterName,
+            ]);
+
+            return null;
+        });
+
+        if ($lockedByAnother !== null) {
+            $areaName = $table->area?->name ?? 'este salón';
+            return redirect()->route('orders.index', ['area_id' => $table->area_id])
+                ->with('error', "La mesa {$table->name} del salón {$areaName} ya está siendo atendida por {$lockedByAnother}.");
         }
+
+        $table->refresh();
 
         $area = $table->area;
         if (! $area && $request->has('area_id')) {
@@ -1285,6 +1283,29 @@ class OrderController extends Controller
         // Clientes del selector: rol «Cliente» → sin usuario → todos de la sucursal (fallbacks).
         $people = $this->resolveClientPeople($branchId);
         $waiters = $this->resolveWaiters($branchId);
+
+        // Si el usuario actual no está en la lista de mozos (ej. Admin), incluirlo para que pueda seleccionarse
+        if ($user) {
+            $currentPersonId = $user->person_id;
+            $hasCurrentUserInWaiters = false;
+            if ($currentPersonId) {
+                $hasCurrentUserInWaiters = $waiters->contains('id', $currentPersonId);
+            } else {
+                $hasCurrentUserInWaiters = $waiters->contains('id', $user->id);
+            }
+
+            if (! $hasCurrentUserInWaiters) {
+                $adminPerson = $user->person ?? new Person([
+                    'id' => $user->person_id ?? $user->id,
+                    'first_name' => trim(($person?->first_name ?? '') . ' ' . ($person?->last_name ?? '')) ?: ($user->name ?? 'Admin'),
+                    'last_name' => '',
+                ]);
+                if (! $adminPerson->id) {
+                    $adminPerson->id = $user->person_id ?? $user->id;
+                }
+                $waiters->prepend($adminPerson);
+            }
+        }
 
         // Mismo criterio que Ventas: solo productos vendibles (sin tipo o tipo con behavior SELLABLE/BOTH), con product_branch y categoría en la sucursal.
         $products = Product::where('products.type', 'PRODUCT')
@@ -1585,8 +1606,14 @@ class OrderController extends Controller
             'pendingMovementId' => $pendingOrder?->movement_id,
             'pendingClientId' => $pendingClientId,
             'pendingClientName' => $pendingClientName,
-            'pendingWaiterId' => $pendingOrder?->movement?->person_id ?? session('waiter_person_id'),
-            'pendingWaiterName' => $pendingOrder?->movement?->responsible_name ?? session('waiter_name'),
+            'pendingWaiterId' => $pendingOrder?->movement?->responsible_id
+                ?? ($pendingOrder?->movement?->responsible?->person_id
+                ?? session('waiter_person_id')
+                ?? $user?->person?->id
+                ?? $user?->id),
+            'pendingWaiterName' => $pendingOrder?->movement?->responsible_name
+                ?? session('waiter_name')
+                ?? (trim(($person?->first_name ?? '') . ' ' . ($person?->last_name ?? '')) ?: ($user?->name ?? 'Admin')),
             'pendingPeopleCount' => (int) ($pendingOrder?->people_count ?: ($table->capacity ?? 1)),
             'pendingCancelledDetails' => $pendingCancelledDetails,
             'pendingItems' => $pendingItems,
@@ -2277,10 +2304,22 @@ class OrderController extends Controller
         } elseif ($waiterIdFrontend) {
             $waiterPersonId = (int) $waiterIdFrontend;
             $waiterPerson = Person::find($waiterPersonId);
-            $waiterName = $waiterPerson ? trim(($waiterPerson->first_name ?? '') . ' ' . ($waiterPerson->last_name ?? '')) : 'Mozo';
-            $responsibleUser = User::where('person_id', $waiterPersonId)->first();
-            if ($responsibleUser) {
-                $responsibleId = $responsibleUser->id;
+            if ($waiterPerson) {
+                $waiterName = trim(($waiterPerson->first_name ?? '') . ' ' . ($waiterPerson->last_name ?? ''));
+                if ($waiterName === '') {
+                    $waiterName = 'Mozo';
+                }
+                $responsibleUser = User::where('person_id', $waiterPersonId)->first();
+                $responsibleId = $responsibleUser?->id ?? $user?->id;
+            } else {
+                $waiterUser = User::find($waiterIdFrontend);
+                if ($waiterUser) {
+                    $responsibleId = $waiterUser->id;
+                    $waiterName = trim(($waiterUser->person?->first_name ?? '') . ' ' . ($waiterUser->person?->last_name ?? '')) ?: $waiterUser->name;
+                } else {
+                    $responsibleId = $user?->id;
+                    $waiterName = trim(($user?->person?->first_name ?? '') . ' ' . ($user?->person?->last_name ?? '')) ?: ($user?->name ?? 'Sistema');
+                }
             }
         } else {
             $waiterPersonId = $waiterPinEnabled ? (int) $request->session()->get('waiter_person_id') : (int) ($user?->person?->id ?? 0);
@@ -2627,6 +2666,8 @@ class OrderController extends Controller
                     Table::where('id', $tableId)->update([
                         'situation' => 'ocupada',
                         'opened_at' => $existingOpenedAt ?? now(),
+                        'attending_user_id' => $responsibleId,
+                        'attending_waiter_name' => $waiterName,
                     ]);
                 }
             }
