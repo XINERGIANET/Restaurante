@@ -1264,7 +1264,7 @@ class OrderController extends Controller
             return null;
         });
 
-        if ($lockedByAnother !== null) {
+        if ($isMozo && $lockedByAnother !== null) {
             $areaName = $table->area?->name ?? 'este salón';
             return redirect()->route('orders.index', ['area_id' => $table->area_id])
                 ->with('error', "La mesa {$table->name} del salón {$areaName} ya está siendo atendida por {$lockedByAnother}.");
