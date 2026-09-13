@@ -1407,7 +1407,7 @@ class OrderController extends Controller
                     'tax_rate' => $taxRatePct,
                     'favorite' => ($productBranch->favorite ?? 'N'),
                     // compat (1 impresora)
-                    'qz_printer_name' => request()->ip() === '127.0.0.1' || request()->ip() === '::1' ? ($printerNames[0] ?? null) : 'BARRA2',
+                    'qz_printer_name' => $printerNames[0] ?? null,
                     // recomendado (varias impresoras por pivote)
                     'qz_printer_names' => $printerNames,
                     // recomendado: info completa para formateo por ticketera
@@ -1783,7 +1783,7 @@ class OrderController extends Controller
                     'stock' => (float) ($productBranch->stock ?? 0),
                     'tax_rate' => $taxRatePct,
                     'favorite' => ($productBranch->favorite ?? 'N'),
-                    'qz_printer_name' => request()->ip() === '127.0.0.1' || request()->ip() === '::1' ? ($printerNames[0] ?? null) : 'BARRA2',
+                    'qz_printer_name' => $printerNames[0] ?? null,
                     'qz_printer_names' => $printerNames,
                     'qz_printers' => $printers,
                 ];

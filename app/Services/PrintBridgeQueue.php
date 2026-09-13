@@ -15,8 +15,8 @@ class PrintBridgeQueue
     public function stationPrinterNames(): array
     {
         $names = array_merge(
-            config('qz.secondary_first_printer_names', ['BARRA2']),
-            config('qz.tertiary_first_printer_names', ['BARRA3'])
+            config('qz.secondary_first_printer_names', []),
+            config('qz.tertiary_first_printer_names', [])
         );
 
         return array_values(array_unique(array_filter(array_map(

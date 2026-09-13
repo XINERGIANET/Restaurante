@@ -12,7 +12,7 @@
         </script>
     @endauth
     @php
-        $qzDefaultPrinter = in_array(strtolower(request()->getHost()), ['localhost', '127.0.0.1', '::1']) ? 'BARRA' : 'BARRA2';
+        $qzDefaultPrinter = config('qz.printer_name', 'BARRA');
         $qzCertPairTryOrder = config('qz.cert_pair_try_order', ['primary', 'secondary', 'tertiary']);
     @endphp
     @stack('head')

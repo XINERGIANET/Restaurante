@@ -47,12 +47,12 @@ return [
     // Útil si el nombre en BD no contiene "barra2". Separados por coma.
     'secondary_first_printer_names' => array_values(array_filter(array_map(
         'trim',
-        explode(',', (string) env('QZ_SECONDARY_FIRST_PRINTER_NAMES', 'BARRA2'))
+        explode(',', (string) env('QZ_SECONDARY_FIRST_PRINTER_NAMES', ''))
     ))),
 
     'tertiary_first_printer_names' => array_values(array_filter(array_map(
         'trim',
-        explode(',', (string) env('QZ_TERTIARY_FIRST_PRINTER_NAMES', 'BARRA3'))
+        explode(',', (string) env('QZ_TERTIARY_FIRST_PRINTER_NAMES', ''))
     ))),
 
     // Comanda: ticketera con IP → si false, usa QZ Tray local en el navegador (necesario en servidores cloud/VPS).
