@@ -15,6 +15,23 @@ export function startPrintBridgeStationPoll() {
     window.__xinergiaPrintBridgePollStarted = true;
     let busy = false;
 
+    // Conectar QZ antes de que llegue la primera comanda elimina la espera de
+    // certificado/websocket en el momento crítico de impresión.
+    const warmUpQz = async () => {
+        try {
+            const qzApi = window.qz;
+            if (!qzApi || typeof window.__qzConnectWithCertPairFallback !== 'function') return;
+            const printerHint = String(
+                localStorage.getItem('xinergia_local_printer_name') ||
+                localStorage.getItem('xinergia_print_bridge_printer') ||
+                window.__qzConfig?.defaultPrinterName || ''
+            ).trim();
+            await window.__qzConnectWithCertPairFallback(qzApi, printerHint);
+        } catch (error) {
+            console.warn('[print-bridge-station] precarga QZ:', error);
+        }
+    };
+
     const getStationUuid = () => {
         try {
             return localStorage.getItem('restaurant_print_station_uuid') || '';
@@ -156,6 +173,7 @@ export function startPrintBridgeStationPoll() {
         }
     };
 
-    window.__xinergiaPrintBridgeInterval = setInterval(tick, 1600);
+    warmUpQz();
+    window.__xinergiaPrintBridgeInterval = setInterval(tick, 500);
     tick();
 }

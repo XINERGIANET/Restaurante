@@ -220,7 +220,7 @@
                 }
             }
 
-            setInterval(tick, 1500);
+            setInterval(tick, 500);
             tick();
         })();
     </script>

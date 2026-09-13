@@ -2843,7 +2843,7 @@ class OrderController extends Controller
                 $newCommittedQtyByProduct
             );
 
-            $kitchenPrintError = null;
+                $kitchenPrintError = null;
             try {
                 $kitchenPrintJobs = $this->persistKitchenPrintJobsForOrder(
                     $orderMovement,
@@ -3403,7 +3403,10 @@ class OrderController extends Controller
             'print_job_id' => ['nullable', 'integer', 'exists:thermal_print_jobs,id'],
             'content_summary' => ['nullable', 'string', 'max:2000'],
             'retry_attempt' => ['nullable', 'boolean'],
+            'mode' => ['nullable', 'string', 'in:qz'],
         ]);
+
+        $qzMode = ($validated['mode'] ?? null) === 'qz';
 
         $branchId = (int) session('branch_id');
         if (! $branchId) {
@@ -3427,9 +3430,8 @@ class OrderController extends Controller
             if (! empty($validated['retry_attempt'])) {
                 $printJob->forceFill([
                     'status' => 'pending',
-                    'attempts' => (int) $printJob->attempts + 1,
-                    'last_attempt_at' => now(),
                     'last_error' => null,
+                    'printed_at' => null,
                 ])->save();
             }
         }
@@ -3528,12 +3530,33 @@ class OrderController extends Controller
             ]);
         }
 
+        // Si la pantalla ya tiene QZ, devolver el RAW inmediatamente y evitar
+        // la espera del puente/polling. El cliente confirmará al terminar.
+        if ($qzMode) {
+            if ($printJob) {
+                $this->markKitchenPrintJobAttempting($printJob);
+            }
+
+            return response()->json([
+                'success' => true,
+                'b64' => $b64,
+                'print_job_id' => $printJob?->id,
+                'driver_name' => $printer->driver_name ?: $printer->name,
+                'printer_name' => $printer->name,
+                'direct_qz' => true,
+            ]);
+        }
+
         $bridgeResponse = $this->maybeQueuePrintBridge($printer, $branchId, $payload, 'comanda', $printJob?->id);
         if ($bridgeResponse) {
             return $bridgeResponse;
         }
         $printerService = app(ThermalNetworkPrintService::class);
         $timeout = (int) config('local_network.thermal_timeout_seconds', 3);
+
+        if ($printJob) {
+            $this->markKitchenPrintJobAttempting($printJob);
+        }
 
         try {
             if (filled((string) $printer->ip)) {
@@ -3901,7 +3924,9 @@ class OrderController extends Controller
             'ticket_text' => $ticketText,
             'content_summary' => Str::limit($contentSummary, 2000, ''),
             'payload_hash' => $payloadHash,
-            'attempts' => (int) ($job?->attempts ?? 0) + 1,
+            // Preparar/guardar no es un intento de impresión. El contador se
+            // incrementa cuando QZ, red o el puente realmente lo despachan.
+            'attempts' => (int) ($job?->attempts ?? 0),
             'last_error' => null,
             'last_attempt_at' => now(),
             'requested_by' => $job?->requested_by ?: $request->user()?->id,
@@ -3981,6 +4006,16 @@ class OrderController extends Controller
                 'last_error' => null,
                 'updated_at' => now(),
             ]);
+    }
+
+    private function markKitchenPrintJobAttempting(ThermalPrintJob $job): void
+    {
+        $job->forceFill([
+            'status' => 'printing',
+            'attempts' => (int) $job->attempts + 1,
+            'last_attempt_at' => now(),
+            'last_error' => null,
+        ])->save();
     }
 
     private function markKitchenPrintJobFailed(ThermalPrintJob $job, string $message): void

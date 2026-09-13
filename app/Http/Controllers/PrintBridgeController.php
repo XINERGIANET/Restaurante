@@ -56,7 +56,9 @@ class PrintBridgeController extends Controller
                 ->first();
 
             if ($station) {
-                $station->forceFill(['last_seen_at' => now()])->save();
+                if (! $station->last_seen_at || $station->last_seen_at->lt(now()->subSeconds(10))) {
+                    $station->forceFill(['last_seen_at' => now()])->save();
+                }
 
                 // 1. Primero revisar impresoras asignadas a esta estación
                 $assignedPrinters = $station->printers()->where('status', 'E')->orderBy('id')->get();

@@ -270,6 +270,7 @@
         </div>
     </div>
 
+    @vite(['resources/js/qz-tray-init.js'])
     <script>
         window.decodeCommandTicket = function (value) {
             try {
@@ -287,11 +288,31 @@
             }
         };
 
+        function warmUpCommandPrinter() {
+            const qzApi = window.qz;
+            const firstPrinter = document.querySelector('[data-reprint-command]')?.getAttribute('data-printer-name') || '';
+            if (!qzApi || typeof window.__qzConnectWithCertPairFallback !== 'function') return;
+            if (window.__commandQzWarmupPromise) return;
+            window.__commandQzWarmupPromise = window.__qzConnectWithCertPairFallback(qzApi, firstPrinter)
+                .catch(function (error) {
+                    console.warn('Precarga QZ para comandas:', error);
+                    return false;
+                });
+        }
+
+        setTimeout(warmUpCommandPrinter, 300);
+        document.addEventListener('turbo:load', function () {
+            setTimeout(warmUpCommandPrinter, 300);
+        });
+
+        if (!window.__commandReprintHandlerBound) {
         document.addEventListener('click', async function (event) {
             const button = event.target.closest('[data-reprint-command]');
             if (!button) return;
+            if (button.dataset.printing === '1') return;
 
             const originalHtml = button.innerHTML;
+            button.dataset.printing = '1';
             button.disabled = true;
             button.innerHTML = '<i class="ri-loader-4-line animate-spin"></i> Imprimiendo';
 
@@ -312,6 +333,17 @@
                     body.print_job_id = parseInt(jobId, 10);
                 }
 
+                const qzApi = window.qz;
+                let qzConnected = false;
+                if (qzApi && typeof window.__qzConnectWithCertPairFallback === 'function') {
+                    qzConnected = await window.__qzConnectWithCertPairFallback(qzApi, printerName);
+                } else {
+                    qzConnected = !!qzApi?.websocket?.isActive?.();
+                }
+                if (qzConnected) {
+                    body.mode = 'qz';
+                }
+
                 const response = await fetch(@json(route('orders.print.kitchen.thermal')), {
                     method: 'POST',
                     cache: 'no-store',
@@ -329,8 +361,10 @@
                     throw new Error(data?.message || 'No se pudo procesar la comanda.');
                 }
 
-                const qzApi = window.qz;
-                if (qzApi && data.b64) {
+                // Solo imprimir en el navegador cuando el servidor indicó modo
+                // QZ directo. Si ya imprimió por IP/Windows o dejó en cola, no
+                // volver a enviar el mismo RAW y evitar duplicados.
+                if (qzApi && data.b64 && data.direct_qz === true) {
                     const driver = data.driver_name || printerName;
                     if (typeof window.__qzConnectWithCertPairFallback === 'function') {
                         const connected = await window.__qzConnectWithCertPairFallback(qzApi, driver);
@@ -396,9 +430,12 @@
                     alert(error?.message || 'No se pudo reimprimir.');
                 }
             } finally {
+                button.dataset.printing = '0';
                 button.disabled = false;
                 button.innerHTML = originalHtml;
             }
         });
+        window.__commandReprintHandlerBound = true;
+        }
     </script>
 @endsection

@@ -316,7 +316,7 @@ export function configureQzSecurityForPair(pair) {
  * @param {object} qzApi instancia qz-tray
  * @param {string} [printerName] si es BARRA2, se fuerza orden secondary → primary sin conectar antes con primary.
  */
-export async function connectQzWithCertPairFallback(qzApi, printerName) {
+async function connectQzWithCertPairFallbackInternal(qzApi, printerName) {
     if (!qzApi) {
         return false;
     }
@@ -382,6 +382,35 @@ export async function connectQzWithCertPairFallback(qzApi, printerName) {
     }
     console.error('[QZ Xinergia] No se pudo conectar con ningún par.', order.join(' → '), lastErr);
     return false;
+}
+
+export async function connectQzWithCertPairFallback(qzApi, printerName) {
+    if (!qzApi) return false;
+
+    const needsSecondary = printerRequiresSecondaryCertFirst(printerName);
+    const needsTertiary = printerRequiresTertiaryCertFirst(printerName);
+    if (qzApi?.websocket?.isActive?.()) {
+        const selected = window.__qzSelectedCertPair;
+        if ((!needsSecondary && !needsTertiary) ||
+            (needsSecondary && selected === 'secondary') ||
+            (needsTertiary && selected === 'tertiary')) {
+            return true;
+        }
+    }
+
+    // Evitar conexiones/desconexiones simultáneas provocadas por el puente,
+    // la pantalla de comandas y un clic de impresión al mismo tiempo.
+    if (window.__qzConnectionPromise) {
+        await window.__qzConnectionPromise;
+        return await connectQzWithCertPairFallbackInternal(qzApi, printerName);
+    }
+
+    window.__qzConnectionPromise = connectQzWithCertPairFallbackInternal(qzApi, printerName);
+    try {
+        return await window.__qzConnectionPromise;
+    } finally {
+        window.__qzConnectionPromise = null;
+    }
 }
 
 /**
