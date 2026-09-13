@@ -87,7 +87,9 @@ class ApisunatService
         $totals = $this->resolveMovementTotals($sale);
         $apiUrl = $this->resolveApiUrl($config);
 
-        $correlativeResp = Http::timeout(20)->post($apiUrl.'/personas/lastDocument', [
+        $correlativeResp = Http::connectTimeout($this->connectTimeout())
+            ->timeout(max(3, (int) config('apisunat.timeouts.correlative', 6)))
+            ->post($apiUrl.'/personas/lastDocument', [
             'personaId' => (string) $config->persona_id,
             'personaToken' => (string) $config->persona_token,
             'type' => $catalog['type'],
@@ -108,7 +110,9 @@ class ApisunatService
         $documentBody = $this->buildDocumentBody($sale, $catalog, $customerDocument, $customerDocType, $totals, $number);
         $this->validateDocumentBodyForSunat($documentBody);
 
-        $sendResp = Http::timeout(35)->post($apiUrl.'/personas/v1/sendBill', [
+        $sendResp = Http::connectTimeout($this->connectTimeout())
+            ->timeout(max(5, (int) config('apisunat.timeouts.emit', 15)))
+            ->post($apiUrl.'/personas/v1/sendBill', [
             'personaId' => (string) $config->persona_id,
             'personaToken' => (string) $config->persona_token,
             'fileName' => $fileName,
@@ -129,7 +133,9 @@ class ApisunatService
             throw new \RuntimeException('Apisunat no devolvió documentId.');
         }
 
-        $extraDocumentData = $this->getDocumentById($documentId, $branch);
+        $extraDocumentData = config('apisunat.lookup_after_emit', false)
+            ? $this->getDocumentById($documentId, $branch)
+            : ($sendResp->json() ?? []);
         $urls = $this->extractDocumentUrls($extraDocumentData);
 
         return [
@@ -172,7 +178,9 @@ class ApisunatService
             throw new \RuntimeException('Documento inválido.');
         }
 
-        $response = Http::timeout(20)->get($url);
+        $response = Http::connectTimeout($this->connectTimeout())
+            ->timeout(max(3, (int) config('apisunat.timeouts.lookup', 6)))
+            ->get($url);
         if ($response->failed()) {
             throw new \RuntimeException('No se pudo consultar el documento.');
         }
@@ -183,7 +191,9 @@ class ApisunatService
     public function getDocumentById(string $documentId, ?Branch $branch = null): array
     {
         $apiUrl = $this->resolveApiUrl($this->resolveConfigForBranch($branch));
-        $response = Http::timeout(20)->get($apiUrl.'/documents/'.$documentId.'/getById');
+        $response = Http::connectTimeout($this->connectTimeout())
+            ->timeout(max(3, (int) config('apisunat.timeouts.lookup', 6)))
+            ->get($apiUrl.'/documents/'.$documentId.'/getById');
 
         if ($response->failed()) {
             throw new \RuntimeException('No se pudo consultar el comprobante electrónico.');
@@ -223,6 +233,11 @@ class ApisunatService
         $url = trim((string) ($config?->api_url ?: config('apisunat.url')));
 
         return rtrim($url, '/');
+    }
+
+    private function connectTimeout(): int
+    {
+        return max(1, (int) config('apisunat.timeouts.connect', 3));
     }
 
     private function resolveDocumentCatalog(Movement $sale, BranchElectronicBillingConfig $config): array

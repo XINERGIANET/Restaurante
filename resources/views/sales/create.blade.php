@@ -1871,6 +1871,9 @@ es                        style="max-height: 80vh;">
                     btn.disabled = true;
                     btn.textContent = 'Procesando...';
                 }
+                if (typeof window.showLoadingModal === 'function') {
+                    window.showLoadingModal();
+                }
 
                 try {
                     const r = await fetch(salesProcessUrl, {
@@ -1900,13 +1903,19 @@ es                        style="max-height: 80vh;">
                     localStorage.removeItem(ACTIVE_SALE_KEY_STORAGE);
                     sessionStorage.setItem('flash_success_message', data.message || 'Venta cobrada correctamente');
                     const movementId = data?.data?.movement_id;
-                    await sendThermalTicketAfterSale(movementId, data);
+                    await Promise.race([
+                        sendThermalTicketAfterSale(movementId, data),
+                        new Promise((resolve) => setTimeout(resolve, 15000)),
+                    ]);
                     setTimeout(() => {
                         window.location.href = salesIndexUrl;
                     }, 600);
                 } catch (err) {
                     showCobroNotification('Error', err.message || 'Error al procesar la venta.', 'error');
                 } finally {
+                    if (typeof window.hideLoadingModal === 'function') {
+                        window.hideLoadingModal();
+                    }
                     if (btn) {
                         btn.disabled = false;
                         btn.innerHTML = '<i class="ri-bank-card-line text-base"></i><span>Cobrar</span>';

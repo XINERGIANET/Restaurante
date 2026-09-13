@@ -1176,10 +1176,26 @@ class SalesController extends Controller
                 );
             }
 
-            app(KardexSyncService::class)->syncMovement($movement);
-
             DB::commit();
             $movement->refresh();
+
+            // El kardex es información derivada y puede recorrer muchas filas.
+            // Ejecutarlo después de responder evita congelar el cobro en pantalla.
+            $movementIdForKardex = (int) $movement->id;
+            app()->terminating(function () use ($movementIdForKardex): void {
+                try {
+                    $movementForKardex = Movement::query()->find($movementIdForKardex);
+                    if ($movementForKardex) {
+                        app(KardexSyncService::class)->syncMovement($movementForKardex);
+                    }
+                } catch (\Throwable $syncError) {
+                    Log::warning('Kardex sync diferido: processSale', [
+                        'movement_id' => $movementIdForKardex,
+                        'error' => $syncError->getMessage(),
+                    ]);
+                }
+            });
+
             $electronicInvoice = $this->syncElectronicInvoiceForSale($movement, app(ApisunatService::class));
 
             $thermalPrinterAvailable = PrinterBranch::query()

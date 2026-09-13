@@ -6274,6 +6274,9 @@
                             btn.innerHTML =
                                 '<i class="ri-loader-4-line animate-spin text-base"></i><span>Procesando...</span>';
                         }
+                        if (typeof window.showLoadingModal === 'function') {
+                            window.showLoadingModal();
+                        }
 
                         try {
                             let movementId = currentTable.movement_id;
@@ -6356,7 +6359,10 @@
 
                             if (payData.split_remaining_total !== undefined && payData.order_closed === false) {
                                 const splitSaleMovId = payData?.split_sale_movement_id || payData?.movement_id;
-                                await sendThermalTicketAfterSale(splitSaleMovId, payData);
+                                await Promise.race([
+                                    sendThermalTicketAfterSale(splitSaleMovId, payData),
+                                    new Promise((resolve) => setTimeout(resolve, 15000)),
+                                ]);
                                 sessionStorage.setItem('flash_success_message', payData.message ||
                                     'Cobro parcial registrado.');
                                 window.location.reload();
@@ -6364,7 +6370,10 @@
                             }
 
                             const payMovementId = payData?.split_sale_movement_id || payData?.movement_id;
-                            await sendThermalTicketAfterSale(payMovementId, payData);
+                            await Promise.race([
+                                sendThermalTicketAfterSale(payMovementId, payData),
+                                new Promise((resolve) => setTimeout(resolve, 15000)),
+                            ]);
 
                             if (db && activeKey && db[activeKey]) {
                                 delete db[activeKey];
@@ -6393,6 +6402,9 @@
                                 alert(error?.message || 'Error al procesar.');
                             }
                         } finally {
+                            if (typeof window.hideLoadingModal === 'function') {
+                                window.hideLoadingModal();
+                            }
                             if (btn) {
                                 btn.disabled = false;
                                 btn.innerHTML = '<i class="ri-bank-card-line text-base"></i><span>Cobrar</span>';
