@@ -2923,14 +2923,22 @@ class OrderController extends Controller
 
             DB::commit();
 
-            try {
-                app(KardexSyncService::class)->syncMovement($movement);
-            } catch (\Throwable $syncError) {
-                Log::warning('Kardex sync diferido: processOrder', [
-                    'movement_id' => $movement->id,
-                    'error' => $syncError->getMessage(),
-                ]);
-            }
+            // El kardex puede reconstruir muchas filas históricas. Se ejecuta al
+            // terminar la respuesta para que guardar/comandar no espere ese trabajo.
+            $movementIdForKardex = (int) $movement->id;
+            app()->terminating(function () use ($movementIdForKardex): void {
+                try {
+                    $movementForKardex = Movement::query()->find($movementIdForKardex);
+                    if ($movementForKardex) {
+                        app(KardexSyncService::class)->syncMovement($movementForKardex);
+                    }
+                } catch (\Throwable $syncError) {
+                    Log::warning('Kardex sync diferido: processOrder', [
+                        'movement_id' => $movementIdForKardex,
+                        'error' => $syncError->getMessage(),
+                    ]);
+                }
+            });
 
             if ($request->expectsJson()) {
                 return response()->json([

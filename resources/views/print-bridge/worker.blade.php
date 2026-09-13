@@ -87,7 +87,10 @@
                     }
                 }
                 const paperMm = 80;
-                const config = qzApi.configs.create(name, {
+                const printerIp = String(job.printer_ip || '').trim();
+                const printerPort = parseInt(job.printer_port, 10) || 9100;
+                const target = printerIp ? { host: printerIp, port: printerPort } : name;
+                const config = qzApi.configs.create(target, {
                     units: 'mm',
                     size: { width: paperMm, height: 200 },
                     margins: 0,
@@ -136,6 +139,7 @@
             let currentJobId = null;
             let failureCount = 0;
             let lastAckFailTime = 0;
+            let drainImmediately = false;
             
             async function tick() {
                 if (busy) return;
@@ -200,6 +204,7 @@
                             currentJobId = null;
                             failureCount = 0;
                             lastAckFailTime = 0;
+                            drainImmediately = true;
                             log('Listo. Esperando cola…');
                         }
                     } else {
@@ -217,10 +222,23 @@
                     }
                 } finally {
                     busy = false;
+                    if (drainImmediately) {
+                        drainImmediately = false;
+                        queueMicrotask(tick);
+                    }
                 }
             }
 
-            setInterval(tick, 500);
+            let stationManagedGlobally = false;
+            try {
+                stationManagedGlobally = !!localStorage.getItem('restaurant_print_station_uuid');
+            } catch (e) {}
+            if (stationManagedGlobally) {
+                log('Estación registrada activa. La escucha rápida global ya está funcionando.');
+                return;
+            }
+
+            setInterval(tick, 250);
             tick();
         })();
     </script>

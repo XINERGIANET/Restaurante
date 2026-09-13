@@ -14,6 +14,7 @@ export function startPrintBridgeStationPoll() {
     }
     window.__xinergiaPrintBridgePollStarted = true;
     let busy = false;
+    let drainImmediately = false;
 
     // Conectar QZ antes de que llegue la primera comanda elimina la espera de
     // certificado/websocket en el momento crítico de impresión.
@@ -75,6 +76,8 @@ export function startPrintBridgeStationPoll() {
             }
             const driver = String(j.job.printer_name || '').trim();
             const configName = String(j.job.configured_printer_name || driver).trim();
+            const printerIp = String(j.job.printer_ip || '').trim();
+            const printerPort = parseInt(j.job.printer_port, 10) || 9100;
             if (!driver && !configName) return;
 
             if (typeof window.__qzConnectWithCertPairFallback === 'function') {
@@ -84,24 +87,24 @@ export function startPrintBridgeStationPoll() {
                 }
             }
 
-            let targetPrinter = driver || configName;
-            try {
-                targetPrinter = await qzApi.printers.find(driver);
-            } catch (e1) {
+            let targetPrinter = printerIp ? { host: printerIp, port: printerPort } : (driver || configName);
+            if (!printerIp) {
                 try {
-                    targetPrinter = await qzApi.printers.find(configName);
-                } catch (e2) {
+                    targetPrinter = await qzApi.printers.find(driver);
+                } catch (e1) {
                     try {
-                        const allPrinters = await qzApi.printers.find();
-                        const matched = allPrinters.find(p => {
-                            const pl = String(p).toLowerCase();
-                            return pl.includes(driver.toLowerCase()) || pl.includes(configName.toLowerCase());
-                        });
-                        if (matched) {
-                            targetPrinter = matched;
+                        targetPrinter = await qzApi.printers.find(configName);
+                    } catch (e2) {
+                        try {
+                            const allPrinters = await qzApi.printers.find();
+                            const matched = allPrinters.find(p => {
+                                const pl = String(p).toLowerCase();
+                                return pl.includes(driver.toLowerCase()) || pl.includes(configName.toLowerCase());
+                            });
+                            if (matched) targetPrinter = matched;
+                        } catch (e3) {
+                            // ignore and use fallback
                         }
-                    } catch (e3) {
-                        // ignore and use fallback
                     }
                 }
             }
@@ -140,6 +143,7 @@ export function startPrintBridgeStationPoll() {
                 if (!ackResponse.ok) {
                     throw new Error('La impresión salió, pero el servidor no pudo confirmarla.');
                 }
+                drainImmediately = true;
             }
         } catch (e) {
             console.warn('[print-bridge-station]', e);
@@ -170,10 +174,14 @@ export function startPrintBridgeStationPoll() {
             }
         } finally {
             busy = false;
+            if (drainImmediately) {
+                drainImmediately = false;
+                queueMicrotask(tick);
+            }
         }
     };
 
     warmUpQz();
-    window.__xinergiaPrintBridgeInterval = setInterval(tick, 500);
+    window.__xinergiaPrintBridgeInterval = setInterval(tick, 250);
     tick();
 }

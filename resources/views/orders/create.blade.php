@@ -2724,6 +2724,13 @@
                             return true;
                         }
 
+                        // En nube ya están persistidos y los recoge la estación.
+                        // No esperar una conexión QZ que aquí no se va a utilizar.
+                        const directJobs = jobs.filter((job) => job.print_bridge !== true);
+                        if (!directJobs.length) {
+                            return true;
+                        }
+
                         let printedDirectly = true;
                         const kitchenRecentPrints = (window.__kitchenRecentPrints = window.__kitchenRecentPrints ||
                             new Map());
@@ -2747,7 +2754,7 @@
                             return false;
                         }
 
-                        const names = jobs.map((job) => String(job.printer_name || '').trim()).filter(Boolean);
+                        const names = directJobs.map((job) => String(job.printer_name || '').trim()).filter(Boolean);
                         const namesNeedingClientQz = names.filter((n) => !kitchenComandaPrinterUsesServerThermal(n));
                         const needsClientQz = namesNeedingClientQz.length > 0;
                         const QZ_MULTI_KITCHEN_HINT = '__MULTI_KITCHEN_SECONDARY_FIRST__';
@@ -2781,7 +2788,7 @@
                             }
                         }
 
-                        for (const job of jobs) {
+                        for (const job of directJobs) {
                             const pname = String(job.printer_name || '').trim();
                             const data = String(job.ticket_text || '');
                             const printJobId = parseInt(job.id, 10) || null;

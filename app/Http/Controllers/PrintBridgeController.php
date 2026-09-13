@@ -63,22 +63,20 @@ class PrintBridgeController extends Controller
                 // 1. Primero revisar impresoras asignadas a esta estación
                 $assignedPrinters = $station->printers()->where('status', 'E')->orderBy('id')->get();
 
-                // 2. Revisar todas las demás impresoras activas de la sucursal
-                $allBranchPrinters = PrinterBranch::query()->where('branch_id', $branchId)->where('status', 'E')->orderBy('id')->get();
-                $printersToPull = $assignedPrinters->concat($allBranchPrinters)->unique('id');
-
-                foreach ($printersToPull as $assignedPrinter) {
+                foreach ($assignedPrinters as $assignedPrinter) {
                     $stationJob = $this->claimPendingThermalPrintJob($branchId, (string) $assignedPrinter->name)
                         ?: $this->nextLegacyQueuedJob($queue, $branchId, (string) $assignedPrinter->name);
                     if ($stationJob) {
                         $stationJob['printer_name'] = filled($assignedPrinter->driver_name) ? $assignedPrinter->driver_name : $assignedPrinter->name;
                         $stationJob['configured_printer_name'] = $assignedPrinter->name;
+                        $stationJob['printer_ip'] = $assignedPrinter->ip;
+                        $stationJob['printer_port'] = (int) ($assignedPrinter->port ?: 9100);
                         return response()->json(['job' => $stationJob, 'station' => $station->name]);
                     }
                 }
 
-                // 3. Fallback: reclamar cualquier comanda pendiente de la sucursal
-                $unmatchedJob = $this->claimAnyPendingThermalPrintJobForBranch($branchId);
+                // Una sola consulta para LAN/no asignadas. Nunca toma la USB de otra PC.
+                $unmatchedJob = $this->claimAnyPendingThermalPrintJobForBranch($branchId, (int) $station->id);
                 if ($unmatchedJob) {
                     return response()->json(['job' => $unmatchedJob, 'station' => $station->name]);
                 }
@@ -259,6 +257,8 @@ class PrintBridgeController extends Controller
                 'at' => time(),
                 'printer_name' => $driver,
                 'configured_printer_name' => $pname,
+                'printer_ip' => $printerModel?->ip,
+                'printer_port' => (int) ($printerModel?->port ?: 9100),
             ];
         }, 3);
     }
@@ -326,7 +326,7 @@ class PrintBridgeController extends Controller
         return str_replace("\r\n", "\n", (string) $value);
     }
 
-    private function claimAnyPendingThermalPrintJobForBranch(int $branchId): ?array
+    private function claimAnyPendingThermalPrintJobForBranch(int $branchId, ?int $stationId = null): ?array
     {
         if (
             ! Schema::hasTable('thermal_print_jobs')
@@ -341,7 +341,7 @@ class PrintBridgeController extends Controller
             return null;
         }
 
-        return DB::transaction(function () use ($branchId, $leaseExpiredAt) {
+        return DB::transaction(function () use ($branchId, $leaseExpiredAt, $stationId) {
             $job = ThermalPrintJob::query()
                 ->where('branch_id', $branchId)
                 ->where('source', 'kitchen_order')
@@ -363,6 +363,15 @@ class PrintBridgeController extends Controller
                         });
                 })
                 ->whereNotNull('ticket_text')
+                ->when($stationId, function ($query) use ($stationId) {
+                    $query->where(function ($printerQuery) use ($stationId) {
+                        $printerQuery->whereNull('printer_branch_id')
+                            ->orWhereHas('printerBranch', function ($branchQuery) use ($stationId) {
+                                $branchQuery->whereNull('print_station_id')
+                                    ->orWhere('print_station_id', $stationId);
+                            });
+                    });
+                })
                 ->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")
                 ->orderBy('created_at')
                 ->orderBy('id')
@@ -397,6 +406,8 @@ class PrintBridgeController extends Controller
                 'at' => time(),
                 'printer_name' => $driver,
                 'configured_printer_name' => $pname,
+                'printer_ip' => $printerModel?->ip,
+                'printer_port' => (int) ($printerModel?->port ?: 9100),
             ];
         }, 3);
     }
