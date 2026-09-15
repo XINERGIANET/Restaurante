@@ -195,31 +195,26 @@ class PurchaseController extends Controller
         $defaultTaxRate = 18.00;
         $purchase = null; 
 
+        // Mismo catálogo de categorías que el CRUD de productos.
         $categories = Category::query()
-            ->when($branchId, fn($q) => $q->forBranchMenu($branchId, 'COMPRAS'), function ($query) {
+            ->when($branchId, function ($query) use ($branchId) {
+                $query->whereExists(function ($sub) use ($branchId) {
+                    $sub->select(DB::raw(1))
+                        ->from('category_branch')
+                        ->whereColumn('category_branch.category_id', 'categories.id')
+                        ->where('category_branch.branch_id', $branchId)
+                        ->whereNull('category_branch.deleted_at');
+                });
+            }, function ($query) {
                 $query->whereRaw('1 = 0');
             })
             ->orderBy('description')
             ->get();
-        
-        $validCategoryIds = $categories->pluck('id');
 
         $products = ProductBranch::where('branch_id', $branchId)
-            ->with(['product', 'product.baseUnit', 'product.category', 'product.productType'])
+            ->with(['product', 'product.baseUnit', 'product.category'])
             ->get()
-            ->filter(function ($pb) use ($validCategoryIds) {
-                $product = $pb->product;
-                if (!$product) return false;
-
-                // Solo si la categoría está permitida para Compras
-                if (!in_array($product->category_id, $validCategoryIds->all())) {
-                    return false;
-                }
-
-                $pt = $product->productType;
-                if (!$pt) return false;
-                return in_array($pt->behavior, ['SUPPLY', 'BOTH'], true);
-            })
+            ->filter(fn($pb) => $pb->product !== null)
             ->map(function ($pb) {
                 $product = $pb->product;
                 if (!$product) return null;
@@ -859,30 +854,24 @@ class PurchaseController extends Controller
         $purchase = $purchaseMovement->movement; 
         
         $categories = Category::query()
-            ->when($branchId, fn($q) => $q->forBranchMenu($branchId, 'COMPRAS'), function ($query) {
+            ->when($branchId, function ($query) use ($branchId) {
+                $query->whereExists(function ($sub) use ($branchId) {
+                    $sub->select(DB::raw(1))
+                        ->from('category_branch')
+                        ->whereColumn('category_branch.category_id', 'categories.id')
+                        ->where('category_branch.branch_id', $branchId)
+                        ->whereNull('category_branch.deleted_at');
+                });
+            }, function ($query) {
                 $query->whereRaw('1 = 0');
             })
             ->orderBy('description')
             ->get();
-        
-        $validCategoryIds = $categories->pluck('id');
 
         $products = ProductBranch::where('branch_id', $branchId)
-            ->with(['product', 'product.baseUnit', 'product.category', 'product.productType'])
+            ->with(['product', 'product.baseUnit', 'product.category'])
             ->get()
-            ->filter(function ($pb) use ($validCategoryIds) {
-                $product = $pb->product;
-                if (!$product) return false;
-
-                // Solo si la categoría está permitida para Compras
-                if (!in_array($product->category_id, $validCategoryIds->all())) {
-                    return false;
-                }
-
-                $pt = $product->productType;
-                if (!$pt) return false;
-                return in_array($pt->behavior, ['SUPPLY', 'BOTH'], true);
-            })
+            ->filter(fn($pb) => $pb->product !== null)
             ->map(function ($pb) {
                 $product = $pb->product;
                 if (!$product) return null;
