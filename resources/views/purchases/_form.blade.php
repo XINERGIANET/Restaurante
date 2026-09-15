@@ -996,7 +996,7 @@
                             if (this.selectedCategory) {
                                 list = list.filter(p => Number(p.category_id) === Number(this.selectedCategory));
                             }
-                            return list.slice(0, 50);
+                            return list;
                         },
 
                         addProductToCart(product) {
